@@ -1,9 +1,9 @@
 ---
-sponsor: 'Reserve'
-slug: '2023-06-reserve'
-date: '2023-09-⭕' # the date this report is published to the C4 website
-title: 'Reserve Protocol - Invitational'
-findings: 'https://github.com/code-423n4/2023-06-reserve-findings/issues'
+sponsor: "Reserve"
+slug: "2023-06-reserve"
+date: "2023-09-⭕"  # the date this report is published to the C4 website
+title: "Reserve Protocol - Invitational"
+findings: "https://github.com/code-423n4/2023-06-reserve-findings/issues"
 contest: 248
 ---
 
@@ -23,12 +23,12 @@ Following the C4 audit, 3 wardens (0xA5DF, ronnyx2017, and rvierdiiev) reviewed 
 
 In Code4rena's Invitational audits, the competition is limited to a small group of wardens; for this audit, 6 wardens contributed reports:
 
-1. 0xA5DF
-2. ronnyx2017
-3. rvierdiiev
-4. RaymondFam
-5. [carlitox477](https://twitter.com/carlitox477)
-6. [hihen](https://twitter.com/henryxf3)
+  1. 0xA5DF
+  2. ronnyx2017
+  3. rvierdiiev
+  4. RaymondFam
+  5. [carlitox477](https://twitter.com/carlitox477)
+  6. [hihen](https://twitter.com/henryxf3)
 
 This Audit was judged by [0xean](https://github.com/0xean).
 
@@ -60,10 +60,8 @@ High-level considerations for vulnerabilities span the following key areas when 
 For more information regarding the severity criteria referenced throughout the submission review process, please refer to the documentation provided on [the C4 website](https://code4rena.com), specifically our section on [Severity Categorization](https://docs.code4rena.com/awarding/judging-criteria/severity-categorization).
 
 # High Risk Findings (2)
-
 ## [[H-01] Custom redemption might revert if old assets were unregistered](https://github.com/code-423n4/2023-06-reserve-findings/issues/4)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/4)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/4)*
 
 `quoteCustomRedemption()` works under the assumption that the maximum size of the `erc20sAll` should be `assetRegistry.size()`, however there can be cases where an asset was unregistered but still exists in an old basket, making the size of the old basket greater than `assetRegistry.size()`. In that case the function will revert with an index out of bounds error.
 
@@ -78,15 +76,15 @@ Not being able to redeem can result in a depeg or in governance becoming malicio
 
 Consider the following scenario:
 
-- RToken deployed with 0.9 USDC, 0.05 USDT, 0.05 DAI
-- Governance passed a vote to change it to 0.9 DAI and 0.1 USDC and un-register USDT
-- Trading is paused before execution, so the basket switch occurs but the re-balance can't be executed. Meaning the actual assets that the backing manager holds are in accordance with the old basket
-- A user wants to redeem using the old basket, but custom redemption reverts
+*   RToken deployed with 0.9 USDC, 0.05 USDT, 0.05 DAI
+*   Governance passed a vote to change it to 0.9 DAI and 0.1 USDC and un-register USDT
+*   Trading is paused before execution, so the basket switch occurs but the re-balance can't be executed. Meaning the actual assets that the backing manager holds are in accordance with the old basket
+*   A user wants to redeem using the old basket, but custom redemption reverts
 
 As for the revert:
 
-- `erc20sAll` is created [here](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BasketHandler.sol#L391-L392) with the length of `assetRegistry.size()`, which is 2 in our case.
-- Then in [this loop](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BasketHandler.sol#L397-L428) the function tries to push 3 assets into `erc20sAll` which will result in an index-out-of-bonds error
+*   `erc20sAll` is created [here](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BasketHandler.sol#L391-L392) with the length of `assetRegistry.size()`, which is 2 in our case.
+*   Then in [this loop](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BasketHandler.sol#L397-L428) the function tries to push 3 assets into `erc20sAll` which will result in an index-out-of-bonds error
 
 (the function doesn't include in the final results assets that aren't registered, but it does push them too into `erc20sAll`)
 
@@ -95,50 +93,43 @@ As for the revert:
 Allow the user to specify the length of the array `erc20sAll` to avoid this revert
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1586269794):**
-
-> I believe this to be a stretch for high severity. It has several pre-conditions to end up in the proposed state and I do believe it would be entirely possible for governance to change back to the original state (USDC, USDT, DAI), so assets wouldn't be lost and the impact would more be along the lines of a temporary denial of service.
->
-> Look forward to warden and sponsor comments.
+ > I believe this to be a stretch for high severity. It has several pre-conditions to end up in the proposed state and I do believe it would be entirely possible for governance to change back to the original state (USDC, USDT, DAI), so assets wouldn't be lost and the impact would more be along the lines of a temporary denial of service.
+> 
+> Look forward to warden and sponsor comments. 
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1587948710):**
-
-> @0xA5DF - nice find! Thoughts on an alternative mitigation?
->
+ > @0xA5DF - nice find! Thoughts on an alternative mitigation?
 > - Could move L438 to just after L417, so that `erc20sAll` never includes unregistered ERC20s
 > - Would probably have to cache the assets as `assetsAll` for re-use around L438
 > - Has side-effect of making the ERC20 return list never include unregistered ERC20s. Current implementation can return a 0 value for an unregistered ERC20. This is properly handled by the RToken contract, but still, nice-to-have.
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1587988163):**
-
-> Hey @tbrent -<br>
+ > Hey @tbrent -<br>
 > That can work as well, the only downside I can think of is that in case there's an asset that's not registered and is repeated across different baskets - the `toAsset()` would be called multiple times for that asset (while under the current implementation and under the mitigation I've suggested it'll be called only once), this would cost about 300 gas units per additional call (100 for the call, 2 `sload`s to a warm slot inside the call itself)
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1588023172):**
-
 > @0xA5DF - Noted, good point.
 
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1620824425)**
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1632948695):**
-
-> @tbrent - do you care to comment on your thoughts on severity? I am leaning towards M on this, but it sounds like you believe it is correct as labeled (high).
+ > @tbrent - do you care to comment on your thoughts on severity? I am leaning towards M on this, but it sounds like you believe it is correct as labeled (high). 
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/4#issuecomment-1632984393):**
-
-> @0xean - Correct, I think high is appropriate.
+ > @0xean - Correct, I think high is appropriate. 
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Fix `redeemCustom`.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/857
 
 **Status:** Mitigation confirmed. Full details in reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/7), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/30), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/3) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[H-02] A new era might be triggered despite a significant value being held in the previous era](https://github.com/code-423n4/2023-06-reserve-findings/issues/2)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/2)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/2)*
 
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/StRSR.sol#L441-L444> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/StRSR.sol#L457-L460>
 
@@ -154,10 +145,10 @@ Stakers will lose their holdings or pending drafts.
 
 Consider the following scenario:
 
-- Max stake rate is 1e9
-- A seizure occurs and the new rate is now 91e7
-- Not much staking is left after the seizure, but as time passes users keep staking bring back the total stakes to a significant value
-- A 10% seizure occurs, this causes the staking rate to cross the threshold (getting to 1.01e9) and start a new era
+*   Max stake rate is 1e9
+*   A seizure occurs and the new rate is now 91e7
+*   Not much staking is left after the seizure, but as time passes users keep staking bring back the total stakes to a significant value
+*   A 10% seizure occurs, this causes the staking rate to cross the threshold (getting to 1.01e9) and start a new era
 
 This means the stakings were wiped out despite holding a significant amount of value, causing a loss for the holders.
 
@@ -166,30 +157,29 @@ This means the stakings were wiped out despite holding a significant amount of v
 This one is a bit difficult to mitigate.
 One way I can think of is to add a 'migration' feature, where in such cases a new era would be created but users would be able to transfer the funds that they held in the previous era into the new era. But this would require some significant code changes and checking that this doesn't break anything or introduces new bugs.
 
-**[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/2#issuecomment-1588260840):**
 
-> @0xA5DF thoughts on a governance function that requires the ratio be out of bounds, that does `beginEra()` and/or `beginDraftEra()`?
->
-> The idea is that stakers can mostly withdraw, and since governance thresholds are all percentage, vote to immolate themselves and re-start the staking pool. I think it should treat `beginEra()` and `beginDraftEra()` separately, but I'm not confident in that yet.
+**[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/2#issuecomment-1588260840):**
+ > @0xA5DF thoughts on a governance function that requires the ratio be out of bounds, that does `beginEra()` and/or `beginDraftEra()`? 
+> 
+> The idea is that stakers can mostly withdraw, and since governance thresholds are all percentage, vote to immolate themselves and re-start the staking pool. I think it should treat `beginEra()` and `beginDraftEra()` separately, but I'm not confident in that yet. 
 
 **[tbrent (Reserve) acknowledged and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/2#issuecomment-1620824773):**
-
-> We're still not sure how to mitigate this one. Agree it should be considered HIGH and a new issue.
+ > We're still not sure how to mitigate this one. Agree it should be considered HIGH and a new issue.
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Adds governance function to manually push the era forward.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/888
 
 **Status:** Mitigation confirmed. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/31), [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/8), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/11) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
 
+
+***
+
+ 
 # Medium Risk Findings (12)
-
 ## [[M-01] A Dutch trade could end up with an unintended lower closing price](https://github.com/code-423n4/2023-06-reserve-findings/issues/48)
-
-_Submitted by [RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/48)_
+*Submitted by [RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/48)*
 
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/plugins/trading/DutchTrade.sol#L160> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/RevenueTrader.sol#L46> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BackingManager.sol#L81>
 
@@ -246,34 +236,33 @@ Here's the scenario:
 
 5.  Bob, the late comer, upon seeing this, proceeds to calling `bid()` and gets the sell token for a price much lower than he would initially expect before the trading pause.
 
+
 ### Recommended Mitigation Steps
 
 Consider removing `notTradingPausedOrFrozen` from the function visibility of `RevenueTrader.settleTrade` and `BackingManager.settleTrade`. This will also have a good side effect of allowing the settling of a Gnosis trade if need be. Collectively, the settled trades could at least proceed to helping boost the RToken and/or stRSR exchange rates that is conducive to the token holders redeeming and withdrawing. The same shall apply to enhancing recollaterization, albeit future tradings will be halted if the trading pause is still enabled.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/48#issuecomment-1613819858):**
+ > This also seems like QA.  It outlines a very specific set of events that are very unlikely to occur during production scenarios and would additionally come down to admin misconfiguration / mismanagement.  will wait for sponsor comment, but most likely downgrade to QA.
 
-> This also seems like QA. It outlines a very specific set of events that are very unlikely to occur during production scenarios and would additionally come down to admin misconfiguration / mismanagement. will wait for sponsor comment, but most likely downgrade to QA.
-
-> > - The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
->
-> It is good to consider this quote from the documentation stating that pausing may have false positives.
+ > > - The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
+> 
+> It is good to consider this quote from the documentation stating that pausing may have false positives. 
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/48#issuecomment-1618926905):**
-
-> @0xean - We believe a malicious pauser attack vector is dangerous enough that the issue is Medium and deserves a mitigation. Agree with suggested mitigation.
+ > @0xean - We believe a malicious pauser attack vector is dangerous enough that the issue is Medium and deserves a mitigation. Agree with suggested mitigation.
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Allow settle trade when paused or frozen.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/876
 
 **Status:** Mitigation confirmed. Full details in reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/5), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/32), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/9) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-02] The broker should not be fully disabled by GnosisTrade.reportViolation](https://github.com/code-423n4/2023-06-reserve-findings/issues/47)
-
-_Submitted by [RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/47)_
+*Submitted by [RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/47)*
 
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/plugins/trading/GnosisTrade.sol#L202> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/Broker.sol#L119-L123>
 
@@ -288,12 +277,11 @@ GnosisTrade and DutchTrade are two separate auction systems where the failing of
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/Broker.sol#L119-L123>
 
 ```solidity
-function reportViolation() external notTradingPausedOrFrozen {
-  require(trades[_msgSender()], 'unrecognized trade contract');
-  emit DisabledSet(disabled, true);
-  disabled = true;
-}
-
+    function reportViolation() external notTradingPausedOrFrozen {
+        require(trades[_msgSender()], "unrecognized trade contract");
+        emit DisabledSet(disabled, true);
+        disabled = true;
+    }
 ```
 
 Consequently, both `BackingManager` and `RevenueTrader (rsrTrader and rTokenTrader)` will not be able to call `openTrade()`:
@@ -311,11 +299,10 @@ till it's resolved by the governance:
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/Broker.sol#L180-L183>
 
 ```solidity
-function setDisabled(bool disabled_) external governance {
-  emit DisabledSet(disabled, disabled_);
-  disabled = disabled_;
-}
-
+    function setDisabled(bool disabled_) external governance {
+        emit DisabledSet(disabled, disabled_);
+        disabled = disabled_;
+    }
 ```
 
 ### Proof of Concept
@@ -371,28 +358,25 @@ Consider having the affected code refactored as follows:
 This will have the Gnosis Trade conditionally denied while still allowing the opening of Dutch Trade.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/47#issuecomment-1613867516):**
-
-> This currently mostly reads like a design suggestion. I can see the merits of disabling the entire broker in the scenario where the invariant has been violated. Probably best as QA, but will allow for sponsor comment before downgrading.
+ > This currently mostly reads like a design suggestion. I can see the merits of disabling the entire broker in the scenario where the invariant has been violated. Probably best as QA, but will allow for sponsor comment before downgrading. 
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/47#issuecomment-1618919354):**
-
-> @0xean - We think this should be kept as Medium. It's a good design suggestion that otherwise could lead to the protocol not trading for the length of the governance cycle. This matters when it comes to selling defaulted collateral.
+ > @0xean - We think this should be kept as Medium. It's a good design suggestion that otherwise could lead to the protocol not trading for the length of the governance cycle. This matters when it comes to selling defaulted collateral. 
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Disable dutch auctions on a per-collateral basis, use 4-step dutch trade curve.<br>
 > PRs:<br>
->
 > - https://github.com/reserve-protocol/protocol/pull/873<br>
 > - https://github.com/reserve-protocol/protocol/pull/869<br>
 
 **Status:** Two mitigation errors. Full details in reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20) and [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-03] In case `Distributor.setDistribution` use, revenue from rToken RevenueTrader and rsr token RevenueTrader should be distributed](https://github.com/code-423n4/2023-06-reserve-findings/issues/34)
-
-_Submitted by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/34)_
+*Submitted by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/34)*
 
 In case Distributor.setDistribution use, revenue from rToken RevenueTrader and rsr token RevenueTrader should be distributed. Otherwise wrong distribution will be used.
 
@@ -418,21 +402,20 @@ VsCode
 You need to think how to guarantee fair distribution to the strsr stakers, when distribution params are changed.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/34#issuecomment-1620796074):**
-
-> This is a good find. The mitigation we have in mind is adding a new function to the `RevenueTrader` that allows anyone to transfer a registered ERC20 back to the `BackingManager`, as long as the current distribution for that `tokenToBuy` is 0%.
+ > This is a good find. The mitigation we have in mind is adding a new function to the `RevenueTrader` that allows anyone to transfer a registered ERC20 back to the `BackingManager`, as long as the current distribution for that `tokenToBuy` is 0%. 
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Distribute revenue in `setDistribution`.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/878
 
 **Status:** Mitigation error. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36) and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/10) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-04] FurnaceP1.setRatio will work incorrectly after call when frozen ](https://github.com/code-423n4/2023-06-reserve-findings/issues/29)
-
-_Submitted by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/29)_
+*Submitted by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/29)*
 
 `FurnaceP1.setRatio` will not update `lastPayout` when called in frozen state, which means that after component will be unfrozen, melting will be incorrect.
 
@@ -455,17 +438,17 @@ In case of `catch` case, you can update `lastPayout` and `lastPayoutBal`.
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-06-reserve-findings/issues/29#issuecomment-1620802303)**
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Update payout variables if melt fails during `setRatio`.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/885
 
 **Status:** Mitigation error. Full details in report from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-05] Lack of claimRewards when manageToken in RevenueTrader](https://github.com/code-423n4/2023-06-reserve-findings/issues/16)
-
-_Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/16)_
+*Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/16)*
 
 There is a dev comment in the Assert.sol:
 
@@ -492,29 +475,29 @@ Potential loss of rewards.
 
 Add claimRewardsSingle when refresh assert in the `manageToken`.
 
-**[tbrent (Reserve) disputed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/16#issuecomment-1588019948):**
 
-> This is similar to an (unmitigated) issue from an earlier contest: https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22
->
-> However in this case it has to do with `RevenueTraderP1.manageToken()`, as opposed to `BackingManagerP1.manageTokens()`.
->
-> I think that difference matters, because the loss of the rewards _for this auction_ does not have serious long-term consequences. This is not like the BackingManager where it's important that all capital always be available else an unnecessarily large haircut could occur. Instead, the worst that can happen is for the revenue auction to complete at high slippage, and for a second reward token revenue auction to complete afterwards at high slippage yet again, when it could have been a single revenue auction with less slippage.
+**[tbrent (Reserve) disputed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/16#issuecomment-1588019948):**
+ > This is similar to an (unmitigated) issue from an earlier contest: https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22
+> 
+> However in this case it has to do with `RevenueTraderP1.manageToken()`, as opposed to `BackingManagerP1.manageTokens()`. 
+> 
+> I think that difference matters, because the loss of the rewards _for this auction_ does not have serious long-term consequences. This is not like the BackingManager where it's important that all capital always be available else an unnecessarily large haircut could occur. Instead, the worst that can happen is for the revenue auction to complete at high slippage, and for a second reward token revenue auction to complete afterwards at high slippage yet again, when it could have been a single revenue auction with less slippage. 
 >
 > The recommended mitigation would not succeed, because recall, we may be selling token X but any number of additional assets could have token X as a reward token. We would need to call `claimRewards()`, which is simply too gas-costly to do everytime for revenue auctions.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/16#issuecomment-1633111555):**
+ > > Instead, the worst that can happen is for the revenue auction to complete at high slippage, and for a second reward token revenue auction to complete afterwards at high slippage yet again, when it could have been a single revenue auction with less slippage.
+> 
+> @tbrent - The impact sounds like a "leak of value" and therefore I think Medium is the correct severity per the c4 docs. (cc @tbrent - open to additional comment here) 
 
-> > Instead, the worst that can happen is for the revenue auction to complete at high slippage, and for a second reward token revenue auction to complete afterwards at high slippage yet again, when it could have been a single revenue auction with less slippage.
->
-> @tbrent - The impact sounds like a "leak of value" and therefore I think Medium is the correct severity per the c4 docs. (cc @tbrent - open to additional comment here)
 
----
 
-## [[M-06] Oracle timeout at rebalance will result in a sell-off of all RSRs at 0 price](https://github.com/code-423n4/2023-06-reserve-findings/issues/15)
+***
 
-_Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/15)_
+## [[M-06]  Oracle timeout at rebalance will result in a sell-off of all RSRs at 0 price](https://github.com/code-423n4/2023-06-reserve-findings/issues/15)
+*Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/15)*
 
-When creating the trade for rebalance, the `RecollateralizationLibP1.nextTradePair` uses `(uint192 low, uint192 high) = rsrAsset.price(); // {UoA/tok}` to get the rsr sell price. And the rsr assert is a pure Assert contract, which `price()` function will just return (0, FIX_MAX) if oracle is timeout:
+When creating the trade for rebalance, the `RecollateralizationLibP1.nextTradePair` uses `(uint192 low, uint192 high) = rsrAsset.price(); // {UoA/tok}` to get the rsr sell price. And the rsr assert is a pure Assert contract, which `price()` function will just return (0, FIX\_MAX) if oracle is timeout:
 
     function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
@@ -558,10 +541,10 @@ index 86cd3e88..15639916 100644
 +import { expectRTokenPrice, setInvalidOracleTimestamp, setOraclePrice } from './utils/oracles'
  import { useEnv } from '#/utils/env'
  import { mintCollaterals } from './utils/tokens'
-
+ 
 @@ -797,6 +797,166 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
    })
-
+ 
    describe('Recollateralization', function () {
 +    context('With simple Basket - Two stablecoins', function () {
 +      let issueAmount: BigNumber
@@ -588,30 +571,30 @@ index 86cd3e88..15639916 100644
 +        await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
 +        await stRSR.connect(addr1).stake(stakeAmount)
 +      })
-+
++      
 +      it('C4M7', async () => {
 +        // Register Collateral
 +        await assetRegistry.connect(owner).register(backupCollateral1.address)
-+
++  
 +        // Set backup configuration - USDT as backup
 +        await basketHandler
 +          .connect(owner)
 +          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
-+
++        
 +        // Set Token0 to default - 50% price reduction
 +        await setOraclePrice(collateral0.address, bn('0.5e8'))
-+
++  
 +        // Mark default as probable
 +        await assetRegistry.refresh()
 +        // Advance time post collateral's default delay
 +        await advanceTime((await collateral0.delayUntilDefault()).toString())
-+
++  
 +        // Confirm default and trigger basket switch
 +        await basketHandler.refreshBasket()
-+
++  
 +        // Advance time post warmup period - SOUND just regained
 +        await advanceTime(Number(config.warmupPeriod) + 1)
-+
++  
 +        const initToken1B = await token1.balanceOf(backingManager.address);
 +        // rebalance
 +        const token1Decimal = 6;
@@ -643,7 +626,7 @@ index 86cd3e88..15639916 100644
 +            emitted: true,
 +          },
 +        ])
-+
++  
 +        // check
 +        console.log(await token0.balanceOf(backingManager.address));
 +        const currentToken1B = await token1.balanceOf(backingManager.address);
@@ -651,7 +634,7 @@ index 86cd3e88..15639916 100644
 +        console.log(await backupToken1.balanceOf(backingManager.address));
 +        const rsrB = await rsr.balanceOf(stRSR.address);
 +        console.log(rsrB);
-+
++  
 +        // expect
 +        expect(rsrB).to.eq(0);
 +      })
@@ -681,32 +664,32 @@ log:
 
 Using lotPrice or just revert for rsr oracle timeout might be a good idea.
 
-**[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/15#issuecomment-1588048139):**
 
-> Hmm, interesting case.
->
-> There are two types of auctions that can occur: batch auctions via `GnosisTrade`, and dutch auctions via `DutchTrade`.
->
-> Batch auctions via `GnosisTrade` are good at discovering prices when price is unknown. It would require self-interested parties to be offline for the entire duration of the batch auction (default: 15 minutes) in order for someone to get away with buying the RSR for close to 0.
->
+**[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/15#issuecomment-1588048139):**
+ > Hmm, interesting case.
+> 
+> There are two types of auctions that can occur: batch auctions via `GnosisTrade`, and dutch auctions via `DutchTrade`. 
+> 
+> Batch auctions via `GnosisTrade` are good at discovering prices when price is unknown. It would require self-interested parties to be offline for the entire duration of the batch auction (default: 15 minutes) in order for someone to get away with buying the RSR for close to 0. 
+> 
 > Dutch auctions via `DutchTrade` do not have this problem because of an assert that reverts at the top of the contract.
->
-> I'm inclined to dispute validity, but I also agree it might be strictly better to use the `lotPrice()`. When trading out backing collateral it is important to sell it quickly and not have to wait for `lotPrice()` to decay sufficiently, but this is not true with RSR. For RSR it might be fine to wait as long as a week for the `lotPrice()` to fall to near 0.
->
+> 
+> I'm inclined to dispute validity, but I also agree it might be strictly better to use the `lotPrice()`. When trading out backing collateral it is important to sell it quickly and not have to wait for `lotPrice()` to decay sufficiently, but this is not true with RSR. For RSR it might be fine to wait as long as a week for the `lotPrice()` to fall to near 0. 
+> 
 > This would then allow dutch auctions via `DutchTrade` to be used when RSR's oracle is offline.
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Use `lotPrice()`.<br>
 > PR: https://github.com/reserve-protocol/protocol-private/pull/15
 
 **Status:** Mitigation confirmed. Full details in reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/13), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/41), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/23) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-07] Sell reward `rTokens` at low price because of skiping `furnace.melt`](https://github.com/code-423n4/2023-06-reserve-findings/issues/13)
-
-_Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/13)_
+*Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/13)*
 
 The reward rToken sent to RevenueTrader will be sold at a low price. RSR stakers will lose some of their profits.
 
@@ -744,17 +727,17 @@ Refresh everything before sell rewards.
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-06-reserve-findings/issues/13#issuecomment-1620818933)**
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Refresh before selling rewards, refactor revenue & distro.<br>
 > PR: https://github.com/reserve-protocol/protocol-private/pull/7
 
 **Status:** Mitigation confirmed. Full details in reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/24), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/34), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/14) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-08] Stake before unfreeze can take away most of rsr rewards in the freeze period](https://github.com/code-423n4/2023-06-reserve-findings/issues/11)
-
-_Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/11), also found by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/43) and [0xA5DF](https://github.com/code-423n4/2023-05-reserve-findings/issues/24)_
+*Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/11), also found by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/43) and [0xA5DF](https://github.com/code-423n4/2023-05-reserve-findings/issues/24)*
 
 If the system is frozen, the only allowed operation is `stRST.stake`. And the `_payoutRewards` is not called during freeze period:
 
@@ -788,17 +771,17 @@ payoutRewards before freeze and update payoutLastPaid before unfreeze.
 **[tbrent (Reserve) confirmed via duplicate issue #24](https://github.com/code-423n4/2023-06-reserve-findings/issues/24)**
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > `payoutRewards` before freeze and update `payoutLastPaid` before unfreeze.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/857
 
 **Status:** Mitigation confirmed. Full details in reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/15), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/38), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/25) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-09] `cancelUnstake` lack `payoutRewards` before mint shares](https://github.com/code-423n4/2023-06-reserve-findings/issues/10)
-
-_Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/10), also found by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/39) and [0xA5DF](https://github.com/code-423n4/2023-05-reserve-findings/issues/5)_
+*Submitted by [ronnyx2017](https://github.com/code-423n4/2023-06-reserve-findings/issues/10), also found by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/39) and [0xA5DF](https://github.com/code-423n4/2023-05-reserve-findings/issues/5)*
 
 `cancelUnstake` will cancel the withdrawal request in the queue can mint shares as the current `stakeRate`. But it doesn't `payoutRewards` before `mintStakes`. Therefor it will mint stRsr as a lower rate, which means it will get more rsr.
 
@@ -818,7 +801,7 @@ index ecc31f68..b2809129 100644
 @@ -1333,6 +1333,46 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
        expect(await stRSR.exchangeRate()).to.be.gt(initialRate)
      })
-
+ 
 +    it('cancelUnstake', async () => {
 +      const amount: BigNumber = bn('10e18')
 +
@@ -844,7 +827,7 @@ index ecc31f68..b2809129 100644
 +      await expect(stRSR.connect(addr2).cancelUnstake(1)).to.emit(stRSR, 'UnstakingCancelled')
 +      let exchangeRate = await stRSR.exchangeRate();
 +      expect(exchangeRate).to.equal(initExchangeRate)
-+
++      
 +      // addr3 cancelUnstake after payoutRewards
 +      await stRSR.payoutRewards()
 +      await expect(stRSR.connect(addr3).cancelUnstake(1)).to.emit(stRSR, 'UnstakingCancelled')
@@ -884,21 +867,20 @@ log:
 Call `_payoutRewards` before mint shares.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/10#issuecomment-1589913989):**
-
-> Agree with severity and proposed mitigation.
+ > Agree with severity and proposed mitigation.
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Payout rewards during cancelUnstake.<br>
 > PR: https://github.com/reserve-protocol/protocol-private/pull/3
 
 **Status:** Mitigation confirmed. Full details in reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/16), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/33), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/26) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-10] An oracle deprecation might lead the protocol to sell assets for a low price](https://github.com/code-423n4/2023-06-reserve-findings/issues/8)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/8)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/8)*
 
 During a Dutch Auction, if a user places a bid, the trade is settled in the same transaction. As part of this process, the backing manager tries to call the `rebalance()` function again.
 The call to `rebalance()` is wrapped in a try-catch block, if an error occurs and the error data is empty, the function will revert.
@@ -914,68 +896,62 @@ Protocol's assets will be auctioned for a price lower than the market price.
 
 Consider the following scenario:
 
-- Chainlink announces that an oracle will get deprecated
-- Governance passes a proposal to update the asset registry with a new oracle
-- A re-balancing is required and executed with a Dutch Auction
-- The oracle deprecation happens before the auction price reaches a reasonable value
-- Any bid while the oracle is deprecated will revert
-- Right before the auction ends the proposal to update the asset becomes available for execution (after the timelock delay has passed). Somebody executes it, bids, and enjoys the low price of the auction.
+*   Chainlink announces that an oracle will get deprecated
+*   Governance passes a proposal to update the asset registry with a new oracle
+*   A re-balancing is required and executed with a Dutch Auction
+*   The oracle deprecation happens before the auction price reaches a reasonable value
+*   Any bid while the oracle is deprecated will revert
+*   Right before the auction ends the proposal to update the asset becomes available for execution (after the timelock delay has passed). Somebody executes it, bids, and enjoys the low price of the auction.
 
 ### Recommended Mitigation Steps
 
 On top of checking that the error data is empty, compare the gas before and after to ensure this is an out-of-gas error.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1586331887):**
-
-> On the fence on this one, it is based off a known issue from a previous Audit but does show a new problem stemming from the same problem of oracle deprecation.
->
-> Look forward to sponsor comment.
+ > On the fence on this one, it is based off a known issue from a previous Audit but does show a new problem stemming from the same problem of oracle deprecation. 
+> 
+> Look forward to sponsor comment. 
 
 **[tbrent (Reserve) disputed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1589910605):**
-
-> The PoC does not function as specified. Specifically, [bidding on an auction](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/plugins/trading/DutchTrade.sol#L146) does not involve the price at the time of the tx. The price is set at the beginning of the dutch auction in the `init()` function. Therefore, it is the starting of new auctions that will revert while the oracle is deprecated, while bids will succeed and simply fail to start the next auction.
+ > The PoC does not function as specified. Specifically, [bidding on an auction](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/plugins/trading/DutchTrade.sol#L146) does not involve the price at the time of the tx. The price is set at the beginning of the dutch auction in the `init()` function. Therefore, it is the starting of new auctions that will revert while the oracle is deprecated, while bids will succeed and simply fail to start the next auction. 
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1633780455):**
-
-> > Therefore, it is the starting of new auctions that will revert while the oracle is deprecated, while bids will succeed and simply fail to start the next auction.
->
-> Hey @tbrent -
-> I didn't quite understand the dispute here, if starting the next auction will fail/revert then the bid will revert too.<br> > `bid()` calls `origin.settleTrade()` and `settleTrade()` calls `rebalance()`.<br>
+ > > Therefore, it is the starting of new auctions that will revert while the oracle is deprecated, while bids will succeed and simply fail to start the next auction.
+> 
+> Hey @tbrent - 
+> I didn't quite understand the dispute here, if starting the next auction will fail/revert then the bid will revert too.<br>
+> `bid()` calls `origin.settleTrade()` and `settleTrade()` calls `rebalance()`.<br>
 > If `rebalance()` reverts due to a deprecated oracle then `settleTrade()` will revert too (`rebalance()` will revert with empty data, and therefore the catch block will trigger a revert [here](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BackingManager.sol#L94)).
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1636182107):**
-
-> @0xA5DF - Ah, understood now. Agree this is Medium and think it should be counted as a new finding since the consequence (dutch auction economics break) is novel.
+ > @0xA5DF - Ah, understood now. Agree this is Medium and think it should be counted as a new finding since the consequence (dutch auction economics break) is novel. 
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1662674844):**
-
-> Hey @0xa5df -- we're having some confusion around exactly what happens when a chainlink oracle is deprecated. Do you have details to share about what this ends up looking like?
->
+ > Hey @0xa5df -- we're having some confusion around exactly what happens when a chainlink oracle is deprecated. Do you have details to share about what this ends up looking like? 
+> 
 > We're having trouble finding documentation on this, and it feels like the aggregator contract should just stay there and return a stale value. Is that not right? Has this happened in the past or has Chainlink committed to a particular approach for deprecating?
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1662876091):**
-
-> Hey - It's a bit difficult to track deprecated Chainlink oracles since Chainlink removes the announcement once they're deprecated.<br>
+ > Hey - It's a bit difficult to track deprecated Chainlink oracles since Chainlink removes the announcement once they're deprecated.<br>
 > I was able to track one Oracle that was deprecated during the first contest, from the original issue this seems to be [this one](https://polygonscan.com/address/0x2E5B04aDC0A3b7dB5Fd34AE817c7D0993315A8a6#readContract#F10).<br>
 > It seems that what happens is that Chainlink sets the aggregator address to the zero address, which makes the call to `latestRoundData()` to revert without any data (I guess this is due to the way Solidity handles calls to a non-contract address).<br>
 > See also the PoC in the [original issue](https://github.com/code-423n4/2023-01-reserve-findings/issues/234) in the January contest.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1662939816):**
-
-> Got it, checks out. Thanks!
+ > Got it, checks out. Thanks!
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Add oracle deprecation check.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/886
 
 **Status:** Mitigation confirmed. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/35), [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/28), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/17) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-11] Attacker can disable basket during un-registration, which can cause an unnecessary trade in some cases](https://github.com/code-423n4/2023-06-reserve-findings/issues/7)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/7), also found by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/35)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/7), also found by [rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/35)*
 
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/AssetRegistry.sol#L89-L93> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/AssetRegistry.sol#L106-L110>
 
@@ -998,22 +974,21 @@ The `quantity()` function is being called with the amount of gas that `_reserveG
 If an attacker causes the gas to be just right above `GAS_TO_RESERVE` the function would be called with 1 unit of gas, causing it to revert:
 
 ```solidity
-function _reserveGas() private view returns (uint256) {
-  uint256 gas = gasleft();
-  require(gas > GAS_TO_RESERVE, 'not enough gas to unregister safely');
-  return gas - GAS_TO_RESERVE;
-}
-
+    function _reserveGas() private view returns (uint256) {
+        uint256 gas = gasleft();
+        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
+        return gas - GAS_TO_RESERVE;
+    }
 ```
 
 Regarding the unnecessary trade, consider the following scenario:
 
-- The basket has USDC as the main asset and DAI as a backup token
-- A proposal to replace the backup token with USDT was raised
-- A proposal to unregister BUSD (which isn't part of the basket) was raised too
-- USDC defaults and DAI kicks in as the backup token
-- Both proposals are now ready to execute and the attacker executes the backup proposal first, then the unregister while disabling the basket using the bug in question
-- Now, when the basket is refreshed DAI will be replaced with USDT, making the protocol to trade DAI for USDT
+*   The basket has USDC as the main asset and DAI as a backup token
+*   A proposal to replace the backup token with USDT was raised
+*   A proposal to unregister BUSD (which isn't part of the basket) was raised too
+*   USDC defaults and DAI kicks in as the backup token
+*   Both proposals are now ready to execute and the attacker executes the backup proposal first, then the unregister while disabling the basket using the bug in question
+*   Now, when the basket is refreshed DAI will be replaced with USDT, making the protocol to trade DAI for USDT
 
 The refresh was unnecessary and therefore the trade too.
 
@@ -1033,29 +1008,27 @@ Reserve gas for the call as well:
 Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation contest; however, since this wasn't noticed by the devs and isn't part of the submission, I don't think this should be considered a known issue.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/7#issuecomment-1586332703):**
-
-> Applaud @0xA5DF for highlighting this on their own issue.
->
-> > _Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation contest, however since this wasn't noticed by the devs and isn't part of the submission I don't think this should be considered a known issue_
->
-> Look forward to discussion with sponsor.
+ > Applaud @0xA5DF for highlighting this on their own issue.
+> 
+> > *Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation contest, however since this wasn't noticed by the devs and isn't part of the submission I don't think this should be considered a known issue*
+> 
+> Look forward to discussion with sponsor. 
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/7#issuecomment-1589904155):**
-
-> We've discussed and agree with with the warden that this should not be considered a known issue.
+ > We've discussed and agree with with the warden that this should not be considered a known issue. 
 
 **[Reserve mitigated](https://github.com/code-423n4/2023-08-reserve-mitigation#individual-prs):**
-
 > Change gas reservation policy in `AssetRegistry`.<br>
 > PR: https://github.com/reserve-protocol/protocol/pull/857
 
 **Status:** Mitigation confirmed. Full details in reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/27), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/39), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/18) - and also shared below in the [Mitigation Review](#mitigation-review) section.
 
----
+
+
+***
 
 ## [[M-12] Custom redemption can be used to get more than RToken value, when an upwards depeg occurs](https://github.com/code-423n4/2023-06-reserve-findings/issues/6)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/6)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-06-reserve-findings/issues/6)*
 
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/RToken.sol#L245-L338> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BasketHandler.sol#L437-L440>
 
@@ -1083,55 +1056,53 @@ The [following code](https://github.com/reserve-protocol/protocol/blob/c4ec2473b
 
 Consider the following scenario:
 
-- Basket contains token X which is supposed to be pegged to c
-- Token X depegs upwards and is now worth 2c
-- After `delayUntilDefault` passes the basket gets disabled
-- A basket refresh is executed (can be done by anybody) and token Y kicks in as the backup token
-- Half of token X is now traded for the required Y tokens
-- The other half should go to revenue traders (rsr trader and Furnace), but before anyone calls ‘forewardRevenue’ the attacker calls custom redemption with half from the current basket and half of the previous one
-- The user would get 0.5X+0.5Y per each RToken which is worth 1.5c
+*   Basket contains token X which is supposed to be pegged to c
+*   Token X depegs upwards and is now worth 2c
+*   After `delayUntilDefault` passes the basket gets disabled
+*   A basket refresh is executed (can be done by anybody) and token Y kicks in as the backup token
+*   Half of token X is now traded for the required Y tokens
+*   The other half should go to revenue traders (rsr trader and Furnace), but before anyone calls ‘forewardRevenue’ the attacker calls custom redemption with half from the current basket and half of the previous one
+*   The user would get 0.5X+0.5Y per each RToken which is worth 1.5c
 
 ### Recommended Mitigation Steps
 
 When doing custom redemption check that the collateral used is sound or at least check that the price isn't higher then the peg price.
 
 **[tbrent (Reserve) acknowledged, but disagreed with severity and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/6#issuecomment-1620823067):**
-
-> This is also true of normal redemption via `redeem()` until `refreshBasket()` is called after the collateral has cycled from IFFY to DISABLED.
->
-> It only checks `basketHandler.fullyCollateralized()`, not `basketHandler.isReady()`. This is intended. It is important to not disallow redemption, and using USD prices to determine redemption quantities is opposite to the fundamental design of the protocol.
->
-> Agree that the behavior is as the warden indicates. All alternatives seem worse, however. I think this is probably not HIGH. We do not expect to make any change to the behavior.
+ > This is also true of normal redemption via `redeem()` until `refreshBasket()` is called after the collateral has cycled from IFFY to DISABLED. 
+> 
+> It only checks `basketHandler.fullyCollateralized()`, not `basketHandler.isReady()`. This is intended. It is important to not disallow redemption, and using USD prices to determine redemption quantities is opposite to the fundamental design of the protocol. 
+> 
+ > Agree that the behavior is as the warden indicates. All alternatives seem worse, however. I think this is probably not HIGH. We do not expect to make any change to the behavior. 
 
 **[0xean (judge) reduced severity to Medium and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/6#issuecomment-1632945825):**
+ > I think Medium seems like the correct severity here.  There are pre-conditions for this to occur and in addition the likelihood doesn't seem very high.
 
-> I think Medium seems like the correct severity here. There are pre-conditions for this to occur and in addition the likelihood doesn't seem very high.
 
----
+
+***
 
 # Low Risk and Non-Critical Issues
 
 For this Audit, 6 reports were submitted by wardens detailing low risk and non-critical issues. The [report highlighted below](https://github.com/code-423n4/2023-06-reserve-findings/issues/25) by **0xA5DF** received the top score from the judge.
 
-_The following wardens also submitted reports: [hihen](https://github.com/code-423n4/2023-06-reserve-findings/issues/56),
-[RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/49),
-[rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/28),
+*The following wardens also submitted reports: [hihen](https://github.com/code-423n4/2023-06-reserve-findings/issues/56), 
+[RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/49), 
+[rvierdiiev](https://github.com/code-423n4/2023-06-reserve-findings/issues/28), 
 [carlitox477](https://github.com/code-423n4/2023-05-reserve-findings/issues/26), and
-[ronnyx2017](https://github.com/code-423n4/2023-05-reserve-findings/issues/21)._
+[ronnyx2017](https://github.com/code-423n4/2023-05-reserve-findings/issues/21).*
 
 ## [01] A redeemer might get 'front-run' by a freezer
-
 Before redemption `furnace.melt()` is called, which increases a bit the amount of assets the redeemer gets in return.
 While frozen the `melt()` call will revert, but since the call is surrounded by a try-catch block the redemption will continue.
 
-This can lead to a case where a user sends out a redeem tx, expecting melt to be called by the redeem function, but before the tx is executed the protocol gets frozen. This means the user wouldn't get the additional value they expected to get from melting (and that they can get if they choose to wait till after the freeze is over).
+This can lead to a case where a user sends out a redeem tx, expecting melt to be called by the redeem function,  but before the tx is executed the protocol gets frozen. This means the user wouldn't get the additional value they expected to get from melting (and that they can get if they choose to wait till after the freeze is over).
 
 If the last time `melt()` was called wasn't long enough then the additional value from melting wouldn't be that significant. But there can be cases where it can be longer - e.g. low activity or after a freeze (meaning there are 2 freezes one after the other and a user is attempting to redeem between them).
 
 As a mitigation allow the user to specify if they're ok with skipping the call to `melt()`, if they didn't specifically allow it then revert.
 
 ## [02] Leaky refresh math is incorrect
-
 `leakyRefresh()` keeps track of the percentage that was withdrawn since last refresh by adding up the current percentage that's being withdrawn each time.
 However, the current percentage is being calculated as part of the current `totalRSR`, which doesn't account for the already withdrawn drafts.
 
@@ -1139,62 +1110,54 @@ This will trigger the `withdrawalLeak` threshold earlier than expected.
 E.g. if the threshold is set to `25%` and 26 users try to withdraw `1%` each - the leaky refresh would be triggered by the 23rd person rather than by the 26th.
 
 ## [03] Reorg attack
-
 Reorg attacks aren't very common on mainnet (but more common on L2s if the protocol intends to ever launch on them), but they can still happen (there was [a 7 blocks reorg](https://decrypt.co/101390/ethereum-beacon-chain-blockchain-reorg) on the Beacon chain before the merge).
 It can be relevant in the following cases (I've reported a med separately, the followings are the ones I consider low):
-
-- RToken deployment - a user might mint right after the RToken was deployed, a reorg might be used to deploy a different RToken and trap the users' funds in it (since the deployer becomes the owner).
-- Dutch Auction - a reorg might switch the addresses of 2 auctions, causing the user to bid on the wrong auction
-- Gnosis auctions - this can also cause the user to bid on the wrong auction (it's more relevant for the `EasyAuction` contract which is OOS)
+* RToken deployment - a user might mint right after the RToken was deployed, a reorg might be used to deploy a different RToken and trap the users' funds in it (since the deployer becomes the owner).
+* Dutch Auction - a reorg might switch the addresses of 2 auctions, causing the user to bid on the wrong auction 
+* Gnosis auctions - this can also cause the user to bid on the wrong auction (it's more relevant for the `EasyAuction` contract which is OOS)
 
 As a mitigation - make sure to deploy all contracts with `create2` using a salt that's unique to the features of the contract, that will ensure that even in the case of a reorg it wouldn't be deployed to the same address as before.
 
 ## [04] `distributeTokenToBuy()` can be called while paused/frozen
-
 Due to the removal of `notPausedOrFrozen` from `Distributor.distribute()` it's now possible to execute `RevenueTrader.distributeTokenToBuy()` while paused or frozen.
 
 This is relevant when `tokensToBuy` is sent directly to the revenue trader: RSR sent to RSRTrader or RToken sent directly to RTokenTrader
 
 ## [05] `redeemCustom` allows the use of the zero basket
-
 The basket with nonce `#0` is an empty basket, `redeemCustom` allows to specify that basket for redemption, which will result in a loss for the redeemer.
 
 ## [06] `refreshBasket` can be called before the first prime basket was set
-
 This will result in an event being emitted but will not impact the contract's state.
 
 ## [07] `MIN_AUCTION_LENGTH` seems too low
-
 The current `MIN_AUCTION_LENGTH` is set to 2 blocks.
 This seems a bit too low since the price is time-dependant that means there would be only 3 price options for the auctions, and the final price wouldn't necessarily be the optimal price for the protocol.
 
 ## [08] If a token that yields RSR would be used as collateral then 100% of the yield would go to StRSR
-
 This isn’t very likely to happen (currently the only token that yields RSR is StRSR of another RToken) but it’s worth keeping an eye on it.
 
 ## [09] Protocol might not be able to compromise basket when needed
-
 Consider the following scenario:
-
-- Protocol suffers from some loss and compromises the basket to a 1.1e9 ratio
-- Months pass by and users mint new tokens and increase the TVL
-- A small compromise is required (12%), this brings the ratio to below 1e9 and reverts the compromise
-- Protocol is now disabled despite holding a significant amount of value, and users can only redeem for their prorata share of the assets,
+* Protocol suffers from some loss and compromises the basket to a 1.1e9 ratio
+* Months pass by and users mint new tokens and increase the TVL
+* A small compromise is required (12%), this brings the ratio to below 1e9 and reverts the compromise
+* Protocol is now disabled despite holding a significant amount of value, and users can only redeem for their prorata share of the assets,
 
 This might be intended design, but worth taking this scenario into account.
 
----
+
+
+***
 
 # Gas Optimizations
 
 For this Audit, 4 reports were submitted by wardens detailing gas optimizations. The [report highlighted below](https://github.com/code-423n4/2023-06-reserve-findings/issues/3) by **0xA5DF** received the top score from the judge.
 
-_The following wardens also submitted reports: [hihen](https://github.com/code-423n4/2023-06-reserve-findings/issues/55),
+*The following wardens also submitted reports: [hihen](https://github.com/code-423n4/2023-06-reserve-findings/issues/55), 
 [RaymondFam](https://github.com/code-423n4/2023-06-reserve-findings/issues/50), and
-[carlitox477](https://github.com/code-423n4/2023-05-reserve-findings/issues/27)._
+[carlitox477](https://github.com/code-423n4/2023-05-reserve-findings/issues/27).*
 
 ## [G-01] At `toColl()` and `toAsset()` use the mapping to check if asset exists
-
 Savings: ~2.1K per call
 
 Notice this is a function that's being called frequently, and many times per tx.
@@ -1206,35 +1169,32 @@ https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368
 At `toColl()` and `toAsset()` instead of using the EnumberableSet to check that the erc20 is registered just check that the value returned from the mapping isn't zero (this is supposed to be equivalent as long as the governance doesn't register the zero address as an asset contract - maybe add a check for that at `register()`).
 
 Proposed changes:
-
 ```solidity
-/// Return the Asset registered for erc20; revert if erc20 is not registered.
-// checks: erc20 in assets
-// returns: assets[erc20]
-function toAsset(IERC20 erc20) external view returns (IAsset) {
-  IAsset asset = assets[erc20];
-  require(asset != IAsset(address(0)), 'erc20 unregistered');
-  return asset;
-}
 
-/// Return the Collateral registered for erc20; revert if erc20 is not registered as Collateral
-// checks: erc20 in assets, assets[erc20].isCollateral()
-// returns: assets[erc20]
-function toColl(IERC20 erc20) external view returns (ICollateral) {
-  IAsset coll = assets[erc20];
-  require(coll != IAsset(address(0)), 'erc20 unregistered');
-  require(coll.isCollateral(), 'erc20 is not collateral');
-  return ICollateral(address(coll));
-}
+    /// Return the Asset registered for erc20; revert if erc20 is not registered.
+    // checks: erc20 in assets
+    // returns: assets[erc20]
+    function toAsset(IERC20 erc20) external view returns (IAsset) {
+        IAsset asset = assets[erc20];
+        require(asset != IAsset(address(0)), "erc20 unregistered");
+        return asset;
+    }
 
+    /// Return the Collateral registered for erc20; revert if erc20 is not registered as Collateral
+    // checks: erc20 in assets, assets[erc20].isCollateral()
+    // returns: assets[erc20]
+    function toColl(IERC20 erc20) external view returns (ICollateral) {
+        IAsset coll = assets[erc20];
+        require(coll != IAsset(address(0)), "erc20 unregistered");
+        require(coll.isCollateral(), "erc20 is not collateral");
+        return ICollateral(address(coll));
+    }
 ```
 
 ## [G-02] Get `targetIndex` from mapping instead of iterating
-
 Gas savings: a few thousands (see below)
 
 The following code is used at the [BasketLib](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/mixins/BasketLib.sol#L196-L198) to find the index of a value inside an `EnumerableSet`
-
 ```solidity
             for (targetIndex = 0; targetIndex < targetsLength; ++targetIndex) {
                 if (targetNames.at(targetIndex) == config.targetNames[config.erc20s[i]]) break;
@@ -1242,6 +1202,7 @@ The following code is used at the [BasketLib](https://github.com/reserve-protoco
 ```
 
 However the index can be fetched directly from the `_indexed` mapping:
+
 
 ```diff
 diff --git a/contracts/p1/mixins/BasketLib.sol b/contracts/p1/mixins/BasketLib.sol
@@ -1257,20 +1218,18 @@ index bc52d1c6..ce56c715 100644
 -                if (targetNames.at(targetIndex) == config.targetNames[config.erc20s[i]]) break;
 -            }
 +            uint256 targetIndex = targetNames._inner._indexes[config.targetNames[config.erc20s[i]]] -1 ;
-+
++ 
              assert(targetIndex < targetsLength);
              // now, targetNames[targetIndex] == config.targetNames[erc20]
-```
+ ```
 
 Gas savings:
-
-- The `_indexes` keys are considered warm since all values were inserted in the current tx
-- Total saving is the sum of the index of the target names per each erc20 minus 1
-- on average (depends on the location of the target in the set for each erc20): `(config.erc20s.length)*(targetsLength-1)/2*100`
-  - E.g. for target length of 5 and 10 ERC20 that would save on average `10*4/2*100=2K`
+* The `_indexes` keys are considered warm since all values were inserted in the current tx
+* Total saving is the sum of the index of the target names per each erc20 minus 1
+* on average (depends on the location of the target in the set for each erc20): `(config.erc20s.length)*(targetsLength-1)/2*100`
+    * E.g. for target length of 5 and 10 ERC20 that would save on average `10*4/2*100=2K`
 
 ## [G-03] Use `furnace` instead of `main.furnace()`
-
 Gas savings: ~2.6K
 
 Code: https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/RToken.sol#L184<br>
@@ -1285,7 +1244,6 @@ The additional cold call would cost ~2.6K.
 To my understanding both of the values should be equal at all times so there shouldn't be an issue with the replacement.
 
 ## [G-04] Deployer.implementations can be immutable
-
 Gas saved: ~28K per RToken deployment
 
 The struct itself can’t be immutable, but you can save the values of the fields (and fields of the `components`) as immutable variables, and use an internal function to build the struct out of those immutable variables.
@@ -1293,13 +1251,11 @@ The struct itself can’t be immutable, but you can save the values of the field
 This would save ~2.1K per field, with 13 fields that brings us to ~28K of units saved.
 
 ## [G-05] Update `lastWithdrawRefresh` only if it has changed
-
 Gas saved: ~100
 
 At [`leakyRefresh()`](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/StRSR.sol#L674) `lastWithdrawRefresh` gets updated even if didn't change, that costs an additional 100 gas units.
 
 Proposed change:
-
 ```diff
 -        leaked = lastWithdrawRefresh != lastRefresh ? withdrawal : leaked + withdrawal;
 -        lastWithdrawRefresh = lastRefresh;
@@ -1312,25 +1268,20 @@ Proposed change:
 ```
 
 ## [G-06] Require array to be sorted and use `sortedAndAllUnique` at `BackingManager.forwardRevenue()`
-
 Estimated savings: `~n^2*10` where n is the length of the asset.<br>
 For example for 20 assets that would save ~4K.
 
 ## [G-07] Caching storage variable and function calls
-
 This is one of the most common ways to save a nice amount of gas. Every additional read costs 100 gas units (when it comes to mapping or arrays there's additional cost), and each additional function call costs at least 100 gas units (usually much more).
 
 I've noticed a few instances where a storage variable read or a view-function call can be cached to memory to save gas, I'm pretty sure there are many more instances that I didn't notice.
 
 ## [G-08]`BasketLib.nextBasket()` refactoring
-
 Gas saved: a few thousand
 
 The following refactoring saves a few thousands of gas mostly by preventing:
-
 1. Double call to `goodCollateral`
-2. The second iteration over the whole `backup.erc20s` array
-
+2. The second iteration over the whole `backup.erc20s` array 
 ```diff
 diff --git a/contracts/p1/mixins/BasketLib.sol b/contracts/p1/mixins/BasketLib.sol
 index bc52d1c6..7ab9c48b 100644
@@ -1345,32 +1296,32 @@ index bc52d1c6..7ab9c48b 100644
 -                if (targetNames.at(targetIndex) == config.targetNames[config.erc20s[i]]) break;
 -            }
 +            uint256 targetIndex = targetNames._inner._indexes[config.targetNames[config.erc20s[i]]] -1 ;
-+
++ 
              assert(targetIndex < targetsLength);
              // now, targetNames[targetIndex] == config.targetNames[erc20]
-
+ 
 @@ -244,32 +242,32 @@ library BasketLibP1 {
              uint256 size = 0; // backup basket size
              BackupConfig storage backup = config.backups[targetNames.at(i)];
-
+ 
 +            IERC20[] memory backupsToUse = new IERC20[](backup.erc20s.length);
 +
              // Find the backup basket size: min(backup.max, # of good backup collateral)
              for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; ++j) {
 -                if (goodCollateral(targetNames.at(i), backup.erc20s[j], assetRegistry)) size++;
-+                if (goodCollateral(targetNames.at(i), backup.erc20s[j], assetRegistry))
++                if (goodCollateral(targetNames.at(i), backup.erc20s[j], assetRegistry)) 
 +                {
 +                    backupsToUse[size] = backup.erc20s[j];
 +                    size++;
 +                }
              }
-
+ 
              // Now, size = len(backups(tgt)). If empty, fail.
              if (size == 0) return false;
-
+ 
 -            // Set backup basket weights...
 -            uint256 assigned = 0;
-
+ 
              // Loop: for erc20 in backups(tgt)...
 -            for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
 -                if (goodCollateral(targetNames.at(i), backup.erc20s[j], assetRegistry)) {
@@ -1402,42 +1353,36 @@ index bc52d1c6..7ab9c48b 100644
 ```
 
 ## [G-09] `BasketLib.nextBasket()` caching
-
 On top of the above refactoring:
+* `config.erc20s[i]` is being read a few times [here](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/mixins/BasketLib.sol#L193-L224)
+* `config.erc20s.length` and `backup.erc20s.length` can be cached
+* `targetNames.at(i)` is  being read twice in the second loop (3 before the proposed refactoring)
 
-- `config.erc20s[i]` is being read a few times [here](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/mixins/BasketLib.sol#L193-L224)
-- `config.erc20s.length` and `backup.erc20s.length` can be cached
-- `targetNames.at(i)` is being read twice in the second loop (3 before the proposed refactoring)
 
 ## [G-10]`sellAmount` at `DutchTrade.settle()`
-
 `sellAmount` is read here twice if greater than `sellBal`
-
 ```solidity
         soldAmt = sellAmount > sellBal ? sellAmount - sellBal : 0;
 ```
 
-## [G-11] `quoteCustomRedemption()` loop
-
+##  [G-11] `quoteCustomRedemption()` loop
 ### `nonce`
-
 Savings: `100*basketNonces.length`<br>
 [Here](https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/BasketHandler.sol#L398) nonce is being read each iteration.
 It can be cached outside of the loop.
 
 ### `basketNonces.length`
-
 Savings: `100*basketNonces.length`
 
 ### `b.erc20s.length`
-
 Savings: `100*(sum of `b.erc20s.length` for all baskets)`
 
 ## [G-12] Use custom errors instead of string errors
-
 This saves gas both for deployment and in case that the revert is triggered.
 
----
+
+
+***
 
 # [Mitigation Review](#mitigation-review)
 
@@ -1453,20 +1398,20 @@ https://github.com/reserve-protocol/protocol/pull/882 (commit hash 99d9db72e04db
 
 ### Individual PRs
 
-| URL                                                                                                           | Mitigation of | Purpose                                                                        |
-| ------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------ |
-| https://github.com/reserve-protocol/protocol/pull/857                                                         | H-01          | Fix redeemCustom                                                               |
-| https://github.com/reserve-protocol/protocol/pull/888                                                         | H-02          | Adds governance function to manually push the era forward                      |
-| https://github.com/reserve-protocol/protocol/pull/876                                                         | M-01          | Allow settle trade when paused or frozen                                       |
+| URL                                                                                                         | Mitigation of | Purpose                                                                        |
+| ----------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| https://github.com/reserve-protocol/protocol/pull/857                                                       | H-01          | Fix redeemCustom                                                               |
+| https://github.com/reserve-protocol/protocol/pull/888                                                       | H-02          | Adds governance function to manually push the era forward                      |
+| https://github.com/reserve-protocol/protocol/pull/876                                                       | M-01          | Allow settle trade when paused or frozen                                       |
 | https://github.com/reserve-protocol/protocol/pull/873 & https://github.com/reserve-protocol/protocol/pull/869 | M-02          | Disable dutch auctions on a per-collateral basis, use 4-step dutch trade curve |
-| https://github.com/reserve-protocol/protocol/pull/878                                                         | M-03          | Distribute revenue in setDistribution                                          |
-| https://github.com/reserve-protocol/protocol/pull/885                                                         | M-04          | Update payout variables if melt fails during setRatio                          |
-| https://github.com/reserve-protocol/protocol-private/pull/15                                                  | M-06          | Use lotPrice()                                                                 |
-| https://github.com/reserve-protocol/protocol-private/pull/7                                                   | M-07          | Refresh before selling rewards, refactor revenue & distro                      |
-| https://github.com/reserve-protocol/protocol/pull/857                                                         | M-08          | payoutRewards before freeze and update payoutLastPaid before unfreeze          |
-| https://github.com/reserve-protocol/protocol-private/pull/3                                                   | M-09          | Payout rewards during cancelUnstake                                            |
-| https://github.com/reserve-protocol/protocol/pull/886                                                         | M-10          | Add oracle deprecation check                                                   |
-| https://github.com/reserve-protocol/protocol/pull/857                                                         | M-11          | Change gas reservation policy in AssetRegistry                                 |
+| https://github.com/reserve-protocol/protocol/pull/878                                                       | M-03          | Distribute revenue in setDistribution                                          |
+| https://github.com/reserve-protocol/protocol/pull/885                                                       | M-04          | Update payout variables if melt fails during setRatio                          |
+| https://github.com/reserve-protocol/protocol-private/pull/15                                                | M-06          | Use lotPrice()                                                                 |
+| https://github.com/reserve-protocol/protocol-private/pull/7                                                 | M-07          | Refresh before selling rewards, refactor revenue & distro                      |
+| https://github.com/reserve-protocol/protocol/pull/857                                                       | M-08          | payoutRewards before freeze and update payoutLastPaid before unfreeze          |
+| https://github.com/reserve-protocol/protocol-private/pull/3                                                 | M-09          | Payout rewards during cancelUnstake                                            |
+| https://github.com/reserve-protocol/protocol/pull/886                                                       | M-10          | Add oracle deprecation check                                                   |
+| https://github.com/reserve-protocol/protocol/pull/857                                                       | M-11          | Change gas reservation policy in AssetRegistry                                 |
 
 ### Out of Scope
 
@@ -1475,28 +1420,27 @@ https://github.com/reserve-protocol/protocol/pull/882 (commit hash 99d9db72e04db
 
 ## Mitigation Review Summary
 
-| Original Issue | Status               | Full Details                                                                                                                                                                                                                                                                                 |
-| -------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| H-01           | Mitigation Confirmed | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/7), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/30), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/3)   |
-| H-02           | Mitigation Confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/31), [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/8), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/11)  |
-| M-01           | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/5), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/32), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/9)   |
-| M-02           | Mitigation Errors    | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20) and [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40) - details also shared below                                                                 |
-| M-03           | Mitigation Error     | Reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36) and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/10) - details also shared below                                                                 |
-| M-04           | Mitigation Error     | Report from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37) - details also shared below                                                                                                                                                                |
-| M-05           | Sponsor Disputed     | -                                                                                                                                                                                                                                                                                            |
-| M-06           | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/13), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/41), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/23) |
-| M-07           | Mitigation Confirmed | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/24), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/34), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/14) |
-| M-08           | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/15), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/38), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/25) |
-| M-09           | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/16), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/33), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/26) |
-| M-10           | Mitigation Confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/35), [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/28), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/17) |
-| M-11           | Mitigation Confirmed | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/27), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/39), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/18) |
-| M-12           | Sponsor Acknowledged | -                                                                                                                                                                                                                                                                                            |
+| Original Issue | Status | Full Details |
+| ----------- | ------------- | ----------- |
+| H-01 | Mitigation Confirmed | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/7), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/30), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/3) |
+| H-02 | Mitigation Confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/31), [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/8), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/11) |
+| M-01 | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/5), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/32), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/9) |
+| M-02 | Mitigation Errors | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20) and [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40) - details also shared below |
+| M-03 | Mitigation Error | Reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36) and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/10) - details also shared below |
+| M-04 | Mitigation Error | Report from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37) - details also shared below |
+| M-05 | Sponsor Disputed | - |
+| M-06 | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/13), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/41), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/23) |
+| M-07 | Mitigation Confirmed | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/24), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/34), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/14) |
+| M-08 | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/15), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/38), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/25) |
+| M-09 | Mitigation Confirmed | Reports from [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/16), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/33), and [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/26) |
+| M-10 | Mitigation Confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/35), [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/28), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/17) |
+| M-11 | Mitigation Confirmed | Reports from [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/27), [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/39), and [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/18) |
+| M-12 | Sponsor Acknowledged | - |
 
 **During their review, the wardens surfaced several mitigation errors. These consisted of 4 Medium severity issues. See below for details.**
 
 ## [M-02 Mitigation Error: `dutchTradeDisabled[erc20]` gives governance an incentive to disable RSR auctions](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20)
-
-_Submitted by [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20)_
+*Submitted by [ronnyx2017](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20)*
 
 **Severity: Medium**
 
@@ -1535,14 +1479,14 @@ The `dutchTradeDisabled` flag of RSR should not be set to true directly by gover
 Context
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20#issuecomment-1692159329):**
+ > Anticipating restricting governance to only be able to _enable_ batch trade, or dutch trade. 
 
-> Anticipating restricting governance to only be able to _enable_ batch trade, or dutch trade.
 
----
+
+***
 
 ## [M-02 Mitigation Error: Attacker might disable trading by faking a report violation](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40)*
 
 **Severity: Medium**
 
@@ -1556,11 +1500,12 @@ Mitigation might be to create violation report only if the price is high and the
 
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40#issuecomment-1692064874)**
 
----
+
+
+***
 
 ## [M-03 Mitigation Error: Funds aren't distributed before changing distribution](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36), also found by [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/10)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36), also found by [rvierdiiev](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/10)*
 
 **Severity: Medium**
 
@@ -1571,14 +1516,14 @@ Mitigation does solve the issue; however there’s a wider issue here that funds
 Fully mitigating the issue might not be possible, as it’d require to send from the backing manager to revenue trader and sell all assets for the `tokenToBuy`. But we can at least distribute the current balance before changing the distribution.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36#issuecomment-1692078866):**
+ > Anticipating adding a try-catch at the start of `setDistribution()` targeting `RevenueTrader.distributeTokenToBuy()`
 
-> Anticipating adding a try-catch at the start of `setDistribution()` targeting `RevenueTrader.distributeTokenToBuy()`
 
----
+
+***
 
 ## [M-04 Mitigation Error: Furnace would melt less than intended](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37)
-
-_Submitted by [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37)_
+*Submitted by [0xA5DF](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37)*
 
 **Severity: Medium**
 
@@ -1593,10 +1538,11 @@ This is especially noticeable when the ratio has been decreased and the balance 
 A better mitigation might be to update the `lastPayout` in a way that would reflect the melting that should be distributed.
 
 **[tbrent (Reserve) acknowledged and commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37#issuecomment-1692068277):**
+ > I think this can only happen when frozen, not while paused. `Furnace.melt()` and `RToken.melt()` succeed while paused. 
 
-> I think this can only happen when frozen, not while paused. `Furnace.melt()` and `RToken.melt()` succeed while paused.
 
----
+
+***
 
 # Disclosures
 
