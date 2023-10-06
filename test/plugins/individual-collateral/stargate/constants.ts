@@ -1,21 +1,20 @@
 import { bn, fp } from '#/common/numbers'
 import { networkConfig } from '#/common/configuration'
-import hre from 'hardhat'
 import { useEnv } from '#/utils/env'
 
 const forkNetwork = useEnv('FORK_NETWORK') ?? 'mainnet'
-let chainId;
+let chainId
 
-switch(forkNetwork) {
-    case 'mainnet':
-        chainId = '1'
-        break
-    case 'base':
-        chainId = '8453'
-        break
-    default:
-        chainId = '1'
-        break
+switch (forkNetwork) {
+  case 'mainnet':
+    chainId = '1'
+    break
+  case 'base':
+    chainId = '8453'
+    break
+  default:
+    chainId = '1'
+    break
 }
 
 const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
@@ -28,12 +27,16 @@ export const SUSDT = networkConfig[chainId].tokens['sUSDT']!
 export const SETH = networkConfig[chainId].tokens['sETH']!
 export const USDC = networkConfig[chainId].tokens[USDC_NAME]!
 export const USDT = networkConfig[chainId].tokens['USDT']!
-export const USDC_HOLDER = chainId == '8453' ? '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca' : '0x0a59649758aa4d66e25f08dd01271e891fe52199'
+export const USDC_HOLDER =
+  chainId == '8453'
+    ? '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca'
+    : '0x0a59649758aa4d66e25f08dd01271e891fe52199'
 export const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds['USDC']! // currently same key for USDC and USDbC
 export const ETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds['ETH']!
 export const SUSDC_POOL_ID = bn('1')
 export const WSUSDC_NAME = 'Wrapped S*USDC'
 export const WSUSDC_SYMBOL = 'wS*USDC'
+export const STARGATE_ROUTER = '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B'
 
 export const USDbC = networkConfig[chainId].tokens['USDbC']!
 export const SUSDbC = networkConfig[chainId].tokens['sUSDbC']!

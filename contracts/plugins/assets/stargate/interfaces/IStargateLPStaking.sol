@@ -7,6 +7,7 @@ interface IStargateLPStaking {
     function poolLength() external view returns (uint256);
 
     function stargate() external view returns (address);
+
     function eToken() external view returns (address);
 
     // Info of each pool.
