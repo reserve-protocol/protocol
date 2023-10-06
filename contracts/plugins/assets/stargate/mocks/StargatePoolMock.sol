@@ -25,6 +25,16 @@ contract StargatePoolMock is ERC20Mock {
         return _decimals;
     }
 
+    function exchangeRate() external view returns (uint192) {
+        uint256 _totalSupply = totalSupply();
+        uint192 _rate = FIX_ONE; // 1:1 if pool has no tokens at all
+        if (_totalSupply != 0) {
+            _rate = divuu(totalLiquidity, _totalSupply);
+        }
+
+        return _rate;
+    }
+
     function setExchangeRate(uint192 rate) external {
         uint192 fixTotalLiquidity = rate.mul(shiftl_toFix(totalSupply(), -int8(decimals())));
         totalLiquidity = shiftl_toFix(fixTotalLiquidity, -(36 - int8(decimals())));

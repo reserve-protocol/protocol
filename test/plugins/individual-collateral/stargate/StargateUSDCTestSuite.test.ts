@@ -2,6 +2,7 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
+import { resetFork } from './helpers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -64,6 +65,7 @@ export const defaultStargateCollateralOpts: StargateCollateralOpts = {
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   type: CollateralType.STABLE,
+  revenueHiding: fp('0'),
 }
 
 export const deployCollateral = async (
@@ -87,6 +89,7 @@ export const deployCollateral = async (
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
+    opts.revenueHiding,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -126,7 +129,7 @@ const deployCollateralStargateMockContext = async (
   )
   let chainlinkFeed: MockV3Aggregator
   if (collateralOpts.type === CollateralType.STABLE)
-    chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+    chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   else {
     chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1995e8'))
   }
@@ -145,7 +148,7 @@ const deployCollateralStargateMockContext = async (
     await ethers.getContractFactory('StargatePoolMock')
   ).deploy('Mock Pool', 'MSP', collateralOpts.type === CollateralType.STABLE ? 6 : 8)
   await stakingContract.add(bn('5000'), mockPool.address)
-  await mockPool.mint(stakingContract.address, bn(1))
+  await mockPool.mint(stakingContract.address, bn(1e6))
   await mockPool.setExchangeRate(fp(1))
   const wrapper = await StargateRewardableWrapperFactory.deploy(
     'wMocked Pool',
@@ -198,7 +201,7 @@ const reduceRefPerTok = async (
   ctx: StargateCollateralFixtureContext,
   pctDecrease: BigNumberish
 ) => {
-  const currentExchangeRate = await ctx.collateral.refPerTok()
+  const currentExchangeRate = await ctx.pool.exchangeRate()
   await ctx.pool.setExchangeRate(
     currentExchangeRate.sub(currentExchangeRate.mul(pctDecrease).div(100))
   )
@@ -208,7 +211,7 @@ const increaseRefPerTok = async (
   ctx: StargateCollateralFixtureContext,
   pctIncrease: BigNumberish
 ) => {
-  const currentExchangeRate = await ctx.collateral.refPerTok()
+  const currentExchangeRate = await ctx.pool.exchangeRate()
   await ctx.pool.setExchangeRate(
     currentExchangeRate.add(currentExchangeRate.mul(pctIncrease).div(100))
   )
@@ -257,14 +260,14 @@ export const stableOpts = {
   mintCollateralTo,
   reduceRefPerTok,
   increaseRefPerTok,
-  resetFork: noop,
+  resetFork,
   collateralName: 'Stargate USDC Pool',
   reduceTargetPerRef,
   increaseTargetPerRef,
   itClaimsRewards: it.skip, // reward growth not supported in mock
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
-  itHasRevenueHiding: it.skip, // no revenue hiding
+  itHasRevenueHiding: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,
