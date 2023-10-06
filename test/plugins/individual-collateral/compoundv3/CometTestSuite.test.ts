@@ -47,6 +47,7 @@ import {
   COMET_EXT,
 } from './constants'
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
+import { useEnv } from '#/utils/env'
 
 /*
   Define interfaces
@@ -400,6 +401,7 @@ const opts = {
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer,
+  targetNetwork: (useEnv('FORK_NETWORK') ?? 'mainnet') as string,
 }
 
 collateralTests(opts)
