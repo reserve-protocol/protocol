@@ -55,14 +55,17 @@ async function main() {
   let chainIdKey = useEnv('FORK_NETWORK', 'mainnet') == 'mainnet' ? '1' : '8453'
   let USDC_NAME = 'USDC'
   let name = 'Wrapped Stargate USDC'
-  let symbol = 'wSTG-USDC'
+  let symbol = 'wsgUSDC'
   let sUSDC = networkConfig[chainIdKey].tokens.sUSDC
+  let oracleError = fp('0.0025')
 
   if (chainIdKey == '8453') {
     USDC_NAME = 'USDbC'
     name = 'Wrapped Stargate USDbC'
-    symbol = 'wSTG-USDbC'
+    symbol = 'wsgUSDbC'
     sUSDC = networkConfig[chainIdKey].tokens.sUSDbC
+
+    oracleError = fp('0.003')
   }
 
   const erc20 = await WrapperFactory.deploy(
@@ -87,12 +90,12 @@ async function main() {
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainIdKey].chainlinkFeeds.USDC!,
-      oracleError: fp('0.0025').toString(), // 0.25%,
+      oracleError: oracleError.toString(),
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainIdKey, '86400').toString(), // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125').toString(), // 1.25%
+      defaultThreshold: fp('0.01').add(oracleError).toString(), // 1.3%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     revenueHiding.toString()
@@ -103,8 +106,8 @@ async function main() {
 
   console.log(`Deployed Stargate ${USDC_NAME} to ${hre.network.name} (${chainIdKey}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.sUSDC = collateral.address
-  assetCollDeployments.erc20s.sUSDC = erc20.address
+  assetCollDeployments.collateral.sgUSDC = collateral.address
+  assetCollDeployments.erc20s.sgUSDC = erc20.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
