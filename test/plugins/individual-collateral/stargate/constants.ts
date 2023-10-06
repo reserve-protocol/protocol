@@ -36,7 +36,10 @@ export const ETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds['ETH']!
 export const SUSDC_POOL_ID = bn('1')
 export const WSUSDC_NAME = 'Wrapped S*USDC'
 export const WSUSDC_SYMBOL = 'wS*USDC'
-export const STARGATE_ROUTER = chainId == '8453' ? '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B' : '0x8731d54E9D02c286767d56ac03e8037C07e01e98'
+export const STARGATE_ROUTER =
+  chainId == '8453'
+    ? '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B'
+    : '0x8731d54E9D02c286767d56ac03e8037C07e01e98'
 
 export const USDbC = networkConfig[chainId].tokens['USDbC']!
 export const SUSDbC = networkConfig[chainId].tokens['sUSDbC']!
