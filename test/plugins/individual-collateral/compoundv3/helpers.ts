@@ -105,17 +105,4 @@ export const makewCSUDC = async (): Promise<WrappedcUSDCFixture> => {
   return { cusdcV3, wcusdcV3, usdc }
 }
 
-export const makewCSUDbC = async (): Promise<WrappedcUSDCFixture> => {
-  const cusdcV3 = <CometInterface>await ethers.getContractAt('CometInterface', CUSDC_V3)
-  const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
-    await ethers.getContractFactory('CusdcV3Wrapper')
-  )
-  const wcusdcV3 = <ICusdcV3Wrapper>(
-    await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
-  )
-  const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
-
-  return { cusdcV3, wcusdcV3, usdc }
-}
-
 export const resetFork = getResetFork(FORK_BLOCK)
