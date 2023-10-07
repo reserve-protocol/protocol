@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting ERC20 transfer 1`] = `51359`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `34259`;
+
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `116754`;
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `108442`;
@@ -20,6 +24,6 @@ exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refre
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `123320`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `131148`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `131222`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `123602`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `123676`;
