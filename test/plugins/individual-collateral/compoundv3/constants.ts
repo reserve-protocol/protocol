@@ -2,7 +2,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
 import { useEnv } from '#/utils/env'
 
-const forkNetwork = useEnv('FORK_NETWORK') ?? 'mainnet'
+export const forkNetwork = useEnv('FORK_NETWORK') ?? 'mainnet'
 let chainId
 
 switch (forkNetwork) {

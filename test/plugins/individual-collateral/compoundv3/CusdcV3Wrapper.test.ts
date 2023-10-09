@@ -5,7 +5,7 @@ import { useEnv } from '#/utils/env'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
-import { COMP, REWARDS } from './constants'
+import { forkNetwork, COMP, REWARDS } from './constants'
 import {
   ERC20Mock,
   CometInterface,
@@ -20,7 +20,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
-const itL1 = useEnv('FORK_NETWORK') != 'base' ? it : it.skip
+const itL1 = forkNetwork != 'base' ? it : it.skip
 
 describeFork('Wrapped CUSDCv3', () => {
   let bob: SignerWithAddress

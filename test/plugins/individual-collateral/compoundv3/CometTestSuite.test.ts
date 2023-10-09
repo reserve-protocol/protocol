@@ -33,6 +33,7 @@ import {
   setNextBlockTimestamp,
 } from '../../../utils/time'
 import {
+  forkNetwork,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
@@ -47,7 +48,6 @@ import {
   COMET_EXT,
 } from './constants'
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
-import { useEnv } from '#/utils/env'
 
 /*
   Define interfaces
@@ -401,7 +401,7 @@ const opts = {
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer,
-  targetNetwork: (useEnv('FORK_NETWORK') ?? 'mainnet') as string,
+  targetNetwork: forkNetwork,
 }
 
 collateralTests(opts)

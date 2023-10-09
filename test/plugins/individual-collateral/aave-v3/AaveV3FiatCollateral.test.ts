@@ -16,13 +16,13 @@ import { PRICE_TIMEOUT } from '#/test/fixtures'
 import { resetFork } from './helpers'
 import { whileImpersonating } from '#/test/utils/impersonation'
 import {
+  forkNetwork,
   AUSDC_V3,
   AAVE_V3_USDC_POOL,
   AAVE_V3_INCENTIVES_CONTROLLER,
   USDC_USD_PRICE_FEED,
   USDC_HOLDER,
 } from './constants'
-import { useEnv } from '#/utils/env'
 
 interface AaveV3FiatCollateralFixtureContext extends CollateralFixtureContext {
   staticWrapper: MockStaticATokenV3LM
@@ -216,7 +216,7 @@ export const stableOpts = {
   itChecksPriceChanges: it,
   getExpectedPrice,
   toleranceDivisor: bn('1e9'), // 1e15 adjusted for ((x + 1)/x) timestamp precision
-  targetNetwork: (useEnv('FORK_NETWORK') ?? 'mainnet') as string,
+  targetNetwork: forkNetwork,
 }
 
 collateralTests(stableOpts)
