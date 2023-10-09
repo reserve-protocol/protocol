@@ -32,12 +32,14 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) returns (ITrade trade) {
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP0)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
         trade = super.settleTrade(sell);
-        if ((!main.tradingPausedOrFrozen()) && _nonZeroDistribution()) {
-            _distributeTokenToBuy();
-        }
-
+        _distributeTokenToBuy();
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
@@ -78,7 +80,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     {
         require(erc20s.length > 0, "empty erc20s list");
         require(erc20s.length == kinds.length, "length mismatch");
-        require(_nonZeroDistribution(), "zero distribution");
         main.assetRegistry().refresh();
 
         IAsset assetToBuy = main.assetRegistry().toAsset(tokenToBuy);
@@ -130,12 +131,5 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         tokenToBuy.safeApprove(address(main.distributor()), 0);
         tokenToBuy.safeApprove(address(main.distributor()), bal);
         main.distributor().distribute(tokenToBuy, bal);
-    }
-
-    function _nonZeroDistribution() private view returns (bool) {
-        RevenueTotals memory revTotals = main.distributor().totals();
-        return
-            (tokenToBuy == main.rsr() && revTotals.rsrTotal > 0) ||
-            (address(tokenToBuy) == address(main.rToken()) && revTotals.rTokenTotal > 0);
     }
 }
