@@ -95,7 +95,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainIdKey, '86400').toString(), // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.01').add(oracleError).toString(), // 1.3%
+      defaultThreshold: fp('0.01').add(oracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     revenueHiding.toString()
@@ -106,8 +106,13 @@ async function main() {
 
   console.log(`Deployed Stargate ${USDC_NAME} to ${hre.network.name} (${chainIdKey}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.sgUSDC = collateral.address
-  assetCollDeployments.erc20s.sgUSDC = erc20.address
+  if (chainIdKey == '8453') {
+    assetCollDeployments.collateral.sgUSDbC = collateral.address
+    assetCollDeployments.erc20s.sgUSDbC = erc20.address
+  } else {
+    assetCollDeployments.collateral.sgUSDC = collateral.address
+    assetCollDeployments.erc20s.sgUSDC = erc20.address
+  }
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
