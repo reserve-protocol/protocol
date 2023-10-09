@@ -53,7 +53,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
         trade = super.settleTrade(sell); // nonReentrant
-        _distributeTokenToBuy();
+        if ((!main.tradingPausedOrFrozen()) && _nonZeroDistribution()) {
+            _distributeTokenToBuy();
+        }
+
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
@@ -107,6 +110,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         uint256 len = erc20s.length;
         require(len > 0, "empty erc20s list");
         require(len == kinds.length, "length mismatch");
+        require(_nonZeroDistribution(), "zero distribution");
 
         // Calculate if the trade involves any RToken
         // Distribute tokenToBuy if supplied in ERC20s list
@@ -180,6 +184,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         tokenToBuy.safeApprove(address(distributor), 0);
         tokenToBuy.safeApprove(address(distributor), bal);
         distributor.distribute(tokenToBuy, bal);
+    }
+
+    function _nonZeroDistribution() private view returns (bool) {
+        RevenueTotals memory revTotals = distributor.totals();
+        return
+            (tokenToBuy == rsr && revTotals.rsrTotal > 0) ||
+            (address(tokenToBuy) == address(rToken) && revTotals.rTokenTotal > 0);
     }
 
     /**
