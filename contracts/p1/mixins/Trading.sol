@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../../interfaces/ITrade.sol";
 import "../../interfaces/ITrading.sol";
+import "../../libraries/Allowance.sol";
 import "../../libraries/Fixed.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
@@ -120,8 +121,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
-        IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
-        IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
+        // Set allowance via custom approval -- first sets allowance to 0, then sets allowance
+        // to either the requested amount or the maximum possible amount, if that fails.
+        //
+        // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
+        // amount is > 0 and < type(uint256).max.
+        AllowanceLib.safeApproveFallbackToMax(req.sell.erc20(), address(broker), req.sellAmount);
 
         trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;
