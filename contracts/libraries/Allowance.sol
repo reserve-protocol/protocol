@@ -30,10 +30,7 @@ library AllowanceLib {
         // 3. Fall-back to setting a maximum allowance
         if (!success) {
             token.approve(spender, type(uint256).max);
-            require(
-                token.allowance(address(this), spender) == type(uint256).max,
-                "allowance not max"
-            );
+            require(token.allowance(address(this), spender) >= value, "allowance missing");
         }
     }
 }
