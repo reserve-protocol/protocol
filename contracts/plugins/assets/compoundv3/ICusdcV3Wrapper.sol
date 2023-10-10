@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./vendor/CometInterface.sol";
-import "./IWrappedERC20.sol";
 import "../../../interfaces/IRewardable.sol";
 
-interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
+interface ICusdcV3Wrapper is IERC20Metadata, IRewardable {
     struct UserBasic {
         uint104 principal;
         uint64 baseTrackingAccrued;
@@ -19,12 +17,6 @@ interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
 
     function depositTo(address account, uint256 amount) external;
 
-    function depositFrom(
-        address from,
-        address dst,
-        uint256 amount
-    ) external;
-
     function withdraw(uint256 amount) external;
 
     function withdrawTo(address to, uint256 amount) external;
@@ -34,8 +26,6 @@ interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
         address to,
         uint256 amount
     ) external;
-
-    function claimTo(address src, address to) external;
 
     function accrue() external;
 

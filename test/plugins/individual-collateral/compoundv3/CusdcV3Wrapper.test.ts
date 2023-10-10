@@ -12,7 +12,7 @@ import {
   ICusdcV3Wrapper,
   CusdcV3Wrapper__factory,
 } from '../../../../typechain'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -101,23 +101,6 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(don.address)).to.eq(expectedAmount)
     })
 
-    it('deposits from a different account', async () => {
-      expect(await wcusdcV3.balanceOf(charles.address)).to.eq(0)
-      await expect(
-        wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
-      ).revertedWithCustomError(wcusdcV3, 'Unauthorized')
-      await wcusdcV3.connect(bob).connect(bob).allow(don.address, true)
-      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
-        await cusdcV3.balanceOf(bob.address)
-      )
-      await wcusdcV3
-        .connect(don)
-        .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
-
-      expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
-      expect(await wcusdcV3.balanceOf(charles.address)).to.eq(expectedAmount)
-    })
-
     it('deposits less than available cusdc', async () => {
       const depositAmount = bn('10000e6')
       const expectedAmount = await wcusdcV3.convertDynamicToStatic(depositAmount)
@@ -177,7 +160,7 @@ describeFork('Wrapped CUSDCv3', () => {
     it('desposit to zero address reverts', async () => {
       await expect(
         wcusdcV3.connect(bob).depositTo(ZERO_ADDRESS, ethers.constants.MaxUint256)
-      ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
+      ).to.be.revertedWith('ERC20: mint to the zero address')
     })
   })
 
@@ -209,9 +192,9 @@ describeFork('Wrapped CUSDCv3', () => {
       const withdrawAmount = await wcusdcV3.underlyingBalanceOf(bob.address)
       await expect(
         wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
-      ).to.be.revertedWithCustomError(wcusdcV3, 'Unauthorized')
+      ).to.be.revertedWith('ERC20: insufficient allowance')
 
-      await wcusdcV3.connect(bob).allow(charles.address, true)
+      await wcusdcV3.connect(bob).approve(charles.address, MAX_UINT256)
       await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
 
       expect(await cusdcV3.balanceOf(don.address)).to.closeTo(withdrawAmount, 100)
@@ -308,59 +291,59 @@ describeFork('Wrapped CUSDCv3', () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
     })
 
-    it('sets max allowance with approval', async () => {
+    it('sets approval', async () => {
       expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn(0))
 
       // set approve
-      await wcusdcV3.connect(bob).allow(don.address, true)
+      await wcusdcV3.connect(bob).approve(don.address, fp(1))
 
-      expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(MAX_UINT256)
+      expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(fp(1))
 
       // rollback approve
-      await wcusdcV3.connect(bob).allow(don.address, false)
+      await wcusdcV3.connect(bob).approve(don.address, 0)
 
       expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn(0))
     })
 
     it('does not transfer without approval', async () => {
+      const amount = bn('10000e6')
       await expect(
-        wcusdcV3.connect(bob).transferFrom(don.address, bob.address, bn('10000e6'))
-      ).to.be.revertedWithCustomError(wcusdcV3, 'Unauthorized')
+        wcusdcV3.connect(bob).transferFrom(don.address, bob.address, amount)
+      ).to.be.revertedWith('ERC20: insufficient allowance')
 
       // Perform approval
-      await wcusdcV3.connect(bob).allow(don.address, true)
+      await wcusdcV3.connect(bob).approve(don.address, amount)
 
       await expect(
-        wcusdcV3.connect(don).transferFrom(bob.address, don.address, bn('10000e6'))
+        wcusdcV3.connect(don).transferFrom(bob.address, don.address, amount)
       ).to.emit(wcusdcV3, 'Transfer')
     })
 
     it('transfer from/to zero address revert', async () => {
       await expect(
         wcusdcV3.connect(bob).transfer(ZERO_ADDRESS, bn('100e6'))
-      ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
+      ).to.be.revertedWith('ERC20: transfer to the zero address')
 
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(
           wcusdcV3.connect(signer).transfer(don.address, bn('100e6'))
-        ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
+        ).to.be.revertedWith('ERC20: transfer from the zero address')
       })
     })
 
     it('performs validation on transfer amount', async () => {
       await expect(
         wcusdcV3.connect(bob).transfer(don.address, bn('40000e6'))
-      ).to.be.revertedWithCustomError(wcusdcV3, 'ExceedsBalance')
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance')
     })
 
     it('supports IERC20.approve and performs validations', async () => {
       expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn(0))
-      expect(await wcusdcV3.hasPermission(bob.address, don.address)).to.equal(false)
 
       // Cannot set approve to the zero address
       await expect(
         wcusdcV3.connect(bob).approve(ZERO_ADDRESS, bn('10000e6'))
-      ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
+      ).to.be.revertedWith('ERC20: approve to the zero address')
 
       // Can set full allowance with max uint256
       await expect(wcusdcV3.connect(bob).approve(don.address, MAX_UINT256)).to.emit(
@@ -368,32 +351,14 @@ describeFork('Wrapped CUSDCv3', () => {
         'Approval'
       )
       expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(MAX_UINT256)
-      expect(await wcusdcV3.hasPermission(bob.address, don.address)).to.equal(true)
 
       // Can revert allowance with zero amount
       await expect(wcusdcV3.connect(bob).approve(don.address, bn(0))).to.emit(wcusdcV3, 'Approval')
       expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn(0))
-      expect(await wcusdcV3.hasPermission(bob.address, don.address)).to.equal(false)
 
-      // Any other amount reverts
-      await expect(
-        wcusdcV3.connect(bob).approve(don.address, bn('10000e6'))
-      ).to.be.revertedWithCustomError(wcusdcV3, 'BadAmount')
-      expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn(0))
-      expect(await wcusdcV3.hasPermission(bob.address, don.address)).to.equal(false)
-    })
-
-    it('perform validations on allow', async () => {
-      await expect(wcusdcV3.connect(bob).allow(ZERO_ADDRESS, true)).to.be.revertedWithCustomError(
-        wcusdcV3,
-        'ZeroAddress'
-      )
-
-      await whileImpersonating(ZERO_ADDRESS, async (signer) => {
-        await expect(
-          wcusdcV3.connect(signer).allow(don.address, true)
-        ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
-      })
+      // Can set any other amount
+      await wcusdcV3.connect(bob).approve(don.address, bn('10000e6'))
+      expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn('10000e6'))
     })
 
     it('updates balances and rewards in sender and receiver', async () => {
@@ -581,34 +546,6 @@ describeFork('Wrapped CUSDCv3', () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
     })
 
-    it('does not claim rewards when user has no permission', async () => {
-      await advanceTime(1000)
-      await enableRewardsAccrual(cusdcV3)
-      await expect(
-        wcusdcV3.connect(don).claimTo(bob.address, bob.address)
-      ).to.be.revertedWithCustomError(wcusdcV3, 'Unauthorized')
-
-      await wcusdcV3.connect(bob).allow(don.address, true)
-      expect(await wcusdcV3.isAllowed(bob.address, don.address)).to.eq(true)
-      await expect(wcusdcV3.connect(don).claimTo(bob.address, bob.address)).to.emit(
-        wcusdcV3,
-        'RewardsClaimed'
-      )
-    })
-
-    it('claims rewards and sends to claimer (claimTo)', async () => {
-      const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
-      await advanceTime(1000)
-      await enableRewardsAccrual(cusdcV3)
-
-      await expect(wcusdcV3.connect(bob).claimTo(bob.address, bob.address)).to.emit(
-        wcusdcV3,
-        'RewardsClaimed'
-      )
-      expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
-    })
-
     it('claims rewards and sends to claimer (claimRewards)', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
@@ -633,8 +570,8 @@ describeFork('Wrapped CUSDCv3', () => {
 
       // claim at the same time
       await network.provider.send('evm_setAutomine', [false])
-      await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
-      await wcusdcV3.connect(don).claimTo(don.address, don.address)
+      await wcusdcV3.connect(bob).claimRewards()
+      await wcusdcV3.connect(don).claimRewards()
       await network.provider.send('evm_setAutomine', [true])
       await advanceBlocks(1)
 
@@ -649,7 +586,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
       await advanceTime(1000)
-      await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
+      await wcusdcV3.connect(bob).claimRewards()
       expect(await compToken.balanceOf(bob.address)).to.equal(0)
     })
 
@@ -665,7 +602,7 @@ describeFork('Wrapped CUSDCv3', () => {
 
       expect(bobsReward).to.be.greaterThan(donsReward)
 
-      await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
+      await wcusdcV3.connect(bob).claimRewards()
       expect(await wcusdcV3.getRewardOwed(bob.address)).to.equal(0)
 
       await advanceTime(1000)

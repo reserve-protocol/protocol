@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./vendor/CometInterface.sol";
-import "./WrappedERC20.sol";
 import "./vendor/ICometRewards.sol";
 import "./ICusdcV3Wrapper.sol";
 import "./CometHelpers.sol";
@@ -14,7 +14,7 @@ import "./CometHelpers.sol";
  * token. {comet} will be used as the unit for the underlying token, and {wComet} will be used
  * as the unit for wrapped tokens.
  */
-contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
+contract CusdcV3Wrapper is ICusdcV3Wrapper, ERC20, CometHelpers {
     using SafeERC20 for IERC20;
 
     /// From cUSDCv3, used in principal <> present calculations
@@ -26,6 +26,10 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     ICometRewards public immutable rewardsAddr;
     IERC20 public immutable rewardERC20;
 
+    error BadAmount();
+    error Unauthorized();
+    error ZeroAddress();
+
     mapping(address => uint64) public baseTrackingIndex;
     mapping(address => uint64) public baseTrackingAccrued;
     mapping(address => uint256) public rewardsClaimed;
@@ -34,7 +38,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address cusdcv3,
         address rewardsAddr_,
         address rewardERC20_
-    ) WrappedERC20("Wrapped cUSDCv3", "wcUSDCv3") {
+    ) ERC20("Wrapped cUSDCv3", "wcUSDCv3") {
         if (cusdcv3 == address(0)) revert ZeroAddress();
 
         rewardsAddr = ICometRewards(rewardsAddr_);
@@ -43,45 +47,30 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// @return number of decimals
-    function decimals() public pure override returns (uint8) {
+    function decimals() public pure override(ERC20, IERC20Metadata) returns (uint8) {
         return 6;
     }
 
     /// @param amount {Comet} The amount of cUSDCv3 to deposit
     function deposit(uint256 amount) external {
-        _deposit(msg.sender, msg.sender, msg.sender, amount);
+        _deposit(msg.sender, amount);
     }
 
     /// @param dst The dst to deposit into
     /// @param amount {Comet} The amount of cUSDCv3 to deposit
     function depositTo(address dst, uint256 amount) external {
-        _deposit(msg.sender, msg.sender, dst, amount);
-    }
-
-    /// @param src The address to deposit from
-    /// @param dst The address to deposit to
-    /// @param amount {Comet} The amount of cUSDCv3 to deposit
-    function depositFrom(
-        address src,
-        address dst,
-        uint256 amount
-    ) external {
-        _deposit(msg.sender, src, dst, amount);
+        _deposit(dst, amount);
     }
 
     /// Only called internally to run the deposit logic
     /// Takes `amount` fo cUSDCv3 from `src` and deposits to `dst` account in the wrapper.
-    /// @param operator The address calling the contract (msg.sender)
-    /// @param src The address to deposit from
     /// @param dst The address to deposit to
     /// @param amount {Comet} The amount of cUSDCv3 to deposit
     function _deposit(
-        address operator,
-        address src,
         address dst,
         uint256 amount
     ) internal {
-        if (!hasPermission(src, operator)) revert Unauthorized();
+        address src = msg.sender;
         // {Comet}
         uint256 srcBal = underlyingComet.balanceOf(src);
         if (amount > srcBal) amount = srcBal;
@@ -104,13 +93,13 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
     /// @param amount {Comet} The amount of cUSDCv3 to withdraw
     function withdraw(uint256 amount) external {
-        _withdraw(msg.sender, msg.sender, msg.sender, amount);
+        _withdraw(msg.sender, msg.sender, amount);
     }
 
     /// @param dst The address to withdraw cUSDCv3 to
     /// @param amount {Comet} The amount of cUSDCv3 to withdraw
     function withdrawTo(address dst, uint256 amount) external {
-        _withdraw(msg.sender, msg.sender, dst, amount);
+        _withdraw( msg.sender, dst, amount);
     }
 
     /// @param src The address to withdraw from
@@ -121,23 +110,21 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address dst,
         uint256 amount
     ) external {
-        _withdraw(msg.sender, src, dst, amount);
+        _spendAllowance(src, msg.sender, amount);
+        _withdraw(src, dst, amount);
     }
 
     /// Internally called to run the withdraw logic
     /// Withdraws `amount` cUSDCv3 from `src` account in the wrapper and sends to `dst`
     /// @dev Rounds conservatively so as not to over-withdraw from the wrapper
-    /// @param operator The address calling the contract (msg.sender)
     /// @param src The address to withdraw from
     /// @param dst The address to withdraw cUSDCv3 to
     /// @param amount {Comet} The amount of cUSDCv3 to withdraw
     function _withdraw(
-        address operator,
         address src,
         address dst,
         uint256 amount
     ) internal {
-        if (!hasPermission(src, operator)) revert Unauthorized();
         // {Comet}
         uint256 srcBalUnderlying = underlyingBalanceOf(src);
         if (srcBalUnderlying < amount) amount = srcBalUnderlying;
@@ -185,25 +172,18 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     function claimRewards() external {
-        claimTo(msg.sender, msg.sender);
-    }
-
-    /// @param src The account to claim from
-    /// @param dst The address to send claimed rewards to
-    function claimTo(address src, address dst) public {
         address sender = msg.sender;
-        if (!hasPermission(src, sender)) revert Unauthorized();
 
-        accrueAccount(src);
-        uint256 claimed = rewardsClaimed[src];
-        uint256 accrued = baseTrackingAccrued[src] * RESCALE_FACTOR;
+        accrueAccount(sender);
+        uint256 claimed = rewardsClaimed[sender];
+        uint256 accrued = baseTrackingAccrued[sender] * RESCALE_FACTOR;
         uint256 owed;
         if (accrued > claimed) {
             owed = accrued - claimed;
-            rewardsClaimed[src] = accrued;
+            rewardsClaimed[sender] = accrued;
 
             rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
-            IERC20(rewardERC20).safeTransfer(dst, owed);
+            IERC20(rewardERC20).safeTransfer(sender, owed);
         }
         emit RewardsClaimed(rewardERC20, owed);
     }
