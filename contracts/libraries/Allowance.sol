@@ -16,17 +16,24 @@ library AllowanceLib {
         uint256 value
     ) internal {
         // 1. Set initial allowance to 0
-        require(token.approve(spender, 0), "failed to set 0 allowance");
+        token.approve(spender, 0);
+        require(token.allowance(address(this), spender) == 0, "allowance not 0");
 
         if (value == 0) return;
 
         // 2. Try to set the provided allowance
         bool success; // bool success = false;
-        try token.approve(spender, value) returns (bool _success) {
-            success = _success;
+        try token.approve(spender, value) returns (bool) {
+            success = token.allowance(address(this), spender) == value;
         } catch {}
 
         // 3. Fall-back to setting a maximum allowance
-        if (!success) token.approve(spender, type(uint256).max);
+        if (!success) {
+            token.approve(spender, type(uint256).max);
+            require(
+                token.allowance(address(this), spender) == type(uint256).max,
+                "allowance not max"
+            );
+        }
     }
 }
