@@ -5,16 +5,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
-
-interface CBEth is IERC20Metadata {
-    function mint(address account, uint256 amount) external returns (bool);
-
-    function updateExchangeRate(uint256 exchangeRate) external;
-
-    function configureMinter(address minter, uint256 minterAllowedAmount) external returns (bool);
-
-    function exchangeRate() external view returns (uint256 _exchangeRate);
-}
+import { ICBEth } from "./vendor/ICBEth.sol";
 
 /**
  * @title CBEthCollateral
@@ -76,6 +67,6 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        return _safeWrap(CBEth(address(erc20)).exchangeRate());
+        return _safeWrap(ICBEth(address(erc20)).exchangeRate());
     }
 }

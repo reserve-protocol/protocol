@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "../../libraries/Allowance.sol";
 import "../../libraries/Fixed.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/IGnosis.sol";
@@ -130,9 +131,12 @@ contract GnosisTrade is ITrade {
 
         // == Interactions ==
 
-        // Set allowance (two safeApprove calls to support USDT)
-        IERC20Upgradeable(address(sell)).safeApprove(address(gnosis), 0);
-        IERC20Upgradeable(address(sell)).safeApprove(address(gnosis), initBal);
+        // Set allowance via custom approval -- first sets allowance to 0, then sets allowance
+        // to either the requested amount or the maximum possible amount, if that fails.
+        //
+        // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
+        // amount is > 0 and < type(uint256).max.
+        AllowanceLib.safeApproveFallbackToMax(sell, address(gnosis), initBal);
 
         auctionId = gnosis.initiateAuction(
             sell,

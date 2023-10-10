@@ -61,7 +61,7 @@ async function main() {
     chainId,
     await w3PoolCollateral.erc20(),
     [],
-    'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper',
+    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper',
     { CvxMining: coreDeployments.cvxMiningLib }
   )
 
@@ -71,7 +71,7 @@ async function main() {
     chainId,
     coreDeployments.cvxMiningLib,
     [],
-    'contracts/plugins/assets/convex/vendor/CvxMining.sol:CvxMining'
+    'contracts/plugins/assets/curve/cvx/vendor/CvxMining.sol:CvxMining'
   )
 
   /********  Verify 3Pool plugin  **************************/
@@ -85,7 +85,7 @@ async function main() {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: bn('1'), // unused but cannot be zero
-        oracleTimeout: bn('1'), // unused but cannot be zero
+        oracleTimeout: oracleTimeout(chainId, USDC_ORACLE_TIMEOUT), // max of oracleTimeouts
         maxTradeVolume: MAX_TRADE_VOL,
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -105,7 +105,7 @@ async function main() {
         lpToken: THREE_POOL_TOKEN,
       },
     ],
-    'contracts/plugins/assets/convex/CurveStableCollateral.sol:CurveStableCollateral'
+    'contracts/plugins/assets/curve/CurveStableCollateral.sol:CurveStableCollateral'
   )
 }
 

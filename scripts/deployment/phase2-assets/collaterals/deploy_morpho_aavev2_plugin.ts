@@ -46,6 +46,7 @@ async function main() {
   const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
     'MorphoAaveV2TokenisedDeposit'
   )
+
   const maUSDT = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
@@ -143,6 +144,8 @@ async function main() {
     )
     assetCollDeployments.collateral.maUSDT = collateral.address
     deployedCollateral.push(collateral.address.toString())
+    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+    await (await collateral.refresh()).wait()
   }
   {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
@@ -155,6 +158,8 @@ async function main() {
     )
     assetCollDeployments.collateral.maUSDC = collateral.address
     deployedCollateral.push(collateral.address.toString())
+    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+    await (await collateral.refresh()).wait()
   }
   {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
@@ -167,6 +172,8 @@ async function main() {
     )
     assetCollDeployments.collateral.maDAI = collateral.address
     deployedCollateral.push(collateral.address.toString())
+    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+    await (await collateral.refresh()).wait()
   }
 
   {
@@ -182,15 +189,17 @@ async function main() {
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
         erc20: maWBTC.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.wBTCBTC!,
+      networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
       oracleTimeout(chainId, '86400').toString() // 1 hr
     )
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
+    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+    await (await collateral.refresh()).wait()
   }
 
   {
@@ -201,15 +210,17 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.05'), // 5%
+        defaultThreshold: fp('0'), // 0% -- no soft default for self-referential collateral
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-        erc20: maWBTC.address,
+        erc20: maWETH.address,
       },
       revenueHiding
     )
     assetCollDeployments.collateral.maWETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
+    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+    await (await collateral.refresh()).wait()
   }
 
   {
@@ -230,18 +241,18 @@ async function main() {
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
         erc20: maStETH.address,
       },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
       oracleTimeout(chainId, '86400').toString() // 1 hr
     )
-    assetCollDeployments.collateral.maWBTC = collateral.address
+    assetCollDeployments.collateral.maStETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
+    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+    await (await collateral.refresh()).wait()
   }
-
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   console.log(`Deployed collateral to ${hre.network.name} (${chainId})
         New deployments: ${deployedCollateral}

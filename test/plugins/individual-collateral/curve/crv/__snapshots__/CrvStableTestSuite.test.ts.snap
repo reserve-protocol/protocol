@@ -1,12 +1,16 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 1`] = `391352`;
+
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 2`] = `369452`;
+
 exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `61895`;
 
 exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `57427`;
 
-exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `199895`;
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `200033`;
 
-exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `195013`;
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `195151`;
 
 exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `61895`;
 
@@ -16,10 +20,10 @@ exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functi
 
 exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `57086`;
 
-exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `195010`;
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `195148`;
 
-exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `195010`;
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `195148`;
 
-exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `182069`;
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `182161`;
 
-exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `174801`;
+exports[`Collateral: CurveStableCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `174893`;

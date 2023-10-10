@@ -12,6 +12,8 @@ contract StargateLPStakingMock is IStargateLPStaking {
     ERC20Mock public immutable stargateMock;
     IERC20 public immutable stargate;
 
+    uint256 public totalAllocPoint = 0;
+
     constructor(ERC20Mock stargateMock_) {
         stargateMock = stargateMock_;
         stargate = stargateMock_;
@@ -70,9 +72,11 @@ contract StargateLPStakingMock is IStargateLPStaking {
         info.lpToken = lpToken;
         info.allocPoint = 10;
         _poolInfo.push(info);
+        totalAllocPoint = totalAllocPoint + info.allocPoint;
     }
 
     function setAllocPoint(uint256 pid, uint256 allocPoint) external {
+        totalAllocPoint = (totalAllocPoint - _poolInfo[pid].allocPoint) + allocPoint;
         _poolInfo[pid].allocPoint = allocPoint;
     }
 

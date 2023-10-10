@@ -1,0 +1,29 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting ERC20 transfer 1`] = `53509`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting ERC20 transfer 2`] = `36409`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 1`] = `69299`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 2`] = `67631`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after hard default 1`] = `72125`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after hard default 2`] = `64443`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `69299`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `67631`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after soft default 1`] = `67290`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after soft default 2`] = `67290`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during SOUND 1`] = `87706`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during SOUND 2`] = `87706`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during soft default 1`] = `89656`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during soft default 2`] = `87988`;

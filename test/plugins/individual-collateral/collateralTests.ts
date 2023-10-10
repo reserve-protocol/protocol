@@ -29,7 +29,10 @@ import { expectPrice, expectUnpriced } from '../../utils/oracles'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
-const describeFork = useEnv('FORK') ? describe : describe.skip
+// const describeFork = useEnv('FORK') ? describe : describe.skip
+const getDescribeFork = (targetNetwork = 'mainnet') => {
+  return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
+}
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -59,9 +62,10 @@ export default function fn<X extends CollateralFixtureContext>(
     collateralName,
     chainlinkDefaultAnswer,
     toleranceDivisor,
+    targetNetwork,
   } = fixtures
 
-  describeFork(`Collateral: ${collateralName}`, () => {
+  getDescribeFork(targetNetwork)(`Collateral: ${collateralName}`, () => {
     before(resetFork)
 
     describe('constructor validation', () => {
@@ -546,6 +550,16 @@ export default function fn<X extends CollateralFixtureContext>(
 
           itChecksRefPerTokDefault('after hard default', async () => {
             await reduceRefPerTok(ctx, 5)
+          })
+        })
+
+        context('ERC20', () => {
+          it('transfer', async () => {
+            const decimals = await ctx.tok.decimals()
+            const amount = bn('20').mul(bn(10).pow(decimals))
+            await mintCollateralTo(ctx, amount, alice, alice.address)
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
           })
         })
       })

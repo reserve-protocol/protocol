@@ -9,6 +9,7 @@ interface ICurrencies {
 export interface ITokens {
   DAI?: string
   USDC?: string
+  USDbC?: string
   USDT?: string
   USDP?: string
   TUSD?: string
@@ -25,6 +26,10 @@ export interface ITokens {
   aWETH?: string
   aWBTC?: string
   aCRV?: string
+  aEthUSDC?: string
+  aBasUSDbC?: string
+  aWETHv3?: string
+  acbETHv3?: string
   cDAI?: string
   cUSDC?: string
   cUSDT?: string
@@ -51,6 +56,7 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  cUSDbCv3?: string
   ONDO?: string
   sDAI?: string
   cbETH?: string
@@ -74,6 +80,8 @@ export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
   wBTCBTC?: string
+  wstETHstETHexr?: string
+  cbETHETHexr?: string
 }
 
 export interface IPools {
@@ -102,6 +110,9 @@ interface INetworkConfig {
   MORPHO_AAVE_CONTROLLER?: string
   MORPHO_REWARDS_DISTRIBUTOR?: string
   MORPHO_AAVE_LENS?: string
+  COMET_REWARDS?: string
+  AAVE_V3_INCENTIVES_CONTROLLER?: string
+  AAVE_V3_POOL?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -132,6 +143,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
       aWBTC: '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656',
       aCRV: '0x8dae6cb04688c62d939ed9b68d32bc62e49970b1',
+      aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -205,15 +217,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
-  },
-  '3': {
-    name: 'ropsten',
-    tokens: {
-      USDC: '0x07865c6e87b9f70255377e024ace6630c1eaa37f',
-      RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
-    },
-    chainlinkFeeds: {},
-    COMPTROLLER: '0xcfa7b0e37f5AC60f3ae25226F5e39ec59AD26152',
+    COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
+    AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
+    AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
   },
   '1': {
     name: 'mainnet',
@@ -234,6 +240,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aBUSD: '0xA361718326c15715591c299427c62086F69923D9',
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
+      aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -296,7 +303,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
-      wBTCBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23', // "WBTC/BTC"
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
@@ -306,6 +312,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
+    COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
+    AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
+    AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
   },
   '3': {
     name: 'tenderly',
@@ -398,6 +407,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
+    COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
+    AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
+    AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
   },
   '5': {
     name: 'goerli',
@@ -486,6 +498,37 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0xbEfB78358eAaaCAa083C2dff5D2Ed6e7e32b2d3A',
     },
     GNOSIS_EASY_AUCTION: '0xcdf32E323e69090eCA17adDeF058A6A921c3e75A', // mock
+  },
+  '8453': {
+    name: 'base',
+    tokens: {
+      DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
+      USDbC: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA',
+      RSR: '0xaB36452DbAC151bE02b16Ca17d8919826072f64a',
+      COMP: '0x9e1028F5F1D5eDE59748FFceE5532509976840E0',
+      WETH: '0x4200000000000000000000000000000000000006',
+      cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
+      cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      aBasUSDbC: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
+      aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
+      acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
+    },
+    chainlinkFeeds: {
+      DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
+      ETH: '0x71041dddad3595f9ced3dccfbe3d1f4b0a16bb70', // 0.15%, 20min
+      WBTC: '0xccadc697c55bbb68dc5bcdf8d3cbe83cdd4e071e', // 0.5%, 24hr
+      USDC: '0x7e860098f58bbfc8648a4311b374b1d669a2bc6b', // 0.3%, 24hr
+      USDT: '0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9', // 0.3%, 24hr
+      COMP: '0x9dda783de64a9d1a60c49ca761ebe528c35ba428', // 0.5%, 24hr
+      cbETH: '0x806b4ac04501c29769051e42783cf04dce41440b', // 0.5%, 24hr
+      RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 2%, 24hr
+      wstETHstETHexr: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24hr
+      cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
+    },
+    GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
+    COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
+    AAVE_V3_POOL: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
+    AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
   },
 }
 

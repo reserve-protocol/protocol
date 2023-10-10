@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting ERC20 transfer 1`] = `51304`;
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `34204`;
+
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `58995`;
 
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `54258`;
@@ -8,6 +12,6 @@ exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting r
 
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `58026`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `73808`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `73831`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `73808`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `73831`;

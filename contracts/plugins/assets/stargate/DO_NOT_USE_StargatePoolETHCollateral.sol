@@ -7,20 +7,30 @@ import "./interfaces/IStargatePool.sol";
 import "./StargatePoolFiatCollateral.sol";
 
 /**
- * @title StargatePoolETHCollateral
+ * ************************************************************
+ * WARNING: this plugin is DEPRECATED!
+ * Not ready to be deployed and used in Production environments
+ * ************************************************************
+ */
+
+/**
+ * @title StargatePoolETHCollateral (DO NOT USE)
  * @notice Collateral plugin for Stargate ETH,
  * tok = wstgETH
  * ref = ETH
  * tar = ETH
  * UoA = USD
  */
+
 contract StargatePoolETHCollateral is StargatePoolFiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
     /// @param config.chainlinkFeed Feed units: {UoA/target}
     // solhint-disable no-empty-blocks
-    constructor(CollateralConfig memory config) StargatePoolFiatCollateral(config) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        StargatePoolFiatCollateral(config, revenueHiding)
+    {}
 
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low

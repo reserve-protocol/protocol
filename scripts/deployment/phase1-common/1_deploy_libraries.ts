@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { networkConfig } from '../../../common/configuration'
+import { baseL2Chains, networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
 import { BasketLibP1, CvxMining, RecollateralizationLibP1 } from '../../../typechain'
@@ -47,17 +47,19 @@ async function main() {
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   // Deploy CvxMining external library
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  cvxMiningLib = <CvxMining>await CvxMiningFactory.connect(burner).deploy()
-  await cvxMiningLib.deployed()
-  deployments.cvxMiningLib = cvxMiningLib.address
+  if (!baseL2Chains.includes(hre.network.name)) {
+    const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
+    cvxMiningLib = <CvxMining>await CvxMiningFactory.connect(burner).deploy()
+    await cvxMiningLib.deployed()
+    deployments.cvxMiningLib = cvxMiningLib.address
 
-  fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
+    fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
+  }
 
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     BasketLib: ${basketLib.address}
-    CvxMiningLib: ${cvxMiningLib.address}
+    CvxMiningLib: ${cvxMiningLib ? cvxMiningLib.address : 'N/A'}
     Deployment file: ${deploymentFilename}`)
 }
 

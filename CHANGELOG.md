@@ -1,6 +1,12 @@
 # Changelog
 
-# 3.0.0 - Unreleased
+# 3.0.1
+
+### Upgrade steps
+
+Update `BackingManager`, both `RevenueTraders` (rTokenTrader/rsrTrader), and call `Broker.setBatchTradeImplementation()` passing in the new `GnosisTrade` address.
+
+# 3.0.0
 
 ### Upgrade Steps
 
@@ -25,6 +31,7 @@ Call the following functions, once it is desired to turn on the new features:
 - `BasketHandler.setWarmupPeriod()`
 - `StRSR.setWithdrawalLeak()`
 - `Broker.setDutchAuctionLength()`
+- `Broker.setDutchTradeImplementation()`
 
 It is acceptable to leave these function calls out of the initial upgrade tx and follow up with them later. The protocol will continue to function, just without dutch auctions, RSR unstaking gas-savings, and the warmup period.
 

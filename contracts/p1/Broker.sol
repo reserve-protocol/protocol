@@ -217,7 +217,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     // === Private ===
-
     function newBatchAuction(TradeRequest memory req, address caller) internal virtual returns (ITrade) {
         require(!batchTradeDisabled, "batch auctions disabled");
         require(batchAuctionLength > 0, "batch auctions not enabled");

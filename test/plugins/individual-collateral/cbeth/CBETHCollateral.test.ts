@@ -19,13 +19,13 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'
-import { CBEth, ERC20Mock, MockV3Aggregator__factory } from '@typechain/index'
+import { ICBEth, ERC20Mock, MockV3Aggregator__factory } from '@typechain/index'
 import { mintCBETH, resetFork } from './helpers'
 import { whileImpersonating } from '#/utils/impersonation'
 import hre from 'hardhat'
 
 interface CbEthCollateralFixtureContext extends CollateralFixtureContext {
-  cbETH: CBEth
+  cbETH: ICBEth
   targetPerTokChainlinkFeed: MockV3Aggregator
 }
 
@@ -92,7 +92,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
     collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
 
-    const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as CBEth
+    const cbETH = (await ethers.getContractAt('ICBEth', CB_ETH)) as unknown as ICBEth
     const collateral = await deployCollateral(collateralOpts)
 
     return {

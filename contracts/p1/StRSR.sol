@@ -88,7 +88,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
-    uint192 internal draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
+    uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
 
     uint192 internal constant MAX_DRAFT_RATE = 1e9 * FIX_ONE; // 1e9 D18{qDrafts/qRSR}
 
