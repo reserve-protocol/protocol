@@ -621,7 +621,7 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
     })
 
-    it.only('claims rewards by participation', async () => {
+    it('claims rewards by participation', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
