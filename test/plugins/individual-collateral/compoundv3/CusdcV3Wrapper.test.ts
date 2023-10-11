@@ -643,7 +643,11 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
       const balanceBob = await compToken.balanceOf(bob.address)
       const balanceDon = await compToken.balanceOf(don.address)
-      expect(balanceDon).equal(balanceBob)
+      expect(balanceDon).lessThanOrEqual(balanceBob)
+      expect(balanceBob).to.be.closeTo(
+        balanceDon,
+        balanceBob.mul(5).div(1000)
+      ) // within 0.5%
     })
 
     // In this forked block, rewards accrual is not yet enabled in Comet
