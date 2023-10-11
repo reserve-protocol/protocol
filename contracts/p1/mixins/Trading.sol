@@ -127,7 +127,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
         // amount is > 0 and < type(uint256).max.
         AllowanceLib.safeApproveFallbackToMax(
-            address(req.sell.erc20()),
+            address(sell),
             address(broker),
             req.sellAmount
         );
