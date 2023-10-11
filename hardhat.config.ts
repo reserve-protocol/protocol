@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: forkRpcs[(useEnv('FORK_NETWORK') ?? 'mainnet') as Network],
+            url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
             blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
           }
         : undefined,
