@@ -145,7 +145,7 @@ library TradingLibP0 {
     ///   2. Stay under stack limit with fewer vars
     ///   3. Cache information such as component addresses to save on gas
 
-    struct TradingContext {
+    struct TradingContextP0 {
         BasketRange basketsHeld; // {BU}
         // basketsHeld.top is the number of partial baskets units held
         // basketsHeld.bottom is the number of full basket units held
@@ -190,7 +190,7 @@ library TradingLibP0 {
         // === Prepare cached values ===
 
         IMain main = bm.main();
-        TradingContext memory ctx = TradingContext({
+        TradingContextP0 memory ctx = TradingContextP0({
             basketsHeld: basketsHeld,
             bm: bm,
             bh: main.basketHandler(),
@@ -269,7 +269,7 @@ library TradingLibP0 {
     // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
     //   where "least baskets purchaseable" involves trading at the worst price,
     //   incurring the full maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
-    function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
+    function basketRange(TradingContextP0 memory ctx, IERC20[] memory erc20s)
         internal
         view
         returns (BasketRange memory range)
@@ -428,7 +428,7 @@ library TradingLibP0 {
     // Sell IFFY last because it may recover value in the future.
     // All collateral in the basket have already been guaranteed to be SOUND by upstream checks.
     function nextTradePair(
-        TradingContext memory ctx,
+        TradingContextP0 memory ctx,
         IERC20[] memory erc20s,
         BasketRange memory range
     ) private view returns (TradeInfo memory trade) {

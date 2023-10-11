@@ -20,7 +20,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     // Component addresses are not mutable in protocol, so it's safe to cache these
     IMain public immutable main;
     IBasketHandler public immutable basketHandler;
-    IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
 
     IERC20Metadata public immutable erc20;
@@ -39,7 +38,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
         main = erc20_.main();
         basketHandler = main.basketHandler();
-        assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
 
         erc20 = IERC20Metadata(address(erc20_));
@@ -175,24 +173,9 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             // the absence of an external price feed. Any RToken that gets reasonably big
             // should switch over to an asset with a price feed.
 
-            TradingContext memory ctx;
-
-            ctx.basketsHeld = basketsHeld;
-            ctx.bm = backingManager;
-            ctx.bh = basketHandler;
-            ctx.ar = assetRegistry;
-            ctx.stRSR = main.stRSR();
-            ctx.rsr = main.rsr();
-            ctx.rToken = main.rToken();
-            ctx.minTradeVolume = backingManager.minTradeVolume();
-            ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
-
-            // Calculate quantities
-            Registry memory reg = ctx.ar.getRegistry();
-            ctx.quantities = new uint192[](reg.erc20s.length);
-            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
-            }
+            (TradingContext memory ctx, Registry memory reg) = backingManager.tradingContext(
+                basketsHeld
+            );
 
             // will exclude UoA value from RToken balances at BackingManager
             range = RecollateralizationLibP1.basketRange(ctx, reg);
