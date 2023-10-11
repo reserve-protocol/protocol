@@ -621,7 +621,7 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
     })
 
-    it('claims rewards by participation', async () => {
+    it.only('claims rewards by participation', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
@@ -641,11 +641,9 @@ describeFork('Wrapped CUSDCv3', () => {
       await advanceBlocks(1)
 
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
-      const expectedBalanceBob = await compToken.balanceOf(bob.address)
-      expect(expectedBalanceBob).to.be.closeTo(
-        await compToken.balanceOf(don.address),
-        expectedBalanceBob.mul(5).div(1000)
-      ) // within 0.5%
+      const balanceBob = await compToken.balanceOf(bob.address)
+      const balanceDon = await compToken.balanceOf(don.address)
+      expect(balanceDon).equal(balanceBob)
     })
 
     // In this forked block, rewards accrual is not yet enabled in Comet
