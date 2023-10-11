@@ -34,7 +34,10 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP0) returns (ITrade trade) {
         trade = super.settleTrade(sell);
-        try this.distributeTokenToBuy() {} catch {}
+        try this.distributeTokenToBuy() {} catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+        }
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
