@@ -31,6 +31,7 @@ library AllowanceLib {
         bool success; // bool success = false;
         try token.approve(spender, value) {
             success = token.allowance(address(this), spender) == value;
+            // solhint-disable-next-line no-empty-blocks
         } catch {}
 
         // 3. Fall-back to setting a maximum allowance
