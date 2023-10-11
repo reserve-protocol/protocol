@@ -4,13 +4,13 @@
 
 ### Upgrade Steps -- Required
 
-Upgrade `BackingManager`, `Broker`, and _all_ assets. ERC20s do not need to be upgraded.
+Upgrade `BackingManager`, `Broker`, and _all_ assets. Deploy a new RTokenAsset using `Deployer.deployRTokenAsset` and swap the registered RTokenAsset. ERC20s do not need to be upgraded.
 
 Then, call `Broker.cacheComponents()`.
 
 ### Core Protocol Contracts
 
-- `BackingManager`
+- `BackingManager` [+2 slots]
   - Replace use of `lotPrice()` with `price()`
 - `BasketHandler`
   - Remove `lotPrice()`
