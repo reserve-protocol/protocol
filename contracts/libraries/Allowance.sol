@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+interface IERC20ApproveOnly {
+    function approve(address spender, uint256 value) external;
+
+    function allowance(address owner, address spender) external view returns (uint256);
+}
 
 library AllowanceLib {
     /// An approve helper that:
@@ -11,10 +15,12 @@ library AllowanceLib {
     /// Context: Some new-age ERC20s think it's a good idea to revert for allowances
     /// that are > 0 but < type(uint256).max.
     function safeApproveFallbackToMax(
-        IERC20 token,
+        address token_address,
         address spender,
         uint256 value
     ) internal {
+        IERC20ApproveOnly token = IERC20ApproveOnly(token_address);
+
         // 1. Set initial allowance to 0
         token.approve(spender, 0);
         require(token.allowance(address(this), spender) == 0, "allowance not 0");
@@ -23,7 +29,7 @@ library AllowanceLib {
 
         // 2. Try to set the provided allowance
         bool success; // bool success = false;
-        try token.approve(spender, value) returns (bool) {
+        try token.approve(spender, value) {
             success = token.allowance(address(this), spender) == value;
         } catch {}
 
