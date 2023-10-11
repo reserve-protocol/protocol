@@ -15,11 +15,11 @@ library AllowanceLib {
     /// Context: Some new-age ERC20s think it's a good idea to revert for allowances
     /// that are > 0 but < type(uint256).max.
     function safeApproveFallbackToMax(
-        address token_address,
+        address tokenAddress,
         address spender,
         uint256 value
     ) internal {
-        IERC20ApproveOnly token = IERC20ApproveOnly(token_address);
+        IERC20ApproveOnly token = IERC20ApproveOnly(tokenAddress);
 
         // 1. Set initial allowance to 0
         token.approve(spender, 0);
