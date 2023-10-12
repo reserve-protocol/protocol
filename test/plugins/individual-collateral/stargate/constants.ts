@@ -17,7 +17,7 @@ switch (forkNetwork) {
     break
 }
 
-const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
+export const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
 const sUSDC_NAME = chainId == '8453' ? 'sUSDbC' : 'sUSDC'
 
 export const STARGATE = networkConfig[chainId].tokens['STG']!

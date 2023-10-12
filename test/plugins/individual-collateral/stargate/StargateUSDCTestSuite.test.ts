@@ -29,6 +29,7 @@ import {
   ORACLE_ERROR,
   STAKING_CONTRACT,
   STARGATE_ROUTER,
+  USDC_NAME,
 } from './constants'
 import { noop } from 'lodash'
 import { whileImpersonating } from '#/test/utils/impersonation'
@@ -306,7 +307,7 @@ export const stableOpts = {
   reduceRefPerTok,
   increaseRefPerTok,
   resetFork,
-  collateralName: 'Stargate USDbC Pool',
+  collateralName: `Stargate ${USDC_NAME} Pool`,
   reduceTargetPerRef,
   increaseTargetPerRef,
   itClaimsRewards: it, // reward growth not supported in mock
