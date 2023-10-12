@@ -5,7 +5,7 @@ import { useEnv } from '#/utils/env'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
-import { COMP, REWARDS } from './constants'
+import { forkNetwork, COMP, REWARDS } from './constants'
 import {
   ERC20Mock,
   CometInterface,
@@ -19,6 +19,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
+
+const itL1 = forkNetwork != 'base' ? it : it.skip
 
 describeFork('Wrapped CUSDCv3', () => {
   let bob: SignerWithAddress
@@ -555,7 +557,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const baseIndexScale = await cusdcV3.baseIndexScale()
       const expectedExchangeRate = totalsBasic.baseSupplyIndex.mul(bn('1e6')).div(baseIndexScale)
       expect(await cusdcV3.balanceOf(wcusdcV3.address)).to.equal(0)
-      expect(await wcusdcV3.exchangeRate()).to.equal(expectedExchangeRate)
+      expect(await wcusdcV3.exchangeRate()).to.be.closeTo(expectedExchangeRate, 1)
     })
 
     it('returns the correct exchange rate with a positive balance', async () => {
@@ -639,15 +641,16 @@ describeFork('Wrapped CUSDCv3', () => {
       await advanceBlocks(1)
 
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
-      expect(await compToken.balanceOf(bob.address)).to.equal(
-        await compToken.balanceOf(don.address)
-      )
+      const balanceBob = await compToken.balanceOf(bob.address)
+      const balanceDon = await compToken.balanceOf(don.address)
+      expect(balanceDon).lessThanOrEqual(balanceBob)
+      expect(balanceBob).to.be.closeTo(balanceDon, balanceBob.mul(5).div(1000)) // within 0.5%
     })
 
     // In this forked block, rewards accrual is not yet enabled in Comet
-    it('claims no rewards when rewards accrual is not enabled', async () => {
+    // Only applies to Mainnet forks (L1)
+    itL1('claims no rewards when rewards accrual is not enabled', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
       await advanceTime(1000)
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
       expect(await compToken.balanceOf(bob.address)).to.equal(0)

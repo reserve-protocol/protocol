@@ -1,17 +1,39 @@
 import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
+import { useEnv } from '#/utils/env'
+
+export const forkNetwork = useEnv('FORK_NETWORK') ?? 'mainnet'
+let chainId
+
+switch (forkNetwork) {
+  case 'mainnet':
+    chainId = '1'
+    break
+  case 'base':
+    chainId = '8453'
+    break
+  default:
+    chainId = '1'
+    break
+}
+
+const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
+const CUSDC_NAME = chainId == '8453' ? 'cUSDbCv3' : 'cUSDCv3'
 
 // Mainnet Addresses
-export const RSR = networkConfig['31337'].tokens.RSR as string
-export const USDC_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.USDC as string
-export const CUSDC_V3 = networkConfig['31337'].tokens.cUSDCv3 as string
-export const COMP = networkConfig['31337'].tokens.COMP as string
-export const REWARDS = '0x1B0e765F6224C21223AeA2af16c1C46E38885a40'
-export const USDC = networkConfig['31337'].tokens.USDC as string
-export const USDC_HOLDER = '0x0a59649758aa4d66e25f08dd01271e891fe52199'
-export const COMET_CONFIGURATOR = '0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3'
-export const COMET_PROXY_ADMIN = '0x1EC63B5883C3481134FD50D5DAebc83Ecd2E8779'
-export const COMET_EXT = '0x285617313887d43256F852cAE0Ee4de4b68D45B0'
+export const RSR = networkConfig[chainId].tokens.RSR as string
+export const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDC as string
+export const CUSDC_V3 = networkConfig[chainId].tokens[CUSDC_NAME]!
+export const COMP = networkConfig[chainId].tokens.COMP as string
+export const REWARDS = networkConfig[chainId].COMET_REWARDS!
+export const USDC = networkConfig[chainId].tokens[USDC_NAME]!
+export const USDC_HOLDER =
+  chainId == '8453'
+    ? '0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA'
+    : '0x0a59649758aa4d66e25f08dd01271e891fe52199'
+export const COMET_CONFIGURATOR = networkConfig[chainId].COMET_CONFIGURATOR!
+export const COMET_PROXY_ADMIN = networkConfig[chainId].COMET_PROXY_ADMIN!
+export const COMET_EXT = networkConfig[chainId].COMET_EXT!
 
 export const PRICE_TIMEOUT = bn(604800) // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours in seconds
@@ -21,4 +43,4 @@ export const DELAY_UNTIL_DEFAULT = bn(86400)
 export const MAX_TRADE_VOL = bn(1000000)
 export const USDC_DECIMALS = bn(6)
 
-export const FORK_BLOCK = 15850930
+export const FORK_BLOCK = chainId == '8453' ? 4446300 : 15850930
