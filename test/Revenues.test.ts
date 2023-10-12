@@ -3859,6 +3859,106 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
+
+      it('Should handle backingBuffer when minting RTokens from collateral appreciation', async () => {
+        // Set distribution for RToken only (f=0)
+        await distributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+
+        await distributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+        // Set Backing buffer
+        const backingBuffer = fp('0.05')
+        await backingManager.connect(owner).setBackingBuffer(backingBuffer)
+
+        // Issue additional RTokens
+        const newIssueAmount = bn('900e18')
+        await rToken.connect(addr1).issue(newIssueAmount)
+
+        // Check Price and Assets value
+        const totalIssuedAmount = issueAmount.add(newIssueAmount)
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          totalIssuedAmount
+        )
+        expect(await rToken.totalSupply()).to.equal(totalIssuedAmount)
+
+        // Change redemption rate for AToken and CToken to double
+        await token2.setExchangeRate(fp('1.10'))
+        await token3.setExchangeRate(fp('1.10'))
+        await collateral2.refresh()
+        await collateral3.refresh()
+
+        // Check Price (unchanged) and Assets value (now 10% higher)
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          totalIssuedAmount.mul(110).div(100)
+        )
+        expect(await rToken.totalSupply()).to.equal(totalIssuedAmount)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Set expected minting, based on f = 0.6
+        const excessRevenue = totalIssuedAmount
+          .mul(110)
+          .div(100)
+          .mul(BN_SCALE_FACTOR)
+          .div(fp('1').add(backingBuffer))
+          .sub(await rToken.basketsNeeded())
+
+        // Set expected auction values
+        const expectedToFurnace = excessRevenue
+        const currentTotalSupply: BigNumber = await rToken.totalSupply()
+        const newTotalSupply: BigNumber = currentTotalSupply.add(excessRevenue)
+
+        // Collect revenue and mint new tokens
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rToken,
+            name: 'Transfer',
+            args: [ZERO_ADDRESS, backingManager.address, withinQuad(excessRevenue)],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check Price (unchanged) and Assets value - Supply has increased 10%
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          totalIssuedAmount.mul(110).div(100)
+        )
+        expect(await rToken.totalSupply()).to.be.closeTo(
+          newTotalSupply,
+          newTotalSupply.mul(5).div(1000)
+        ) // within 0.5%
+
+        // Check destinations after newly minted tokens
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          expectedToFurnace,
+          expectedToFurnace.mul(5).div(1000)
+        )
+
+        // Check Price and Assets value - RToken price increases due to melting
+        const updatedRTokenPrice: BigNumber = newTotalSupply
+          .mul(BN_SCALE_FACTOR)
+          .div(await rToken.totalSupply())
+        await expectRTokenPrice(rTokenAsset.address, updatedRTokenPrice, ORACLE_ERROR)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          totalIssuedAmount.mul(110).div(100)
+        )
+      })
     })
 
     context('With simple basket of ATokens and CTokens: no issued RTokens', function () {
