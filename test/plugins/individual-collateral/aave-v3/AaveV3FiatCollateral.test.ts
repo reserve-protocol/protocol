@@ -13,10 +13,16 @@ import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { noop } from 'lodash'
 import { PRICE_TIMEOUT } from '#/test/fixtures'
-import { networkConfig } from '#/common/configuration'
-import { getResetFork } from '../helpers'
+import { resetFork } from './helpers'
 import { whileImpersonating } from '#/test/utils/impersonation'
-import { AAVE_V3_USDC_POOL, AAVE_V3_INCENTIVES_CONTROLLER } from './constants'
+import {
+  forkNetwork,
+  AUSDC_V3,
+  AAVE_V3_USDC_POOL,
+  AAVE_V3_INCENTIVES_CONTROLLER,
+  USDC_USD_PRICE_FEED,
+  USDC_HOLDER,
+} from './constants'
 
 interface AaveV3FiatCollateralFixtureContext extends CollateralFixtureContext {
   staticWrapper: MockStaticATokenV3LM
@@ -34,7 +40,7 @@ type CollateralParams = Parameters<AaveV3FiatCollateral__factory['deploy']>[0] &
 // This defines options for the Aave V3 USDC Market
 export const defaultCollateralOpts: CollateralParams = {
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: networkConfig[1].chainlinkFeeds.USDC!,
+  chainlinkFeed: USDC_USD_PRICE_FEED,
   oracleError: fp('0.0025'),
   erc20: '', // to be set
   maxTradeVolume: fp('1e6'),
@@ -52,11 +58,7 @@ export const deployCollateral = async (opts: Partial<CollateralParams> = {}) => 
     const V3LMFactory = await ethers.getContractFactory('MockStaticATokenV3LM')
     const staticWrapper = await V3LMFactory.deploy(AAVE_V3_USDC_POOL, AAVE_V3_INCENTIVES_CONTROLLER)
     await staticWrapper.deployed()
-    await staticWrapper.initialize(
-      networkConfig[1].tokens.aEthUSDC!,
-      'Static Aave Ethereum USDC',
-      'saEthUSDC'
-    )
+    await staticWrapper.initialize(AUSDC_V3, 'Static Aave Ethereum USDC', 'saEthUSDC')
 
     combinedOpts.erc20 = staticWrapper.address
   }
@@ -124,8 +126,8 @@ const mintCollateralTo: MintCollateralFunc<AaveV3FiatCollateralFixtureContext> =
 ) => {
   const requiredCollat = await ctx.staticWrapper.previewMint(amount)
 
-  // USDC Richie Rich
-  await whileImpersonating('0x0A59649758aa4d66E25f08Dd01271e891fe52199', async (signer) => {
+  // Impersonate holder
+  await whileImpersonating(USDC_HOLDER, async (signer) => {
     await ctx.baseToken
       .connect(signer)
       .approve(ctx.staticWrapper.address, ethers.constants.MaxUint256)
@@ -200,7 +202,7 @@ export const stableOpts = {
   mintCollateralTo,
   reduceRefPerTok,
   increaseRefPerTok,
-  resetFork: getResetFork(18000000),
+  resetFork,
   collateralName: 'Aave V3 Fiat Collateral (USDC)',
   reduceTargetPerRef,
   increaseTargetPerRef,
@@ -214,6 +216,7 @@ export const stableOpts = {
   itChecksPriceChanges: it,
   getExpectedPrice,
   toleranceDivisor: bn('1e9'), // 1e15 adjusted for ((x + 1)/x) timestamp precision
+  targetNetwork: forkNetwork,
 }
 
 collateralTests(stableOpts)

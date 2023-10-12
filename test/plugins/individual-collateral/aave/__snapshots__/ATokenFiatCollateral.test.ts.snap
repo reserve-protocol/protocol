@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting ERC20 Wrapper transfer 1`] = `66986`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting ERC20 Wrapper transfer 2`] = `53409`;
+
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after full price timeout 1`] = `74365`;
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after full price timeout 2`] = `72697`;
@@ -12,14 +16,14 @@ exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after oracle timeout 2`] = `72697`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 1`] = `91095`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 1`] = `91169`;
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 2`] = `91095`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `92307`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `92233`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `92233`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `92307`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `127304`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `127378`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 2`] = `91510`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 2`] = `91436`;

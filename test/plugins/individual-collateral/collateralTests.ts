@@ -556,6 +556,16 @@ export default function fn<X extends CollateralFixtureContext>(
             await reduceRefPerTok(ctx, 5)
           })
         })
+
+        context('ERC20', () => {
+          it('transfer', async () => {
+            const decimals = await ctx.tok.decimals()
+            const amount = bn('20').mul(bn(10).pow(decimals))
+            await mintCollateralTo(ctx, amount, alice, alice.address)
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
+          })
+        })
       })
     })
   })
