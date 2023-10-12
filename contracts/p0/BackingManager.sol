@@ -170,9 +170,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // Mint revenue RToken
         // Keep backingBuffer worth of collateral before recognizing revenue
-        uint192 baskets = (basketsHeld.bottom.div(FIX_ONE + backingBuffer));
-        if (baskets > main.rToken().basketsNeeded()) {
-            main.rToken().mint(baskets - main.rToken().basketsNeeded());
+        {
+            uint192 baskets = (basketsHeld.bottom.div(FIX_ONE + backingBuffer));
+            if (baskets > main.rToken().basketsNeeded()) {
+                main.rToken().mint(baskets - main.rToken().basketsNeeded());
+            }
         }
 
         uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
