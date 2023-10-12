@@ -25,7 +25,7 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  /********  Verify Stargate USDC - sgUSDC  **************************/
+  /********  Verify Stargate USDC - wsgUSDC  **************************/
 
   if (!baseL2Chains.includes(hre.network.name)) {
     const name = 'Wrapped Stargate USDC'
@@ -34,7 +34,7 @@ async function main() {
 
     await verifyContract(
         chainId,
-        deployments.erc20s.sgUSDC,
+        deployments.erc20s.wsgUSDC,
         [
             name,
             symbol,
@@ -49,13 +49,13 @@ async function main() {
 
     await verifyContract(
       chainId,
-      deployments.collateral.sgUSDC,
+      deployments.collateral.wsgUSDC,
       [
         {
           priceTimeout: priceTimeout.toString(),
           chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
           oracleError: oracleError, // 0.25%
-          erc20: deployments.erc20s.sgUSDC!,
+          erc20: deployments.erc20s.wsgUSDC!,
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: oracleTimeout(chainId, '1200').toString(), // 20 min
           targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -73,7 +73,7 @@ async function main() {
 
     await verifyContract(
         chainId,
-        deployments.erc20s.sgUSDC,
+        deployments.erc20s.wsgUSDbC,
         [
             name,
             symbol,
@@ -88,13 +88,13 @@ async function main() {
 
     await verifyContract(
       chainId,
-      deployments.collateral.sgUSDC,
+      deployments.collateral.wsgUSDbC,
       [
         {
             priceTimeout: priceTimeout.toString(),
             chainlinkFeed: networkConfig['8453'].chainlinkFeeds.USDC!,
             oracleError: oracleError.toString(),
-            erc20: deployments.erc20s.sgUSDC!,
+            erc20: deployments.erc20s.wsgUSDbC!,
             maxTradeVolume: fp('1e6').toString(), // $1m,
             oracleTimeout: oracleTimeout('8453', '86400').toString(), // 24h hr,
             targetName: hre.ethers.utils.formatBytes32String('USD'),

@@ -160,7 +160,7 @@ const deployCollateralStargateMockContext = async (
 
   const wrapper = await StargateRewardableWrapperFactory.deploy(
     'Wrapped Stargate USDC TEST',
-    'wsgUSDC-TEST',
+    'wsgUSDbC-TEST',
     stargate.address,
     stakingContract.address,
     pool.address
@@ -272,7 +272,7 @@ const beforeEachRewardsTest = async (ctx: StargateCollateralFixtureContext) => {
 
   const wrapper = await StargateRewardableWrapperFactory.deploy(
     'Wrapped Stargate USDC TEST',
-    'wsgUSDC-TEST',
+    'wsgUSDbC-TEST',
     stargate.address,
     stakingContract.address,
     pool.address

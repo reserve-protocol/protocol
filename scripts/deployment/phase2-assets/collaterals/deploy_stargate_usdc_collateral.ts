@@ -107,11 +107,11 @@ async function main() {
   console.log(`Deployed Stargate ${USDC_NAME} to ${hre.network.name} (${chainIdKey}): ${collateral.address}`)
 
   if (chainIdKey == '8453') {
-    assetCollDeployments.collateral.sgUSDbC = collateral.address
-    assetCollDeployments.erc20s.sgUSDbC = erc20.address
+    assetCollDeployments.collateral.wsgUSDbC = collateral.address
+    assetCollDeployments.erc20s.wsgUSDbC = erc20.address
   } else {
-    assetCollDeployments.collateral.sgUSDC = collateral.address
-    assetCollDeployments.erc20s.sgUSDC = erc20.address
+    assetCollDeployments.collateral.wsgUSDC = collateral.address
+    assetCollDeployments.erc20s.wsgUSDC = erc20.address
   }
   deployedCollateral.push(collateral.address.toString())
 

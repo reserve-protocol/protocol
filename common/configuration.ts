@@ -67,8 +67,8 @@ export interface ITokens {
   sETH?: string
   MORPHO?: string
   astETH?: string
-  sgUSDC?: string
-  sgUSDbC?: string
+  wsgUSDC?: string
+  wsgUSDbC?: string
 
   // Morpho Aave
   maUSDC?: string
