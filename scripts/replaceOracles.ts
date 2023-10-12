@@ -41,9 +41,9 @@ async function main() {
     const decimals = await oracle.decimals()
     const roundData = await oracle.latestRoundData()
 
-    console.log('-------- Updating', description, 'Oracle...')
+    console.log(`-------- Updating ${description} (${oracle.address}) Oracle...`)
 
-    // console.log({ roundData })
+    console.log({ roundData })
 
     console.log('>>>> Updating code...')
     await hre.ethers.provider.send('hardhat_setCode', [
@@ -51,14 +51,13 @@ async function main() {
       forkedOracleArtifact.deployedBytecode,
     ])
     console.log('>>>> Setting values...')
-    await oracle.setData(decimals, roundData.answer, description, {
+    await oracle.setData(decimals, roundData.answer, {
       gasLimit: 10_000_000,
     })
-    await hre.ethers.provider.send('evm_mine', [])
     console.log('>>>> Done!')
 
-    // const roundDataUpdated = await oracle.latestRoundData()
-    // console.log({ roundDataUpdated })
+    const roundDataUpdated = await oracle.latestRoundData()
+    console.log({ roundDataUpdated })
   }
 }
 

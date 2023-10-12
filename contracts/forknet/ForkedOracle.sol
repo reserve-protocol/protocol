@@ -21,22 +21,15 @@ interface AggregatorV3MixedInterface {
 }
 
 contract ForkedOracle is AggregatorV3MixedInterface {
+    address public constant aggregator = address(0x1);
+    string public constant description = "FORKED";
+
     uint8 public decimals;
     int256 private answerInternal;
-    string public description;
 
-    function setData(
-        uint8 _decimals,
-        int256 _answer,
-        string memory _description
-    ) external {
+    function setData(uint8 _decimals, int256 _answer) external {
         decimals = _decimals;
         answerInternal = _answer;
-        description = _description;
-    }
-
-    function aggregator() external pure returns (address) {
-        return address(0x1); // Anything other than 0x0 is fine.
     }
 
     function latestRoundData()
