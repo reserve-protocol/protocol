@@ -1,4 +1,4 @@
-import hre from 'hardhat'
+import hre, { ethers } from 'hardhat'
 
 const supportedNodes = ['anvil', 'hardhat']
 const oracleList = [
@@ -42,22 +42,18 @@ async function main() {
     const roundData = await oracle.latestRoundData()
 
     console.log(`-------- Updating ${description} (${oracle.address}) Oracle...`)
-
-    console.log({ roundData })
+    console.log(`>>>> Current Answer:`, ethers.utils.formatUnits(roundData.answer, decimals))
 
     console.log('>>>> Updating code...')
     await hre.ethers.provider.send('hardhat_setCode', [
       oracle.address,
       forkedOracleArtifact.deployedBytecode,
     ])
-    console.log('>>>> Setting values...')
+    console.log('>>>> Updating data...')
     await oracle.setData(decimals, roundData.answer, {
       gasLimit: 10_000_000,
     })
     console.log('>>>> Done!')
-
-    const roundDataUpdated = await oracle.latestRoundData()
-    console.log({ roundDataUpdated })
   }
 }
 
