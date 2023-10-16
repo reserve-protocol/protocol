@@ -89,7 +89,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
         furnace.melt();
 
-        cachedOracleData.cachedAtTime = 0; // clear oracle cache
+        cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
 
     /// Should not revert
