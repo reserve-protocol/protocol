@@ -18,7 +18,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using OracleLib for AggregatorV3Interface;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
-    IMain public immutable main;
     IBasketHandler public immutable basketHandler;
     IBackingManager public immutable backingManager;
 
@@ -36,7 +35,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
-        main = erc20_.main();
+        IMain main = erc20_.main();
         basketHandler = main.basketHandler();
         backingManager = main.backingManager();
 
