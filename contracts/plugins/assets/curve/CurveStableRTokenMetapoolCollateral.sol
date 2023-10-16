@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "../RTokenAsset.sol";
 import "./CurveStableMetapoolCollateral.sol";
 
 /**
@@ -40,6 +41,11 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
         )
     {
         pairedAssetRegistry = IRToken(address(pairedToken)).main().assetRegistry();
+    }
+
+    function refresh() public override {
+        pairedAssetRegistry.refresh(); // refresh all registered assets
+        super.refresh(); // already handles all necessary default checks
     }
 
     /// Can revert, used by `_anyDepeggedOutsidePool()`
