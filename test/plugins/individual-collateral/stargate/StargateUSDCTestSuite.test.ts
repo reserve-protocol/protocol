@@ -12,6 +12,7 @@ import {
   IStargateLPStaking,
   StargateRewardableWrapper,
   StargateRewardableWrapper__factory,
+  IStargatePool,
 } from '@typechain/index'
 import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '#/common/numbers'
@@ -26,15 +27,20 @@ import {
   SUSDC,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
+  STAKING_CONTRACT,
+  STARGATE_ROUTER,
+  USDC_NAME,
 } from './constants'
 import { noop } from 'lodash'
+import { whileImpersonating } from '#/test/utils/impersonation'
+import { useEnv } from '#/utils/env'
 
 /*
   Define interfaces
 */
 
 interface StargateCollateralFixtureContext extends CollateralFixtureContext {
-  pool: StargatePoolMock
+  pool: StargatePoolMock | IStargatePool
   wpool: StargateRewardableWrapper
   stargate: ERC20Mock
   stakingContract: IStargateLPStaking
@@ -138,6 +144,7 @@ const deployCollateralStargateMockContext = async (
   const StargateRewardableWrapperFactory = <StargateRewardableWrapper__factory>(
     await ethers.getContractFactory('StargateRewardableWrapper')
   )
+
   const stargate = await (
     await ethers.getContractFactory('ERC20Mock')
   ).deploy('Stargate Mocked token', 'S*MT')
@@ -150,12 +157,14 @@ const deployCollateralStargateMockContext = async (
   await stakingContract.add(bn('5000'), mockPool.address)
   await mockPool.mint(stakingContract.address, bn(1e6))
   await mockPool.setExchangeRate(fp(1))
+  const pool = mockPool
+
   const wrapper = await StargateRewardableWrapperFactory.deploy(
-    'wMocked Pool',
-    'wMSP',
+    'Wrapped Stargate USDC TEST',
+    'wsgUSDbC-TEST',
     stargate.address,
     stakingContract.address,
-    mockPool.address
+    pool.address
   )
   collateralOpts.erc20 = wrapper.address
   collateralOpts.rewardERC20 = stargate.address
@@ -169,7 +178,7 @@ const deployCollateralStargateMockContext = async (
     chainlinkFeed,
     tok: wrapper,
     rewardToken,
-    pool: mockPool,
+    pool,
     wpool: wrapper,
     stargate,
     stakingContract,
@@ -188,13 +197,15 @@ const mintCollateralTo: MintCollateralFunc<StargateCollateralFixtureContext> = a
 ) => {
   const currentExchangeRate = await ctx.collateral.refPerTok()
 
-  // ctx.stakingContract
-
+  await whileImpersonating(STARGATE_ROUTER, async (router) => {
+    await ctx.pool.connect(router).mint(user.address, amount)
+  })
   await ctx.pool.connect(user).approve(ctx.wpool.address, ethers.constants.MaxUint256)
-  await ctx.pool.mint(user.address, amount)
   await ctx.wpool.connect(user).deposit(amount, user.address)
   await ctx.wpool.connect(user).transfer(recipient, amount)
-  await ctx.pool.setExchangeRate(currentExchangeRate.add(fp('0.000001')))
+  if (ctx.pool.address != SUSDC) {
+    ctx.pool.setExchangeRate(currentExchangeRate.add(fp('0.000001')))
+  }
 }
 
 const reduceRefPerTok = async (
@@ -247,6 +258,41 @@ const increaseTargetPerRef = async (
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
 }
 
+const beforeEachRewardsTest = async (ctx: StargateCollateralFixtureContext) => {
+  // switch to propoer network rewards setup
+
+  const stargate = <ERC20Mock>await ethers.getContractAt('ERC20Mock', STARGATE)
+  const stakingContract = <IStargateLPStaking>(
+    await ethers.getContractAt('IStargateLPStaking', STAKING_CONTRACT)
+  )
+  const pool: StargatePoolMock | IStargatePool = await ethers.getContractAt('IStargatePool', SUSDC)
+
+  const StargateRewardableWrapperFactory = <StargateRewardableWrapper__factory>(
+    await ethers.getContractFactory('StargateRewardableWrapper')
+  )
+
+  const wrapper = await StargateRewardableWrapperFactory.deploy(
+    'Wrapped Stargate USDC TEST',
+    'wsgUSDbC-TEST',
+    stargate.address,
+    stakingContract.address,
+    pool.address
+  )
+  const opts = {
+    erc20: wrapper.address,
+    rewardERC20: stargate.address,
+  }
+
+  const collateral = await deployCollateral(opts)
+
+  ctx.collateral = collateral
+  ctx.pool = pool
+  ctx.stakingContract = stakingContract
+  ctx.stargate = stargate
+  ctx.tok = wrapper
+  ctx.wpool = wrapper
+}
+
 /*
   Run the test suite
 */
@@ -255,16 +301,16 @@ export const stableOpts = {
   deployCollateral,
   collateralSpecificConstructorTests: noop,
   collateralSpecificStatusTests: noop,
-  beforeEachRewardsTest: noop,
+  beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
   reduceRefPerTok,
   increaseRefPerTok,
   resetFork,
-  collateralName: 'Stargate USDC Pool',
+  collateralName: `Stargate ${USDC_NAME} Pool`,
   reduceTargetPerRef,
   increaseTargetPerRef,
-  itClaimsRewards: it.skip, // reward growth not supported in mock
+  itClaimsRewards: it, // reward growth not supported in mock
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
@@ -272,6 +318,7 @@ export const stableOpts = {
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,
   getExpectedPrice,
+  targetNetwork: useEnv('FORK_NETWORK') ?? 'mainnet',
 }
 
 collateralTests(stableOpts)
