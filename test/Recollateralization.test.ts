@@ -1472,11 +1472,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
           expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-          // Check price in USD of the current RToken -- no backing currently
-          const rTokenPrice = remainder.mul(BN_SCALE_FACTOR).div(issueAmount).add(2) // no RSR
+          // Check price in USD of the current RToken -- should track balances out on trade
           await expectRTokenPrice(
             rTokenAsset.address,
-            rTokenPrice,
+            fp('1'),
             ORACLE_ERROR,
             await backingManager.maxTradeSlippage(),
             config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
