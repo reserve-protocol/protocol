@@ -138,8 +138,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             // Execute Trade
             ITrade trade = tryTrade(kind, req, prices);
-            tradeEnd[kind] = trade.endTime();
-            tokensOut[req.sell.erc20()] = req.sell.bal(address(trade)); // {tok}
+            tradeEnd[kind] = trade.endTime(); // {s}
+            tokensOut[trade.sell()] = trade.sellAmount(); // {tok}
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);

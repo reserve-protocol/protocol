@@ -96,7 +96,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-        emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
+        emit TradeSettled(trade, sell, trade.buy(), soldAmt, boughtAmt);
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker

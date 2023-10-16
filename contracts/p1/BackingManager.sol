@@ -93,8 +93,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
+        delete tokensOut[sell];
         trade = super.settleTrade(sell); // nonReentrant
-        delete tokensOut[trade.sell()];
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
@@ -171,8 +171,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
             // Execute Trade
             ITrade trade = tryTrade(kind, req, prices);
-            tradeEnd[kind] = trade.endTime();
-            tokensOut[sellERC20] = req.sell.bal(address(trade)); // {tok}
+            tradeEnd[kind] = trade.endTime(); // {s}
+            tokensOut[sellERC20] = trade.sellAmount(); // {tok}
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);

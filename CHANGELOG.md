@@ -8,6 +8,8 @@ Upgrade `BackingManager`, `Broker`, and _all_ assets. Deploy a new RTokenAsset u
 
 Then, call `Broker.cacheComponents()`.
 
+Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
+
 ### Core Protocol Contracts
 
 - `BackingManager` [+2 slots]

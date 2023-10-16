@@ -27,6 +27,9 @@ interface ITrade {
 
     function buy() external view returns (IERC20Metadata);
 
+    /// @return {tok} The sell amount of the trade, in whole tokens
+    function sellAmount() external view returns (uint192);
+
     /// @return The timestamp at which the trade is projected to become settle-able
     function endTime() external view returns (uint48);
 
