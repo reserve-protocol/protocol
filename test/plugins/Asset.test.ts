@@ -7,9 +7,10 @@ import {
   advanceBlocks,
   advanceTime,
   getLatestBlockTimestamp,
+  getLatestBlockNumber,
   setNextBlockTimestamp,
 } from '../utils/time'
-import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   expectDecayedPrice,
@@ -28,12 +29,14 @@ import {
   CTokenWrapperMock,
   ERC20Mock,
   FiatCollateral,
+  GnosisMock,
   IAssetRegistry,
   InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIRToken,
   USDCMock,
   UnpricedAssetMock,
@@ -48,6 +51,7 @@ import {
   PRICE_TIMEOUT,
   VERSION,
 } from '../fixtures'
+import { getTrade } from '../utils/trades'
 import { useEnv } from '#/utils/env'
 import snapshotGasCost from '../utils/snapshotGasCost'
 
@@ -88,10 +92,14 @@ describe('Assets contracts #fast', () => {
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let basketHandler: TestIBasketHandler
 
   // Factory
   let AssetFactory: ContractFactory
   let RTokenAssetFactory: ContractFactory
+
+  // Gnosis
+  let gnosis: GnosisMock
 
   const amt = fp('1e4')
 
@@ -111,7 +119,9 @@ describe('Assets contracts #fast', () => {
       basket,
       assetRegistry,
       backingManager,
+      basketHandler,
       config,
+      gnosis,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -417,7 +427,7 @@ describe('Assets contracts #fast', () => {
       await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, false)
     })
 
-    it('Should handle reverting edge cases for RToken', async () => {
+    it('Should handle reverting edge cases for RTokenAsset', async () => {
       // Swap one of the collaterals for an invalid one
       const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
       const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
@@ -452,7 +462,7 @@ describe('Assets contracts #fast', () => {
       await expect(rTokenAsset.price()).to.be.reverted
     })
 
-    it('Regression test -- Should handle unpriced collateral for RToken', async () => {
+    it('Regression test -- Should handle unpriced collateral for RTokenAsset', async () => {
       // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
 
       // Swap one of the collaterals for an invalid one
@@ -479,6 +489,94 @@ describe('Assets contracts #fast', () => {
 
       // Check RToken is unpriced
       await expectUnpriced(rTokenAsset.address)
+    })
+
+    it('Should handle tokens being out on trade for RTokenAsset', async () => {
+      // Summary:
+      // - Run a dutch auction that does not fill
+      // - Run a batch auction that fills for partial volume
+      // - Run a dutch auction that fills for full volume
+
+      const low0 = fp('0.99')
+      const low1 = bn('975344098811881188') // after a 50% basket change
+      const low2 = bn('975343128415841584') // after batch auction at half volume
+      const low3 = bn('975560049627103964') // after dutch auction at full volume
+
+      // Price should be [$0.99, $1.01] to start
+      await expectExactPrice(rTokenAsset.address, [low0, fp('1.01')])
+
+      // After 50% basket change, expected trading should decrease the lower price to ~$0.9753
+      // Upper price remains $1.01 because of uncertainty around how trading will go
+      await basketHandler
+        .connect(wallet)
+        .setPrimeBasket([token.address, usdc.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(wallet).refreshBasket()
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // After launching a trade token price should not change
+      // Regression -- I've confirmed the lower price drops to ~$0.7352 when not tracking balances out on trade
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Settling trade without bidding should not change price
+      let trade = await ethers.getContractAt(
+        'DutchTrade',
+        await backingManager.trades(aToken.address)
+      )
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()))
+      await expect(backingManager.settleTrade(aToken.address)).to.emit(
+        backingManager,
+        'TradeSettled'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Launching the trade a second time, this time Batch Auction, should not change price
+      await setNextBlockTimestamp((await trade.endTime()) + 13)
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Bid in Gnosis for half volume at even prices
+      const t = await getTrade(backingManager, aToken.address)
+      const sellAmt = (await t.initBal()).div(2) // half volume
+      await token.connect(wallet).approve(gnosis.address, sellAmt)
+      await gnosis.placeBid(0, {
+        bidder: wallet.address,
+        sellAmount: sellAmt,
+        buyAmount: sellAmt,
+      })
+      await advanceTime(config.batchAuctionLength.toNumber())
+      await expect(backingManager.settleTrade(aToken.address)).not.to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      await expectExactPrice(rTokenAsset.address, [low2, fp('1.01')])
+
+      // Starting a 3rd auction should not change balances
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low2, fp('1.01')])
+
+      // Settle 3rd auction for full volume
+      trade = await ethers.getContractAt('DutchTrade', await backingManager.trades(cToken.address))
+      const buyAmt = await trade.bidAmount(await trade.endBlock())
+      await usdc.approve(trade.address, buyAmt)
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+      await expect(trade.bid()).to.emit(backingManager, 'TradeSettled')
+      expect(await backingManager.tradesOpen()).to.equal(1) // launches another trade!
+      await expectExactPrice(rTokenAsset.address, [low3, bn('1007427552565834095')]) // high end starts to fall
     })
 
     it('Should be able to refresh saved prices', async () => {
