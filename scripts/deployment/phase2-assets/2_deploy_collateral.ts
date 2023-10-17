@@ -43,7 +43,7 @@ async function main() {
   let collateral: ICollateral
 
   /********  Deploy Fiat Collateral - DAI  **************************/
-  const daiOracleTimeout = baseL2Chains.includes(hre.network.name) ? 86400 : 3600 // 24 hr (Base) or 1 hour
+  const daiOracleTimeout = baseL2Chains.includes(hre.network.name) ? '86400' : '3600' // 24 hr (Base) or 1 hour
   const daiOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   if (networkConfig[chainId].tokens.DAI && networkConfig[chainId].chainlinkFeeds.DAI) {
@@ -69,7 +69,7 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
-  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleTimeout = '86400' // 24 hr
   const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   /********  Deploy Fiat Collateral - USDC  **************************/
@@ -97,7 +97,7 @@ async function main() {
   }
 
   /********  Deploy Fiat Collateral - USDT  **************************/
-  const usdtOracleTimeout = 86400 // 24 hr
+  const usdtOracleTimeout = '86400' // 24 hr
   const usdtOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   if (networkConfig[chainId].tokens.USDT && networkConfig[chainId].chainlinkFeeds.USDT) {
@@ -713,7 +713,7 @@ async function main() {
   /********  Deploy Self Referential Collateral - wETH  **************************/
 
   if (networkConfig[chainId].tokens.WETH && networkConfig[chainId].chainlinkFeeds.ETH) {
-    const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? 1200 : 3600 // 20 min (Base) or 1 hr
+    const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? '1200' : '3600' // 20 min (Base) or 1 hr
     const ethOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.0015') : fp('0.005') // 0.15% (Base) or 0.5%
 
     const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
