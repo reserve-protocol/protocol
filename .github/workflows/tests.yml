@@ -22,7 +22,6 @@ jobs:
       - run: yarn devchain &
         env:
           MAINNET_RPC_URL: https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161
-          FORK_BLOCK: 18114118
           FORK_NETWORK: mainnet
       - run: yarn deploy:run --network localhost
         env:
@@ -65,7 +64,7 @@ jobs:
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
-  
+
   plugin-tests-base:
     name: 'Plugin Tests (Base)'
     runs-on: ubuntu-latest
