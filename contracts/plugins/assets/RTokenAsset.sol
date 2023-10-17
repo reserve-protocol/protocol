@@ -86,8 +86,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     function refresh() public virtual override {
         // No need to save lastPrice; can piggyback off the backing collateral's saved prices
 
-        if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
         furnace.melt();
+        if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
 
         cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
@@ -138,6 +138,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     }
 
     /// @dev Can revert if RToken is unpriced
+    /// @return rTokenPrice {UoA/tok} The mean price estimate
+    /// @return updatedAt {s} The timestamp of the cache update
     function latestPrice() external returns (uint192 rTokenPrice, uint256 updatedAt) {
         // Situations that require an update, from most common to least common.
         if (
@@ -149,18 +151,17 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             _updateCachedPrice();
         }
 
-        return (cachedOracleData.cachedPrice, cachedOracleData.cachedAtTime);
+        rTokenPrice = cachedOracleData.cachedPrice;
+        updatedAt = cachedOracleData.cachedAtTime;
     }
 
     // ==== Private ====
 
     // Update Oracle Data
     function _updateCachedPrice() internal {
-        assetRegistry.refresh();
-        furnace.melt();
+        assetRegistry.refresh(); // will call furnace.melt()
 
         (uint192 low, uint192 high) = price();
-
         require(low != 0 && high != FIX_MAX, "invalid price");
 
         cachedOracleData = CachedOracleData(
