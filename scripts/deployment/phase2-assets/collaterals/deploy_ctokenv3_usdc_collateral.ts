@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
+import { priceTimeout, revenueHiding } from '../../utils'
 import { CTokenV3Collateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -59,7 +59,7 @@ async function main() {
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
-  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleTimeout = '86400' // 24 hr
   const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
@@ -69,7 +69,7 @@ async function main() {
       oracleError: usdcOracleError.toString(),
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24h hr,
+      oracleTimeout: usdcOracleTimeout, // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h

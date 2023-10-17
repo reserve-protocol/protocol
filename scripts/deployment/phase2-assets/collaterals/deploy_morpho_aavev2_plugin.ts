@@ -11,7 +11,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
+import { priceTimeout, combinedError } from '../../utils'
 
 async function main() {
   // ==== Read Configuration ====
@@ -126,7 +126,7 @@ async function main() {
     priceTimeout: priceTimeout.toString(),
     oracleError: stablesOracleError.toString(),
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
+    oracleTimeout: '86400', // 1 hr
     targetName: ethers.utils.formatBytes32String('USD'),
     defaultThreshold: stablesOracleError.add(fp('0.01')), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -184,7 +184,7 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: combinedBTCWBTCError,
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+        oracleTimeout: '3600', // 1 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
@@ -193,7 +193,7 @@ async function main() {
       },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
-      oracleTimeout(chainId, '86400').toString() // 1 hr
+      '86400' // 1 hr
     )
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
@@ -207,7 +207,7 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: fp('0.005'),
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+        oracleTimeout: '3600', // 1 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0'), // 0% -- no soft default for self-referential collateral
         delayUntilDefault: bn('86400'), // 24h
@@ -236,7 +236,7 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: combinedOracleErrors,
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+        oracleTimeout: '3600', // 1 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
         delayUntilDefault: bn('86400'), // 24h
@@ -245,7 +245,7 @@ async function main() {
       },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
-      oracleTimeout(chainId, '86400').toString() // 1 hr
+      '86400' // 1 hr
     )
     assetCollDeployments.collateral.maStETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
