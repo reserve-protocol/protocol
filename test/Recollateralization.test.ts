@@ -51,6 +51,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -643,7 +644,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token1.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('EUR'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral1.delayUntilDefault(),
@@ -656,7 +657,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           oracleError: ORACLE_ERROR,
           erc20: backupToken1.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('EUR'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await backupCollateral1.delayUntilDefault(),
@@ -2145,7 +2146,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             oracleError: ORACLE_ERROR,
             erc20: token0.address,
             maxTradeVolume: fp('25'),
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: await backupCollateral1.delayUntilDefault(),
@@ -3248,7 +3249,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
                 collateral1.address,
                 collateral0.address,
                 issueAmount,
-                config.minTradeVolume,
                 config.maxTradeSlippage
               ),
               bn('1e12')
@@ -3312,7 +3312,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
                 collateral0.address,
                 collateral1.address,
                 issueAmount,
-                config.minTradeVolume,
                 config.maxTradeSlippage
               ),
               bn('1e12') // decimals

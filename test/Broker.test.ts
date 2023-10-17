@@ -42,7 +42,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   SLOW,
 } from './fixtures'
@@ -1273,7 +1273,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token0.address,
           maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,

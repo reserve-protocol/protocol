@@ -64,7 +64,7 @@ contract Asset is IAsset, VersionedAsset {
         erc20 = erc20_;
         erc20Decimals = erc20.decimals();
         maxTradeVolume = maxTradeVolume_;
-        oracleTimeout = oracleTimeout_ + ORACLE_TIMEOUT_BUFFER;
+        oracleTimeout = oracleTimeout_ + ORACLE_TIMEOUT_BUFFER; // add 300s as a buffer
     }
 
     /// Can revert, used by other contract functions in order to catch errors
