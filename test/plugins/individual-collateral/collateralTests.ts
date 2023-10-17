@@ -61,6 +61,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksTargetPerRefDefault,
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
+    itChecksNonZeroDefaultThreshold,
     itHasRevenueHiding,
     itIsPricedByPeg,
     resetFork,
@@ -107,6 +108,12 @@ export default function fn<X extends CollateralFixtureContext>(
       it('does not allow missing delayUntilDefault if defaultThreshold > 0', async () => {
         await expect(deployCollateral({ delayUntilDefault: 0 })).to.be.revertedWith(
           'delayUntilDefault zero'
+        )
+      })
+
+      itChecksNonZeroDefaultThreshold('does not allow 0 defaultThreshold', async () => {
+        await expect(deployCollateral({ defaultThreshold: bn('0') })).to.be.revertedWith(
+          'defaultThreshold zero'
         )
       })
 

@@ -256,6 +256,7 @@ all.forEach((curr: FTokenEnumeration) => {
     itChecksTargetPerRefDefault: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
+    itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
     resetFork,
     collateralName: curr.testName,
