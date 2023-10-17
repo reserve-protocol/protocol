@@ -1438,7 +1438,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         oracleError: bn('1'), // minimize
         erc20: sellTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48,
+        oracleTimeout: MAX_UINT48.sub(300),
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter
@@ -1450,7 +1450,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         oracleError: bn('1'), // minimize
         erc20: buyTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48,
+        oracleTimeout: MAX_UINT48.sub(300),
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter
