@@ -289,6 +289,7 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
+  itChecksNonZeroDefaultThreshold: it,
   resetFork,
   collateralName: 'AnkrStakedETH',
   chainlinkDefaultAnswer,

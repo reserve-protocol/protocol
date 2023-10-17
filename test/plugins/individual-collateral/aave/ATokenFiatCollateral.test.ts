@@ -428,7 +428,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
-      // stkAAVEtroller
+      // Missing erc20
       await expect(
         ATokenFiatCollateralFactory.deploy(
           {
@@ -445,6 +445,24 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           REVENUE_HIDING
         )
       ).to.be.revertedWith('missing erc20')
+
+      // defaultThreshold = 0
+      await expect(
+        ATokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+            oracleError: ORACLE_ERROR,
+            erc20: staticAToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: bn(0),
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
     })
   })
 

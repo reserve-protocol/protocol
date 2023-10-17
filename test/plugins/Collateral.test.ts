@@ -262,6 +262,44 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('targetName missing')
     })
 
+    it('Should not allow 0 defaultThreshold', async () => {
+      // ATokenFiatCollateral
+      await expect(
+        ATokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: aToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: bn(0),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
+
+      // CTokenFiatCollateral
+      await expect(
+        CTokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: bn(0),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
+    })
+
     it('Should not allow missing delayUntilDefault', async () => {
       await expect(
         FiatCollateralFactory.deploy({
@@ -1236,6 +1274,26 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('targetUnitOracleTimeout zero')
     })
 
+    it('Should not allow 0 defaultThreshold', async () => {
+      await expect(
+        NonFiatCollFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: nonFiatToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: bn(0),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
+    })
+
     it('Should setup collateral correctly', async function () {
       // Non-Fiat Token
       expect(await nonFiatCollateral.isCollateral()).to.equal(true)
@@ -1528,6 +1586,27 @@ describe('Collateral contracts', () => {
           REVENUE_HIDING
         )
       ).to.be.revertedWith('targetUnitOracleTimeout zero')
+    })
+
+    it('Should not allow 0 defaultThreshold', async () => {
+      await expect(
+        CTokenNonFiatFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cNonFiatTokenVault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: bn(0),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT,
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
     })
 
     it('Should setup collateral correctly', async function () {
@@ -2364,6 +2443,26 @@ describe('Collateral contracts', () => {
           bn('0')
         )
       ).to.be.revertedWith('targetUnitOracleTimeout zero')
+    })
+
+    it('Should not allow 0 defaultThreshold', async () => {
+      await expect(
+        EURFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: eurFiatToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: bn(0),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
     })
 
     it('Should not revert during refresh when price2 is 0', async () => {
