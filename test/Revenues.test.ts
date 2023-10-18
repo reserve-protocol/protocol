@@ -2627,6 +2627,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           },
         ])
 
+        // Check broker disabled (batch)
+        expect(await broker.batchTradeDisabled()).to.equal(true)
+
         // Check funds at destinations
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt.sub(10), 50)
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
@@ -2737,6 +2740,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             emitted: false,
           },
         ])
+
+        // Check broker disabled (batch)
+        expect(await broker.batchTradeDisabled()).to.equal(true)
 
         // Funds are not distributed if paused or frozen
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
