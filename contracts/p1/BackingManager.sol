@@ -210,10 +210,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          *      RToken traders according to the distribution totals.
          */
 
-        // Forward any RSR held to StRSR pool; RSR should never be sold for RToken yield
+        // Forward any RSR held to StRSR pool and payout rewards
+        // RSR should never be sold for RToken yield
         if (rsr.balanceOf(address(this)) > 0) {
             // For CEI, this is an interaction "within our system" even though RSR is already live
             IERC20(address(rsr)).safeTransfer(address(stRSR), rsr.balanceOf(address(this)));
+            stRSR.payoutRewards();
         }
 
         // Mint revenue RToken
