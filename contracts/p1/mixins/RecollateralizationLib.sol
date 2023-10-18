@@ -282,7 +282,7 @@ library RecollateralizationLibP1 {
         Registry memory reg,
         BasketRange memory range
     ) private view returns (TradeInfo memory trade) {
-        // assert(tradesOpen == 0); // all balances in ctx are guaranteed to be available
+        // assert(tradesOpen == 0); // guaranteed by BackingManager.rebalance()
 
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status

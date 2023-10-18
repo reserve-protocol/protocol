@@ -164,7 +164,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
             // Seize RSR if needed
             if (sellERC20 == rsr) {
-                uint256 bal = req.sell.erc20().balanceOf(address(this));
+                uint256 bal = sellERC20.balanceOf(address(this));
                 if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
             }
 

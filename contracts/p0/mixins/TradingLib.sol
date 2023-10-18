@@ -432,6 +432,8 @@ library TradingLibP0 {
         IERC20[] memory erc20s,
         BasketRange memory range
     ) private view returns (TradeInfo memory trade) {
+        // assert(tradesOpen == 0); // guaranteed by BackingManager.rebalance()
+
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
 
