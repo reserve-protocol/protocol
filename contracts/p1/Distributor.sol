@@ -112,7 +112,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         address furnaceAddr = furnace; // gas-saver
         address stRSRAddr = stRSR; // gas-saver
 
-        bool updateRewards;
+        bool updateRewards = false;
 
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);

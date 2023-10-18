@@ -70,7 +70,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
 
-        bool updateRewards;
+        bool updateRewards = false;
 
         for (uint256 i = 0; i < destinations.length(); i++) {
             address addrTo = destinations.at(i);
