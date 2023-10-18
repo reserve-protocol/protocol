@@ -87,6 +87,14 @@ contract DistributorP0 is ComponentP0, IDistributor {
             erc20.safeTransferFrom(_msgSender(), addrTo, transferAmt);
         }
         emit RevenueDistributed(erc20, _msgSender(), amount);
+
+        // Perform reward accounting
+        if (isRSR) {
+            main.stRSR().payoutRewards();
+        } else {
+            // solhint-disable-next-line no-empty-blocks
+            try main.furnace().melt() {} catch {}
+        }
     }
 
     /// Returns the rsr + rToken shareTotals

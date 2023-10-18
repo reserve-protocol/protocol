@@ -141,6 +141,14 @@ contract DistributorP1 is ComponentP1, IDistributor {
             Transfer memory t = transfers[i];
             IERC20Upgradeable(address(t.erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
         }
+
+        // Perform reward accounting
+        if (isRSR) {
+            main.stRSR().payoutRewards();
+        } else {
+            // solhint-disable-next-line no-empty-blocks
+            try main.furnace().melt() {} catch {}
+        }
     }
 
     /// The rsr and rToken shareTotals

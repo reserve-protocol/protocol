@@ -166,6 +166,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         uint256 rsrBal = main.rsr().balanceOf(address(this));
         if (rsrBal > 0) {
             main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
+            main.stRSR().payoutRewards();
         }
 
         // Mint revenue RToken
