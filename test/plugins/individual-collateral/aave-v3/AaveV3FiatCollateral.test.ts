@@ -213,6 +213,7 @@ export const stableOpts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
+  itChecksNonZeroDefaultThreshold: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,

@@ -117,7 +117,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
         // == Refresh ==
         assetRegistry.refresh();
-        furnace.melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         require(
@@ -192,7 +191,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         assetRegistry.refresh();
-        furnace.melt();
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
 
@@ -228,11 +226,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // Mint revenue RToken
         // Keep backingBuffer worth of collateral before recognizing revenue
-        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer); // {BU}
-        if (basketsHeld.bottom > needed) {
-            rToken.mint(basketsHeld.bottom - needed);
-            needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer); // keep buffer
+        uint192 baskets = (basketsHeld.bottom.div(FIX_ONE + backingBuffer));
+        if (baskets > rToken.basketsNeeded()) {
+            rToken.mint(baskets - rToken.basketsNeeded());
         }
+
+        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer); // {BU}
 
         // At this point, even though basketsNeeded may have changed, we are:
         // - We're fully collateralized

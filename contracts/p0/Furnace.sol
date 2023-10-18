@@ -36,7 +36,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
 
     /// Performs any melting that has vested since last call.
     /// @custom:refresher
-    function melt() public notFrozen {
+    function melt() public {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout
@@ -58,15 +58,9 @@ contract FurnaceP0 is ComponentP0, IFurnace {
     /// Ratio setting
     /// @custom:governance
     function setRatio(uint192 ratio_) public governance {
-        if (lastPayout > 0) {
-            // solhint-disable-next-line no-empty-blocks
-            try this.melt() {} catch {
-                uint48 numPeriods = uint48((block.timestamp) - lastPayout) / PERIOD;
-                lastPayout += numPeriods * PERIOD;
-                lastPayoutBal = main.rToken().balanceOf(address(this));
-            }
-        }
         require(ratio_ <= MAX_RATIO, "invalid ratio");
+        melt(); // cannot revert
+
         // The ratio can safely be set to 0, though it is not recommended
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;
