@@ -621,6 +621,8 @@ export default function fn<X extends CollateralFixtureContext>(
 
       let defaultFixture: Fixture<DefaultFixture>
 
+      let amt: BigNumber
+
       // Tokens/Assets
       let rsr: ERC20Mock
       let rsrAsset: Asset
@@ -669,79 +671,16 @@ export default function fn<X extends CollateralFixtureContext>(
         },
       }
 
-      const setPairedCollateral = async (target: string) => {
-        const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
-          'MockV3Aggregator'
-        )
-        const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
-          await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-        )
+      interface DualFixture {
+        ctx: X
+        protocol: DefaultFixture
+      }
 
-        if (target == ethers.utils.formatBytes32String('USD')) {
-          // USD
-
-          const erc20Addr = networkConfig[chainId].tokens.USDC
-          const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
-            'FiatCollateral'
-          )
-          pairedColl = <TestICollateral>await FiatCollateralFactory.deploy({
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: chainlinkFeed.address,
-            oracleError: ORACLE_ERROR,
-            erc20: erc20Addr,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            target: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: fp('0.01'), // 1%
-            delayUntilDefault: bn('86400'), // 24h,
-          })
-        } else if (target == ethers.utils.formatBytes32String('ETH')) {
-          const erc20Addr = networkConfig[chainId].tokens.WETH
-          const SelfReferentialFactory: ContractFactory = await ethers.getContractFactory(
-            'SelfReferentialCollateral'
-          )
-          pairedColl = <TestICollateral>await SelfReferentialFactory.deploy({
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: chainlinkFeed.address,
-            oracleError: ORACLE_ERROR,
-            erc20: erc20Addr,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('ETH'),
-            defaultThreshold: fp('0'), // 0%
-            delayUntilDefault: bn('0'), // 0,
-          })
-        } else if (target == ethers.utils.formatBytes32String('BTC')) {
-          // BTC
-          const targetUnitOracle: MockV3Aggregator = <MockV3Aggregator>(
-            await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-          )
-          const erc20Addr = networkConfig[chainId].tokens.WBTC
-          const NonFiatFactory: ContractFactory = await ethers.getContractFactory(
-            'NonFiatCollateral'
-          )
-          pairedColl = <TestICollateral>await NonFiatFactory.deploy(
-            {
-              priceTimeout: PRICE_TIMEOUT,
-              chainlinkFeed: chainlinkFeed.address,
-              oracleError: ORACLE_ERROR,
-              erc20: erc20Addr,
-              maxTradeVolume: config.rTokenMaxTradeVolume,
-              oracleTimeout: ORACLE_TIMEOUT,
-              targetName: ethers.utils.formatBytes32String('BTC'),
-              defaultThreshold: fp('0.01'), // 1%
-              delayUntilDefault: bn('86400'), // 24h,
-            },
-            targetUnitOracle.address,
-            ORACLE_TIMEOUT
-          )
-        } else {
-          throw new Error(`Unknown target: ${target}`)
+      const dualFixture: Fixture<DualFixture> = async function (): Promise<DualFixture> {
+        return {
+          ctx: await loadFixture(makeCollateralFixtureContext(owner, {})),
+          protocol: await loadFixture(defaultFixture),
         }
-
-        // Should be SOUND after setup
-        await pairedColl.refresh()
-        expect(await pairedColl.status()).to.equal(CollateralStatus.SOUND)
       }
 
       before(async () => {
@@ -750,15 +689,15 @@ export default function fn<X extends CollateralFixtureContext>(
         if (!networkConfig[chainId]) {
           throw new Error(`Missing network configuration for ${hre.network.name}`)
         }
+        ;[, owner] = await ethers.getSigners()
       })
 
       beforeEach(async () => {
-        ;[, owner] = await ethers.getSigners()
-        ctx = await loadFixture(makeCollateralFixtureContext(owner, {}))
+        let protocol: DefaultFixture
+        ;({ ctx, protocol } = await loadFixture(dualFixture))
+        ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = protocol)
 
-        // Set up protocol
-        ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } =
-          await loadFixture(defaultFixture))
+        amt = fp('1000')
 
         // Set a paired collateral of the same targetName
         await setPairedCollateral(await ctx.collateral.targetName())
@@ -837,6 +776,88 @@ export default function fn<X extends CollateralFixtureContext>(
       it('does setup correctly', async () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       })
+
+      it('does issuance', async () => {
+        const quantities = await facade.callStatic.issue(rToken.address, amt)
+        console.log(quantities)
+      })
+
+      // === Helpers ===
+
+      const setPairedCollateral = async (target: string) => {
+        const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
+          'MockV3Aggregator'
+        )
+        const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+          await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+        )
+
+        if (target == ethers.utils.formatBytes32String('USD')) {
+          // USD
+
+          const erc20Addr = networkConfig[chainId].tokens.USDC
+          const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+            'FiatCollateral'
+          )
+          pairedColl = <TestICollateral>await FiatCollateralFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: erc20Addr,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            target: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.01'), // 1%
+            delayUntilDefault: bn('86400'), // 24h,
+          })
+        } else if (target == ethers.utils.formatBytes32String('ETH')) {
+          const erc20Addr = networkConfig[chainId].tokens.WETH
+          const SelfReferentialFactory: ContractFactory = await ethers.getContractFactory(
+            'SelfReferentialCollateral'
+          )
+          pairedColl = <TestICollateral>await SelfReferentialFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: erc20Addr,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: fp('0'), // 0%
+            delayUntilDefault: bn('0'), // 0,
+          })
+        } else if (target == ethers.utils.formatBytes32String('BTC')) {
+          // BTC
+          const targetUnitOracle: MockV3Aggregator = <MockV3Aggregator>(
+            await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+          )
+          const erc20Addr = networkConfig[chainId].tokens.WBTC
+          const NonFiatFactory: ContractFactory = await ethers.getContractFactory(
+            'NonFiatCollateral'
+          )
+          pairedColl = <TestICollateral>await NonFiatFactory.deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: chainlinkFeed.address,
+              oracleError: ORACLE_ERROR,
+              erc20: erc20Addr,
+              maxTradeVolume: config.rTokenMaxTradeVolume,
+              oracleTimeout: ORACLE_TIMEOUT,
+              targetName: ethers.utils.formatBytes32String('BTC'),
+              defaultThreshold: fp('0.01'), // 1%
+              delayUntilDefault: bn('86400'), // 24h,
+            },
+            targetUnitOracle.address,
+            ORACLE_TIMEOUT
+          )
+        } else {
+          throw new Error(`Unknown target: ${target}`)
+        }
+
+        // Should be SOUND after setup
+        await pairedColl.refresh()
+        expect(await pairedColl.status()).to.equal(CollateralStatus.SOUND)
+      }
     })
   })
 }
