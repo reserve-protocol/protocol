@@ -229,6 +229,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itChecksNonZeroDefaultThreshold: it.skip,
   itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK),
   collateralName: 'MorphoAAVEV2SelfReferentialCollateral - WETH',

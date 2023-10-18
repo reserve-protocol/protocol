@@ -249,6 +249,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
+  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it.skip, // implemnted in this file
   resetFork,
   collateralName: 'SFraxEthCollateral',

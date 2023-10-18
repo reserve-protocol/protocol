@@ -35,6 +35,7 @@ contract SDaiCollateral is AppreciatingFiatCollateral {
         uint192 revenueHiding,
         IPot _pot
     ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
         pot = _pot;
     }
 

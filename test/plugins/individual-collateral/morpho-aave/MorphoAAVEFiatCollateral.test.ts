@@ -330,6 +330,7 @@ const makeAaveFiatCollateralTestSuite = (
     itChecksTargetPerRefDefault: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
+    itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
     resetFork: getResetFork(FORK_BLOCK),
     collateralName,

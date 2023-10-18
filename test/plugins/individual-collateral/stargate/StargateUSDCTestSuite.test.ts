@@ -267,6 +267,7 @@ export const stableOpts = {
   itClaimsRewards: it.skip, // reward growth not supported in mock
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
+  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,

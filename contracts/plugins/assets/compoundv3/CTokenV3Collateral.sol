@@ -39,6 +39,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         uint192 revenueHiding,
         uint256 reservesThresholdIffy_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
         rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;
