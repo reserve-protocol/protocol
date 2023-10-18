@@ -2,24 +2,28 @@ import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumber } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
-import { networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
+import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from './fixtures'
+import { expectInIndirectReceipt } from '../../../common/events'
 import {
-  IERC20Metadata,
-  InvalidMockV3Aggregator,
-  MockV3Aggregator,
-  TestICollateral,
-} from '../../../typechain'
+  IConfig,
+  IGovParams,
+  IGovRoles,
+  IRevenueShare,
+  IRTokenConfig,
+  IRTokenSetup,
+  networkConfig,
+} from '../../../common/configuration'
 import {
   advanceTime,
   advanceBlocks,
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from '../../utils/time'
-import { MAX_UINT48, MAX_UINT192 } from '../../../common/constants'
+import { MAX_UINT48, MAX_UINT192, ZERO_ADDRESS } from '../../../common/constants'
 import {
   CollateralFixtureContext,
   CollateralTestSuiteFixtures,
@@ -31,10 +35,42 @@ import {
   expectPrice,
   expectUnpriced,
 } from '../../utils/oracles'
+import {
+  Asset,
+  BadERC20,
+  ComptrollerMock,
+  CTokenFiatCollateral,
+  CTokenMock,
+  CTokenWrapper,
+  CTokenWrapperMock,
+  ERC20Mock,
+  FacadeRead,
+  FacadeTest,
+  FacadeWrite,
+  FiatCollateral,
+  IAssetRegistry,
+  IERC20Metadata,
+  InvalidMockV3Aggregator,
+  MockV3Aggregator,
+  NonFiatCollateral,
+  RTokenAsset,
+  SelfReferentialCollateral,
+  TestIBackingManager,
+  TestIBasketHandler,
+  TestICollateral,
+  TestIDeployer,
+  TestIMain,
+  TestIRToken,
+} from '../../../typechain'
 import snapshotGasCost from '../../utils/snapshotGasCost'
-import { IMPLEMENTATION, Implementation } from '../../fixtures'
+import {
+  IMPLEMENTATION,
+  Implementation,
+  ORACLE_ERROR,
+  PRICE_TIMEOUT,
+  REVENUE_HIDING,
+} from '../../fixtures'
 
-// const describeFork = useEnv('FORK') ? describe : describe.skip
 const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
@@ -574,6 +610,232 @@ export default function fn<X extends CollateralFixtureContext>(
             await reduceRefPerTok(ctx, 5)
           })
         })
+      })
+    })
+
+    describe.only('integration tests', () => {
+      let ctx: X
+      let owner: SignerWithAddress
+
+      let chainId: number
+
+      let defaultFixture: Fixture<DefaultFixture>
+
+      // Tokens/Assets
+      let rsr: ERC20Mock
+      let rsrAsset: Asset
+      let pairedColl: TestICollateral
+
+      // Core Contracts
+      let main: TestIMain
+      let rToken: TestIRToken
+      let rTokenAsset: RTokenAsset
+      let assetRegistry: IAssetRegistry
+      let backingManager: TestIBackingManager
+      let basketHandler: TestIBasketHandler
+
+      let deployer: TestIDeployer
+      let facade: FacadeRead
+      let facadeTest: FacadeTest
+      let facadeWrite: FacadeWrite
+      let govParams: IGovParams
+      let govRoles: IGovRoles
+
+      const config = {
+        dist: {
+          rTokenDist: bn(40), // 2/5 RToken
+          rsrDist: bn(60), // 3/5 RSR
+        },
+        minTradeVolume: fp('1e4'), // $10k
+        rTokenMaxTradeVolume: fp('1e6'), // $1M
+        shortFreeze: bn('259200'), // 3 days
+        longFreeze: bn('2592000'), // 30 days
+        rewardRatio: bn('1069671574938'), // approx. half life of 90 days
+        unstakingDelay: bn('1209600'), // 2 weeks
+        withdrawalLeak: fp('0'), // 0%; always refresh
+        warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
+        tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
+        batchAuctionLength: bn('900'), // 15 minutes
+        dutchAuctionLength: bn('1800'), // 30 minutes
+        backingBuffer: fp('0'), // 0%
+        maxTradeSlippage: fp('0.01'), // 1%
+        issuanceThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+        redemptionThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+      }
+
+      const setPairedCollateral = async (target: string) => {
+        const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
+          'MockV3Aggregator'
+        )
+        const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+          await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+        )
+
+        if (target == ethers.utils.formatBytes32String('USD')) {
+          // USD
+
+          const erc20Addr = networkConfig[chainId].tokens.USDC
+          const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+            'FiatCollateral'
+          )
+          pairedColl = <TestICollateral>await FiatCollateralFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: erc20Addr,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            target: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.01'), // 1%
+            delayUntilDefault: bn('86400'), // 24h,
+          })
+        } else if (target == ethers.utils.formatBytes32String('ETH')) {
+          const erc20Addr = networkConfig[chainId].tokens.WETH
+          const SelfReferentialFactory: ContractFactory = await ethers.getContractFactory(
+            'SelfReferentialCollateral'
+          )
+          pairedColl = <TestICollateral>await SelfReferentialFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: erc20Addr,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: fp('0'), // 0%
+            delayUntilDefault: bn('0'), // 0,
+          })
+        } else if (target == ethers.utils.formatBytes32String('BTC')) {
+          // BTC
+          const targetUnitOracle: MockV3Aggregator = <MockV3Aggregator>(
+            await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+          )
+          const erc20Addr = networkConfig[chainId].tokens.WBTC
+          const NonFiatFactory: ContractFactory = await ethers.getContractFactory(
+            'NonFiatCollateral'
+          )
+          pairedColl = <TestICollateral>await NonFiatFactory.deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: chainlinkFeed.address,
+              oracleError: ORACLE_ERROR,
+              erc20: erc20Addr,
+              maxTradeVolume: config.rTokenMaxTradeVolume,
+              oracleTimeout: ORACLE_TIMEOUT,
+              targetName: ethers.utils.formatBytes32String('BTC'),
+              defaultThreshold: fp('0.01'), // 1%
+              delayUntilDefault: bn('86400'), // 24h,
+            },
+            targetUnitOracle.address,
+            ORACLE_TIMEOUT
+          )
+        } else {
+          throw new Error(`Unknown target: ${target}`)
+        }
+
+        // Should be SOUND after setup
+        await pairedColl.refresh()
+        expect(await pairedColl.status()).to.equal(CollateralStatus.SOUND)
+      }
+
+      before(async () => {
+        defaultFixture = await getDefaultFixture(collateralName)
+        chainId = await getChainId(hre)
+        if (!networkConfig[chainId]) {
+          throw new Error(`Missing network configuration for ${hre.network.name}`)
+        }
+      })
+
+      beforeEach(async () => {
+        ;[, owner] = await ethers.getSigners()
+        ctx = await loadFixture(makeCollateralFixtureContext(owner, {}))
+
+        // Set up protocol
+        ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } =
+          await loadFixture(defaultFixture))
+
+        // Set a paired collateral of the same targetName
+        await setPairedCollateral(await ctx.collateral.targetName())
+
+        // Set primary basket
+        const rTokenSetup: IRTokenSetup = {
+          assets: [],
+          primaryBasket: [ctx.collateral.address, pairedColl.address],
+          weights: [fp('0.5'), fp('0.5')],
+          backups: [
+            {
+              backupUnit: await ctx.collateral.targetName(),
+              diversityFactor: bn('1'),
+              backupCollateral: [pairedColl.address],
+            },
+          ],
+          beneficiaries: [],
+        }
+
+        // Deploy RToken via FacadeWrite
+        const receipt = await (
+          await facadeWrite.connect(owner).deployRToken(
+            {
+              name: 'RTKN RToken',
+              symbol: 'RTKN',
+              mandate: 'mandate',
+              params: config,
+            },
+            rTokenSetup
+          )
+        ).wait()
+
+        // Get Main
+        const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
+          .main
+        main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+
+        // Get core contracts
+        assetRegistry = <IAssetRegistry>(
+          await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
+        )
+        backingManager = <TestIBackingManager>(
+          await ethers.getContractAt('TestIBackingManager', await main.backingManager())
+        )
+        basketHandler = <TestIBasketHandler>(
+          await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
+        )
+        rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
+        rTokenAsset = <RTokenAsset>(
+          await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
+        )
+
+        // Set initial governance roles
+        govRoles = {
+          owner: owner.address,
+          guardian: ZERO_ADDRESS,
+          pausers: [],
+          shortFreezers: [],
+          longFreezers: [],
+        }
+        // Setup owner and unpause
+        await facadeWrite.connect(owner).setupGovernance(
+          rToken.address,
+          false, // do not deploy governance
+          true, // unpaused
+          govParams, // mock values, not relevant
+          govRoles
+        )
+
+        // Advance past warmup period
+        await setNextBlockTimestamp(
+          (await getLatestBlockTimestamp()) + (await basketHandler.warmupPeriod())
+        )
+      })
+
+      it('does setup correctly', async () => {
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       })
     })
   })
