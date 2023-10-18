@@ -17,7 +17,7 @@ A :x: indicates it reverts.
 | `BackingManager.settleTrade()`          | :heavy_check_mark: | :heavy_check_mark:      | :heavy_check_mark:      |
 | `BasketHandler.refreshBasket()`         | :heavy_check_mark: | :x: (unless governance) | :x: (unless governance) |
 | `Broker.openTrade()`                    | :heavy_check_mark: | :heavy_check_mark:      | :heavy_check_mark:      |
-| `Broker.reportViolation()`              | :heavy_check_mark: | :x:                     | :x:                     |
+| `Broker.reportViolation()`              | :heavy_check_mark: | :heavy_check_mark:      | :heavy_check_mark:      |
 | `Distributor.distribute()`              | :heavy_check_mark: | :heavy_check_mark:      | :heavy_check_mark:      |
 | `Furnace.melt()`                        | :heavy_check_mark: | :heavy_check_mark:      | :heavy_check_mark:      |
 | `Main.poke()`                           | :heavy_check_mark: | :heavy_check_mark:      | :heavy_check_mark:      |
