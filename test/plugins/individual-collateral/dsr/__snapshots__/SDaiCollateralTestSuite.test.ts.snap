@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `116743`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `116848`;
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `108431`;
 

@@ -113,7 +113,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
         // == Refresh ==
         assetRegistry.refresh();
-        furnace.melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         require(
@@ -184,7 +183,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         assetRegistry.refresh();
-        furnace.melt();
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
 
