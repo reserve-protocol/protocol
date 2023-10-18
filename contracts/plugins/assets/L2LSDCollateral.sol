@@ -30,6 +30,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(_exchangeRateChainlinkFeed) != address(0), "missing exchangeRate feed");
         require(_exchangeRateChainlinkTimeout != 0, "exchangeRateChainlinkTimeout zero");
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
 
         exchangeRateChainlinkFeed = _exchangeRateChainlinkFeed;
         exchangeRateChainlinkTimeout = _exchangeRateChainlinkTimeout;

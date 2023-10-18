@@ -23,7 +23,9 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     /// @param config.chainlinkFeed Feed units: {UoA/target}
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
-    {}
+    {
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
+    }
 
     // solhint-enable no-empty-blocks
 

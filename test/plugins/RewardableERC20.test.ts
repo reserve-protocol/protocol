@@ -24,6 +24,7 @@ interface RewardableERC20Fixture {
   rewardableVault: RewardableERC4626VaultTest | RewardableERC20WrapperTest
   rewardableAsset: ERC20MockRewarding
   rewardToken: ERC20MockDecimals
+  rewardableVaultFactory: ContractFactory
 }
 
 // 18 cases: test two wrappers with 2 combinations of decimals [6, 8, 18]
@@ -76,6 +77,7 @@ for (const wrapperName of wrapperNames) {
           rewardableVault,
           rewardableAsset,
           rewardToken,
+          rewardableVaultFactory,
         }
       }
     return fixture
@@ -123,6 +125,7 @@ for (const wrapperName of wrapperNames) {
       let rewardableVault: RewardableERC20WrapperTest | RewardableERC4626VaultTest
       let rewardableAsset: ERC20MockRewarding
       let rewardToken: ERC20MockDecimals
+      let rewardableVaultFactory: ContractFactory
 
       // Main
       let alice: Wallet
@@ -141,7 +144,8 @@ for (const wrapperName of wrapperNames) {
 
       beforeEach(async () => {
         // Deploy fixture
-        ;({ rewardableVault, rewardableAsset, rewardToken } = await loadFixture(fixture))
+        ;({ rewardableVault, rewardableAsset, rewardToken, rewardableVaultFactory } =
+          await loadFixture(fixture))
 
         await rewardableAsset.mint(alice.address, initBalance)
         await rewardableAsset.connect(alice).approve(rewardableVault.address, initBalance)
@@ -221,6 +225,23 @@ for (const wrapperName of wrapperNames) {
           expect(await rewardToken.balanceOf(alice.address)).to.be.equal(
             parseUnits('20', rewardDecimals)
           )
+        })
+
+        it('checks reward and underlying token are not the same', async () => {
+          const errorMsg =
+            wrapperName == Wrapper.ERC4626
+              ? 'reward and asset cannot match'
+              : 'reward and underlying cannot match'
+
+          // Attempt to deploy with same reward and underlying
+          await expect(
+            rewardableVaultFactory.deploy(
+              rewardableAsset.address,
+              'Rewarding Test Asset Vault',
+              'vrewardTEST',
+              rewardableAsset.address
+            )
+          ).to.be.revertedWith(errorMsg)
         })
 
         it('1 wei supply', async () => {
