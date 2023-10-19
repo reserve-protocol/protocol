@@ -241,6 +241,41 @@ const collateralSpecificStatusTests = () => {
     // refresh() should not revert
     await collateral.refresh()
   })
+
+  it('Regression test -- refreshes inner RTokenAsset on refresh()', async () => {
+    const [collateral] = await deployCollateral({})
+    const initialPrice = await collateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
+
+    // Swap out eUSD's RTokenAsset with a mock one
+    const AssetMockFactory = await ethers.getContractFactory('AssetMock')
+    const mockRTokenAsset = await AssetMockFactory.deploy(
+      bn('1'), // unused
+      ONE_ADDRESS, // unused
+      bn('1'), // unused
+      eUSD,
+      bn('1'), // unused
+      bn('1') // unused
+    )
+    const eUSDAssetRegistry = await ethers.getContractAt(
+      'IAssetRegistry',
+      '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+    )
+    await whileImpersonating('0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c', async (signer) => {
+      await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+    })
+
+    // Set RTokenAsset price to stale
+    await mockRTokenAsset.setStale(true)
+    expect(await mockRTokenAsset.stale()).to.be.true
+
+    // Refresh CurveStableRTokenMetapoolCollateral
+    await collateral.refresh()
+
+    // Stale should be false again
+    expect(await mockRTokenAsset.stale()).to.be.false
+  })
 }
 
 /*

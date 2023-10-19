@@ -92,7 +92,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    function reportViolation() external notTradingPausedOrFrozen {
+    function reportViolation() external {
         require(trades[_msgSender()], "unrecognized trade contract");
         ITrade trade = ITrade(_msgSender());
         TradeKind kind = trade.KIND();

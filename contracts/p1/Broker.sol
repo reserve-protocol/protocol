@@ -136,9 +136,9 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    // checks: not paused (trading), not frozen, caller is a Trade this contract cloned
+    // checks: caller is a Trade this contract cloned
     // effects: disabled' = true
-    function reportViolation() external notTradingPausedOrFrozen {
+    function reportViolation() external {
         require(trades[_msgSender()], "unrecognized trade contract");
         ITrade trade = ITrade(_msgSender());
         TradeKind kind = trade.KIND();
