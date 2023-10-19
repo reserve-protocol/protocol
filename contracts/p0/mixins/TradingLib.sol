@@ -241,14 +241,9 @@ library TradingLibP0 {
     // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
     // the largest amount possible with each trade.
     //
-    // How do we know this algorithm converges?
-    // Assumption: constant oracle prices; monotonically increasing refPerTok()
-    // Any volume traded narrows the BU band. Why:
-    //   - We might increase `basketsHeld.bottom` from run-to-run, but will never decrease it
-    //   - We might decrease the UoA amount of excess balances beyond `basketsHeld.bottom` from
-    //       run-to-run, but will never increase it
-    //   - We might decrease the UoA amount of missing balances up-to `basketsHeld.top` from
-    //       run-to-run, but will never increase it
+    // Algorithm Invariant: every increase of basketsHeld.low causes basketsRange().low to achieve
+    //   a new maximum. Note that basketRange().low may decrease slightly along the way.
+    // Assumptions: constant oracle prices; monotonically increasing refPerTok; no supply changes
     //
     // Preconditions:
     // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
