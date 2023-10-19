@@ -21,7 +21,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     IAssetRegistry public immutable assetRegistry;
     IBasketHandler public immutable basketHandler;
     IBackingManager public immutable backingManager;
-    IBasketHandler public immutable basketHandler;
     IFurnace public immutable furnace;
     IERC20 public immutable rsr;
     IStRSR public immutable stRSR;
@@ -44,7 +43,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         assetRegistry = main.assetRegistry();
         basketHandler = main.basketHandler();
         backingManager = main.backingManager();
-        basketHandler = main.basketHandler();
         furnace = main.furnace();
         rsr = main.rsr();
         stRSR = main.stRSR();
