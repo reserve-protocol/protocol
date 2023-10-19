@@ -112,7 +112,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         address furnaceAddr = furnace; // gas-saver
         address stRSRAddr = stRSR; // gas-saver
 
-        bool updateRewards = false;
+        bool accountRewards = false;
 
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
@@ -125,10 +125,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = furnaceAddr;
-                if (transferAmt > 0) updateRewards = true;
+                if (transferAmt > 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
-                if (transferAmt > 0) updateRewards = true;
+                if (transferAmt > 0) accountRewards = true;
             }
 
             transfers[numTransfers] = Transfer({
@@ -147,7 +147,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         }
 
         // Perform reward accounting
-        if (updateRewards) {
+        if (accountRewards) {
             if (isRSR) {
                 main.stRSR().payoutRewards();
             } else {
