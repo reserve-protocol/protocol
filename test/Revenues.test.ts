@@ -2627,9 +2627,131 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           },
         ])
 
+        // Check broker disabled (batch)
+        expect(await broker.batchTradeDisabled()).to.equal(true)
+
         // Check funds at destinations
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt.sub(10), 50)
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
+      })
+
+      it('Should report violation even if paused or frozen', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+        await facadeTest.claimRewards(rToken.address)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
+            emitted: true,
+          },
+        ])
+
+        // Advance time till auction ended
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        // In order to force deactivation we provide an amount below minBuyAmt, this will represent for our tests an invalid behavior although in a real scenario would retrigger auction
+        // NOTE: DIFFERENT BEHAVIOR WILL BE OBSERVED ON PRODUCTION GNOSIS AUCTIONS
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt.sub(10), // Forces in our mock an invalid behavior
+        })
+        await gnosis.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken.sub(10), // Forces in our mock an invalid behavior
+        })
+
+        // Freeze protocol
+        await main.connect(owner).freezeShort()
+
+        // Close auctions - Will end trades and also report violation
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: broker,
+            name: 'BatchTradeDisabledSet',
+            args: [false, true],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeSettled',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeSettled',
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              minBuyAmtRToken.sub(10),
+            ],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check broker disabled (batch)
+        expect(await broker.batchTradeDisabled()).to.equal(true)
+
+        // Funds are not distributed if paused or frozen
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.be.closeTo(minBuyAmt.sub(10), 50)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(
+          minBuyAmtRToken.sub(10),
+          50
+        )
       })
 
       it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
