@@ -19,12 +19,14 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
     IMain public immutable main;
-    IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
+    IBasketHandler public immutable basketHandler;
     IFurnace public immutable furnace;
+    IERC20 public immutable rsr;
+    IStRSR public immutable stRSR;
 
-    IERC20Metadata public immutable erc20;
+    IERC20Metadata public immutable erc20; // The RToken
 
     uint8 public immutable erc20Decimals;
 
@@ -39,10 +41,12 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
         main = erc20_.main();
-        basketHandler = main.basketHandler();
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
+        basketHandler = main.basketHandler();
         furnace = main.furnace();
+        rsr = main.rsr();
+        stRSR = main.stRSR();
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
@@ -79,17 +83,14 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         assert(low <= high); // not obviously true
     }
 
-    // solhint-disable no-empty-blocks
     function refresh() public virtual override {
         // No need to save lastPrice; can piggyback off the backing collateral's saved prices
 
-        if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
         furnace.melt();
+        if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
 
         cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
-
-    // solhint-enable no-empty-blocks
 
     /// Should not revert
     /// @dev See `tryPrice` caveat about possible compounding error in calculating price
@@ -130,10 +131,15 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     // solhint-enable no-empty-blocks
 
+    /// Force an update to the cache, including refreshing underlying assets
+    /// @dev Can revert if RToken is unpriced
     function forceUpdatePrice() external {
         _updateCachedPrice();
     }
 
+    /// @dev Can revert if RToken is unpriced
+    /// @return rTokenPrice {UoA/tok} The mean price estimate
+    /// @return updatedAt {s} The timestamp of the cache update
     function latestPrice() external returns (uint192 rTokenPrice, uint256 updatedAt) {
         // Situations that require an update, from most common to least common.
         if (
@@ -145,15 +151,17 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             _updateCachedPrice();
         }
 
-        return (cachedOracleData.cachedPrice, cachedOracleData.cachedAtTime);
+        rTokenPrice = cachedOracleData.cachedPrice;
+        updatedAt = cachedOracleData.cachedAtTime;
     }
 
     // ==== Private ====
 
     // Update Oracle Data
     function _updateCachedPrice() internal {
-        (uint192 low, uint192 high) = price();
+        assetRegistry.refresh(); // will call furnace.melt()
 
+        (uint192 low, uint192 high) = price();
         require(low != 0 && high != FIX_MAX, "invalid price");
 
         cachedOracleData = CachedOracleData(
@@ -183,12 +191,12 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             TradingContext memory ctx;
 
             ctx.basketsHeld = basketsHeld;
+            ctx.ar = assetRegistry;
             ctx.bm = backingManager;
             ctx.bh = basketHandler;
-            ctx.ar = assetRegistry;
-            ctx.stRSR = main.stRSR();
-            ctx.rsr = main.rsr();
-            ctx.rToken = main.rToken();
+            ctx.rsr = rsr;
+            ctx.rToken = IRToken(address(erc20));
+            ctx.stRSR = stRSR;
             ctx.minTradeVolume = backingManager.minTradeVolume();
             ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
 
