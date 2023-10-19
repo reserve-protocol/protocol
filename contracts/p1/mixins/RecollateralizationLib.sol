@@ -85,8 +85,8 @@ library RecollateralizationLibP1 {
     // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
     // the largest amount possible with each trade.
     //
-    // Algorithm Invariant: every increase of basketsHeld.low causes basketsRange().low to achieve
-    //   a new maximum. Note that basketRange().low may decrease slightly along the way.
+    // Algorithm Invariant: every increase of basketsHeld.bottom causes basketsRange().low to
+    //  reach a new maximum. Note that basketRange().low may decrease slightly along the way.
     // Assumptions: constant oracle prices; monotonically increasing refPerTok; no supply changes
     //
     // Preconditions:
