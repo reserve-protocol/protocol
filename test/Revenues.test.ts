@@ -563,6 +563,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
 
+        // Advance to the end of noop period
+        await advanceTime(Number(ONE_PERIOD))
+
         await expectEvents(backingManager.forwardRevenue([rsr.address]), [
           {
             contract: rsr,
@@ -706,6 +709,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // 1. StRSR.payoutRewards()
         const stRSRBal = await rsr.balanceOf(stRSR.address)
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await advanceTime(Number(ONE_PERIOD))
         await expect(rsrTrader.distributeTokenToBuy()).to.emit(stRSR, 'RewardsPaid')
         const expectedAmountStRSR = stRSRBal.add(issueAmount)
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmountStRSR, 100)
