@@ -1,6 +1,14 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+<<<<<<< HEAD
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 1`] = `69288`;
+=======
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting ERC20 transfer 1`] = `53509`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting ERC20 transfer 2`] = `36409`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 1`] = `69299`;
+>>>>>>> master
 
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 2`] = `67620`;
 
@@ -20,6 +28,10 @@ exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas
 
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during SOUND 2`] = `87684`;
 
+<<<<<<< HEAD
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during soft default 1`] = `89634`;
+=======
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during soft default 1`] = `89656`;
+>>>>>>> master
 
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during soft default 2`] = `87966`;

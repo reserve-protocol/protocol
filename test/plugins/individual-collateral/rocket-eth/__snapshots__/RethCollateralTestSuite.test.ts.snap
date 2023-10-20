@@ -1,6 +1,10 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `70876`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting ERC20 transfer 1`] = `59421`;
+
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting ERC20 transfer 2`] = `42321`;
+
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `70887`;
 
 exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `66407`;
 

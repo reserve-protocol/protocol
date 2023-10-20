@@ -171,13 +171,17 @@ export default function fn<X extends CollateralFixtureContext>(
 
         itClaimsRewards('claims rewards (via collateral.claimRewards())', async () => {
           const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
-          await mintCollateralTo(ctx, amount, alice, collateral.address)
+          await mintCollateralTo(ctx, amount, alice, ctx.collateral.address)
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 
-          const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
-          await expect(collateral.claimRewards()).to.emit(ctx.tok, 'RewardsClaimed')
-          const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
+          const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(
+            ctx.collateral.address
+          )
+          await expect(ctx.collateral.claimRewards()).to.emit(ctx.tok, 'RewardsClaimed')
+          const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(
+            ctx.collateral.address
+          )
           expect(balAfter).gt(balBefore)
         })
 
@@ -572,6 +576,16 @@ export default function fn<X extends CollateralFixtureContext>(
 
           itChecksRefPerTokDefault('after hard default', async () => {
             await reduceRefPerTok(ctx, 5)
+          })
+        })
+
+        context('ERC20', () => {
+          it('transfer', async () => {
+            const decimals = await ctx.tok.decimals()
+            const amount = bn('20').mul(bn(10).pow(decimals))
+            await mintCollateralTo(ctx, amount, alice, alice.address)
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
           })
         })
       })

@@ -10,13 +10,15 @@ contract StargateLPStakingMock is IStargateLPStaking {
     mapping(uint256 => mapping(address => uint256)) poolToUserBalance;
 
     ERC20Mock public immutable stargateMock;
-    IERC20 public immutable stargate;
+    address public immutable stargate;
+    address public immutable eToken;
 
     uint256 public totalAllocPoint = 0;
 
     constructor(ERC20Mock stargateMock_) {
         stargateMock = stargateMock_;
-        stargate = stargateMock_;
+        stargate = address(stargateMock_);
+        eToken = address(stargateMock_);
     }
 
     function poolLength() external view override returns (uint256) {

@@ -1,6 +1,10 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `104049`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 1`] = `197088`;
+
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 2`] = `175188`;
+
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `69638`;
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `99581`;
 

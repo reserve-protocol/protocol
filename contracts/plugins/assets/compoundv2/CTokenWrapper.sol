@@ -35,7 +35,9 @@ contract CTokenWrapper is RewardableERC20Wrapper {
     // === Overrides ===
 
     function _claimAssetRewards() internal virtual override {
-        comptroller.claimComp(address(this));
+        address[] memory cTokens = new address[](1);
+        cTokens[0] = address(underlying);
+        comptroller.claimComp(address(this), cTokens);
     }
 
     // No overrides of _deposit()/_withdraw() necessary: no staking required
