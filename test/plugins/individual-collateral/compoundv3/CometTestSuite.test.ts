@@ -34,6 +34,7 @@ import {
   setNextBlockTimestamp,
 } from '../../../utils/time'
 import {
+  forkNetwork,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
@@ -405,6 +406,7 @@ const opts = {
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer,
+  targetNetwork: forkNetwork,
 }
 
 collateralTests(opts)

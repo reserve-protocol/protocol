@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting ERC20 transfer 1`] = `142854`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting ERC20 transfer 2`] = `105831`;
+
 exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117350`;
 
 exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `115681`;
@@ -23,6 +27,10 @@ exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refr
 exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() during soft default 1`] = `141106`;
 
 exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `139511`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting ERC20 transfer 1`] = `142854`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting ERC20 transfer 2`] = `105831`;
 
 exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117542`;
 
@@ -48,6 +56,10 @@ exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting ref
 
 exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `139693`;
 
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting ERC20 transfer 1`] = `142854`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting ERC20 transfer 2`] = `105831`;
+
 exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `125832`;
 
 exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `124163`;
@@ -71,6 +83,10 @@ exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting ref
 exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() during soft default 1`] = `150074`;
 
 exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `148475`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting ERC20 transfer 1`] = `142854`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting ERC20 transfer 2`] = `105831`;
 
 exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `120480`;
 

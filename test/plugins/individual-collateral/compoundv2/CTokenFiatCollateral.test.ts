@@ -1133,5 +1133,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
     })
+
+    context('ERC20', () => {
+      it('transfer', async () => {
+        await snapshotGasCost(cDaiVault.connect(addr1).transfer(cDaiCollateral.address, bn('1')))
+        await snapshotGasCost(cDaiVault.connect(addr1).transfer(cDaiCollateral.address, bn('1')))
+      })
+    })
   })
 })
