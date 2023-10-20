@@ -4,23 +4,57 @@ import {
   CurveCollateralTestSuiteFixtures,
 } from './pluginTestTypes'
 import { CollateralStatus } from '../pluginTestTypes'
-import { ethers } from 'hardhat'
-import { ERC20Mock, InvalidMockV3Aggregator } from '../../../../typechain'
-import { BigNumber } from 'ethers'
-import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT48, MAX_UINT192, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
+import hre, { ethers } from 'hardhat'
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { BigNumber, ContractFactory } from 'ethers'
+import { getChainId } from '../../../../common/blockchain-utils'
+import { bn, fp, toBNDecimals } from '../../../../common/numbers'
+import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import { expectInIndirectReceipt } from '../../../../common/events'
+import { whileImpersonating } from '../../../utils/impersonation'
+import {
+  MAX_UINT48,
+  MAX_UINT192,
+  MAX_UINT256,
+  TradeKind,
+  ZERO_ADDRESS,
+  ONE_ADDRESS,
+} from '../../../../common/constants'
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { useEnv } from '#/utils/env'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../utils/oracles'
 import {
+  IGovParams,
+  IGovRoles,
+  IRTokenSetup,
+  networkConfig,
+} from '../../../../common/configuration'
+import {
   advanceBlocks,
   advanceTime,
+  getLatestBlockNumber,
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from '#/test/utils/time'
+import {
+  ERC20Mock,
+  FacadeWrite,
+  IAssetRegistry,
+  IERC20Metadata,
+  InvalidMockV3Aggregator,
+  MockV3Aggregator,
+  TestIBackingManager,
+  TestIBasketHandler,
+  TestICollateral,
+  TestIDeployer,
+  TestIMain,
+  TestIRevenueTrader,
+  TestIRToken,
+} from '../../../../typechain'
 import snapshotGasCost from '../../../utils/snapshotGasCost'
-import { IMPLEMENTATION, Implementation } from '../../../fixtures'
+import { IMPLEMENTATION, Implementation, ORACLE_ERROR, PRICE_TIMEOUT } from '../../../fixtures'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -715,6 +749,352 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           })
         })
       })
+    })
+
+    describe('integration tests', () => {
+      before(resetFork)
+
+      let ctx: X
+      let owner: SignerWithAddress
+      let addr1: SignerWithAddress
+
+      let chainId: number
+
+      let defaultFixture: Fixture<DefaultFixture>
+
+      let supply: BigNumber
+
+      // Tokens/Assets
+      let pairedColl: TestICollateral
+      let pairedERC20: ERC20Mock
+      let collateralERC20: IERC20Metadata
+      let collateral: TestICollateral
+
+      // Core Contracts
+      let main: TestIMain
+      let rToken: TestIRToken
+      let assetRegistry: IAssetRegistry
+      let backingManager: TestIBackingManager
+      let basketHandler: TestIBasketHandler
+      let rTokenTrader: TestIRevenueTrader
+
+      let deployer: TestIDeployer
+      let facadeWrite: FacadeWrite
+      let govParams: IGovParams
+      let govRoles: IGovRoles
+
+      const config = {
+        dist: {
+          rTokenDist: bn(100), // 100% RToken
+          rsrDist: bn(0), // 0% RSR
+        },
+        minTradeVolume: bn('0'), // $0
+        rTokenMaxTradeVolume: MAX_UINT192, // +inf
+        shortFreeze: bn('259200'), // 3 days
+        longFreeze: bn('2592000'), // 30 days
+        rewardRatio: bn('1069671574938'), // approx. half life of 90 days
+        unstakingDelay: bn('1209600'), // 2 weeks
+        withdrawalLeak: fp('0'), // 0%; always refresh
+        warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
+        tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
+        batchAuctionLength: bn('900'), // 15 minutes
+        dutchAuctionLength: bn('1800'), // 30 minutes
+        backingBuffer: fp('0'), // 0%
+        maxTradeSlippage: fp('0.01'), // 1%
+        issuanceThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+        redemptionThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+      }
+
+      interface IntegrationFixture {
+        ctx: X
+        protocol: DefaultFixture
+      }
+
+      const integrationFixture: Fixture<IntegrationFixture> =
+        async function (): Promise<IntegrationFixture> {
+          return {
+            ctx: await loadFixture(
+              makeCollateralFixtureContext(owner, { maxTradeVolume: MAX_UINT192 })
+            ),
+            protocol: await loadFixture(defaultFixture),
+          }
+        }
+
+      before(async () => {
+        defaultFixture = await getDefaultFixture(collateralName)
+        chainId = await getChainId(hre)
+        if (!networkConfig[chainId]) {
+          throw new Error(`Missing network configuration for ${hre.network.name}`)
+        }
+        ;[, owner, addr1] = await ethers.getSigners()
+      })
+
+      beforeEach(async () => {
+        let protocol: DefaultFixture
+        ;({ ctx, protocol } = await loadFixture(integrationFixture))
+        ;({ collateral } = ctx)
+        ;({ deployer, facadeWrite, govParams } = protocol)
+
+        supply = fp('1')
+
+        // Create a paired collateral of the same targetName
+        pairedColl = await makePairedCollateral(await collateral.targetName())
+        await pairedColl.refresh()
+        expect(await pairedColl.status()).to.equal(CollateralStatus.SOUND)
+        pairedERC20 = await ethers.getContractAt('ERC20Mock', await pairedColl.erc20())
+
+        // Prep collateral
+        collateralERC20 = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
+        await mintCollateralTo(
+          ctx,
+          toBNDecimals(fp('1'), await collateralERC20.decimals()),
+          addr1,
+          addr1.address
+        )
+
+        // Set primary basket
+        const rTokenSetup: IRTokenSetup = {
+          assets: [],
+          primaryBasket: [collateral.address, pairedColl.address],
+          weights: [fp('0.5e-4'), fp('0.5e-4')],
+          backups: [],
+          beneficiaries: [],
+        }
+
+        // Deploy RToken via FacadeWrite
+        const receipt = await (
+          await facadeWrite.connect(owner).deployRToken(
+            {
+              name: 'RTKN RToken',
+              symbol: 'RTKN',
+              mandate: 'mandate',
+              params: config,
+            },
+            rTokenSetup
+          )
+        ).wait()
+
+        // Get Main
+        const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
+          .main
+        main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+
+        // Get core contracts
+        assetRegistry = <IAssetRegistry>(
+          await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
+        )
+        backingManager = <TestIBackingManager>(
+          await ethers.getContractAt('TestIBackingManager', await main.backingManager())
+        )
+        basketHandler = <TestIBasketHandler>(
+          await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
+        )
+        rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
+        rTokenTrader = <TestIRevenueTrader>(
+          await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
+        )
+
+        // Set initial governance roles
+        govRoles = {
+          owner: owner.address,
+          guardian: ZERO_ADDRESS,
+          pausers: [],
+          shortFreezers: [],
+          longFreezers: [],
+        }
+        // Setup owner and unpause
+        await facadeWrite.connect(owner).setupGovernance(
+          rToken.address,
+          false, // do not deploy governance
+          true, // unpaused
+          govParams, // mock values, not relevant
+          govRoles
+        )
+
+        // Advance past warmup period
+        await setNextBlockTimestamp(
+          (await getLatestBlockTimestamp()) + (await basketHandler.warmupPeriod())
+        )
+
+        // Should issue
+        await collateralERC20.connect(addr1).approve(rToken.address, MAX_UINT256)
+        await pairedERC20.connect(addr1).approve(rToken.address, MAX_UINT256)
+        await rToken.connect(addr1).issue(supply)
+      })
+
+      it('can be put into an RToken basket', async () => {
+        await assetRegistry.refresh()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      })
+
+      it('issues', async () => {
+        // Issuance tested in beforeEach
+      })
+
+      it('redeems', async () => {
+        await rToken.connect(addr1).redeem(supply)
+      })
+
+      it('rebalances out of the collateral', async () => {
+        // Remove collateral from basket
+        await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-4')])
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(anyValue, [pairedERC20.address], [fp('1e-4')], false)
+        await setNextBlockTimestamp(
+          (await getLatestBlockTimestamp()) + config.warmupPeriod.toNumber()
+        )
+
+        // Run rebalancing auction
+        await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
+          .to.emit(backingManager, 'TradeStarted')
+          .withArgs(anyValue, collateralERC20.address, pairedERC20.address, anyValue, anyValue)
+        const tradeAddr = await backingManager.trades(collateralERC20.address)
+        expect(tradeAddr).to.not.equal(ZERO_ADDRESS)
+        const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+        expect(await trade.sell()).to.equal(collateralERC20.address)
+        expect(await trade.buy()).to.equal(pairedERC20.address)
+        const buyAmt = await trade.bidAmount(await trade.endBlock())
+        await pairedERC20.connect(addr1).approve(trade.address, buyAmt)
+        await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+        const pairedBal = await pairedERC20.balanceOf(backingManager.address)
+        await expect(trade.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
+        expect(await pairedERC20.balanceOf(backingManager.address)).to.be.gt(pairedBal)
+        expect(await backingManager.tradesOpen()).to.equal(0)
+      })
+
+      it('forwards revenue and sells in a revenue auction', async () => {
+        // Send excess collateral to the RToken trader via forwardRevenue()
+        const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
+        await mintCollateralTo(
+          ctx,
+          mintAmt.gt('150') ? mintAmt : bn('150'),
+          addr1,
+          backingManager.address
+        )
+        await backingManager.forwardRevenue([collateralERC20.address])
+        expect(await collateralERC20.balanceOf(rTokenTrader.address)).to.be.gt(0)
+
+        // Run revenue auction
+        await expect(
+          rTokenTrader.manageTokens([collateralERC20.address], [TradeKind.DUTCH_AUCTION])
+        )
+          .to.emit(rTokenTrader, 'TradeStarted')
+          .withArgs(anyValue, collateralERC20.address, rToken.address, anyValue, anyValue)
+        const tradeAddr = await rTokenTrader.trades(collateralERC20.address)
+        expect(tradeAddr).to.not.equal(ZERO_ADDRESS)
+        const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+        expect(await trade.sell()).to.equal(collateralERC20.address)
+        expect(await trade.buy()).to.equal(rToken.address)
+        const buyAmt = await trade.bidAmount(await trade.endBlock())
+        await rToken.connect(addr1).approve(trade.address, buyAmt)
+        await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+        await expect(trade.connect(addr1).bid()).to.emit(rTokenTrader, 'TradeSettled')
+        expect(await rTokenTrader.tradesOpen()).to.equal(0)
+      })
+
+      // === Integration Test Helpers ===
+
+      const makePairedCollateral = async (target: string): Promise<TestICollateral> => {
+        const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
+          'MockV3Aggregator'
+        )
+        const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+          await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+        )
+
+        if (target == ethers.utils.formatBytes32String('USD')) {
+          // USD
+          const erc20 = await ethers.getContractAt(
+            'IERC20Metadata',
+            networkConfig[chainId].tokens.USDC!
+          )
+          await whileImpersonating('0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf', async (signer) => {
+            await erc20
+              .connect(signer)
+              .transfer(addr1.address, await erc20.balanceOf(signer.address))
+          })
+          const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+            'FiatCollateral'
+          )
+          return <TestICollateral>await FiatCollateralFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: erc20.address,
+            maxTradeVolume: MAX_UINT192,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.01'), // 1%
+            delayUntilDefault: bn('86400'), // 24h,
+          })
+        } else if (target == ethers.utils.formatBytes32String('ETH')) {
+          // ETH
+          const erc20 = await ethers.getContractAt(
+            'IERC20Metadata',
+            networkConfig[chainId].tokens.WETH!
+          )
+          await whileImpersonating('0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E', async (signer) => {
+            await erc20
+              .connect(signer)
+              .transfer(addr1.address, await erc20.balanceOf(signer.address))
+          })
+          const SelfReferentialFactory: ContractFactory = await ethers.getContractFactory(
+            'SelfReferentialCollateral'
+          )
+          return <TestICollateral>await SelfReferentialFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: erc20.address,
+            maxTradeVolume: MAX_UINT192,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: fp('0'), // 0%
+            delayUntilDefault: bn('0'), // 0,
+          })
+        } else if (target == ethers.utils.formatBytes32String('BTC')) {
+          // BTC
+          const targetUnitOracle: MockV3Aggregator = <MockV3Aggregator>(
+            await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+          )
+          const erc20 = await ethers.getContractAt(
+            'IERC20Metadata',
+            networkConfig[chainId].tokens.WBTC!
+          )
+          await whileImpersonating('0xccf4429db6322d5c611ee964527d42e5d685dd6a', async (signer) => {
+            await erc20
+              .connect(signer)
+              .transfer(addr1.address, await erc20.balanceOf(signer.address))
+          })
+          const NonFiatFactory: ContractFactory = await ethers.getContractFactory(
+            'NonFiatCollateral'
+          )
+          return <TestICollateral>await NonFiatFactory.deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: chainlinkFeed.address,
+              oracleError: ORACLE_ERROR,
+              erc20: erc20.address,
+              maxTradeVolume: MAX_UINT192,
+              oracleTimeout: ORACLE_TIMEOUT,
+              targetName: ethers.utils.formatBytes32String('BTC'),
+              defaultThreshold: fp('0.01'), // 1%
+              delayUntilDefault: bn('86400'), // 24h,
+            },
+            targetUnitOracle.address,
+            ORACLE_TIMEOUT
+          )
+        } else {
+          throw new Error(`Unknown target: ${target}`)
+        }
+      }
     })
   })
 }
