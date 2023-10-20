@@ -67,6 +67,9 @@ contract DistributorP0 is ComponentP0, IDistributor {
             tokensPerShare = amount / totalShares;
         }
 
+        // Return if nothing to distribute
+        if (tokensPerShare == 0) return;
+
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
 
