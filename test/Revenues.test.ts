@@ -13,6 +13,7 @@ import {
   CollateralStatus,
   TradeKind,
   MAX_UINT192,
+  ONE_PERIOD,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
@@ -554,7 +555,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should forward RSR revenue directly to StRSR', async () => {
+      it('Should forward RSR revenue directly to StRSR and call payoutRewards()', async () => {
         const amount = bn('2000e18')
         await rsr.connect(owner).mint(backingManager.address, amount)
         expect(await rsr.balanceOf(backingManager.address)).to.equal(amount)
@@ -562,7 +563,23 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
 
-        await expect(backingManager.forwardRevenue([rsr.address])).to.emit(rsr, 'Transfer')
+        // Advance to the end of noop period
+        await advanceTime(Number(ONE_PERIOD))
+
+        await expectEvents(backingManager.forwardRevenue([rsr.address]), [
+          {
+            contract: rsr,
+            name: 'Transfer',
+            args: [backingManager.address, stRSR.address, amount],
+            emitted: true,
+          },
+          {
+            contract: stRSR,
+            name: 'RewardsPaid',
+            emitted: true,
+          },
+        ])
+
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
         expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
@@ -686,6 +703,33 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const [newRTokenTotal, newRsrTotal] = await distributor.totals()
         expect(newRsrTotal).equal(bn(60))
         expect(newRTokenTotal).equal(bn(0))
+      })
+
+      it('Should account rewards when distributing tokenToBuy', async () => {
+        // 1. StRSR.payoutRewards()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await advanceTime(Number(ONE_PERIOD))
+        await expect(rsrTrader.distributeTokenToBuy()).to.emit(stRSR, 'RewardsPaid')
+        const expectedAmountStRSR = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmountStRSR, 100)
+
+        // 2. Furnace.melt()
+        // Transfer RTokens to Furnace (to trigger melting later)
+        const hndAmt: BigNumber = bn('10e18')
+        await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+        await advanceTime(Number(ONE_PERIOD))
+        await furnace.melt()
+
+        // Transfer and distribute tokens in Trader (will melt)
+        await advanceTime(Number(ONE_PERIOD))
+        await rToken.connect(addr1).transfer(rTokenTrader.address, hndAmt)
+        await expect(rTokenTrader.distributeTokenToBuy()).to.emit(rToken, 'Melted')
+        const expectedAmountFurnace = hndAmt.mul(2)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          expectedAmountFurnace,
+          expectedAmountFurnace.div(1000)
+        ) // within 0.1%
       })
 
       it('Should update distribution even if distributeTokenToBuy() reverts', async () => {
