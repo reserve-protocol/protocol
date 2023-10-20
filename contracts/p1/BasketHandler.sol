@@ -121,6 +121,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) refAmts[i] = basket.refAmts[basket.erc20s[i]];
         emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
+
+        trackStatus();
     }
 
     /// Switch the basket, only callable directly by governance or after a default
@@ -137,7 +139,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         require(
             main.hasRole(OWNER, _msgSender()) ||
-                (status() == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
+                (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );
         _switchBasket();
