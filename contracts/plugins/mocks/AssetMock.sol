@@ -4,6 +4,8 @@ pragma solidity 0.8.19;
 import "../assets/Asset.sol";
 
 contract AssetMock is Asset {
+    bool public stale;
+
     uint192 private lowPrice;
     uint192 private highPrice;
 
@@ -40,13 +42,18 @@ contract AssetMock is Asset {
             uint192
         )
     {
+        require(!stale, "stale price");
         return (lowPrice, highPrice, 0);
     }
 
     /// Should not revert
     /// Refresh saved prices
     function refresh() public virtual override {
-        // pass
+        stale = false;
+    }
+
+    function setStale(bool _stale) external {
+        stale = _stale;
     }
 
     function setPrice(uint192 low, uint192 high) external {

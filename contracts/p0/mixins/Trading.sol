@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/ITrade.sol";
+import "../../libraries/Allowance.sol";
 import "../../libraries/Fixed.sol";
 import "./Rewardable.sol";
 
@@ -68,8 +69,16 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         IBroker broker = main.broker();
         assert(address(trades[req.sell.erc20()]) == address(0));
 
-        req.sell.erc20().safeApprove(address(broker), 0);
-        req.sell.erc20().safeApprove(address(broker), req.sellAmount);
+        // Set allowance via custom approval -- first sets allowance to 0, then sets allowance
+        // to either the requested amount or the maximum possible amount, if that fails.
+        //
+        // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
+        // amount is > 0 and < type(uint256).max.
+        AllowanceLib.safeApproveFallbackToMax(
+            address(req.sell.erc20()),
+            address(broker),
+            req.sellAmount
+        );
 
         trade = broker.openTrade(kind, req, prices);
         trades[req.sell.erc20()] = trade;

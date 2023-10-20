@@ -574,28 +574,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Check nothing changed
       expect(await broker.batchTradeDisabled()).to.equal(false)
     })
-
-    it('Should not allow to report violation if paused or frozen', async () => {
-      // Check not disabled
-      expect(await broker.batchTradeDisabled()).to.equal(false)
-
-      await main.connect(owner).pauseTrading()
-
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
-        'frozen or trading paused'
-      )
-
-      await main.connect(owner).unpauseTrading()
-
-      await main.connect(owner).freezeShort()
-
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
-        'frozen or trading paused'
-      )
-
-      // Check nothing changed
-      expect(await broker.batchTradeDisabled()).to.equal(false)
-    })
   })
 
   describe('Trades', () => {

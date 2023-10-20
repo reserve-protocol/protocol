@@ -4,7 +4,7 @@
 
 ### Upgrade Steps -- Required
 
-Upgrade `BackingManager`, `Broker`, and _all_ assets. ERC20s do not need to be upgraded.
+Upgrade all core contracts and _all_ assets. ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
 
 Then, call `Broker.cacheComponents()`.
 
@@ -16,6 +16,8 @@ Then, call `Broker.cacheComponents()`.
   - Remove `lotPrice()`
 - `Broker` [+1 slot]
   - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
+- `Furnace`
+  - Allow melting while frozen
 
 ## Plugins
 
@@ -23,6 +25,12 @@ Then, call `Broker.cacheComponents()`.
 
 - Remove `lotPrice()`
 - Alter `price().high` to decay upwards to 3x over the price timeout
+
+# 3.0.1
+
+### Upgrade steps
+
+Update `BackingManager`, both `RevenueTraders` (rTokenTrader/rsrTrader), and call `Broker.setBatchTradeImplementation()` passing in the new `GnosisTrade` address.
 
 # 3.0.0
 

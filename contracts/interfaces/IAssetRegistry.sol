@@ -34,7 +34,7 @@ interface IAssetRegistry is IComponent {
     function init(IMain main_, IAsset[] memory assets_) external;
 
     /// Fully refresh all asset state
-    /// @custom:interaction
+    /// @custom:refresher
     function refresh() external;
 
     /// Register `asset`

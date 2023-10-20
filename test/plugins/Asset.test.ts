@@ -34,6 +34,7 @@ import {
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIFurnace,
   TestIRToken,
   USDCMock,
   UnpricedAssetMock,
@@ -89,6 +90,7 @@ describe('Assets contracts #fast', () => {
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let furnace: TestIFurnace
 
   // Factory
   let AssetFactory: ContractFactory
@@ -113,6 +115,7 @@ describe('Assets contracts #fast', () => {
       assetRegistry,
       backingManager,
       config,
+      furnace,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -480,6 +483,27 @@ describe('Assets contracts #fast', () => {
 
       // Check RToken is unpriced
       await expectUnpriced(rTokenAsset.address)
+    })
+
+    it('Regression test -- RTokenAsset.refresh() should refresh everything', async () => {
+      // AssetRegistry should refresh
+      const lastRefreshed = await assetRegistry.lastRefresh()
+      await rTokenAsset.refresh()
+      expect(await assetRegistry.lastRefresh()).to.be.gt(lastRefreshed)
+
+      // Furnace should melt
+      const lastPayout = await furnace.lastPayout()
+      await advanceTime(12)
+      await rTokenAsset.refresh()
+      expect(await furnace.lastPayout()).to.be.gt(lastPayout)
+
+      // Should clear oracle cache
+      await rTokenAsset.forceUpdatePrice()
+      let [, cachedAtTime] = await rTokenAsset.cachedOracleData()
+      expect(cachedAtTime).to.be.gt(0)
+      await rTokenAsset.refresh()
+      ;[, cachedAtTime] = await rTokenAsset.cachedOracleData()
+      expect(cachedAtTime).to.eq(0)
     })
 
     it('Should be able to refresh saved prices', async () => {

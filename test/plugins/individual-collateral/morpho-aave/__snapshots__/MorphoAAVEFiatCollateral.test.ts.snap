@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting ERC20 transfer 1`] = `73881`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
+
 exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134211`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 2`] = `129742`;
@@ -24,6 +28,10 @@ exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality G
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() during soft default 2`] = `172408`;
 
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting ERC20 transfer 1`] = `73881`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
+
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134414`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 2`] = `129945`;
@@ -47,6 +55,10 @@ exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() during soft default 1`] = `180083`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() during soft default 2`] = `172814`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting ERC20 transfer 1`] = `73881`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after full price timeout 1`] = `133567`;
 

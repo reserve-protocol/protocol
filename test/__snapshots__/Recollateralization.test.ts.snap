@@ -1,19 +1,19 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  1`] = `1370490`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  1`] = `1363847`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  2`] = `1506234`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  2`] = `1499568`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  3`] = `760457`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  3`] = `738601`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  1`] = `1665048`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  1`] = `1656950`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  2`] = `174808`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  2`] = `174781`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  3`] = `1607593`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  3`] = `1599095`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  4`] = `174808`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  4`] = `174781`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  5`] = `1695355`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  5`] = `1687568`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  6`] = `202908`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  6`] = `202854`;

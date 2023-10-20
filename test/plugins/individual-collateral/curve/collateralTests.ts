@@ -714,6 +714,18 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
           })
         })
+
+        context('ERC20 Wrapper', () => {
+          it('transfer', async () => {
+            await mintCollateralTo(ctx, bn('2'), ctx.alice, ctx.alice.address)
+            await snapshotGasCost(
+              ctx.wrapper.connect(ctx.alice).transfer(ctx.collateral.address, bn('1'))
+            )
+            await snapshotGasCost(
+              ctx.wrapper.connect(ctx.alice).transfer(ctx.collateral.address, bn('1'))
+            )
+          })
+        })
       })
     })
   })

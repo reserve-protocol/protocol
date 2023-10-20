@@ -50,7 +50,7 @@ async function main() {
 
   /********  Deploy Stargate USDT Wrapper  **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargatePoolWrapper')
+  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargateRewardableWrapper')
 
   const erc20 = await WrapperFactory.deploy(
     'Wrapped Stargate USDT',

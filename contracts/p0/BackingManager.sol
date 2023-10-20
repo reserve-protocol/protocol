@@ -86,7 +86,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:interaction
     function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         require(
@@ -149,7 +148,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
@@ -166,6 +164,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         uint256 rsrBal = main.rsr().balanceOf(address(this));
         if (rsrBal > 0) {
             main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
+            main.stRSR().payoutRewards();
         }
 
         // Mint revenue RToken
