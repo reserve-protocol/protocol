@@ -4,7 +4,7 @@ exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting E
 
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `34204`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `58995`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `58984`;
 
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `54247`;
 

@@ -4,7 +4,7 @@ exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality G
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
 
-exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134222`;
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134211`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 2`] = `129742`;
 
@@ -32,7 +32,7 @@ exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality 
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
 
-exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134425`;
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134414`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 2`] = `129945`;
 
@@ -60,7 +60,7 @@ exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality 
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
 
-exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after full price timeout 1`] = `133578`;
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after full price timeout 1`] = `133567`;
 
 exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after full price timeout 2`] = `129098`;
 

@@ -4,7 +4,7 @@ exports[`Collateral: CurveStableMetapoolCollateral - ConvexStakingWrapper collat
 
 exports[`Collateral: CurveStableMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 2`] = `172551`;
 
-exports[`Collateral: CurveStableMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `52705`;
+exports[`Collateral: CurveStableMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `52713`;
 
 exports[`Collateral: CurveStableMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `48245`;
 

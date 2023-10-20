@@ -4,7 +4,7 @@ exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collatera
 
 exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 2`] = `360937`;
 
-exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `52705`;
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `52713`;
 
 exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `48245`;
 

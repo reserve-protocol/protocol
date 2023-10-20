@@ -4,7 +4,7 @@ exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting ERC2
 
 exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `48379`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `59824`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `59813`;
 
 exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `55344`;
 
