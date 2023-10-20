@@ -152,6 +152,15 @@ contract DistributorP1 is ComponentP1, IDistributor {
                 main.furnace().melt();
             }
         }
+
+        // Perform reward accounting
+        if (accountRewards) {
+            if (isRSR) {
+                main.stRSR().payoutRewards();
+            } else {
+                main.furnace().melt();
+            }
+        }
     }
 
     /// The rsr and rToken shareTotals
