@@ -112,6 +112,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         address furnaceAddr = furnace; // gas-saver
         address stRSRAddr = stRSR; // gas-saver
 
+        bool accountRewards = false;
+
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
 
@@ -123,8 +125,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = furnaceAddr;
+                if (transferAmt > 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
+                if (transferAmt > 0) accountRewards = true;
             }
 
             transfers[numTransfers] = Transfer({
@@ -140,6 +144,15 @@ contract DistributorP1 is ComponentP1, IDistributor {
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
             IERC20Upgradeable(address(t.erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
+        }
+
+        // Perform reward accounting
+        if (accountRewards) {
+            if (isRSR) {
+                main.stRSR().payoutRewards();
+            } else {
+                main.furnace().melt();
+            }
         }
     }
 

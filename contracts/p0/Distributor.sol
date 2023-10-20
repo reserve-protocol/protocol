@@ -70,6 +70,8 @@ contract DistributorP0 is ComponentP0, IDistributor {
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
 
+        bool accountRewards = false;
+
         for (uint256 i = 0; i < destinations.length(); i++) {
             address addrTo = destinations.at(i);
 
@@ -81,12 +83,23 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = address(main.furnace());
+                if (transferAmt > 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
+                if (transferAmt > 0) accountRewards = true;
             }
             erc20.safeTransferFrom(_msgSender(), addrTo, transferAmt);
         }
         emit RevenueDistributed(erc20, _msgSender(), amount);
+
+        // Perform reward accounting
+        if (accountRewards) {
+            if (isRSR) {
+                main.stRSR().payoutRewards();
+            } else {
+                main.furnace().melt();
+            }
+        }
     }
 
     /// Returns the rsr + rToken shareTotals
