@@ -357,6 +357,7 @@ const collateralSpecificStatusTests = () => {
     })
 
     // Should remain SOUND after a 1% decrease
+    let refPerTok = await collateral.refPerTok()
     let currentExchangeRate = await wcusdcV3Mock.exchangeRate()
     await wcusdcV3Mock.setMockExchangeRate(
       true,
@@ -365,7 +366,11 @@ const collateralSpecificStatusTests = () => {
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
+    // refPerTok should be unchanged
+    expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
+
     // Should become DISABLED if drops more than that
+    refPerTok = await collateral.refPerTok()
     currentExchangeRate = await wcusdcV3Mock.exchangeRate()
     await wcusdcV3Mock.setMockExchangeRate(
       true,
@@ -373,6 +378,10 @@ const collateralSpecificStatusTests = () => {
     )
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+    // refPerTok should have fallen 1%
+    refPerTok = refPerTok.sub(refPerTok.div(100))
+    expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
   })
 }
 

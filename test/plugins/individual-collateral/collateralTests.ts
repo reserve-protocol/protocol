@@ -343,14 +343,29 @@ export default function fn<X extends CollateralFixtureContext>(
           })
 
           // Should remain SOUND after a 1% decrease
+          let refPerTok = await ctx.collateral.refPerTok()
           await reduceRefPerTok(ctx, 1) // 1% decrease
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
 
+          // refPerTok should be unchanged
+          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+            refPerTok,
+            refPerTok.div(bn('1e3'))
+          ) // within 1-part-in-1-thousand
+
           // Should become DISABLED if drops more than that
+          refPerTok = await ctx.collateral.refPerTok()
           await reduceRefPerTok(ctx, 1) // another 1% decrease
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+          // refPerTok should have fallen 1%
+          refPerTok = refPerTok.sub(refPerTok.div(100))
+          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+            refPerTok,
+            refPerTok.div(bn('1e3'))
+          ) // within 1-part-in-1-thousand
         })
 
         it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
