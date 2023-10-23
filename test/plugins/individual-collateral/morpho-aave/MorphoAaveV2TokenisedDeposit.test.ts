@@ -179,7 +179,6 @@ const execTestForToken = ({
     type ITestContext = ReturnType<typeof beforeEachFn> extends Promise<infer U> ? U : never
     let context: ITestContext
 
-    // const resetFork = getResetFork(17591000)
     beforeEach(async () => {
       context = await loadFixture(beforeEachFn)
     })
@@ -217,14 +216,15 @@ const execTestForToken = ({
       await methods.deposit(bob, fraction(20))
       await closeTo(methods.balanceUnderlying(alice), fraction(90))
 
-      const aliceShares = await methods.shares(alice)
+      let aliceShares = await methods.shares(alice)
       await closeTo(Promise.resolve(aliceShares), fraction(10))
       await closeTo(methods.assets(alice), fraction(10))
       await methods.withdraw(alice, (parseFloat(aliceShares) / 2).toString())
       await closeTo(methods.shares(alice), fraction(5))
       await closeTo(methods.assets(alice), fraction(5))
       await closeTo(methods.balanceUnderlying(alice), fraction(95))
-      await methods.withdraw(alice, (parseFloat(aliceShares) / 2).toString())
+      aliceShares = await methods.shares(alice) // remaining half
+      await methods.withdraw(alice, parseFloat(aliceShares).toString())
       await closeTo(methods.shares(alice), fraction(0))
       await closeTo(methods.assets(alice), fraction(0))
       await closeTo(methods.balanceUnderlying(alice), fraction(100))
