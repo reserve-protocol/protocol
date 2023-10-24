@@ -460,7 +460,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 for (uint256 k = 0; k < len; ++k) {
                     if (b.erc20s[j] == erc20sAll[k]) {
                         erc20Index = k;
-                        break;
+                        continue;
                     }
                 }
 
