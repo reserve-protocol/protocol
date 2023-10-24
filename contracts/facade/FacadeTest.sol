@@ -66,14 +66,17 @@ contract FacadeTest is IFacadeTest {
             erc20s
         );
         try main.rsrTrader().manageTokens(rsrERC20s, rsrKinds) {} catch {}
+        try main.rsrTrader().distributeTokenToBuy() {} catch {}
 
         // Start exact RToken auctions
+
         (IERC20[] memory rTokenERC20s, TradeKind[] memory rTokenKinds) = traderERC20s(
             rTokenTrader,
             kind,
             erc20s
         );
         try main.rTokenTrader().manageTokens(rTokenERC20s, rTokenKinds) {} catch {}
+        try main.rTokenTrader().distributeTokenToBuy() {} catch {}
         // solhint-enable no-empty-blocks
     }
 
@@ -133,6 +136,7 @@ contract FacadeTest is IFacadeTest {
         IERC20[] memory traderERC20sAll = new IERC20[](erc20sAll.length);
         for (uint256 i = 0; i < erc20sAll.length; ++i) {
             if (
+                erc20sAll[i] != trader.tokenToBuy() &&
                 address(trader.trades(erc20sAll[i])) == address(0) &&
                 erc20sAll[i].balanceOf(address(trader)) > 1
             ) {
