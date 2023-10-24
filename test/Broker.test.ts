@@ -42,7 +42,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   SLOW,
 } from './fixtures'
@@ -1251,7 +1251,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token0.address,
           maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1416,7 +1416,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         oracleError: bn('1'), // minimize
         erc20: sellTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48,
+        oracleTimeout: MAX_UINT48.sub(300),
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter
@@ -1428,7 +1428,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         oracleError: bn('1'), // minimize
         erc20: buyTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48,
+        oracleTimeout: MAX_UINT48.sub(300),
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter

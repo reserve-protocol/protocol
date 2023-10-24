@@ -8,13 +8,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../deployment/common'
-import {
-  combinedError,
-  priceTimeout,
-  oracleTimeout,
-  revenueHiding,
-  verifyContract,
-} from '../deployment/utils'
+import { combinedError, priceTimeout, revenueHiding, verifyContract } from '../deployment/utils'
 import { ATokenMock, ATokenFiatCollateral, ICToken, CTokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
@@ -47,7 +41,7 @@ async function main() {
         oracleError: daiOracleError.toString(),
         erc20: networkConfig[chainId].tokens.DAI,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, daiOracleTimeout).toString(),
+        oracleTimeout: daiOracleTimeout,
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01').add(daiOracleError).toString(),
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -71,7 +65,7 @@ async function main() {
           oracleError: usdcOracleError.toString(),
           erc20: networkConfig[chainId].tokens.USDbC,
           maxTradeVolume: fp('1e6').toString(), // $1m,
-          oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(),
+          oracleTimeout: usdcOracleTimeout,
           targetName: hre.ethers.utils.formatBytes32String('USD'),
           defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
           delayUntilDefault: bn('86400').toString(), // 24h
@@ -112,7 +106,7 @@ async function main() {
         oracleError: fp('0.0025').toString(), // 0.25%
         erc20: await aTokenCollateral.erc20(),
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+        oracleTimeout: '3600', // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -151,7 +145,7 @@ async function main() {
         oracleError: fp('0.0025').toString(), // 0.25%
         erc20: deployments.erc20s.cDAI,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(),
+        oracleTimeout: '3600', // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -176,13 +170,13 @@ async function main() {
         oracleError: combinedBTCWBTCError.toString(),
         erc20: deployments.erc20s.cWBTC,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+        oracleTimeout: '86400', // 24 hr
         targetName: hre.ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
-      oracleTimeout(chainId, '3600').toString(),
+      '3600',
       revenueHiding.toString(),
     ],
     'contracts/plugins/assets/compoundv2/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
@@ -198,7 +192,7 @@ async function main() {
         oracleError: fp('0.005').toString(), // 0.5%
         erc20: deployments.erc20s.cETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(),
+        oracleTimeout: '3600', // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: '0',
         delayUntilDefault: '0',
@@ -219,13 +213,13 @@ async function main() {
         oracleError: combinedBTCWBTCError.toString(),
         erc20: networkConfig[chainId].tokens.WBTC,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '86400').toString(),
+        oracleTimeout: '86400', // 24h
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
-      oracleTimeout(chainId, '3600').toString(),
+      '3600',
     ],
     'contracts/plugins/assets/NonFiatCollateral.sol:NonFiatCollateral'
   )
@@ -244,7 +238,7 @@ async function main() {
         oracleError: ethOracleError.toString(), // 0.5%
         erc20: networkConfig[chainId].tokens.WETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, ethOracleTimeout).toString(),
+        oracleTimeout: ethOracleTimeout,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: '0',
         delayUntilDefault: '0',
@@ -264,13 +258,13 @@ async function main() {
         oracleError: fp('0.02').toString(), // 2%
         erc20: networkConfig[chainId].tokens.EURT,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '86400').toString(),
+        oracleTimeout: '86400', // 24hr
         targetName: ethers.utils.formatBytes32String('EUR'),
         defaultThreshold: fp('0.03').toString(), // 3%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.EUR,
-      oracleTimeout(chainId, '86400').toString(),
+      '86400',
     ],
     'contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral'
   )

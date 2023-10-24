@@ -60,7 +60,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../fixtures'
@@ -190,7 +190,7 @@ export async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
+      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold,
       delayUntilDefault,
@@ -219,7 +219,7 @@ export async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: vault.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -254,7 +254,7 @@ export async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: staticErc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -280,13 +280,13 @@ export async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String(targetName),
         defaultThreshold,
         delayUntilDefault,
       },
       targetUnitOracleAddr,
-      ORACLE_TIMEOUT
+      ORACLE_TIMEOUT_PRE_BUFFER
     )
     await coll.refresh()
     return [erc20, coll]
@@ -314,13 +314,13 @@ export async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: vault.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String(targetName),
         defaultThreshold,
         delayUntilDefault,
       },
       targetUnitOracleAddr,
-      ORACLE_TIMEOUT,
+      ORACLE_TIMEOUT_PRE_BUFFER,
       REVENUE_HIDING
     )
     await coll.refresh()
@@ -339,7 +339,7 @@ export async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
+      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
       targetName: ethers.utils.formatBytes32String(targetName),
       defaultThreshold: bn(0),
       delayUntilDefault,
@@ -371,7 +371,7 @@ export async function collateralFixture(
           oracleError: ORACLE_ERROR,
           erc20: vault.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String(targetName),
           defaultThreshold: bn(0),
           delayUntilDefault,
@@ -399,13 +399,13 @@ export async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String(targetName),
         defaultThreshold,
         delayUntilDefault,
       },
       targetUnitOracleAddr,
-      ORACLE_TIMEOUT
+      ORACLE_TIMEOUT_PRE_BUFFER
     )
     await coll.refresh()
     return [erc20, coll]
@@ -696,7 +696,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT
+      ORACLE_TIMEOUT_PRE_BUFFER
     )
   )
   await rsrAsset.refresh()
@@ -820,7 +820,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       aaveToken.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT
+      ORACLE_TIMEOUT_PRE_BUFFER
     )
   )
   await aaveAsset.refresh()
@@ -834,7 +834,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       compToken.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT
+      ORACLE_TIMEOUT_PRE_BUFFER
     )
   )
   await compAsset.refresh()

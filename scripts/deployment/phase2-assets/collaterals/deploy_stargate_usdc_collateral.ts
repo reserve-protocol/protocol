@@ -12,17 +12,12 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { revenueHiding, priceTimeout, oracleTimeout } from '../../utils'
+import { revenueHiding, priceTimeout } from '../../utils'
 import {
   StargatePoolFiatCollateral,
   StargatePoolFiatCollateral__factory,
 } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
-
-import {
-  STAKING_CONTRACT,
-  SUSDC,
-} from '../../../../test/plugins/individual-collateral/stargate/constants'
 import { useEnv } from '#/utils/env'
 
 async function main() {
@@ -51,8 +46,10 @@ async function main() {
 
   /********  Deploy Stargate USDC Wrapper  **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargateRewardableWrapper')
-  let chainIdKey = useEnv('FORK_NETWORK', 'mainnet') == 'mainnet' ? '1' : '8453'
+  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'StargateRewardableWrapper'
+  )
+  const chainIdKey = useEnv('FORK_NETWORK', 'mainnet') == 'mainnet' ? '1' : '8453'
   let USDC_NAME = 'USDC'
   let name = 'Wrapped Stargate USDC'
   let symbol = 'wsgUSDC'
@@ -93,7 +90,7 @@ async function main() {
       oracleError: oracleError.toString(),
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainIdKey, '86400').toString(), // 24h hr,
+      oracleTimeout: '86400', // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.01').add(oracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -104,7 +101,9 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Stargate ${USDC_NAME} to ${hre.network.name} (${chainIdKey}): ${collateral.address}`)
+  console.log(
+    `Deployed Stargate ${USDC_NAME} to ${hre.network.name} (${chainIdKey}): ${collateral.address}`
+  )
 
   if (chainIdKey == '8453') {
     assetCollDeployments.collateral.wsgUSDbC = collateral.address
