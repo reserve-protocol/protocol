@@ -68,7 +68,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
     }
 
     struct Transfer {
-        IERC20 erc20;
         address addrTo;
         uint256 amount;
     }
@@ -99,8 +98,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         {
             RevenueTotals memory revTotals = totals();
             uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
-            require(totalShares > 0, "nothing to distribute");
-            tokensPerShare = amount / totalShares;
+            if (totalShares > 0) tokensPerShare = amount / totalShares;
+            require(tokensPerShare > 0, "nothing to distribute");
         }
 
         // Evenly distribute revenue tokens per distribution share.
@@ -131,11 +130,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
                 if (transferAmt > 0) accountRewards = true;
             }
 
-            transfers[numTransfers] = Transfer({
-                erc20: erc20,
-                addrTo: addrTo,
-                amount: transferAmt
-            });
+            transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });
             numTransfers++;
         }
         emit RevenueDistributed(erc20, caller, amount);
@@ -143,7 +138,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
+            IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
         }
 
         // Perform reward accounting
