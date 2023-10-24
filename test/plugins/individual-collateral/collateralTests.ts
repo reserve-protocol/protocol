@@ -688,6 +688,7 @@ export default function fn<X extends CollateralFixtureContext>(
       before(async () => {
         defaultFixture = await getDefaultFixture(collateralName)
         chainId = await getChainId(hre)
+        if (useEnv('FORK_NETWORK').toLowerCase() === 'base') chainId = 8453
         if (!networkConfig[chainId]) {
           throw new Error(`Missing network configuration for ${hre.network.name}`)
         }
@@ -861,6 +862,7 @@ export default function fn<X extends CollateralFixtureContext>(
       // === Integration Test Helpers ===
 
       const makePairedCollateral = async (target: string): Promise<TestICollateral> => {
+        const onBase = useEnv('FORK_NETWORK').toLowerCase() == 'base'
         const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
           'MockV3Aggregator'
         )
@@ -872,9 +874,12 @@ export default function fn<X extends CollateralFixtureContext>(
           // USD
           const erc20 = await ethers.getContractAt(
             'IERC20Metadata',
-            networkConfig[chainId].tokens.USDC!
+            onBase ? networkConfig[chainId].tokens.USDbC! : networkConfig[chainId].tokens.USDC!
           )
-          await whileImpersonating('0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf', async (signer) => {
+          const whale = onBase
+            ? '0xb4885bc63399bf5518b994c1d0c153334ee579d0'
+            : '0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf'
+          await whileImpersonating(whale, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
@@ -899,7 +904,10 @@ export default function fn<X extends CollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WETH!
           )
-          await whileImpersonating('0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E', async (signer) => {
+          const whale = onBase
+            ? '0xb4885bc63399bf5518b994c1d0c153334ee579d0'
+            : '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+          await whileImpersonating(whale, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
@@ -919,6 +927,8 @@ export default function fn<X extends CollateralFixtureContext>(
             delayUntilDefault: bn('0'), // 0,
           })
         } else if (target == ethers.utils.formatBytes32String('BTC')) {
+          // No official WBTC on base yet
+          if (onBase) throw new Error('no WBTC on base')
           // BTC
           const targetUnitOracle: MockV3Aggregator = <MockV3Aggregator>(
             await MockV3AggregatorFactory.deploy(8, bn('1e8'))

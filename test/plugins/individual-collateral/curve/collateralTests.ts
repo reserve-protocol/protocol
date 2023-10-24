@@ -61,6 +61,10 @@ const describeGas =
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
+const getDescribeFork = (targetNetwork = 'mainnet') => {
+  return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
+}
+
 export default function fn<X extends CurveCollateralFixtureContext>(
   fixtures: CurveCollateralTestSuiteFixtures<X>
 ) {
@@ -763,7 +767,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
     })
 
-    describe('integration tests', () => {
+    // Only run full protocol integration tests on mainnet
+    // Protocol integration fixture not currently set up to deploy onto base
+    getDescribeFork('mainnet')('integration tests', () => {
       before(resetFork)
 
       let ctx: X
