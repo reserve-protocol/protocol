@@ -707,18 +707,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should avoid zero transfers when distributing tokenToBuy', async () => {
         // Distribute with no balance
-        await expect(rsrTrader.distributeTokenToBuy()).to.not.emit(
-          distributor,
-          'RevenueDistributed'
-        )
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith('nothing to distribute')
         expect(await rsr.balanceOf(stRSR.address)).to.equal(bn(0))
 
         // Small amount which ends in zero distribution due to rounding
         await rsr.connect(owner).mint(rsrTrader.address, bn(1))
-        await expect(rsrTrader.distributeTokenToBuy()).to.not.emit(
-          distributor,
-          'RevenueDistributed'
-        )
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith('nothing to distribute')
         expect(await rsr.balanceOf(stRSR.address)).to.equal(bn(0))
       })
 
