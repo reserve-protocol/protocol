@@ -69,7 +69,6 @@ contract FacadeTest is IFacadeTest {
         try main.rsrTrader().distributeTokenToBuy() {} catch {}
 
         // Start exact RToken auctions
-
         (IERC20[] memory rTokenERC20s, TradeKind[] memory rTokenKinds) = traderERC20s(
             rTokenTrader,
             kind,
