@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting ERC20 transfer 1`] = `73881`;
+
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting ERC20 transfer 2`] = `56781`;
+
 exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `201552`;
 
 exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `197083`;

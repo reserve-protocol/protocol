@@ -638,6 +638,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Decrease refPerTok by 1 part in a million
+          const refPerTok = await ctx.collateral.refPerTok()
           const currentExchangeRate = await ctx.curvePool.get_virtual_price()
           const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6')))
           await ctx.curvePool.setVirtualPrice(newVirtualPrice)
@@ -650,11 +651,17 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
+          // refPerTok should be unchanged
+          expect(await ctx.collateral.refPerTok()).to.equal(refPerTok)
+
           // One quanta more of decrease results in default
           await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(2)) // sub 2 to compenstate for rounding
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+
+          // refPerTok should have fallen exactly 2e-18
+          expect(await ctx.collateral.refPerTok()).to.equal(refPerTok.sub(2))
         })
 
         describe('collateral-specific tests', collateralSpecificStatusTests)
@@ -712,6 +719,18 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           it('after hard default', async () => {
             const currentExchangeRate = await ctx.curvePool.get_virtual_price()
             await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
+          })
+        })
+
+        context('ERC20 Wrapper', () => {
+          it('transfer', async () => {
+            await mintCollateralTo(ctx, bn('2'), ctx.alice, ctx.alice.address)
+            await snapshotGasCost(
+              ctx.wrapper.connect(ctx.alice).transfer(ctx.collateral.address, bn('1'))
+            )
+            await snapshotGasCost(
+              ctx.wrapper.connect(ctx.alice).transfer(ctx.collateral.address, bn('1'))
+            )
           })
         })
       })

@@ -11,6 +11,7 @@ contract BadERC20 is ERC20Mock {
     uint8 private _decimals;
     uint192 public transferFee; // {1}
     bool public revertDecimals;
+    bool public revertApprove; // if true, reverts for any approve > 0 and < type(uint256).max
 
     mapping(address => bool) public censored;
 
@@ -34,12 +35,21 @@ contract BadERC20 is ERC20Mock {
         censored[account] = val;
     }
 
+    function setRevertApprove(bool newRevertApprove) external {
+        revertApprove = newRevertApprove;
+    }
+
     function decimals() public view override returns (uint8) {
         bytes memory data = abi.encodePacked((bytes4(keccak256("absentDecimalsFn()"))));
 
         // Make an external staticcall to this address, for a function that does not exist
         if (revertDecimals) address(this).functionStaticCall(data, "No Decimals");
         return _decimals;
+    }
+
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+        if (revertApprove && amount > 0 && amount < type(uint256).max) revert("revertApprove");
+        return super.approve(spender, amount);
     }
 
     function transfer(address to, uint256 amount) public virtual override returns (bool) {

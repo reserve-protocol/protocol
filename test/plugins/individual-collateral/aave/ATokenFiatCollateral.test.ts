@@ -10,7 +10,13 @@ import {
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../../../fixtures'
-import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  DefaultFixture,
+  Fixture,
+  getDefaultFixture,
+  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
+} from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
 import {
@@ -209,7 +215,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         ORACLE_ERROR,
         stkAave.address,
         config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT
+        ORACLE_TIMEOUT_PRE_BUFFER
       )
     )
 
@@ -233,7 +239,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         oracleError: ORACLE_ERROR,
         erc20: staticAToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -437,7 +443,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: ZERO_ADDRESS,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -455,7 +461,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: staticAToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: bn(0),
             delayUntilDefault,
@@ -699,7 +705,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           oracleError: ORACLE_ERROR,
           erc20: staticAToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -724,7 +730,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           oracleError: ORACLE_ERROR,
           erc20: staticAToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -1037,6 +1043,13 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await saDaiMock.setExchangeRate(fp('0.019'))
         await snapshotGasCost(newADaiCollateral.refresh())
         await snapshotGasCost(newADaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+    })
+
+    context('ERC20 Wrapper', () => {
+      it('transfer', async () => {
+        await snapshotGasCost(staticAToken.connect(addr1).transfer(aDaiCollateral.address, bn('1')))
+        await snapshotGasCost(staticAToken.connect(addr1).transfer(aDaiCollateral.address, bn('1')))
       })
     })
   })

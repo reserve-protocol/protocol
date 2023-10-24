@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting ERC20 transfer 1`] = `107621`;
+
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting ERC20 transfer 2`] = `90521`;
+
 exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `109052`;
 
 exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after full price timeout 2`] = `104315`;

@@ -12,8 +12,8 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
-import { MockV3Aggregator, RethCollateral } from '../../../../typechain'
+import { priceTimeout, combinedError } from '../../utils'
+import { RethCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
 async function main() {
@@ -70,14 +70,14 @@ async function main() {
       oracleError: oracleError.toString(), // 0.5% & 2%
       erc20: networkConfig[chainId].tokens.rETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
+      oracleTimeout: '3600', // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
     rethOracleAddress, // refPerTokChainlinkFeed
-    oracleTimeout(chainId, '86400').toString() // refPerTokChainlinkTimeout
+    '86400' // refPerTokChainlinkTimeout
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()

@@ -138,6 +138,9 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         uint256 bal = tokenToBuy.balanceOf(address(this));
         tokenToBuy.safeApprove(address(main.distributor()), 0);
         tokenToBuy.safeApprove(address(main.distributor()), bal);
+        // do not need to use AllowanceLib.safeApproveFallbackToCustom here because
+        // tokenToBuy can be assumed to be either RSR or the RToken
+
         main.distributor().distribute(tokenToBuy, bal);
     }
 }

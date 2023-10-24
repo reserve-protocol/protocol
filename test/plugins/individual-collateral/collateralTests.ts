@@ -171,13 +171,17 @@ export default function fn<X extends CollateralFixtureContext>(
 
         itClaimsRewards('claims rewards (via collateral.claimRewards())', async () => {
           const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
-          await mintCollateralTo(ctx, amount, alice, collateral.address)
+          await mintCollateralTo(ctx, amount, alice, ctx.collateral.address)
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 
-          const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
-          await expect(collateral.claimRewards()).to.emit(ctx.tok, 'RewardsClaimed')
-          const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
+          const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(
+            ctx.collateral.address
+          )
+          await expect(ctx.collateral.claimRewards()).to.emit(ctx.tok, 'RewardsClaimed')
+          const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(
+            ctx.collateral.address
+          )
           expect(balAfter).gt(balBefore)
         })
 
@@ -339,14 +343,29 @@ export default function fn<X extends CollateralFixtureContext>(
           })
 
           // Should remain SOUND after a 1% decrease
+          let refPerTok = await ctx.collateral.refPerTok()
           await reduceRefPerTok(ctx, 1) // 1% decrease
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
 
+          // refPerTok should be unchanged
+          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+            refPerTok,
+            refPerTok.div(bn('1e3'))
+          ) // within 1-part-in-1-thousand
+
           // Should become DISABLED if drops more than that
+          refPerTok = await ctx.collateral.refPerTok()
           await reduceRefPerTok(ctx, 1) // another 1% decrease
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+          // refPerTok should have fallen 1%
+          refPerTok = refPerTok.sub(refPerTok.div(100))
+          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+            refPerTok,
+            refPerTok.div(bn('1e3'))
+          ) // within 1-part-in-1-thousand
         })
 
         it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
@@ -572,6 +591,16 @@ export default function fn<X extends CollateralFixtureContext>(
 
           itChecksRefPerTokDefault('after hard default', async () => {
             await reduceRefPerTok(ctx, 5)
+          })
+        })
+
+        context('ERC20', () => {
+          it('transfer', async () => {
+            const decimals = await ctx.tok.decimals()
+            const amount = bn('20').mul(bn(10).pow(decimals))
+            await mintCollateralTo(ctx, amount, alice, alice.address)
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
+            await snapshotGasCost(ctx.tok.connect(alice).transfer(collateral.address, bn('1e6')))
           })
         })
       })

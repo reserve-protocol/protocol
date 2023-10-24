@@ -45,6 +45,7 @@ import {
   IMPLEMENTATION,
   Implementation,
   ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
   VERSION,
@@ -430,7 +431,7 @@ describe('Assets contracts #fast', () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral0.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -467,7 +468,7 @@ describe('Assets contracts #fast', () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral0.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -555,7 +556,7 @@ describe('Assets contracts #fast', () => {
           ORACLE_ERROR,
           rsr.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT
+          ORACLE_TIMEOUT_PRE_BUFFER
         )
       )
 
@@ -640,7 +641,7 @@ describe('Assets contracts #fast', () => {
           ORACLE_ERROR,
           rsr.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT
+          ORACLE_TIMEOUT_PRE_BUFFER
         )
       )
 
