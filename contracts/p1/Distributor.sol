@@ -98,12 +98,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
         {
             RevenueTotals memory revTotals = totals();
             uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
-            require(totalShares > 0, "nothing to distribute");
-            tokensPerShare = amount / totalShares;
+            if (totalShares > 0) tokensPerShare = amount / totalShares;
+            require(tokensPerShare > 0, "nothing to distribute");
         }
-
-        // Return if nothing to distribute
-        if (tokensPerShare == 0) return;
 
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
@@ -142,15 +139,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
             IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
-        }
-
-        // Perform reward accounting
-        if (accountRewards) {
-            if (isRSR) {
-                main.stRSR().payoutRewards();
-            } else {
-                main.furnace().melt();
-            }
         }
 
         // Perform reward accounting
