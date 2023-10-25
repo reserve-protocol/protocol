@@ -54,9 +54,6 @@ const config: HardhatUserConfig = {
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
     },
-    // anvil: {
-    //   url: 'http://127.0.0.1:8545/',
-    // },
     goerli: {
       chainId: 5,
       url: GOERLI_RPC_URL,
