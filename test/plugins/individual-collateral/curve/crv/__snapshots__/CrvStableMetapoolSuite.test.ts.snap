@@ -16,9 +16,9 @@ exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collatera
 
 exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `48245`;
 
-exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `47904`;
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `79713`;
 
-exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `47904`;
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `79713`;
 
 exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `246886`;
 

@@ -16,9 +16,9 @@ exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas
 
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `67620`;
 
-exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after soft default 1`] = `67279`;
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after soft default 1`] = `87625`;
 
-exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after soft default 2`] = `67279`;
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after soft default 2`] = `87625`;
 
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() during SOUND 1`] = `87684`;
 

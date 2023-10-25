@@ -16,9 +16,9 @@ exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refre
 
 exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `104315`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 1`] = `107042`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 1`] = `132572`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 2`] = `103974`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 2`] = `126704`;
 
 exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during SOUND 1`] = `126763`;
 
