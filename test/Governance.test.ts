@@ -59,8 +59,8 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
   let initialBal: BigNumber
 
   const MIN_DELAY = 7 * 60 * 60 * 24 // 7 days
-  const VOTING_DELAY = 5 // 5 blocks
-  const VOTING_PERIOD = 100 // 100 blocks
+  const VOTING_DELAY = 7200 // 1 day (in blocks)
+  const VOTING_PERIOD = 21600 // 3 days (in blocks)
   const PROPOSAL_THRESHOLD = 1e6 // 1%
   const QUORUM_PERCENTAGE = 4 // 4%
 
@@ -306,13 +306,39 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       expect(await governor.supportsInterface(interfaceID._hex)).to.equal(true)
     })
+
+    it('Should perform validations on votingDelay at deployment', async () => {
+      // Attempt to deploy with 0 voting delay
+      await expect(
+        GovernorFactory.deploy(
+          stRSRVotes.address,
+          timelock.address,
+          bn(0),
+          VOTING_PERIOD,
+          PROPOSAL_THRESHOLD,
+          QUORUM_PERCENTAGE
+        )
+      ).to.be.revertedWith('invalid votingDelay')
+
+      // Attempt to deploy with voting delay below minium (1 day)
+      await expect(
+        GovernorFactory.deploy(
+          stRSRVotes.address,
+          timelock.address,
+          bn(2000), // less than 1 day
+          VOTING_PERIOD,
+          PROPOSAL_THRESHOLD,
+          QUORUM_PERCENTAGE
+        )
+      ).to.be.revertedWith('invalid votingDelay')
+    })
   })
 
   describe('Proposals', () => {
     // Proposal details
     const newValue: BigNumber = bn('360')
-    const proposalDescription = 'Proposal #1 - Update Trading Delay to 360'
-    const proposalDescHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposalDescription))
+    let proposalDescription = 'Proposal #1 - Update Trading Delay to 360'
+    let proposalDescHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposalDescription))
     let encodedFunctionCall: string
     let stkAmt1: BigNumber
     let stkAmt2: BigNumber
@@ -872,6 +898,144 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Check role was granted
       expect(await main.hasRole(SHORT_FREEZER, other.address)).to.equal(true)
+    })
+
+    it('Should allow to update GovernorSettings via governance', async () => {
+      // Attempt to update if not governance
+      await expect(governor.setVotingDelay(bn(14400))).to.be.revertedWith(
+        'Governor: onlyGovernance'
+      )
+
+      // Attempt to update without governance process in place
+      await whileImpersonating(timelock.address, async (signer) => {
+        await expect(governor.connect(signer).setVotingDelay(bn(14400))).to.be.reverted
+      })
+
+      // Update votingDelay via proposal
+      encodedFunctionCall = governor.interface.encodeFunctionData('setVotingDelay', [
+        VOTING_DELAY * 2,
+      ])
+      proposalDescription = 'Proposal #2 - Update Voting Delay to double'
+      proposalDescHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposalDescription))
+
+      // Check current value
+      expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([governor.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      const voteWay = 1 // for
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, voteWay)
+      await advanceBlocks(1)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Finished voting - Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Queue propoal
+      await governor
+        .connect(addr1)
+        .queue([governor.address], [0], [encodedFunctionCall], proposalDescHash)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
+
+      // Advance time required by timelock
+      await advanceTime(MIN_DELAY + 1)
+      await advanceBlocks(1)
+
+      // Execute
+      await governor
+        .connect(addr1)
+        .execute([governor.address], [0], [encodedFunctionCall], proposalDescHash)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Executed)
+
+      //  Check value was updated
+      expect(await governor.votingDelay()).to.equal(VOTING_DELAY * 2)
+    })
+
+    it('Should perform validations on votingDelay when updating', async () => {
+      // Update via proposal - Invalid value
+      encodedFunctionCall = governor.interface.encodeFunctionData('setVotingDelay', [bn(7100)])
+      proposalDescription = 'Proposal #2 - Update Voting Delay to invalid'
+      proposalDescHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposalDescription))
+
+      // Check current value
+      expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([governor.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      const voteWay = 1 // for
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, voteWay)
+      await advanceBlocks(1)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Finished voting - Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Queue propoal
+      await governor
+        .connect(addr1)
+        .queue([governor.address], [0], [encodedFunctionCall], proposalDescHash)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
+
+      // Advance time required by timelock
+      await advanceTime(MIN_DELAY + 1)
+      await advanceBlocks(1)
+
+      // Execute
+      await expect(
+        governor
+          .connect(addr1)
+          .execute([governor.address], [0], [encodedFunctionCall], proposalDescHash)
+      ).to.be.revertedWith('TimelockController: underlying transaction reverted')
+
+      // Check proposal state, still queued
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
+
+      //  Check value was not updated
+      expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
     })
   })
 })
