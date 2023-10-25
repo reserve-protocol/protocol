@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting ERC20 transfer 1`] = `61094`;
+
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting ERC20 transfer 2`] = `43994`;
+
 exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `60326`;
 
 exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `55857`;

@@ -9,7 +9,7 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
-import { revenueHiding, oracleTimeout } from '../../deployment/utils'
+import { revenueHiding } from '../../deployment/utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -59,7 +59,7 @@ async function main() {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: bn('1'), // unused but cannot be zero
-        oracleTimeout: oracleTimeout(chainId, USDC_ORACLE_TIMEOUT), // max of oracleTimeouts
+        oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
         maxTradeVolume: MAX_TRADE_VOL,
         defaultThreshold: DEFAULT_THRESHOLD, // 2%: 1% error on FRAX oracle + 1% base defaultThreshold
         delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
@@ -70,10 +70,7 @@ async function main() {
         curvePool: FRAX_BP,
         poolType: CurvePoolType.Plain,
         feeds: [[FRAX_USD_FEED], [USDC_USD_FEED]],
-        oracleTimeouts: [
-          [oracleTimeout(chainId, FRAX_ORACLE_TIMEOUT)],
-          [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
-        ],
+        oracleTimeouts: [[FRAX_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
         oracleErrors: [[FRAX_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
         lpToken: FRAX_BP_TOKEN,
       },

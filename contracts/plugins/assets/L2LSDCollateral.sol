@@ -53,7 +53,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
 
             // uint192(<) is equivalent to Fix.lt
             if (underlyingRefPerTok < exposedReferencePrice) {
-                exposedReferencePrice = hiddenReferencePrice;
+                exposedReferencePrice = underlyingRefPerTok;
                 markStatus(CollateralStatus.DISABLED);
             } else if (hiddenReferencePrice > exposedReferencePrice) {
                 exposedReferencePrice = hiddenReferencePrice;

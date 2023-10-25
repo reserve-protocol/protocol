@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting ERC20 transfer 1`] = `51664`;
+
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting ERC20 transfer 2`] = `34564`;
+
 exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `88033`;
 
 exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `83564`;

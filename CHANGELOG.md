@@ -28,6 +28,12 @@ Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
 - Remove `lotPrice()`
 - Alter `price().high` to decay upwards to 3x over the price timeout
 
+# 3.0.1
+
+### Upgrade steps
+
+Update `BackingManager`, both `RevenueTraders` (rTokenTrader/rsrTrader), and call `Broker.setBatchTradeImplementation()` passing in the new `GnosisTrade` address.
+
 # 3.0.0
 
 Bump solidity version to 0.8.19

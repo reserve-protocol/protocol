@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting ERC20 transfer 1`] = `53509`;
+
+exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting ERC20 transfer 2`] = `36409`;
+
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 1`] = `69288`;
 
 exports[`Collateral: Aave V3 Fiat Collateral (USDC) collateral functionality Gas Reporting refresh() after full price timeout 2`] = `67620`;
