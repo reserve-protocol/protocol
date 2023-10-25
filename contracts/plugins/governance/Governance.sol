@@ -10,6 +10,8 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFractio
 import "../../interfaces/IStRSRVotes.sol";
 import "../../libraries/NetworkConfigLib.sol";
 
+uint256 constant ONE_DAY = 86400; // {s}
+
 /*
  * @title Governance
  * @dev Decentralized Governance for the Reserve Protocol.
@@ -32,7 +34,7 @@ contract Governance is
     uint256 public constant ONE_HUNDRED_PERCENT = 1e8; // {micro %}
 
     // solhint-disable-next-line var-name-mixedcase
-    uint256 public immutable MIN_VOTING_DELAY; // in blocks, based on network
+    uint256 public immutable MIN_VOTING_DELAY; // {block} equal to ONE_DAY
 
     constructor(
         IStRSRVotes token_,
@@ -49,8 +51,8 @@ contract Governance is
         GovernorTimelockControl(timelock_)
     {
         MIN_VOTING_DELAY =
-            (86400 + NetworkConfigLib.blocktime() - 1) /
-            NetworkConfigLib.blocktime(); // 1 day, in blocks
+            (ONE_DAY + NetworkConfigLib.blocktime() - 1) /
+            NetworkConfigLib.blocktime(); // ONE_DAY, in blocks
         requireValidVotingDelay(votingDelay_);
     }
 
