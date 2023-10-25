@@ -4,7 +4,7 @@ exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper col
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 2`] = `385743`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `485294`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `485368`;
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `480752`;
 
@@ -24,6 +24,6 @@ exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper col
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `713581`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `701199`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `701051`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `693635`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `693709`;

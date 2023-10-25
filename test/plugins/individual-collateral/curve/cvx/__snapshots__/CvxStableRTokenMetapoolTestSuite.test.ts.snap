@@ -10,7 +10,7 @@ exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper 
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `594734`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `589852`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `589778`;
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `478546`;
 
