@@ -4,7 +4,7 @@ exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting ERC20
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `34259`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `116743`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117203`;
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `108431`;
 
@@ -12,13 +12,13 @@ exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refre
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `123301`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `116562`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `116802`;
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `108431`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `111417`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `126566`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `108090`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `123239`;
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `123298`;
 

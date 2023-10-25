@@ -16,9 +16,9 @@ exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting r
 
 exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `51626`;
 
-exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after soft default 1`] = `51285`;
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after soft default 1`] = `66835`;
 
-exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after soft default 2`] = `51285`;
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after soft default 2`] = `66835`;
 
 exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() during SOUND 1`] = `66894`;
 

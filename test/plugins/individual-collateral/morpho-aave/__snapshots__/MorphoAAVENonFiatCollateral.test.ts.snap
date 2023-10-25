@@ -16,9 +16,9 @@ exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionali
 
 exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `178409`;
 
-exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionality Gas Reporting refresh() after soft default 1`] = `178068`;
+exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionality Gas Reporting refresh() after soft default 1`] = `192065`;
 
-exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionality Gas Reporting refresh() after soft default 2`] = `178068`;
+exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionality Gas Reporting refresh() after soft default 2`] = `192065`;
 
 exports[`Collateral: MorphoAAVEV2NonFiatCollateral - WBTC collateral functionality Gas Reporting refresh() during SOUND 1`] = `192124`;
 
@@ -44,9 +44,9 @@ exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functional
 
 exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `217673`;
 
-exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functionality Gas Reporting refresh() after soft default 1`] = `217332`;
+exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functionality Gas Reporting refresh() after soft default 1`] = `231329`;
 
-exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functionality Gas Reporting refresh() after soft default 2`] = `217332`;
+exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functionality Gas Reporting refresh() after soft default 2`] = `231329`;
 
 exports[`Collateral: MorphoAAVEV2NonFiatCollateral - stETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `231388`;
 
