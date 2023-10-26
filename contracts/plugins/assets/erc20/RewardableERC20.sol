@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../../interfaces/IRewardable.sol";
 
+uint256 constant SHARES_BUFFER_DECIMALS = 9; // to prevent reward rounding issues
+
+/*
 /**
  * @title RewardableERC20
  * @notice An abstract class that can be extended to create rewardable wrapper.
@@ -35,7 +38,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
     /// @dev Extending class must ensure ERC20 constructor is called
     constructor(IERC20 _rewardToken, uint8 _decimals) {
         rewardToken = _rewardToken;
-        one = 10**_decimals; // set via pass-in to prevent inheritance issues
+        one = 10**(_decimals + SHARES_BUFFER_DECIMALS); // set via pass-in to prevent inheritance issues
     }
 
     function claimRewards() external nonReentrant {
