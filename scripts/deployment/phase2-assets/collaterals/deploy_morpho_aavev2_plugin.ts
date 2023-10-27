@@ -126,7 +126,7 @@ async function main() {
     priceTimeout: priceTimeout.toString(),
     oracleError: stablesOracleError.toString(),
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 1 hr
+    oracleTimeout: '86400', // 24h
     targetName: ethers.utils.formatBytes32String('USD'),
     defaultThreshold: stablesOracleError.add(fp('0.01')), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -164,6 +164,7 @@ async function main() {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
       {
         ...baseStableConfig,
+        oracleTimeout: '3600', // 1 hr
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI!,
         erc20: maDAI.address,
       },
