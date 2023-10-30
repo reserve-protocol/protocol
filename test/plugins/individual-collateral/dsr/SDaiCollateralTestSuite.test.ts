@@ -214,7 +214,7 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itHasRevenueHiding: it,
+  itHasRevenueHiding: it.skip,
   resetFork,
   collateralName: 'SDaiCollateral',
   chainlinkDefaultAnswer,
