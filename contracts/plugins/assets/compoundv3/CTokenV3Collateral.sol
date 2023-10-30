@@ -19,12 +19,6 @@ import "./vendor/IComet.sol";
  * UoA = USD
  */
 contract CTokenV3Collateral is AppreciatingFiatCollateral {
-    struct CometCollateralConfig {
-        IERC20 rewardERC20;
-        uint256 reservesThresholdIffy;
-        uint256 reservesThresholdDisabled;
-    }
-
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -44,10 +38,6 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;
         cometDecimals = comet.decimals();
-    }
-
-    function bal(address account) external view override(Asset, IAsset) returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 
     /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
