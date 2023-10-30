@@ -14,6 +14,8 @@ interface IMorpho {
     ) external;
 
     function withdraw(address _poolToken, uint256 _amount) external;
+
+    function updateIndexes(address _poolToken) external;
 }
 
 interface IMorphoRewardsDistributor {

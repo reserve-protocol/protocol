@@ -55,6 +55,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         uint256 assets,
         uint256 shares
     ) internal virtual override {
+        morphoController.updateIndexes(poolToken);
         SafeERC20.safeTransferFrom(IERC20(underlying), caller, address(this), assets);
         SafeERC20.safeApprove(IERC20(underlying), address(morphoController), assets);
         morphoController.supply(poolToken, assets);
@@ -74,6 +75,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         uint256 assets,
         uint256 shares
     ) internal virtual override {
+        morphoController.updateIndexes(poolToken);
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
