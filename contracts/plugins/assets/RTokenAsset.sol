@@ -18,10 +18,9 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using OracleLib for AggregatorV3Interface;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
-    IMain public immutable main;
     IAssetRegistry public immutable assetRegistry;
-    IBackingManager public immutable backingManager;
     IBasketHandler public immutable basketHandler;
+    IBackingManager public immutable backingManager;
     IFurnace public immutable furnace;
     IERC20 public immutable rsr;
     IStRSR public immutable stRSR;
@@ -40,10 +39,10 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
-        main = erc20_.main();
+        IMain main = erc20_.main();
         assetRegistry = main.assetRegistry();
-        backingManager = main.backingManager();
         basketHandler = main.basketHandler();
+        backingManager = main.backingManager();
         furnace = main.furnace();
         rsr = main.rsr();
         stRSR = main.stRSR();
@@ -188,24 +187,9 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             // the absence of an external price feed. Any RToken that gets reasonably big
             // should switch over to an asset with a price feed.
 
-            TradingContext memory ctx;
-
-            ctx.basketsHeld = basketsHeld;
-            ctx.ar = assetRegistry;
-            ctx.bm = backingManager;
-            ctx.bh = basketHandler;
-            ctx.rsr = rsr;
-            ctx.rToken = IRToken(address(erc20));
-            ctx.stRSR = stRSR;
-            ctx.minTradeVolume = backingManager.minTradeVolume();
-            ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
-
-            // Calculate quantities
-            Registry memory reg = ctx.ar.getRegistry();
-            ctx.quantities = new uint192[](reg.erc20s.length);
-            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
-            }
+            (TradingContext memory ctx, Registry memory reg) = backingManager.tradingContext(
+                basketsHeld
+            );
 
             // will exclude UoA value from RToken balances at BackingManager
             range = RecollateralizationLibP1.basketRange(ctx, reg);

@@ -6,7 +6,7 @@ exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper 
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `485368`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `480826`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `480900`;
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `594734`;
 
@@ -20,9 +20,9 @@ exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper 
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `536931`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `713211`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `713433`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `713581`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `713507`;
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `701125`;
 

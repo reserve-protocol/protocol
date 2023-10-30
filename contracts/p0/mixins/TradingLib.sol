@@ -145,7 +145,7 @@ library TradingLibP0 {
     ///   2. Stay under stack limit with fewer vars
     ///   3. Cache information such as component addresses to save on gas
 
-    struct TradingContext {
+    struct TradingContextP0 {
         BasketRange basketsHeld; // {BU}
         // basketsHeld.top is the number of partial baskets units held
         // basketsHeld.bottom is the number of full basket units held
@@ -190,7 +190,7 @@ library TradingLibP0 {
         // === Prepare cached values ===
 
         IMain main = bm.main();
-        TradingContext memory ctx = TradingContext({
+        TradingContextP0 memory ctx = TradingContextP0({
             basketsHeld: basketsHeld,
             bm: bm,
             bh: main.basketHandler(),
@@ -241,14 +241,9 @@ library TradingLibP0 {
     // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
     // the largest amount possible with each trade.
     //
-    // How do we know this algorithm converges?
-    // Assumption: constant oracle prices; monotonically increasing refPerTok()
-    // Any volume traded narrows the BU band. Why:
-    //   - We might increase `basketsHeld.bottom` from run-to-run, but will never decrease it
-    //   - We might decrease the UoA amount of excess balances beyond `basketsHeld.bottom` from
-    //       run-to-run, but will never increase it
-    //   - We might decrease the UoA amount of missing balances up-to `basketsHeld.top` from
-    //       run-to-run, but will never increase it
+    // Algorithm Invariant: every increase of basketsHeld.bottom causes basketsRange().low to
+    //  reach a new maximum. Note that basketRange().low may decrease slightly along the way.
+    // Assumptions: constant oracle prices; monotonically increasing refPerTok; no supply changes
     //
     // Preconditions:
     // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
@@ -269,7 +264,7 @@ library TradingLibP0 {
     // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
     //   where "least baskets purchaseable" involves trading at the worst price,
     //   incurring the full maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
-    function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
+    function basketRange(TradingContextP0 memory ctx, IERC20[] memory erc20s)
         internal
         view
         returns (BasketRange memory range)
@@ -428,10 +423,12 @@ library TradingLibP0 {
     // Sell IFFY last because it may recover value in the future.
     // All collateral in the basket have already been guaranteed to be SOUND by upstream checks.
     function nextTradePair(
-        TradingContext memory ctx,
+        TradingContextP0 memory ctx,
         IERC20[] memory erc20s,
         BasketRange memory range
     ) private view returns (TradeInfo memory trade) {
+        // assert(tradesOpen == 0); // guaranteed by BackingManager.rebalance()
+
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
 

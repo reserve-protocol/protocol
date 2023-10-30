@@ -16,9 +16,9 @@ exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refre
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `108431`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `126640`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `126566`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `123313`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `123239`;
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `123298`;
 

@@ -45,6 +45,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IFurnace private furnace;
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
+    // === 3.0.1 ===
+    mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
+
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
 
@@ -90,6 +93,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
+        delete tokensOut[sell];
         trade = super.settleTrade(sell); // nonReentrant
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
@@ -148,22 +152,26 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          * rToken.basketsNeeded to the current basket holdings. Haircut time.
          */
 
+        (TradingContext memory ctx, Registry memory reg) = tradingContext(basketsHeld);
         (
             bool doTrade,
             TradeRequest memory req,
             TradePrices memory prices
-        ) = RecollateralizationLibP1.prepareRecollateralizationTrade(this, basketsHeld);
+        ) = RecollateralizationLibP1.prepareRecollateralizationTrade(ctx, reg);
 
         if (doTrade) {
+            IERC20 sellERC20 = req.sell.erc20();
+
             // Seize RSR if needed
-            if (req.sell.erc20() == rsr) {
-                uint256 bal = req.sell.erc20().balanceOf(address(this));
+            if (sellERC20 == rsr) {
+                uint256 bal = sellERC20.balanceOf(address(this));
                 if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
             }
 
             // Execute Trade
             ITrade trade = tryTrade(kind, req, prices);
-            tradeEnd[kind] = trade.endTime();
+            tradeEnd[kind] = trade.endTime(); // {s}
+            tokensOut[sellERC20] = trade.sellAmount(); // {tok}
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);
@@ -264,6 +272,40 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
 
+    // === View ===
+
+    /// Structs for trading
+    /// @param basketsHeld The number of baskets held by the BackingManager
+    /// @return ctx The TradingContext
+    /// @return reg Contents of AssetRegistry.getRegistry()
+    function tradingContext(BasketRange memory basketsHeld)
+        public
+        view
+        returns (TradingContext memory ctx, Registry memory reg)
+    {
+        reg = assetRegistry.getRegistry();
+
+        ctx.basketsHeld = basketsHeld;
+        ctx.bh = basketHandler;
+        ctx.ar = assetRegistry;
+        ctx.stRSR = stRSR;
+        ctx.rsr = rsr;
+        ctx.rToken = rToken;
+        ctx.minTradeVolume = minTradeVolume;
+        ctx.maxTradeSlippage = maxTradeSlippage;
+        ctx.quantities = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+        }
+        ctx.bals = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            ctx.bals[i] = reg.assets[i].bal(address(this)) + tokensOut[reg.erc20s[i]];
+
+            // include StRSR's balance for RSR
+            if (reg.erc20s[i] == rsr) ctx.bals[i] += reg.assets[i].bal(address(stRSR));
+        }
+    }
+
     // === Private ===
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
@@ -308,5 +350,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[39] private __gap;
+    uint256[37] private __gap;
 }

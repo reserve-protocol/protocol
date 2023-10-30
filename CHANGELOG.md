@@ -8,9 +8,11 @@ Upgrade all core contracts and _all_ assets. ERC20s do not need to be upgraded. 
 
 Then, call `Broker.cacheComponents()`.
 
+Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
+
 ### Core Protocol Contracts
 
-- `BackingManager`
+- `BackingManager` [+2 slots]
   - Replace use of `lotPrice()` with `price()`
 - `BasketHandler`
   - Remove `lotPrice()`
