@@ -103,12 +103,43 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(don.address)).to.eq(expectedAmount)
     })
 
+    it('checks for correct approval on deposit - regression test', async () => {
+      await expect(
+        wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+      ).revertedWithCustomError(wcusdcV3, 'Unauthorized')
+
+      // Provide approval on the wrapper
+      await wcusdcV3.connect(bob).allow(don.address, true)
+
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
+
+      // This should fail even when bob approved wcusdcv3 to spend his tokens,
+      // because there is no explicit approval of cUSDCv3 from bob to don, only
+      // approval on the wrapper
+      await expect(
+        wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+      ).to.be.revertedWithCustomError(cusdcV3, 'Unauthorized')
+
+      // Add explicit approval of cUSDCv3 and retry
+      await cusdcV3.connect(bob).allow(don.address, true)
+      await wcusdcV3
+        .connect(don)
+        .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+
+      expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
+      expect(await wcusdcV3.balanceOf(charles.address)).to.eq(expectedAmount)
+    })
+
     it('deposits from a different account', async () => {
       expect(await wcusdcV3.balanceOf(charles.address)).to.eq(0)
       await expect(
         wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
       ).revertedWithCustomError(wcusdcV3, 'Unauthorized')
-      await wcusdcV3.connect(bob).connect(bob).allow(don.address, true)
+
+      // Approval has to be on cUsdcV3, not the wrapper
+      await cusdcV3.connect(bob).allow(don.address, true)
       const expectedAmount = await wcusdcV3.convertDynamicToStatic(
         await cusdcV3.balanceOf(bob.address)
       )
