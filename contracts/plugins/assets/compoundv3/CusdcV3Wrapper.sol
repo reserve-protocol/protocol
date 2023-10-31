@@ -43,7 +43,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// @return number of decimals
-    function decimals() public pure override returns (uint8) {
+    function decimals() public pure override(IERC20Metadata, WrappedERC20) returns (uint8) {
         return 6;
     }
 
