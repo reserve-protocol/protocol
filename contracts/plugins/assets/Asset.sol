@@ -168,6 +168,15 @@ contract Asset is IAsset, VersionedAsset {
         assert(_low <= _high);
     }
 
+    /// Should not revert
+    /// lotLow should be nonzero when the asset might be worth selling
+    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
+        return price();
+    }
+
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view virtual returns (uint192) {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
