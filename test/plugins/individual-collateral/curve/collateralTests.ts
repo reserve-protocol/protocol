@@ -952,11 +952,18 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       it('issues', async () => {
-        // Issuance tested in beforeEach
+        // Issuance in beforeEach
+        expect(await rToken.totalSupply()).to.equal(supply)
       })
 
       it('redeems', async () => {
         await rToken.connect(addr1).redeem(supply)
+        expect(await rToken.totalSupply()).to.equal(0)
+        const initialCollBal = toBNDecimals(fp('1'), await collateralERC20.decimals())
+        expect(await collateralERC20.balanceOf(addr1.address)).to.be.closeTo(
+          initialCollBal,
+          initialCollBal.div(bn('1e5')) // 1-part-in-100k
+        )
       })
 
       it('rebalances out of the collateral', async () => {
