@@ -81,7 +81,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address dst,
         uint256 amount
     ) internal {
-        if (!hasPermission(src, operator)) revert Unauthorized();
+        if (!underlyingComet.hasPermission(src, operator)) revert Unauthorized();
         // {Comet}
         uint256 srcBal = underlyingComet.balanceOf(src);
         if (amount > srcBal) amount = srcBal;
