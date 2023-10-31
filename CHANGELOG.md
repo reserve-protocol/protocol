@@ -4,7 +4,13 @@
 
 ### Upgrade Steps -- Required
 
-Upgrade all core contracts and _all_ assets. ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
+Upgrade all core contracts and _all_ assets. Most ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
+
+ERC20s that _do_ need to be upgraded:
+
+- Morpho
+- Convex
+- CompoundV3
 
 Then, call `Broker.cacheComponents()`.
 
