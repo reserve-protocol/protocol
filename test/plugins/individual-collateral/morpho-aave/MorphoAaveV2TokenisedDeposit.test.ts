@@ -31,12 +31,12 @@ const mkTestCase = <T extends ITokenSymbol>(
 })
 
 const TOKENS_TO_TEST = [
-  // mkTestCase('USDC', '1000.0', '1'),
-  // mkTestCase('USDT', '1000.0', '1'),
-  // mkTestCase('DAI', '1000.0', '1'),
-  // mkTestCase('WETH', '200.0', '1'),
+  mkTestCase('USDC', '1000.0', '1'),
+  mkTestCase('USDT', '1000.0', '1'),
+  mkTestCase('DAI', '1000.0', '1'),
+  mkTestCase('WETH', '200.0', '1'),
   mkTestCase('stETH', '1.0', '2'),
-  // mkTestCase('WBTC', '1.0', '1'),
+  mkTestCase('WBTC', '1.0', '1'),
 ]
 type ITestSuiteVariant = typeof TOKENS_TO_TEST[number]
 
