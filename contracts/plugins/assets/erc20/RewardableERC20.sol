@@ -85,9 +85,12 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
         uint256 _previousBalance = lastRewardBalance;
 
         if (balanceAfterClaimingRewards > _previousBalance) {
-            uint256 delta = balanceAfterClaimingRewards - _previousBalance;
+            uint256 delta = balanceAfterClaimingRewards - _previousBalance; // {qRewards}
+
+            // {qRewards/share} = {qRewards} * {qShare/share} / {qShare}
             uint256 deltaPerShare = (delta * one) / _totalSupply;
 
+            // {qRewards} = {qRewards} + (qRewards/share) * {qShare} / {qShare/share}
             balanceAfterClaimingRewards = _previousBalance + (deltaPerShare * _totalSupply) / one;
 
             // 1e9 * {qRewards/share} += {qRewards} * (1e9 * {qShare/share}) / {qShare}
