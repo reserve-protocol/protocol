@@ -9,7 +9,6 @@ import "../../../interfaces/IRewardable.sol";
 
 uint256 constant SHARE_DECIMAL_OFFSET = 9; // to prevent reward rounding issues
 
-/*
 /**
  * @title RewardableERC20
  * @notice An abstract class that can be extended to create rewardable wrapper.
