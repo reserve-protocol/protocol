@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../../interfaces/IRewardable.sol";
 
-uint256 constant SHARES_DECIMALS = 9; // to prevent reward rounding issues
+uint256 constant SHARE_DECIMAL_OFFSET = 9; // to prevent reward rounding issues
 
 /*
 /**
@@ -22,11 +22,11 @@ uint256 constant SHARES_DECIMALS = 9; // to prevent reward rounding issues
 abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public immutable one; // {qShare/share}
+    uint256 public immutable one; // 1e9 * {qShare/share}
     IERC20 public immutable rewardToken;
 
-    uint256 public rewardsPerShare; // {qRewards/share}
-    mapping(address => uint256) public lastRewardsPerShare; // {qRewards/share}
+    uint256 public rewardsPerShare; // 1e9 * {qRewards/share}
+    mapping(address => uint256) public lastRewardsPerShare; // 1e9 * {qRewards/share}
     mapping(address => uint256) public accumulatedRewards; // {qRewards}
     mapping(address => uint256) public claimedRewards; // {qRewards}
 
@@ -38,7 +38,8 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
     /// @dev Extending class must ensure ERC20 constructor is called
     constructor(IERC20 _rewardToken, uint8 _decimals) {
         rewardToken = _rewardToken;
-        one = 10**(_decimals + SHARES_DECIMALS); // set via pass-in to prevent inheritance issues
+        // set via pass-in to prevent inheritance issues
+        one = 10**(_decimals + SHARE_DECIMAL_OFFSET);
     }
 
     function claimRewards() external nonReentrant {
@@ -50,7 +51,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
     function _syncAccount(address account) internal {
         if (account == address(0)) return;
 
-        // {qRewards/share}
+        // 1e9 * {qRewards/share}
         uint256 accountRewardsPerShare = lastRewardsPerShare[account];
 
         // {qShare}
@@ -59,13 +60,13 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
         // {qRewards}
         uint256 _accumulatedRewards = accumulatedRewards[account];
 
-        // {qRewards/share}
+        // 1e9 * {qRewards/share}
         uint256 _rewardsPerShare = rewardsPerShare;
         if (accountRewardsPerShare < _rewardsPerShare) {
-            // {qRewards/share}
+            // 1e9 * {qRewards/share}
             uint256 delta = _rewardsPerShare - accountRewardsPerShare;
 
-            // {qRewards} = {qRewards/share} * {qShare}
+            // {qRewards} = (1e9 * {qRewards/share}) * {qShare} / (1e9 * {qShare/share})
             _accumulatedRewards += (delta * shares) / one;
         }
         lastRewardsPerShare[account] = _rewardsPerShare;
@@ -89,7 +90,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
 
             balanceAfterClaimingRewards = _previousBalance + (deltaPerShare * _totalSupply) / one;
 
-            // {qRewards/share} += {qRewards} * {qShare/share} / {qShare}
+            // 1e9 * {qRewards/share} += {qRewards} * (1e9 * {qShare/share}) / {qShare}
             _rewardsPerShare += deltaPerShare;
         }
 

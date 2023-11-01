@@ -18,8 +18,8 @@ import snapshotGasCost from '../utils/snapshotGasCost'
 import { formatUnits, parseUnits } from 'ethers/lib/utils'
 import { MAX_UINT256 } from '#/common/constants'
 
-const SHARE_DECIMALS = 9 // decimals buffer for shares and rewards per share
-const BN_SHARE_FACTOR = bn(10).pow(SHARE_DECIMALS)
+const SHARE_DECIMAL_OFFSET = 9 // decimals buffer for shares and rewards per share
+const BN_SHARE_FACTOR = bn(10).pow(SHARE_DECIMAL_OFFSET)
 
 type Fixture<T> = () => Promise<T>
 
@@ -135,7 +135,7 @@ for (const wrapperName of wrapperNames) {
       let bob: Wallet
 
       const initBalance = parseUnits('10000', assetDecimals)
-      const rewardAmount = parseUnits('200', rewardDecimals)
+      let rewardAmount = parseUnits('200', rewardDecimals)
       let oneShare: BigNumber
       let initShares: BigNumber
 
@@ -155,8 +155,8 @@ for (const wrapperName of wrapperNames) {
         await rewardableAsset.mint(bob.address, initBalance)
         await rewardableAsset.connect(bob).approve(rewardableVault.address, initBalance)
 
-        shareDecimals = (await rewardableVault.decimals()) + SHARE_DECIMALS
-        rewardShareDecimals = rewardDecimals + SHARE_DECIMALS
+        shareDecimals = (await rewardableVault.decimals()) + SHARE_DECIMAL_OFFSET
+        rewardShareDecimals = rewardDecimals + SHARE_DECIMAL_OFFSET
         initShares = toShares(initBalance, assetDecimals, shareDecimals)
         oneShare = bn('1').mul(bn(10).pow(shareDecimals))
       })
@@ -691,6 +691,83 @@ for (const wrapperName of wrapperNames) {
           )
         })
       })
+
+      describe('correctly applies fractional reward tracking', () => {
+        rewardAmount = parseUnits('1.9', rewardDecimals)
+
+        beforeEach(async () => {
+          // Deploy fixture
+          ;({ rewardableVault, rewardableAsset } = await loadFixture(fixture))
+
+          await rewardableAsset.mint(alice.address, initBalance)
+          await rewardableAsset.connect(alice).approve(rewardableVault.address, MAX_UINT256)
+          await rewardableAsset.mint(bob.address, initBalance)
+          await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+        })
+
+        it('Correctly handles fractional rewards', async () => {
+          expect(await rewardableVault.rewardsPerShare()).to.equal(0)
+
+          await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+
+          for (let i = 0; i < 10; i++) {
+            await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+            await rewardableVault.claimRewards()
+            expect(await rewardableVault.rewardsPerShare()).to.equal(
+              rewardAmount
+                .mul(i + 1)
+                .mul(oneShare)
+                .div(initShares)
+                .mul(BN_SHARE_FACTOR)
+            )
+          }
+        })
+      })
+
+      describe(`correctly rounds rewards`, () => {
+        // Assets
+        rewardAmount = parseUnits('1.7', rewardDecimals)
+
+        beforeEach(async () => {
+          // Deploy fixture
+          ;({ rewardableVault, rewardableAsset, rewardToken } = await loadFixture(fixture))
+
+          await rewardableAsset.mint(alice.address, initBalance)
+          await rewardableAsset.connect(alice).approve(rewardableVault.address, MAX_UINT256)
+          await rewardableAsset.mint(bob.address, initBalance)
+          await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+        })
+
+        it('Avoids wrong distribution of rewards when rounding', async () => {
+          expect(await rewardToken.balanceOf(alice.address)).to.equal(bn(0))
+          expect(await rewardToken.balanceOf(bob.address)).to.equal(bn(0))
+          expect(await rewardableVault.rewardsPerShare()).to.equal(0)
+
+          // alice deposit and accrue rewards
+          await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+          await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+
+          // bob deposit
+          await rewardableVault.connect(bob).deposit(initBalance, bob.address)
+
+          // accrue additional rewards (twice the amount)
+          await rewardableAsset.accrueRewards(rewardAmount.mul(2), rewardableVault.address)
+
+          // claim all rewards
+          await rewardableVault.connect(bob).claimRewards()
+          await rewardableVault.connect(alice).claimRewards()
+
+          // Alice got all first rewards plus half of the second
+          expect(await rewardToken.balanceOf(alice.address)).to.equal(rewardAmount.mul(2))
+
+          // Bob only got half of the second rewards
+          expect(await rewardToken.balanceOf(bob.address)).to.equal(rewardAmount)
+
+          expect(await rewardableVault.rewardsPerShare()).equal(
+            rewardAmount.mul(2).mul(oneShare).div(initShares).mul(BN_SHARE_FACTOR)
+          )
+        })
+      })
     })
   }
 
@@ -740,7 +817,7 @@ for (const wrapperName of wrapperNames) {
         await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
         await rewardableVault.claimRewards()
         expect(await rewardableVault.rewardsPerShare()).to.equal(
-          bn(`1.9e${SHARE_DECIMALS}`).mul(i + 1)
+          bn(`1.9e${SHARE_DECIMAL_OFFSET}`).mul(i + 1)
         )
       }
     })
@@ -799,7 +876,7 @@ for (const wrapperName of wrapperNames) {
       // Bob only got half of the second rewards
       expect(await rewardToken.balanceOf(bob.address)).to.equal(bn(1.7e6))
 
-      expect(await rewardableVault.rewardsPerShare()).to.equal(bn(`3.4e${SHARE_DECIMALS}`))
+      expect(await rewardableVault.rewardsPerShare()).to.equal(bn(`3.4e${SHARE_DECIMAL_OFFSET}`))
     })
   })
 
