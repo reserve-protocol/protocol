@@ -14,6 +14,7 @@ uint256 constant SHARE_DECIMAL_OFFSET = 9; // to prevent reward rounding issues
  * @notice An abstract class that can be extended to create rewardable wrapper.
  * @notice `_claimAssetRewards` keeps tracks of rewards by snapshotting the balance
  * and calculating the difference between the current balance and the previous balance.
+ * Limitation: Currently supports only one single reward token.
  * @dev To inherit:
  *   - override _claimAssetRewards()
  *   - call ERC20 constructor elsewhere during construction
@@ -41,6 +42,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
         one = 10**(_decimals + SHARE_DECIMAL_OFFSET);
     }
 
+    // claim rewards - Only supports one single reward token
     function claimRewards() external nonReentrant {
         _claimAndSyncRewards();
         _syncAccount(msg.sender);
