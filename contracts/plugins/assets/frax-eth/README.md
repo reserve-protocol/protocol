@@ -34,4 +34,4 @@ This function returns rate of `frxETH/sfrxETH`, getting from [pricePerShare()](h
 
 #### tryPrice
 
-This function uses `refPerTok`, the chainlink price of `ETH/frxETH`, and the chainlink price of `USD/ETH` to return the current price range of the collateral.
+This function uses `refPerTok` and the chainlink price of `USD/ETH` to return the current price range of the collateral. Once an oracle becomes available for `frxETH/ETH`, this function should be modified to use it and return the appropiate `pegPrice`.

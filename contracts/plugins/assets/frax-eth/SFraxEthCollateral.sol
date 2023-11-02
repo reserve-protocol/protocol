@@ -8,6 +8,12 @@ import "../OracleLib.sol";
 import "./vendor/IsfrxEth.sol";
 
 /**
+ * ************************************************************
+ * WARNING: this plugin is not ready to be used in Production
+ * ************************************************************
+ */
+
+/**
  * @title SFraxEthCollateral
  * @notice Collateral plugin for Frax-ETH,
  * tok = sfrxETH
@@ -32,7 +38,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return pegPrice {target/ref} The actual price observed in the peg
+    /// @return pegPrice {target/ref} FIX_ONE until an oracle becomes available
     function tryPrice()
         external
         view
@@ -51,6 +57,8 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
         high = p + err;
         // assert(low <= high); obviously true just by inspection
 
+        // TODO: Currently not checking for depegs between `frxETH` and `ETH`
+        // Should be modified to use a `frxETH/ETH` oracle when available
         pegPrice = targetPerRef();
     }
 
