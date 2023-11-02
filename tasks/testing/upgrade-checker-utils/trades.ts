@@ -6,15 +6,17 @@ import {
   getLatestBlockNumber,
 } from '#/utils/time'
 import { TestITrading } from '@typechain/TestITrading'
-import { BigNumber, ContractTransaction } from 'ethers'
+import { BigNumber, ContractTransaction, ethers } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
+import { MAX_UINT256, QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { Interface, LogDescription } from 'ethers/lib/utils'
 import { collateralToUnderlying, whales } from './constants'
 import { bn, fp } from '#/common/numbers'
 import { logToken } from './logs'
 import { GnosisTrade } from '@typechain/GnosisTrade'
 import { DutchTrade } from '@typechain/DutchTrade'
+import { EUSDRebalance__factory } from '@typechain/index'
+import { RebalanceEvent } from '@typechain/EUSDRebalance'
 
 export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -92,8 +94,13 @@ export const runDutchTrade = async (
 
   let tradesRemain: boolean = false
   let newSellToken: string = ''
+  const RecollatContractFactory = await hre.ethers.getContractFactory("EUSDRebalance")
+
 
   const tradeAddr = await trader.trades(tradeToken)
+  const rebalancerContract = await (await RecollatContractFactory.deploy()).deployed()
+
+  console.log("Rebalancer deployed at: ", rebalancerContract.address)
   const trade = <DutchTrade>await hre.ethers.getContractAt('DutchTrade', tradeAddr)
 
   // Only works for Dutch trades
@@ -102,29 +109,58 @@ export const runDutchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
+  let underlyingAddress: string | undefined = undefined;
+  if (buyTokenAddress === '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022') {
+    underlyingAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  } else if (buyTokenAddress === '0x4Be33630F92661afD646081BC29079A38b879aA0') {
+    underlyingAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+  }
+
   console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
 
   const endBlock = await trade.endBlock()
-  const whaleAddr = whales[buyTokenAddress.toLowerCase()]
-
-  // Bid close to end block
   await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(5))
-  const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
-  // Ensure funds available
-  await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
+  if (underlyingAddress) {
+    const whaleAddr = whales[underlyingAddress.toLowerCase()]
+    console.log("whaleAddr", whaleAddr)
+    console.log("underlyingAddress", underlyingAddress)
+    console.log("buyTokenAddress", buyTokenAddress)
+    await whileImpersonating(hre, whaleAddr, async (whale) => {
+      await (await hre.ethers.getContractAt('ERC20Mock', "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")).connect(whale).approve(rebalancerContract.address, MAX_UINT256)
+      await (await hre.ethers.getContractAt('ERC20Mock', "0xdAC17F958D2ee523a2206206994597C13D831ec7")).connect(whale).approve(rebalancerContract.address, MAX_UINT256)
 
-  await whileImpersonating(hre, whaleAddr, async (whale) => {
-    const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-    await sellToken.connect(whale).approve(trade.address, buyAmount)
-    // Bid
-    ;[tradesRemain, newSellToken] = await callAndGetNextTrade(trade.connect(whale).bid(), trader)
-  })
+      console.log("Rebalancing")
+        ;[tradesRemain, newSellToken] = await callAndGetNextTrade(rebalancerContract.rebalance(
+          whale.address,
+          await trade.sell()
+        ), trader)
+      console.log("Done")
+    })
+  } else {
+    const whaleAddr = whales[buyTokenAddress.toLowerCase()]
+    // Bid close to end block
+    const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
+
+    // Ensure funds available
+    await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
+
+    await whileImpersonating(hre, whaleAddr, async (whale) => {
+      const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
+      await sellToken.connect(whale).approve(trade.address, buyAmount)
+        // Bid
+        ;[tradesRemain, newSellToken] = await callAndGetNextTrade(trade.connect(whale).bid(), trader)
+    })
+    if (
+      (await trade.bidder()) != whaleAddr
+    ) {
+      throw new Error(`Error settling Dutch Trade`)
+    }
+  }
 
   if (
     (await trade.canSettle()) ||
-    (await trade.status()) != TradeStatus.CLOSED ||
-    (await trade.bidder()) != whaleAddr
+    (await trade.status()) != TradeStatus.CLOSED
   ) {
     throw new Error(`Error settling Dutch Trade`)
   }
@@ -146,17 +182,40 @@ export const callAndGetNextTrade = async (
   const r = await tx
   const resp = await r.wait()
   const iface: Interface = trader.interface
+  const RecollatContractFactoryIface = EUSDRebalance__factory.createInterface()
   for (const event of resp.events!) {
     let parsedLog: LogDescription | undefined
     try {
+      const parsed = RecollatContractFactoryIface.parseLog(event)
+      if (parsed.name === "Rebalance") {
+        const {
+          tokenIn,
+          amountIn,
+          tokenOut,
+          amountOut
+        } = parsed.args as RebalanceEvent["args"]
+
+        console.log("==== Rebalanced ====")
+        console.log(
+          {
+            tokenIn: logToken(tokenIn),
+            amountIn: ethers.utils.formatUnits(amountIn, 6),
+            tokenOut: logToken(tokenOut),
+            amountOut: ethers.utils.formatUnits(amountOut, 6),
+            difference: ethers.utils.formatUnits(amountOut.sub(amountIn), 6)
+          }
+        )
+
+      }
+    } catch (e) { }
+    try {
       parsedLog = iface.parseLog(event)
-    } catch {}
+    } catch { }
     if (parsedLog && parsedLog.name == 'TradeStarted') {
       console.log(
         `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
           parsedLog.args.buy
-        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
-          parsedLog.args.sellAmount
+        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${parsedLog.args.sellAmount
         }`
       )
       tradesRemain = true

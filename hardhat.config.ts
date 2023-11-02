@@ -38,9 +38,9 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: forkRpcs[(useEnv('FORK_NETWORK') ?? 'mainnet') as Network],
-            blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
-          }
+          url: forkRpcs[(useEnv('FORK_NETWORK') ?? 'mainnet') as Network],
+          blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
+        }
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
@@ -96,6 +96,10 @@ const config: HardhatUserConfig = {
       // gasPrice: 10_000_000_000,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
+    eUSDRebalance: {
+      chainId: 1,
+      url: "https://rpc.forknet.org",
+    }
   },
   solidity: {
     compilers: [
