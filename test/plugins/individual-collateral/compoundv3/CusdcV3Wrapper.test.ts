@@ -642,6 +642,44 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
     })
 
+    it('caps at balance to avoid reverts when claiming rewards (claimTo)', async () => {
+      const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
+      await advanceTime(1000)
+      await enableRewardsAccrual(cusdcV3)
+
+      // Accrue multiple times
+      for (let i = 0; i < 10; i++) {
+        await advanceTime(1000)
+        await wcusdcV3.accrue()
+      }
+
+      // Get rewards from Comet
+      const cometRewards = await ethers.getContractAt('ICometRewards', REWARDS)
+      await whileImpersonating(wcusdcV3.address, async (signer) => {
+        await cometRewards
+          .connect(signer)
+          .claimTo(cusdcV3.address, wcusdcV3.address, wcusdcV3.address, true)
+      })
+
+      // Accrue individual account
+      await wcusdcV3.accrueAccount(bob.address)
+
+      // Due to rounding, balance is smaller that owed
+      const owed = await wcusdcV3.getRewardOwed(bob.address)
+      const bal = await compToken.balanceOf(wcusdcV3.address)
+      expect(owed).to.be.greaterThan(bal)
+
+      // Should still be able to claimTo (caps at balance)
+      const balanceBobPrev = await compToken.balanceOf(bob.address)
+      await expect(wcusdcV3.connect(bob).claimTo(bob.address, bob.address)).to.emit(
+        wcusdcV3,
+        'RewardsClaimed'
+      )
+
+      expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(balanceBobPrev)
+    })
+
     it('claims rewards and sends to claimer (claimRewards)', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
