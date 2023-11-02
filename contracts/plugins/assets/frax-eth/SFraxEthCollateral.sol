@@ -57,7 +57,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
         high = p + err;
         // assert(low <= high); obviously true just by inspection
 
-        // Note: Currently not checking for depegs between `frxETH` and `ETH`
+        // TODO: Currently not checking for depegs between `frxETH` and `ETH`
         // Should be modified to use a `frxETH/ETH` oracle when available
         pegPrice = targetPerRef();
     }
