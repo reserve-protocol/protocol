@@ -141,10 +141,18 @@ async function main() {
         }
         console.log('Placing bid!')
         try {
+          const gasLimit = await rebalancerContract.estimateGas.rebalance(
+            fundsHolder,
+            sellToken.address,
+            {
+              from: signer.address,
+            }
+          )
           const tx = (await rebalancerContract
             .connect(signer)
             .rebalance(fundsHolder, sellToken.address, {
               gasPrice: hre.ethers.provider.getGasPrice().then((i) => i.add(i.div(12).mul(4))),
+              gasLimit: gasLimit.add(gasLimit.div(10)),
             })) as TransactionResponse
           console.log('Bid transaction hash: ' + tx.hash)
           const receipt = await tx.wait()
