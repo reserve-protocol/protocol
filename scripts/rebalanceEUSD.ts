@@ -1,7 +1,7 @@
 import { ZERO_ADDRESS } from '#/common/constants'
 import { TransactionResponse } from '@ethersproject/providers'
 import { EUSDRebalance } from '@typechain/EUSDRebalance'
-import { BigNumberish, Transaction } from 'ethers'
+import { BigNumberish } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 import hre from 'hardhat'
 
@@ -26,12 +26,14 @@ const sellTokens = [
     symbol: 'CUSDC',
     decimals: 8,
     underlying: USDCToken,
+    col: '0x8a01936B12bcbEEC394ed497600eDe41D409a83F',
   },
   {
     address: CUSDT,
     symbol: 'CUSDT',
     decimals: 8,
     underlying: USDTToken,
+    col: '0x69bd37b82794d64dc0c8c9652a6151f8954fd378',
   },
 ]
 const CUSDCVault = {
@@ -48,7 +50,7 @@ const CUSDTVault = {
   underlying: USDTToken,
 }
 
-const fundsHolder = '0x'
+const fundsHolder = '0xF2d98377d80DADf725bFb97E91357F1d81384De2'
 
 const tokens = Object.fromEntries(
   [...sellTokens, CUSDCVault, CUSDTVault].map((i) => [i.address.toLowerCase(), i])
@@ -59,27 +61,27 @@ const format = (token: { symbol: string; decimals: number }, amount: BigNumberis
 }
 
 async function main() {
+  let provider = hre.ethers.provider
   const EUSDRebalance__factory = await hre.ethers.getContractFactory('EUSDRebalance')
   const DutchTrade = await hre.ethers.getContractFactory('DutchTrade')
 
   const USDC = await hre.ethers.getContractAt('ERC20Mock', USDCToken.address)
   const USDT = await hre.ethers.getContractAt('ERC20Mock', USDTToken.address)
 
-  const signer = new hre.ethers.Wallet(process.env.PRIVATE_KEY_REBALANCER!).connect(
-    hre.ethers.provider
-  )
+  const signer = new hre.ethers.Wallet(process.env.PRIVATE_KEY_REBALANCER!).connect(provider)
 
   const contract = EUSDRebalance__factory.connect(signer)
-  const rebalancerContract = contract.attach(
-    '0x171B9c1C18cCA07D731185737001554A021A9dde'
-  ) as EUSDRebalance
+  const rebalancerContract = contract
+    .attach('0xaE5737fE46bc464515E92b5C7c54524096de48e0')
+    .connect(provider) as EUSDRebalance
 
   let pending = false
 
-  const bmp1 = await hre.ethers.getContractAt(
+  let bmp1 = await hre.ethers.getContractAt(
     'BackingManagerP1',
     '0xF014FEF41cCB703975827C8569a3f0940cFD80A4'
   )
+  bmp1 = bmp1.connect(provider)
   hre.ethers.provider.on('block', async (blockNumber) => {
     if (pending) {
       return
@@ -94,17 +96,19 @@ async function main() {
         if (tradeAddr === ZERO_ADDRESS) {
           continue
         }
-        const trade = DutchTrade.attach(tradeAddr)
-        if ((await trade.status()) === 1) {
+        const trade = DutchTrade.attach(tradeAddr).connect(provider)
+        const tradeStatus = await trade.status()
+        if (tradeStatus !== 1) {
           continue
         }
-        activeTrade = true
         const state = await rebalancerContract.callStatic.getState(sellToken.address)
-        const bidToken = tokens[(await trade.callStatic.buy()).toLowerCase()]
+        const buyToken = (await trade.callStatic.buy()).toLowerCase()
+        activeTrade = true
+        const bidToken = tokens[buyToken]
         console.log('Active auction, selling', sellToken.symbol, 'for', bidToken.symbol)
 
         const price =
-          (state.sellAmountUnderlying.toBigInt() * 1000000n) / state.bidAmountUnderlying.toBigInt()
+          (state.bidAmountUnderlying.toBigInt() * 1000000n) / state.sellAmountUnderlying.toBigInt()
 
         console.log('Current auction state:')
         console.log('  bid amount  => ' + format(bidToken.underlying, state.bidAmountUnderlying))
@@ -128,15 +132,20 @@ async function main() {
         }
 
         try {
-          await rebalancerContract.callStatic.rebalance(fundsHolder, sellToken.address)
+          await rebalancerContract.callStatic.rebalance(fundsHolder, sellToken.address, {
+            from: signer.address,
+          })
         } catch (e: any) {
+          console.log(e)
           break
         }
         console.log('Placing bid!')
         try {
-          const tx = (await rebalancerContract.rebalance(fundsHolder, sellToken.address, {
-            gasPrice: hre.ethers.provider.getGasPrice().then((i) => i.add(i.div(12).mul(4))),
-          })) as TransactionResponse
+          const tx = (await rebalancerContract
+            .connect(signer)
+            .rebalance(fundsHolder, sellToken.address, {
+              gasPrice: hre.ethers.provider.getGasPrice().then((i) => i.add(i.div(12).mul(4))),
+            })) as TransactionResponse
           console.log('Bid transaction hash: ' + tx.hash)
           const receipt = await tx.wait()
           if (receipt.status === 0) {
