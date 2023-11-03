@@ -418,7 +418,6 @@ const collateralSpecificStatusTests = () => {
     const fix = await makeW3PoolStable()
     const [, alice, bob] = await ethers.getSigners()
     const amount = fp('100')
-    const rewardPerBlock = bn('83197823300')
 
     const lpToken = <IERC20>(
       await ethers.getContractAt(
@@ -443,8 +442,10 @@ const collateralSpecificStatusTests = () => {
     await fix.wrapper.shutdown()
 
     const prevBalance = await CRV.balanceOf(alice.address)
+
+    // Call does not revert but no rewards are claimed
     await fix.wrapper.connect(alice).claimRewards()
-    expect(await CRV.balanceOf(alice.address)).to.be.eq(prevBalance.add(rewardPerBlock))
+    expect(await CRV.balanceOf(alice.address)).to.be.eq(prevBalance)
 
     const prevBalanceBob = await CRV.balanceOf(bob.address)
 
@@ -453,8 +454,9 @@ const collateralSpecificStatusTests = () => {
       .connect(alice)
       .transfer(bob.address, await fix.wrapper.balanceOf(alice.address))
 
+    // Call does not revert but no rewards are claimed
     await fix.wrapper.connect(bob).claimRewards()
-    expect(await CRV.balanceOf(bob.address)).to.be.eq(prevBalanceBob.add(rewardPerBlock))
+    expect(await CRV.balanceOf(bob.address)).to.be.eq(prevBalanceBob)
 
     await expect(fix.wrapper.connect(alice).deposit(amount, alice.address)).to.be.reverted
     await expect(fix.wrapper.connect(bob).withdraw(await fix.wrapper.balanceOf(bob.address))).to.not
