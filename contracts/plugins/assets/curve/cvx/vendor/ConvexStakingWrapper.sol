@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-v0.7/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-v0.7/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-v0.7/utils/ReentrancyGuard.sol";
 import "./IRewardStaking.sol";
-import "./CvxMining.sol";
 
 interface IBooster {
     function poolInfo(uint256 _pid)
@@ -25,7 +24,7 @@ interface IBooster {
 
     function earmarkRewards(uint256 _pid) external returns (bool);
 }
-     
+
 interface IConvexDeposits {
     function deposit(
         uint256 _pid,
