@@ -19,6 +19,12 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     /*
         Helper functions
     */
+
+    // hacky api throttler, basescan has rate limits 5req/sec
+    const delay = async (ms: number) => {
+      return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
     const capitalize = (s: string) => s && s[0].toUpperCase() + s.slice(1)
 
     const network = hre.network.name
@@ -47,6 +53,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
 
     const createRTokenTableRow = async (name: string, address: string) => {
       const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      await delay(200)
       const response = await fetch(url)
       const data = await response.json()
       const implementation = data.result[0].Implementation
@@ -60,6 +67,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
 
     const createComponentTableRow = async (name: string, address: string) => {
       const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      await delay(200)
       const response = await fetch(url)
       const data = await response.json()
       const implementation = data.result[0].Implementation
