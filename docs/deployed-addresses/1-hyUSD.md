@@ -1,4 +1,4 @@
-# [hyUSD (High Yield USD)](https://etherscan.io/address/0xaCdf0DBA4B9839b96221a8487e9ca660a48212be)
+# [hyUSD (High Yield USD) - Mainnet](https://etherscan.io/address/0xaCdf0DBA4B9839b96221a8487e9ca660a48212be)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |

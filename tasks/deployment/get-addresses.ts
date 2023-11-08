@@ -221,7 +221,7 @@ ${collaterals}
       const rows = await createTableRows(components, true)
       const govRows = await createTableRows(govComponents, true)
       const markdown = await createRTokenMarkdown(
-        `${rTokenSymbol} (${rTokenName})`,
+        `${rTokenSymbol} (${rTokenName}) - ${capitalize(hre.network.name)}`,
         params.rtoken,
         rows,
         govRows

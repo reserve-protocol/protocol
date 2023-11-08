@@ -1,4 +1,4 @@
-# [USDC+ (USDC Plus)](https://etherscan.io/address/0xFc0B1EEf20e4c68B3DCF36c4537Cfa7Ce46CA70b)
+# [USDC+ (USDC Plus) - Mainnet](https://etherscan.io/address/0xFc0B1EEf20e4c68B3DCF36c4537Cfa7Ce46CA70b)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |

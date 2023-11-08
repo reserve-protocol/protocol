@@ -1,4 +1,4 @@
-# [eUSD (Electronic Dollar)](https://etherscan.io/address/0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)
+# [eUSD (Electronic Dollar) - Mainnet](https://etherscan.io/address/0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
