@@ -21,7 +21,21 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     */
     const capitalize = (s: string) => s && s[0].toUpperCase() + s.slice(1)
 
-    const etherscanUrl = 'https://etherscan.io/address/'
+    const network = hre.network.name
+    let scannerUrl: string;
+    let scannerApiUrl: string;
+    switch(network) {
+      case 'mainnet':
+        scannerUrl = 'https://etherscan.io/'
+        scannerApiUrl = `https://api.etherscan.io/`
+        break
+      case 'base':
+        scannerUrl = 'https://basescan.org/'
+        scannerApiUrl = `https://api.basescan.org/`
+        break
+      default:
+        throw new Error(`Unsupported network: ${network}`)
+    }
 
     const getVersion = async (c: Contract) => {
       try {
@@ -32,29 +46,44 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     }
 
     const createRTokenTableRow = async (name: string, address: string) => {
-      const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       const response = await fetch(url)
       const data = await response.json()
       const implementation = data.result[0].Implementation
       const component = await hre.ethers.getContractAt('ComponentP1', address)
-      return `| ${name} | [${address}](${etherscanUrl}${address}) | [${implementation}](${etherscanUrl}${implementation}#code) | ${await getVersion(
-        component
-      )} |`
+      let row = `| ${name} | [${address}](${scannerUrl}address/${address}) |`
+      if (!!implementation) {
+        row += `[${implementation}](${scannerUrl}address/${implementation}#code) | ${await getVersion(component)} |`
+      }
+      return row
+    }
+
+    const createComponentTableRow = async (name: string, address: string) => {
+      const url = `${scannerApiUrl}api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const response = await fetch(url)
+      const data = await response.json()
+      const implementation = data.result[0].Implementation
+      const component = await hre.ethers.getContractAt('ComponentP1', address)
+      return `| ${name} | [${address}](${scannerUrl}${address}) | ${await getVersion(component)} |`
     }
 
     const createAssetTableRow = async (name: string, address: string) => {
-      return `| ${name} | [${address}](${etherscanUrl}${address}) |`
+      return `| ${name} | [${address}](${scannerUrl}${address}) |`
     }
 
     const createTableRows = async (
       components: { name: string; address: string }[],
-      isRToken: boolean
+      isRToken: boolean,
+      isComponent: boolean = false
     ) => {
       const rows = []
       for (const component of components) {
+        if (!component.address) continue
         isRToken
           ? rows.push(await createRTokenTableRow(component.name, component.address))
-          : rows.push(await createAssetTableRow(component.name, component.address))
+          : isComponent
+            ? rows.push(await createComponentTableRow(component.name, component.address))
+            : rows.push(await createAssetTableRow(component.name, component.address))
       }
       return rows.join('\n')
     }
@@ -65,7 +94,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
       rows: string,
       govRows: string | undefined
     ) => {
-      return `# [${name}](${etherscanUrl}${address})
+      return `# [${name}](${scannerUrl}${address})
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
@@ -75,11 +104,24 @@ ${
   govRows &&
   `
 ## Governance Addresses
-| Contract | Address | Implementation | Version |
-| --- | --- | --- | --- |
+| Contract | Address |
+| --- | --- |
 ${govRows}
 `
 }
+        `
+    }
+
+    const createComponentMarkdown = async (
+      name: string,
+      address: string,
+      rows: string
+    ) => {
+      return `# [${name}](${scannerUrl}${address})
+## Component Addresses
+| Contract | Address | Version |
+| --- | --- | --- |
+${rows}
         `
     }
 
@@ -152,8 +194,10 @@ ${collaterals}
 
     if (params.rtoken && params.gov) {
       // if rtoken address is provided, print component addresses
-
+      
       const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
+      const symbol = await rToken.symbol()
+      console.log(`Collecting addresses for RToken: ${symbol} (${params.rtoken}))`)
       const mainAddress = await rToken.main()
       const main = await hre.ethers.getContractAt('MainP1', mainAddress)
       const backingManagerAddress = await main.backingManager()
@@ -205,8 +249,11 @@ ${collaterals}
         rows,
         govRows
       )
-      fs.writeFileSync(await getRTokenFileName(params.rtoken), markdown)
+      const rTokenFileName = await getRTokenFileName(params.rtoken)
+      fs.writeFileSync(rTokenFileName, markdown)
+      console.log(`Wrote ${rTokenFileName}`)
     } else if (params.ver) {
+      console.log(`Collecting addresses for Version: ${params.ver} (${hre.network.name})`)
       // if version is provided, print implementation addresses
       const version = `${hre.network.name}-${params.ver}`
       const collateralDepl = getDeploymentFile(
@@ -230,7 +277,9 @@ ${collaterals}
         assetRows,
         collateralRows
       )
-      fs.writeFileSync(await getAssetFileName(params.ver), assetMarkdown)
+      const assetFileName = await getAssetFileName(params.ver)
+      fs.writeFileSync(assetFileName, assetMarkdown)
+      console.log(`Wrote ${assetFileName}`)
 
       const componentDepl = getDeploymentFile(getDeploymentFilename(await getChainId(hre), version))
       const recursiveDestructure = (
@@ -253,13 +302,14 @@ ${collaterals}
         address: string
       }>
       components = components.sort((a, b) => a.name.localeCompare(b.name))
-      const componentMarkdown = await createRTokenMarkdown(
+      const componentMarkdown = await createComponentMarkdown(
         `Component Implementations (${capitalize(hre.network.name)} ${params.ver})`,
         params.version,
-        await createTableRows(components, false),
-        undefined
+        await createTableRows(components, false, true)
       )
-      fs.writeFileSync(await getComponentFileName(params.ver), componentMarkdown)
+      const componentFileName = await getComponentFileName(params.ver)
+      fs.writeFileSync(componentFileName, componentMarkdown)
+      console.log(`Wrote ${componentFileName}`)
     } else {
       // if neither rtoken address nor version number is provided, throw error
       throw new Error(
