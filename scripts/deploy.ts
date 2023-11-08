@@ -26,7 +26,7 @@ async function main() {
   // See `confirm.ts` for part 2
 
   // Phase 1- Implementations
-  let scripts = [
+  const scripts = [
     'phase1-common/0_setup_deployments.ts',
     'phase1-common/1_deploy_libraries.ts',
     'phase1-common/2_deploy_implementations.ts',
@@ -61,7 +61,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_dsr_sdai.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts'
+      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/collaterals/deploy_sfrax.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -73,7 +74,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_ctokenv3_usdbc_collateral.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdbc.ts',
       'phase2-assets/collaterals/deploy_stargate_usdc_collateral.ts',
-      'phase2-assets/assets/deploy_stg.ts',
+      'phase2-assets/assets/deploy_stg.ts'
     )
   }
 
