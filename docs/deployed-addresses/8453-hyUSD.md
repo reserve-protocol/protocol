@@ -1,4 +1,4 @@
-# [hyUSD (High Yield USD)](https://basescan.org/0xCc7FF230365bD730eE4B352cC2492CEdAC49383e)
+# [hyUSD (High Yield USD)](https://basescan.org/address/0xCc7FF230365bD730eE4B352cC2492CEdAC49383e)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |

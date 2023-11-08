@@ -26,12 +26,12 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     let scannerApiUrl: string;
     switch(network) {
       case 'mainnet':
-        scannerUrl = 'https://etherscan.io/'
-        scannerApiUrl = `https://api.etherscan.io/`
+        scannerUrl = 'https://etherscan.io/address/'
+        scannerApiUrl = `https://api.etherscan.io/api`
         break
       case 'base':
-        scannerUrl = 'https://basescan.org/'
-        scannerApiUrl = `https://api.basescan.org/`
+        scannerUrl = 'https://basescan.org/address/'
+        scannerApiUrl = `https://api.basescan.org/api`
         break
       default:
         throw new Error(`Unsupported network: ${network}`)
@@ -46,20 +46,20 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     }
 
     const createRTokenTableRow = async (name: string, address: string) => {
-      const url = `${scannerApiUrl}api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       const response = await fetch(url)
       const data = await response.json()
       const implementation = data.result[0].Implementation
       const component = await hre.ethers.getContractAt('ComponentP1', address)
-      let row = `| ${name} | [${address}](${scannerUrl}address/${address}) |`
+      let row = `| ${name} | [${address}](${scannerUrl}${address}) |`
       if (!!implementation) {
-        row += `[${implementation}](${scannerUrl}address/${implementation}#code) | ${await getVersion(component)} |`
+        row += `[${implementation}](${scannerUrl}${implementation}#code) | ${await getVersion(component)} |`
       }
       return row
     }
 
     const createComponentTableRow = async (name: string, address: string) => {
-      const url = `${scannerApiUrl}api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       const response = await fetch(url)
       const data = await response.json()
       const implementation = data.result[0].Implementation
@@ -114,10 +114,9 @@ ${govRows}
 
     const createComponentMarkdown = async (
       name: string,
-      address: string,
       rows: string
     ) => {
-      return `# [${name}](${scannerUrl}${address})
+      return `# ${name}
 ## Component Addresses
 | Contract | Address | Version |
 | --- | --- | --- |
@@ -154,36 +153,6 @@ ${collaterals}
     const getComponentFileName = async (version: string) => {
       const chainId = await getChainId(hre)
       return `${outputDir}${chainId}-components-${version}.md`
-    }
-
-    const getActiveRoleHolders = async (main: MainP1, role: string) => {
-      // get active owners
-      //
-      const grantedFilter = main.filters.RoleGranted(role)
-      const revokedFilter = main.filters.RoleRevoked(role)
-
-      // get granted owners
-      const ownersGranted = await main.queryFilter(grantedFilter)
-      let owners = ownersGranted.map((event) => {
-        return event.args![1]
-      })
-      interface OwnerCount {
-        [key: string]: number
-      }
-
-      // count granted owners
-      let ownerCount: OwnerCount = {}
-      owners.forEach((owner: string) => {
-        ownerCount[owner] = (ownerCount[owner] || 0) + 1
-      })
-
-      // reduce counts by revoked owners
-      const ownersRevoked = await main.queryFilter(revokedFilter)
-      ownersRevoked.forEach((event) => {
-        const owner = event.args![1]
-        ownerCount[owner] = (ownerCount[owner] || 0) - 1
-      })
-      return Object.keys(ownerCount).filter((owner) => ownerCount[owner] > 0)
     }
 
     /*
@@ -304,7 +273,6 @@ ${collaterals}
       components = components.sort((a, b) => a.name.localeCompare(b.name))
       const componentMarkdown = await createComponentMarkdown(
         `Component Implementations (${capitalize(hre.network.name)} ${params.ver})`,
-        params.version,
         await createTableRows(components, false, true)
       )
       const componentFileName = await getComponentFileName(params.ver)

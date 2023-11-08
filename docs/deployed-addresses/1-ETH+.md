@@ -1,4 +1,4 @@
-# [ETH+ (ETHPlus)](https://etherscan.io/0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8)
+# [ETH+ (ETHPlus)](https://etherscan.io/address/0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
