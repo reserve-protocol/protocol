@@ -42,16 +42,16 @@ const config: HardhatUserConfig = {
             blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
           }
         : undefined,
-      gas: 0x1ffffffff,
-      blockGasLimit: 0x1fffffffffffff,
+      gas: 0x1C9C380,
+      blockGasLimit: 0x1C9C380,
       allowUnlimitedContractSize: true,
     },
     localhost: {
       // network for long-lived mainnet forks
       chainId: 31337,
       url: 'http://127.0.0.1:8546',
-      gas: 0x1ffffffff,
-      blockGasLimit: 0x1fffffffffffff,
+      gas: 0x1C9C380,
+      blockGasLimit: 0x1C9C380,
       allowUnlimitedContractSize: true,
     },
     goerli: {
@@ -93,6 +93,13 @@ const config: HardhatUserConfig = {
       // gasPrice: 10_000_000_000,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
+    forknet: {
+      chainId: 1,
+      url: 'https://rpc.forknet.org/',
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    }
   },
   solidity: {
     compilers: [

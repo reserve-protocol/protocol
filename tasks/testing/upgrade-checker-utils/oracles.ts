@@ -16,9 +16,17 @@ export const overrideOracle = async (
   const initPrice = await oracle.latestRoundData()
   const mockOracleFactory = await hre.ethers.getContractFactory('EACAggregatorProxyMock')
   const mockOracle = await mockOracleFactory.deploy(aggregator, accessController, initPrice.answer)
-  const bytecode = await hre.network.provider.send('eth_getCode', [mockOracle.address])
-  await setCode(oracleAddress, bytecode)
+  const bytecode = await hre.network.provider.send('eth_getCode', [mockOracle.address, "latest"])
+  // await setCode(oracleAddress, bytecode)
+  await anvilSetCode(hre, oracleAddress, bytecode)
   return hre.ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
+}
+
+export async function anvilSetCode(hre: HardhatRuntimeEnvironment, address: string, code: string): Promise<void> {
+  await hre.ethers.provider.send(
+    "anvil_setCode",
+    [address, code],
+  );
 }
 
 export const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string) => {
