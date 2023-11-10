@@ -67,14 +67,14 @@ async function main() {
       curvePool: YVUSDC_LP_TOKEN,
       poolType: '0',
       feeds: [
-        networkConfig[chainId].chainlinkFeeds.USDC,
-        networkConfig[chainId].chainlinkFeeds.crvUSD,
+        [networkConfig[chainId].chainlinkFeeds.USDC],
+        [networkConfig[chainId].chainlinkFeeds.crvUSD],
       ],
       oracleTimeouts: [
-        oracleTimeout(chainId, '86400').toString(),
-        oracleTimeout(chainId, '86400').toString(),
+        [oracleTimeout(chainId, '86400').toString()],
+        [oracleTimeout(chainId, '86400').toString()],
       ],
-      oracleErrors: [fp('0.0025').toString(), fp('0.005').toString()],
+      oracleErrors: [[fp('0.0025').toString()], [fp('0.005').toString()]],
       lpToken: YVUSDC_LP_TOKEN,
     }
   )
