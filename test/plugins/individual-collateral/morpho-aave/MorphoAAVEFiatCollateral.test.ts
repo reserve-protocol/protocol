@@ -306,7 +306,99 @@ const makeAaveFiatCollateralTestSuite = (
           '14.162082619942089'.length
         )
       ).to.be.equal('14.162082619942089')
-    })
+    }),
+      it('Reward claiming cannot be frontrun', async () => {
+        const forkBlock = 17574117
+        const claimer = '0x05e818959c2Aa4CD05EDAe9A099c38e7Bdc377C6'
+        const reset = getResetFork(forkBlock)
+        await reset()
+        const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
+          'MorphoAaveV2TokenisedDeposit'
+        )
+        const usdtVault = await MorphoTokenisedDepositFactory.deploy({
+          morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
+          morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
+          underlyingERC20: defaultCollateralOpts.underlyingToken!,
+          poolToken: defaultCollateralOpts.poolToken!,
+          rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
+          rewardToken: networkConfigToUse.tokens.MORPHO!,
+        })
+        const vaultCode = await ethers.provider.getCode(usdtVault.address)
+        await setCode(claimer, vaultCode)
+
+        const vaultWithClaimableRewards = usdtVault.attach(claimer)
+        const erc20Factory = await ethers.getContractFactory('ERC20Mock')
+        const underlyingERC20 = erc20Factory.attach(defaultCollateralOpts.underlyingToken!)
+        const depositAmount = utils.parseUnits('1000', 6)
+
+        const alice = hre.ethers.provider.getSigner(1)
+        const aliceAddress = await alice.getAddress()
+
+        const bob = hre.ethers.provider.getSigner(2)
+        const bobAddress = await bob.getAddress()
+
+        await whileImpersonating(
+          hre,
+          whales[defaultCollateralOpts.underlyingToken!.toLowerCase()],
+          async (whaleSigner) => {
+            await underlyingERC20.connect(whaleSigner).transfer(aliceAddress, depositAmount)
+            await underlyingERC20.connect(whaleSigner).transfer(bobAddress, depositAmount.mul(10))
+          }
+        )
+
+        await underlyingERC20.connect(alice).approve(vaultWithClaimableRewards.address, 0)
+        await underlyingERC20
+          .connect(alice)
+          .approve(vaultWithClaimableRewards.address, ethers.constants.MaxUint256)
+        await vaultWithClaimableRewards.connect(alice).mint(depositAmount, aliceAddress)
+
+        await underlyingERC20.connect(bob).approve(vaultWithClaimableRewards.address, 0)
+        await underlyingERC20
+          .connect(bob)
+          .approve(vaultWithClaimableRewards.address, ethers.constants.MaxUint256)
+        await vaultWithClaimableRewards.connect(bob).mint(depositAmount.mul(10), bobAddress)
+
+        const morphoRewards = await ethers.getContractAt(
+          'IMorphoRewardsDistributor',
+          networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!
+        )
+        expect(await vaultWithClaimableRewards.callStatic.rewardTokenBalance(bobAddress)).to.be.eq(
+          bn(0)
+        )
+        const startAliceBalance = await vaultWithClaimableRewards.callStatic.rewardTokenBalance(
+          aliceAddress
+        )
+        await morphoRewards.claim(vaultWithClaimableRewards.address, '14162082619942089266', [
+          '0x49bb35f20573d5b927c5b5c15c904839cacdf83c6119450ccb6c2ed0647aa71b',
+          '0xfb9f4530177774effb7af9c1723c7087f60cd135a0cb5f409ec7bbc792a79235',
+          '0x16dcb8d895b9520c20f476bfc23125aa8f47b800a3bea63b63f89abe158a16fe',
+          '0x70b3bcf266272051262da958e86efb68a3621977aab0fa0205a5e47a83f3b129',
+          '0xc06f6781c002b96e5860094fec5ac0692e6e39b3aafa0e02a2c9f87a993a55cb',
+          '0x679aafaa2e4772160288874aa86f2f1baf6ab7409109da7ad96d3b6d5cf2c3ee',
+          '0x5b9f1e5d9dfbdc65ec0166a6f1e2fe4a31396fa31739cce54962f1ed43638ff1',
+          '0xb2db22839637b4c40c7ecc800df0ed8a205c9c31d7d49c41c3d105a62d1c5526',
+          '0xa26071ec1b113e9033dcbccd7680617d3e75fa626b9f1c43dbc778f641f162da',
+          '0x53eb58db4c07b67b3bce54b530c950a4ef0c229a3ed2506c53d7c4e31ecc6bfc',
+          '0x14c512bd39f8b1d13d4cfaad2b4473c4022d01577249ecc97fbf0a64244378ee',
+          '0xea8c2ee8d43e37ceb7b0c04d59106eff88afbe3e911b656dec7caebd415ea696',
+        ])
+
+        await underlyingERC20.connect(bob).approve(vaultWithClaimableRewards.address, 0)
+        await underlyingERC20
+          .connect(bob)
+          .approve(vaultWithClaimableRewards.address, ethers.constants.MaxUint256)
+        await vaultWithClaimableRewards
+          .connect(bob)
+          .redeem(depositAmount.mul(10), bobAddress, bobAddress)
+
+        const aliceDelta = (
+          await vaultWithClaimableRewards.callStatic.rewardTokenBalance(aliceAddress)
+        ).sub(startAliceBalance)
+        const bobDelta = await vaultWithClaimableRewards.callStatic.rewardTokenBalance(bobAddress)
+
+        // Bob managed to claim almost 10x more rewards than Alice by inflating their shares
+        expect(bobDelta).to.be.gt(aliceDelta.mul(9))
+      })
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function

@@ -512,6 +512,23 @@ for (const wrapperName of wrapperNames) {
         })
       })
 
+      it('Frontrun claimRewards by inflating your shares', async () => {
+        await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+        await rewardableAsset.mint(bob.address, initBalance.mul(100))
+        await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+        await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+
+        // Bob 'flashloans' 100x the current balance of the vault and claims rewards
+        await rewardableVault.connect(bob).deposit(initBalance.mul(100), bob.address)
+        await rewardableVault.connect(bob).claimRewards()
+
+        // Alice claimsRewards a bit later
+        await rewardableVault.connect(alice).claimRewards()
+        expect(await rewardToken.balanceOf(alice.address)).to.be.gt(
+          await rewardToken.balanceOf(bob.address)
+        )
+      })
+
       describe('alice deposit, accrue, bob deposit, accrue, bob claim, alice claim', () => {
         let rewardsPerShare: BigNumber
 
