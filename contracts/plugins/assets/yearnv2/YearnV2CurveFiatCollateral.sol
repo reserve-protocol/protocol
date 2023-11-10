@@ -23,6 +23,8 @@ interface IYearnV2 {
  * Revenue hiding should be set to the largest % drawdown in a Yearn vault that should
  * not result in default. While it is extremely rare for Yearn to have drawdowns,
  * in principle it is possible and should be planned for.
+ *
+ * No rewards.
  */
 contract YearnV2CurveFiatCollateral is CurveStableCollateral {
     using FixLib for uint192;
@@ -71,9 +73,13 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
         // {UoA/tok} = {UoA/LP token} * {LP token/tok}
         low = lpLow.mul(pricePerShare, FLOOR);
         high = lpHigh.mul(pricePerShare, CEIL);
-        assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
+    }
+
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    function claimRewards() external virtual override {
+        // No rewards to claim, everything is part of the pricePerShare
     }
 
     // === Internal ===
@@ -87,6 +93,6 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
     /// @return {LP token/tok}
     function _pricePerShare() internal view returns (uint192) {
         // {LP token/tok} = {qLP token/tok} * {LP token/qLP token}
-        return shiftl_toFix(IYearnV2(address(erc20)).pricePerShare(), -int8(lpToken.decimals()));
+        return shiftl_toFix(IYearnV2(address(erc20)).pricePerShare(), -int8(erc20Decimals));
     }
 }

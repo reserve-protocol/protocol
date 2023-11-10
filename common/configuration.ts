@@ -18,6 +18,7 @@ export interface ITokens {
   FRAX?: string
   MIM?: string
   eUSD?: string
+  crvUSD?: string
   aDAI?: string
   aUSDC?: string
   aUSDT?: string
@@ -70,6 +71,8 @@ export interface ITokens {
   astETH?: string
   wsgUSDC?: string
   wsgUSDbC?: string
+  yvCurveUSDPcrvUSD?: string
+  yvCurveUSDCcrvUSD?: string
 
   // Morpho Aave
   maUSDC?: string
@@ -141,6 +144,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
       MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
+      crvUSD: '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
@@ -187,6 +191,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
+      yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
+      yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -201,6 +207,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
+      crvUSD: '0xEEf0C605546958c1f899b6fB336C20671f9cD49F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
@@ -244,6 +251,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
       MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
+      crvUSD: '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
@@ -290,6 +298,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
       MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+      yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
+      yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -304,6 +314,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
+      crvUSD: '0xEEf0C605546958c1f899b6fB336C20671f9cD49F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',

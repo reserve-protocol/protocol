@@ -66,7 +66,6 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);
         high = aumHigh.div(supply, CEIL);
-        assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
     }
@@ -132,7 +131,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
-    function claimRewards() external override(Asset, IRewardable) {
+    function claimRewards() external virtual override(Asset, IRewardable) {
         IRewardable(address(erc20)).claimRewards();
     }
 
