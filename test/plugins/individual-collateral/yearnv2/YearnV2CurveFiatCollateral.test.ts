@@ -8,7 +8,6 @@ import { mintYToken, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumber, BigNumberish } from 'ethers'
 import {
-  CurvePoolMock,
   CurveMetapoolMock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -58,15 +57,15 @@ type CurveFiatTest = {
 }
 
 const tests = [
-  // {
-  //   name: 'yvCurveUSDCcrvUSD',
-  //   yToken: yvCurveUSDCcrvUSD,
-  //   lpToken: YVUSDC_LP_TOKEN,
-  //   pairedToken: USDC,
-  //   pairedOracle: USDC_USD_FEED,
-  //   pairedOracleTimeout: USDC_ORACLE_TIMEOUT,
-  //   pairedOracleError: USDC_ORACLE_ERROR,
-  // },
+  {
+    name: 'yvCurveUSDCcrvUSD',
+    yToken: yvCurveUSDCcrvUSD,
+    lpToken: YVUSDC_LP_TOKEN,
+    pairedToken: USDC,
+    pairedOracle: USDC_USD_FEED,
+    pairedOracleTimeout: USDC_ORACLE_TIMEOUT,
+    pairedOracleError: USDC_ORACLE_ERROR,
+  },
   {
     name: 'yvCurveUSDPcrvUSD',
     yToken: yvCurveUSDPcrvUSD,
