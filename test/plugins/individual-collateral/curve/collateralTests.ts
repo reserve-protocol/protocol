@@ -617,9 +617,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Decrease refPerTok by 1 part in a million
+          // Decrease refPerTok by nearly 1 part in a million
           const currentExchangeRate = await ctx.curvePool.get_virtual_price()
-          const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6')))
+          const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6'))).add(2)
           await ctx.curvePool.setVirtualPrice(newVirtualPrice)
 
           // Collateral remains SOUND
@@ -630,8 +630,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // One quanta more of decrease results in default
-          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(2)) // sub 2 to compenstate for rounding
+          // Few more quanta of decrease results in default
+          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(4)) // sub 4 to compenstate for rounding
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())

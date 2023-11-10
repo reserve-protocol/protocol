@@ -42,7 +42,7 @@ import {
   CurvePoolType,
 } from '../curve/constants'
 
-// Uses ../curve/collateralTests.ts
+// Note: Uses ../curve/collateralTests.ts, not ../collateralTests.ts
 
 type Fixture<T> = () => Promise<T>
 
