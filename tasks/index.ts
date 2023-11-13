@@ -25,8 +25,5 @@ import './upgrades/validate-upgrade'
 import './testing/mint-tokens'
 import './testing/upgrade-checker'
 import './testing/tenderly'
-<<<<<<< Updated upstream
 import './testing/upgrade-checker-utils/upgrades/3_0_1-USDCplus'
-=======
 import './testing/mining'
->>>>>>> Stashed changes

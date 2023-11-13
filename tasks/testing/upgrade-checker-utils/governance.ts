@@ -2,7 +2,7 @@ import { ProposalState } from '#/common/constants'
 import { bn } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
 import { Delegate, Proposal, getDelegates, getProposalDetails } from '#/utils/subgraph'
-import { advanceBlocks, advanceTime } from '#/utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 import { BigNumber, PopulatedTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { pushOraclesForward } from './oracles'
@@ -166,8 +166,8 @@ export const proposeUpgrade = async (
   console.log(`\nGenerating and proposing proposal...`)
   const [tester] = await hre.ethers.getSigners()
 
-  await hre.run('give-rsr', { address: tester.address })
-  await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
+  // await hre.run('give-rsr', { address: tester.address })
+  // await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
   const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress)
 
@@ -181,7 +181,11 @@ export const proposeUpgrade = async (
   )
 
   console.log(`Proposal Transaction:\n`, call.data)
+  await hre.ethers.provider.send('evm_mine', []);
 
+  const lastBlock = await getLatestBlockNumber(hre)
+  const totalVotes = await governor.getVotes(tester.address, lastBlock - 1)
+  console.log(`Total votes: ${totalVotes}, last block: ${lastBlock - 1}`)
   const r = await governor.propose(
     proposal.targets,
     proposal.values,

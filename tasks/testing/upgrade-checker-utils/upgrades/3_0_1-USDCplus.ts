@@ -75,8 +75,9 @@ export const proposal_3_0_1: ProposalBuilder = async (
 
 task('upgrade-usdc-plus', 'Mints all the tokens to an address')
   .addParam('rtoken', 'the address of the RToken being upgraded')
+  .addParam('governor', 'the address of the governor')
   .setAction(async (params, hre) => {
-    await resetFork(hre, Number(useEnv('FORK_BLOCK')))
+    // await resetFork(hre, Number(useEnv('FORK_BLOCK')))
     const [tester] = await hre.ethers.getSigners()
 
     await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_1)
