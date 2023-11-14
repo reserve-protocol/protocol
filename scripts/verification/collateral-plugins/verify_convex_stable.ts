@@ -64,15 +64,6 @@ async function main() {
     'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
   )
 
-  /********  Verify CvxMining Lib  **************************/
-
-  await verifyContract(
-    chainId,
-    coreDeployments.cvxMiningLib,
-    [],
-    'contracts/plugins/assets/curve/cvx/vendor/CvxMining.sol:CvxMining'
-  )
-
   /********  Verify 3Pool plugin  **************************/
   await verifyContract(
     chainId,
