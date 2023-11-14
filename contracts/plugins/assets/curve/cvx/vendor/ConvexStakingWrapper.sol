@@ -458,9 +458,9 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     }
 
     function claimRewards() external {
-        address _account = rewardRedirect[_account] == address(0)
+        address _account = rewardRedirect[msg.sender] == address(0)
             ? msg.sender
-            : rewardRedirect[_account];
+            : rewardRedirect[msg.sender];
 
         uint256 cvxOldBal = IERC20(cvx).balanceOf(_account);
         uint256 crvOldBal = IERC20(crv).balanceOf(_account);
