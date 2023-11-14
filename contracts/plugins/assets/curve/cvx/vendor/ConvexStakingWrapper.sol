@@ -459,16 +459,15 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     }
 
     function claimRewards() external {
-        uint256 cvxOldBal = IERC20(cvx).balanceOf(msg.sender);
-        uint256 crvOldBal = IERC20(crv).balanceOf(msg.sender);
-        address _account = address(msg.sender);
-        if (rewardRedirect[_account] != address(0)) {
-            _checkpointAndClaim([_account, rewardRedirect[_account]]);
-        } else {
-            _checkpointAndClaim([_account, _account]);
-        }
-        emit RewardsClaimed(IERC20(cvx), IERC20(cvx).balanceOf(msg.sender) - cvxOldBal);
-        emit RewardsClaimed(IERC20(crv), IERC20(crv).balanceOf(msg.sender) - crvOldBal);
+        address _account = rewardRedirect[_account] == address(0)
+            ? msg.sender
+            : rewardRedirect[_account];
+
+        uint256 cvxOldBal = IERC20(cvx).balanceOf(_account);
+        uint256 crvOldBal = IERC20(crv).balanceOf(_account);
+        _checkpointAndClaim([msg.sender, _account]);
+        emit RewardsClaimed(IERC20(cvx), IERC20(cvx).balanceOf(_account) - cvxOldBal);
+        emit RewardsClaimed(IERC20(crv), IERC20(crv).balanceOf(_account) - crvOldBal);
     }
 
     //set any claimed rewards to automatically go to a different address
