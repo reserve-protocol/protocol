@@ -818,6 +818,17 @@ describe('Collateral contracts', () => {
       expect(await unpricedAppFiatCollateral.savedHighPrice()).to.equal(highPrice)
       expect(await unpricedAppFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
     })
+
+    it('lotPrice (deprecated) is equal to price()', async () => {
+      for (const coll of [tokenCollateral, usdcCollateral, aTokenCollateral, cTokenCollateral]) {
+        const lotPrice = await coll.lotPrice()
+        const price = await coll.price()
+        expect(price.length).to.equal(2)
+        expect(lotPrice.length).to.equal(price.length)
+        expect(lotPrice[0]).to.equal(price[0])
+        expect(lotPrice[1]).to.equal(price[1])
+      }
+    })
   })
 
   describe('Status', () => {

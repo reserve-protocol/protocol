@@ -467,6 +467,15 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await advanceTime(priceTimeout / 2)
           await expectUnpriced(ctx.collateral.address)
         })
+
+        it('lotPrice (deprecated) is equal to price()', async () => {
+          const lotPrice = await ctx.collateral.lotPrice()
+          const price = await ctx.collateral.price()
+          expect(price.length).to.equal(2)
+          expect(lotPrice.length).to.equal(price.length)
+          expect(lotPrice[0]).to.equal(price[0])
+          expect(lotPrice[1]).to.equal(price[1])
+        })
       })
 
       describe('status', () => {
