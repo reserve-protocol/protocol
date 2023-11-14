@@ -49,8 +49,7 @@ interface ITokenWrapper {
 
 // if used as collateral some modifications will be needed to fit the specific platform
 
-// Based on audited contracts: https://github.com/convex-eth/platform/blob/main/contracts/contracts/wrappers/ConvexStakingWrapper.sol
-// Commit hash: 933ace3
+// Based on audited contracts: https://github.com/convex-eth/platform/blob/933ace34d896e6684345c6795bf33d4089fbd8f6/contracts/contracts/wrappers/ConvexStakingWrapper.sol
 contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
