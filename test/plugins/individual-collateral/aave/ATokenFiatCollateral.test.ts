@@ -752,7 +752,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const lotPrice = await aDaiCollateral.lotPrice()
       const price = await aDaiCollateral.price()
       expect(price.length).to.equal(2)
-      expect(lotPrice.length).to.equal(price)
+      expect(lotPrice.length).to.equal(price.length)
       expect(lotPrice[0]).to.equal(price[0])
       expect(lotPrice[1]).to.equal(price[1])
     })
