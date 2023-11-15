@@ -254,6 +254,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 // delta: {qTok}, the excess quantity of this asset that we hold
                 uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
                 uint256 tokensPerShare = delta / (totals.rTokenTotal + totals.rsrTotal);
+                if (tokensPerShare == 0) continue;
 
                 // no div-by-0: Distributor guarantees (totals.rTokenTotal + totals.rsrTotal) > 0
                 // initial division is intentional here! We'd rather save the dust than be unfair
