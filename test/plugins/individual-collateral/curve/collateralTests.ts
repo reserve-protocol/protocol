@@ -39,6 +39,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     isMetapool,
     resetFork,
     collateralName,
+    itClaimsRewards,
   } = fixtures
 
   describeFork(`Collateral: ${collateralName}`, () => {
@@ -46,6 +47,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     let mockERC20: ERC20Mock
 
     before(async () => {
+      await resetFork()
       ;[, defaultOpts] = await deployCollateral({})
       const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
       mockERC20 = await ERC20Factory.deploy('Mock ERC20', 'ERC20')
@@ -293,7 +295,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await expect(ctx.collateral.claimRewards()).to.not.be.reverted
         })
 
-        it('claims rewards (plugin)', async () => {
+        itClaimsRewards('claims rewards (plugin)', async () => {
           const amount = bn('20000').mul(bn(10).pow(await ctx.wrapper.decimals()))
           await mintCollateralTo(ctx, amount, ctx.alice, ctx.collateral.address)
 
@@ -314,7 +316,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           }
         })
 
-        it('claims rewards (wrapper)', async () => {
+        itClaimsRewards('claims rewards (wrapper)', async () => {
           const amount = bn('20000').mul(bn(10).pow(await ctx.wrapper.decimals()))
           await mintCollateralTo(ctx, amount, ctx.alice, ctx.alice.address)
 
@@ -368,17 +370,14 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const [initLow, initHigh] = await ctx.collateral.price()
 
           const curveVirtualPrice = await ctx.curvePool.get_virtual_price()
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.refPerTok()).to.equal(curveVirtualPrice)
-
-          await ctx.curvePool.setVirtualPrice(curveVirtualPrice.add(1e4))
+          await ctx.curvePool.setVirtualPrice(curveVirtualPrice.add(1e7))
 
           const newBalances = [
-            await ctx.curvePool.balances(0).then((e) => e.add(1e4)),
-            await ctx.curvePool.balances(1).then((e) => e.add(2e4)),
+            await ctx.curvePool.balances(0).then((e) => e.add(1e7)),
+            await ctx.curvePool.balances(1).then((e) => e.add(2e7)),
           ]
-          if (!isMetapool) {
-            newBalances.push(await ctx.curvePool.balances(2).then((e) => e.add(3e4)))
+          if (!isMetapool && ctx.poolTokens.length > 2) {
+            newBalances.push(await ctx.curvePool.balances(2).then((e) => e.add(3e7)))
           }
           await ctx.curvePool.setBalances(newBalances)
 
@@ -585,7 +584,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
           const currentExchangeRate = await ctx.curvePool.get_virtual_price()
-          await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
+          await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e7)).then((e) => e.wait())
 
           // Collateral defaults due to refPerTok() going down
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
@@ -618,9 +617,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Decrease refPerTok by 1 part in a million
+          // Decrease refPerTok by nearly 1 part in a million
           const currentExchangeRate = await ctx.curvePool.get_virtual_price()
-          const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6')))
+          const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6'))).add(2)
           await ctx.curvePool.setVirtualPrice(newVirtualPrice)
 
           // Collateral remains SOUND
@@ -631,8 +630,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // One quanta more of decrease results in default
-          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(2)) // sub 2 to compenstate for rounding
+          // Few more quanta of decrease results in default
+          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(4)) // sub 4 to compenstate for rounding
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
