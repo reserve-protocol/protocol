@@ -807,12 +807,14 @@ describe('Assets contracts #fast', () => {
     })
 
     it('lotPrice (deprecated) is equal to price()', async () => {
-      const lotPrice = await rsrAsset.lotPrice()
-      const price = await rsrAsset.price()
-      expect(price.length).to.equal(2)
-      expect(lotPrice.length).to.equal(price.length)
-      expect(lotPrice[0]).to.equal(price[0])
-      expect(lotPrice[1]).to.equal(price[1])
+      for (const asset of [rsrAsset, compAsset, aaveAsset, rTokenAsset]) {
+        const lotPrice = await asset.lotPrice()
+        const price = await asset.price()
+        expect(price.length).to.equal(2)
+        expect(lotPrice.length).to.equal(price.length)
+        expect(lotPrice[0]).to.equal(price[0])
+        expect(lotPrice[1]).to.equal(price[1])
+      }
     })
   })
 

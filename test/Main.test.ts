@@ -3150,6 +3150,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR, true)
     })
 
+    it('lotPrice (deprecated) is equal to price()', async () => {
+      const lotPrice = await basketHandler.lotPrice()
+      const price = await basketHandler.price()
+      expect(price.length).to.equal(2)
+      expect(lotPrice.length).to.equal(price.length)
+      expect(lotPrice[0]).to.equal(price[0])
+      expect(lotPrice[1]).to.equal(price[1])
+    })
+
     it('Should not put backup tokens with different targetName in the basket', async () => {
       // Swap out collateral for bad target name
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
