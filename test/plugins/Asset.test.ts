@@ -805,6 +805,17 @@ describe('Assets contracts #fast', () => {
       expect(lowPrice5).to.be.equal(bn(0))
       expect(highPrice5).to.be.equal(MAX_UINT192)
     })
+
+    it('lotPrice (deprecated) is equal to price()', async () => {
+      for (const asset of [rsrAsset, compAsset, aaveAsset, rTokenAsset]) {
+        const lotPrice = await asset.lotPrice()
+        const price = await asset.price()
+        expect(price.length).to.equal(2)
+        expect(lotPrice.length).to.equal(price.length)
+        expect(lotPrice[0]).to.equal(price[0])
+        expect(lotPrice[1]).to.equal(price[1])
+      }
+    })
   })
 
   describe('Constructor validation', () => {

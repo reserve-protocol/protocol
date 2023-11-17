@@ -105,6 +105,15 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         }
     }
 
+    /// Should not revert
+    /// lotLow should be nonzero when the asset might be worth selling
+    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
+        return price();
+    }
+
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192) {
         // The RToken has 18 decimals, so there's no reason to waste gas here doing a shiftl_toFix

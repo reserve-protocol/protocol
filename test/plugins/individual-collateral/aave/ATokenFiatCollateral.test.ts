@@ -747,6 +747,15 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await zeropriceCtokenCollateral.refresh()
       expect(await zeropriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
+
+    it('lotPrice (deprecated) is equal to price()', async () => {
+      const lotPrice = await aDaiCollateral.lotPrice()
+      const price = await aDaiCollateral.price()
+      expect(price.length).to.equal(2)
+      expect(lotPrice.length).to.equal(price.length)
+      expect(lotPrice[0]).to.equal(price[0])
+      expect(lotPrice[1]).to.equal(price[1])
+    })
   })
 
   // Note: Here the idea is to test all possible statuses and check all possible paths to default
