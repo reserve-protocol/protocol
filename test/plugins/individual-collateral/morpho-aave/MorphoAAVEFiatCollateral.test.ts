@@ -275,11 +275,9 @@ const makeAaveFiatCollateralTestSuite = (
 
       await advanceBlocks(hre, 7200)
       expect(await vaultWithClaimableRewards.connect(alice).claimRewards())
-      expect(await (erc20Factory.attach(
-        networkConfigToUse.tokens.MORPHO!
-      )).balanceOf(aliceAddress)).to.be.eq(
-        bn('14162082619942089266')
-      )
+      expect(
+        await erc20Factory.attach(networkConfigToUse.tokens.MORPHO!).balanceOf(aliceAddress)
+      ).to.be.eq(bn('14162082619942089266'))
     }),
       it('Frontrunning claiming rewards is not economical', async () => {
         const alice = hre.ethers.provider.getSigner(1)
@@ -291,9 +289,7 @@ const makeAaveFiatCollateralTestSuite = (
           'MorphoAaveV2TokenisedDeposit'
         )
         const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
-        const mockRewardsToken = await (
-          ERC20Factory
-        ).deploy('MockMorphoReward', 'MMrp')
+        const mockRewardsToken = await ERC20Factory.deploy('MockMorphoReward', 'MMrp')
         const underlyingERC20 = ERC20Factory.attach(defaultCollateralOpts.underlyingToken!)
 
         const vault = await MorphoTokenisedDepositFactory.deploy({
@@ -304,7 +300,7 @@ const makeAaveFiatCollateralTestSuite = (
           rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
           rewardToken: mockRewardsToken.address,
         })
-        
+
         const depositAmount = utils.parseUnits('1000', 6)
 
         await whileImpersonating(
@@ -336,12 +332,8 @@ const makeAaveFiatCollateralTestSuite = (
         // Shown below is that it is no longer economical to inflate own shares
         // bob only managed to steal approx 1/7200 * 90% of the reward because hardhat increments block by 1
         // in practise it would be 0 as inflation attacks typically flashloan assets.
-        expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(
-          bn("999621247194163862346")
-        )
-        expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(
-          bn("126262626262625454")
-        )
+        expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(bn('999621247194163862346'))
+        expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(bn('126262626262625454'))
       })
   }
 

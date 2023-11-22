@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
-import { console } from "hardhat/console.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
