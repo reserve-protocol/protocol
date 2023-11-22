@@ -45,8 +45,7 @@ interface ITokenWrapper {
 
 // if used as collateral some modifications will be needed to fit the specific platform
 
-// Based on audited contracts: https://github.com/convex-eth/platform/blob/main/contracts/contracts/wrappers/ConvexStakingWrapper.sol
-// Commit hash: 933ace3
+// Based on audited contracts: https://github.com/convex-eth/platform/blob/933ace34d896e6684345c6795bf33d4089fbd8f6/contracts/contracts/wrappers/ConvexStakingWrapper.sol
 contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -348,16 +347,15 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     }
 
     function claimRewards() external {
-        uint256 cvxOldBal = IERC20(cvx).balanceOf(msg.sender);
-        uint256 crvOldBal = IERC20(crv).balanceOf(msg.sender);
-        address _account = address(msg.sender);
-        if (rewardRedirect[_account] != address(0)) {
-            _checkpointAndClaim([_account, rewardRedirect[_account]]);
-        } else {
-            _checkpointAndClaim([_account, _account]);
-        }
-        emit RewardsClaimed(IERC20(cvx), IERC20(cvx).balanceOf(msg.sender) - cvxOldBal);
-        emit RewardsClaimed(IERC20(crv), IERC20(crv).balanceOf(msg.sender) - crvOldBal);
+        address _account = rewardRedirect[msg.sender] == address(0)
+            ? msg.sender
+            : rewardRedirect[msg.sender];
+
+        uint256 cvxOldBal = IERC20(cvx).balanceOf(_account);
+        uint256 crvOldBal = IERC20(crv).balanceOf(_account);
+        _checkpointAndClaim([msg.sender, _account]);
+        emit RewardsClaimed(IERC20(cvx), IERC20(cvx).balanceOf(_account) - cvxOldBal);
+        emit RewardsClaimed(IERC20(crv), IERC20(crv).balanceOf(_account) - crvOldBal);
     }
 
     //set any claimed rewards to automatically go to a different address
