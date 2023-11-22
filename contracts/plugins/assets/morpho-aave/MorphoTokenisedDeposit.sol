@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
+import { console } from "hardhat/console.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
@@ -15,10 +16,24 @@ struct MorphoTokenisedDepositConfig {
 }
 
 abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
+    uint256 private constant PAYOUT_PERIOD = 7200;
+
     IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
     address public immutable poolToken;
     address public immutable underlying;
+
+    // we instead implement a pattern that pays out rewards over time.
+    uint120 private totalAccumulatedBalance = 0;
+    uint120 private totalPaidOutBalance = 0;
+
+    // Reward token balance behind currently paid out
+    uint112 private pendingBalance = 0;
+    // Claimable reward token balance
+    uint112 private availableBalance = 0;
+
+    // Start of the current payout period
+    uint48 private lastSync = 0;
 
     constructor(MorphoTokenisedDepositConfig memory config)
         RewardableERC4626Vault(
@@ -32,16 +47,52 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         morphoController = config.morphoController;
         poolToken = address(config.poolToken);
         rewardsDistributor = config.rewardsDistributor;
+        lastSync = uint48(block.number);
     }
 
-    function rewardTokenBalance(address account) external returns (uint256 claimableRewards) {
+    function sync() external {
         _claimAndSyncRewards();
-        _syncAccount(account);
-        claimableRewards = accumulatedRewards[account] - claimedRewards[account];
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _claimAssetRewards() internal virtual override {}
+    function _claimAssetRewards() internal override {
+        uint256 blockDelta = block.number - lastSync;
+        if (blockDelta == 0) {
+            return;
+        }
+
+        if (blockDelta > PAYOUT_PERIOD) {
+            blockDelta = PAYOUT_PERIOD;
+        }
+        uint112 amtToPayOut = uint112(
+            (uint256(pendingBalance) * ((blockDelta * 1e18) / PAYOUT_PERIOD)) / 1e18
+        );
+        if (pendingBalance > amtToPayOut) {
+            pendingBalance -= amtToPayOut;
+        } else {
+            pendingBalance = 0;
+        }
+        availableBalance += amtToPayOut;
+
+        // If we detect any new balances add it to pending and reset payout period
+        uint256 newAccumulated = totalPaidOutBalance + rewardToken.balanceOf(address(this));
+        uint256 accumulatedTokens = newAccumulated - totalAccumulatedBalance;
+        totalAccumulatedBalance = uint120(newAccumulated);
+        pendingBalance += uint112(accumulatedTokens);
+
+        if (accumulatedTokens > 0) {
+            lastSync = uint48(block.number);
+        }
+    }
+
+    function _rewardTokenBalance() internal view override returns (uint256) {
+        return availableBalance;
+    }
+
+    function _distributeReward(address account, uint256 amt) internal override {
+        totalPaidOutBalance += uint120(amt);
+        availableBalance -= uint112(amt);
+        SafeERC20.safeTransfer(rewardToken, account, amt);
+    }
 
     function getMorphoPoolBalance(address poolToken) internal view virtual returns (uint256);
 

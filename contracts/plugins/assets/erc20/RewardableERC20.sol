@@ -74,13 +74,21 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
         accumulatedRewards[account] = _accumulatedRewards;
     }
 
+    function _rewardTokenBalance() internal view virtual returns (uint256) {
+        return rewardToken.balanceOf(address(this));
+    }
+
+    function _distributeReward(address account, uint256 amt) internal virtual {
+        rewardToken.safeTransfer(account, amt);
+    }
+
     function _claimAndSyncRewards() internal virtual {
         uint256 _totalSupply = totalSupply();
         if (_totalSupply == 0) {
             return;
         }
         _claimAssetRewards();
-        uint256 balanceAfterClaimingRewards = rewardToken.balanceOf(address(this));
+        uint256 balanceAfterClaimingRewards = _rewardTokenBalance();
 
         uint256 _rewardsPerShare = rewardsPerShare;
         uint256 _previousBalance = lastRewardBalance;
@@ -113,7 +121,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
 
         claimedRewards[account] = accumulatedRewards[account];
 
-        uint256 currentRewardTokenBalance = rewardToken.balanceOf(address(this));
+        uint256 currentRewardTokenBalance = _rewardTokenBalance();
 
         // This is just to handle the edge case where totalSupply() == 0 and there
         // are still reward tokens in the contract.
@@ -121,9 +129,9 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
             ? currentRewardTokenBalance - lastRewardBalance
             : 0;
 
-        rewardToken.safeTransfer(account, claimableRewards);
+        _distributeReward(account, claimableRewards);
 
-        currentRewardTokenBalance = rewardToken.balanceOf(address(this));
+        currentRewardTokenBalance = _rewardTokenBalance();
         lastRewardBalance = currentRewardTokenBalance > nonDistributed
             ? currentRewardTokenBalance - nonDistributed
             : 0;
