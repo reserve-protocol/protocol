@@ -54,22 +54,18 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     }
 
     function _claimAssetRewards() internal override {
+        // First pay out any pendingBalances, over a 7200 block period
         uint256 blockDelta = block.number - lastSync;
         if (blockDelta == 0) {
             return;
         }
-
         if (blockDelta > PAYOUT_PERIOD) {
             blockDelta = PAYOUT_PERIOD;
         }
         uint112 amtToPayOut = uint112(
             (uint256(pendingBalance) * ((blockDelta * 1e18) / PAYOUT_PERIOD)) / 1e18
         );
-        if (pendingBalance > amtToPayOut) {
-            pendingBalance -= amtToPayOut;
-        } else {
-            pendingBalance = 0;
-        }
+        pendingBalance -= amtToPayOut;
         availableBalance += amtToPayOut;
 
         // If we detect any new balances add it to pending and reset payout period
