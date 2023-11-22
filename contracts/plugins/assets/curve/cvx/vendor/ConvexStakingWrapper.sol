@@ -39,10 +39,6 @@ interface IConvexDeposits {
     ) external;
 }
 
-interface IRewardHook {
-    function onRewardClaim() external;
-}
-
 interface ITokenWrapper {
     function token() external view returns (address);
 }
@@ -84,13 +80,10 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     //rewards
     RewardType[] public rewards;
     mapping(address => uint256) public registeredRewards;
-    address public rewardHook;
     mapping(address => address) public rewardRedirect;
 
     //management
-    bool public isShutdown;
     bool public isInit;
-    address internal _owner;
 
     string internal _tokenname;
     string internal _tokensymbol;
@@ -102,12 +95,8 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         bool _wrapped
     );
     event Withdrawn(address indexed _user, uint256 _amount, bool _unwrapped);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event RewardInvalidated(address _rewardToken);
     event RewardRedirected(address indexed _account, address _forward);
     event RewardAdded(address _token);
-    event Shutdown();
-    event HookSet(address _hook);
     event UserCheckpoint(address _userA, address _userB);
     event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
 
@@ -115,8 +104,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     function initialize(uint256 _poolId) external virtual {
         require(!isInit, "already init");
-        _owner = msg.sender;
-        emit OwnershipTransferred(address(0), _owner);
 
         (address _lptoken, address _token, , address _rewards, , ) = IBooster(convexBooster)
         .poolInfo(_poolId);
@@ -127,7 +114,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
         _tokenname = string(abi.encodePacked("Staked ", ERC20(_token).name()));
         _tokensymbol = string(abi.encodePacked("stk", ERC20(_token).symbol()));
-        isShutdown = false;
         isInit = true;
 
         // collateralVault = _vault;
@@ -135,10 +121,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         //add rewards
         addRewards();
         setApprovals();
-    }
-
-    function owner() public view virtual returns (address) {
-        return _owner;
     }
 
     function name() public view override returns (string memory) {
@@ -151,27 +133,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     function decimals() public view override returns (uint8) {
         return 18;
-    }
-
-    modifier onlyOwner() virtual {
-        require(_owner == msg.sender, "Ownable: caller is not the owner");
-        _;
-    }
-
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    function shutdown() external onlyOwner {
-        isShutdown = true;
-        emit Shutdown();
     }
 
     function setApprovals() public {
@@ -236,58 +197,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
                 emit RewardAdded(extraToken);
             }
         }
-    }
-
-    function addTokenReward(address _token) public virtual onlyOwner {
-        //check if not registered yet
-        if (registeredRewards[_token] == 0) {
-            //add new token to list
-            rewards.push(
-                RewardType({
-                    reward_token: _token,
-                    reward_pool: address(0),
-                    reward_integral: 0,
-                    reward_remaining: 0
-                })
-            );
-            //add to registered map
-            registeredRewards[_token] = rewards.length; //mark registered at index+1
-            //send to self to warmup state
-            IERC20(_token).transfer(address(this), 0);
-            emit RewardAdded(_token);
-        } else {
-            //get previous used index of given token
-            //this ensures that reviving can only be done on the previous used slot
-            uint256 index = registeredRewards[_token];
-            if (index > 0) {
-                //index is registeredRewards minus one
-                RewardType storage reward = rewards[index - 1];
-                //check if it was invalidated
-                if (reward.reward_token == address(0)) {
-                    //revive
-                    reward.reward_token = _token;
-                    emit RewardAdded(_token);
-                }
-            }
-        }
-    }
-
-    //allow invalidating a reward if the token causes trouble in calcRewardIntegral
-    function invalidateReward(address _token) public onlyOwner {
-        uint256 index = registeredRewards[_token];
-        if (index > 0) {
-            //index is registered rewards minus one
-            RewardType storage reward = rewards[index - 1];
-            require(reward.reward_token == _token, "!mismatch");
-            //set reward token address to 0, integral calc will now skip
-            reward.reward_token = address(0);
-            emit RewardInvalidated(_token);
-        }
-    }
-
-    function setHook(address _hook) external onlyOwner {
-        rewardHook = _hook;
-        emit HookSet(_hook);
     }
 
     function rewardLength() external view returns (uint256) {
@@ -383,13 +292,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         depositedBalance[0] = _getDepositedBalance(_accounts[0]);
         depositedBalance[1] = _getDepositedBalance(_accounts[1]);
 
-        //just in case, dont claim rewards directly if shutdown
-        //can still technically claim via unguarded calls but skipping here
-        //protects against outside calls reverting
-        if (!isShutdown) {
-            IRewardStaking(convexPool).getReward(address(this), true);
-        }
-        _claimExtras(false);
+        IRewardStaking(convexPool).getReward(address(this), true);
 
         uint256 rewardCount = rewards.length;
         for (uint256 i = 0; i < rewardCount; i++) {
@@ -403,27 +306,13 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         uint256[2] memory depositedBalance;
         depositedBalance[0] = _getDepositedBalance(_accounts[0]); //only do first slot
 
-        //just in case, dont claim rewards directly if shutdown
-        //can still technically claim via unguarded calls but skipping here
-        //protects against outside calls reverting
-        if (!isShutdown) {
-            IRewardStaking(convexPool).getReward(address(this), true);
-        }
-        _claimExtras(true);
+        IRewardStaking(convexPool).getReward(address(this), true);
 
         uint256 rewardCount = rewards.length;
         for (uint256 i = 0; i < rewardCount; i++) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, true);
         }
         emit UserCheckpoint(_accounts[0], _accounts[1]);
-    }
-
-    //claim any rewards not part of the convex pool
-    function _claimExtras(bool) internal virtual {
-        //override and add any external reward claiming
-        if (rewardHook != address(0)) {
-            try IRewardHook(rewardHook).onRewardClaim() {} catch {}
-        }
     }
 
     function user_checkpoint(address _account) external returns (bool) {
@@ -497,8 +386,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     //deposit a curve token
     function deposit(uint256 _amount, address _to) external {
-        require(!isShutdown, "shutdown");
-
         //dont need to call checkpoint since _mint() will
 
         if (_amount > 0) {
@@ -512,8 +399,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     //stake a convex token
     function stake(uint256 _amount, address _to) external {
-        require(!isShutdown, "shutdown");
-
         //dont need to call checkpoint since _mint() will
 
         if (_amount > 0) {
