@@ -65,11 +65,8 @@ async function main() {
 
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
-  const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: CvxMining.address },
-  })
+  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
   const w3Pool = await ConvexStakingWrapperFactory.deploy()
   await w3Pool.deployed()

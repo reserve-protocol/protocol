@@ -61,17 +61,7 @@ async function main() {
     chainId,
     await w3PoolCollateral.erc20(),
     [],
-    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper',
-    { CvxMining: coreDeployments.cvxMiningLib }
-  )
-
-  /********  Verify CvxMining Lib  **************************/
-
-  await verifyContract(
-    chainId,
-    coreDeployments.cvxMiningLib,
-    [],
-    'contracts/plugins/assets/curve/cvx/vendor/CvxMining.sol:CvxMining'
+    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
   )
 
   /********  Verify 3Pool plugin  **************************/
