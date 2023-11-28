@@ -26,8 +26,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     ICometRewards public immutable rewardsAddr;
     IERC20 public immutable rewardERC20;
 
-    mapping(address => uint64) public baseTrackingIndex;
-    mapping(address => uint64) public baseTrackingAccrued;
+    mapping(address => uint64) public baseTrackingIndex; // keep uint64 to stay consistent with comet
+    mapping(address => uint256) public baseTrackingAccrued; // uint256 to avoid overflow
     mapping(address => uint256) public rewardsClaimed;
 
     constructor(
@@ -286,9 +286,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         (, uint64 trackingSupplyIndex) = getSupplyIndices();
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
 
-        baseTrackingAccrued[account] += safe64(
-            (safe104(accountBal) * indexDelta) / TRACKING_INDEX_SCALE
-        );
+        baseTrackingAccrued[account] += (safe104(accountBal) * indexDelta) / TRACKING_INDEX_SCALE;
         baseTrackingIndex[account] = trackingSupplyIndex;
     }
 
