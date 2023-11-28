@@ -15,13 +15,12 @@ struct MorphoTokenisedDepositConfig {
 }
 
 abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
-    // Sizes are picked such that the whole struct is 512 bits and can fit into 2 storage slots
     struct MorphoTokenisedDepositRewardsAccountingState {
-        uint112 totalAccumulatedBalance;
-        uint112 totalPaidOutBalance;
-        uint120 pendingBalance;
-        uint120 availableBalance;
-        uint48 lastSync;
+        uint256 totalAccumulatedBalance;
+        uint256 totalPaidOutBalance;
+        uint256 pendingBalance;
+        uint256 availableBalance;
+        uint256 lastSync;
     }
 
     uint256 private constant PAYOUT_PERIOD = 7200;
@@ -62,20 +61,18 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         if (blockDelta > PAYOUT_PERIOD) {
             blockDelta = PAYOUT_PERIOD;
         }
-        uint112 amtToPayOut = uint112(
-            (uint256(state.pendingBalance) * ((blockDelta * 1e18) / PAYOUT_PERIOD)) / 1e18
-        );
+        uint256 amtToPayOut = (state.pendingBalance * ((blockDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
         state.pendingBalance -= amtToPayOut;
         state.availableBalance += amtToPayOut;
 
         // If we detect any new balances add it to pending and reset payout period
         uint256 newAccumulated = state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
         uint256 accumulatedTokens = newAccumulated - state.totalAccumulatedBalance;
-        state.totalAccumulatedBalance = uint112(newAccumulated);
-        state.pendingBalance += uint120(accumulatedTokens);
+        state.totalAccumulatedBalance = newAccumulated;
+        state.pendingBalance += accumulatedTokens;
 
         if (accumulatedTokens > 0) {
-            state.lastSync = uint48(block.number);
+            state.lastSync = block.number;
         }
         _state = state;
     }
@@ -86,8 +83,8 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
 
     function _distributeReward(address account, uint256 amt) internal override {
         MorphoTokenisedDepositRewardsAccountingState memory state = _state;
-        state.totalPaidOutBalance += uint112(amt);
-        state.availableBalance -= uint120(amt);
+        state.totalPaidOutBalance += uint256(amt);
+        state.availableBalance -= uint256(amt);
         _state = state;
         SafeERC20.safeTransfer(rewardToken, account, amt);
     }
