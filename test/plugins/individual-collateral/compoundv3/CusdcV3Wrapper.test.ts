@@ -598,6 +598,18 @@ describeFork('Wrapped CUSDCv3', () => {
       )
     })
 
+    it('regression test: able to claim rewards even when they are big without overflow', async () => {
+      // Nov 28 2023: uint64 math in CusdcV3Wrapper contract results in overflow when COMP rewards are even moderately large
+
+      const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
+      await advanceTime(1000)
+      await enableRewardsAccrual(cusdcV3, bn('2e18')) // enough to revert on uint64 implementation
+
+      await expect(wcusdcV3.connect(bob).claimRewards()).to.emit(wcusdcV3, 'RewardsClaimed')
+      expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
+    })
+
     it('claims rewards and sends to claimer (claimTo)', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
