@@ -20,7 +20,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     /// From cUSDCv3, used in principal <> present calculations
     uint256 public constant TRACKING_INDEX_SCALE = 1e15;
     /// From cUSDCv3, scaling factor for USDC rewards
-    uint64 public constant RESCALE_FACTOR = 1e12;
+    uint256 public constant RESCALE_FACTOR = 1e12;
 
     CometInterface public immutable underlyingComet;
     ICometRewards public immutable rewardsAddr;
