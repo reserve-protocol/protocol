@@ -278,8 +278,8 @@ const makeAaveFiatCollateralTestSuite = (
       expect(
         await erc20Factory.attach(networkConfigToUse.tokens.MORPHO!).balanceOf(aliceAddress)
       ).to.be.eq(bn('14162082619942089266'))
-    }),
-    it.only('Frontrunning claiming rewards is not economical', async () => {
+    })
+    it('Frontrunning claiming rewards is not economical', async () => {
       const alice = hre.ethers.provider.getSigner(1)
       const aliceAddress = await alice.getAddress()
       const bob = hre.ethers.provider.getSigner(2)

@@ -72,7 +72,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         state.pendingBalance += newlyAccumulated;
 
         state.lastSync = block.timestamp;
-        
+
         _state = state;
     }
 
