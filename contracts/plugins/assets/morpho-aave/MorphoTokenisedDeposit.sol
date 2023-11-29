@@ -23,7 +23,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         uint256 lastSync;
     }
 
-    uint256 private constant PAYOUT_PERIOD = 1 days;
+    uint256 private constant PAYOUT_PERIOD = 7 days;
 
     IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
@@ -52,7 +52,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     }
 
     function _claimAssetRewards() internal override {
-        MorphoTokenisedDepositRewardsAccountingState memory state = _state;
+        MorphoTokenisedDepositRewardsAccountingState storage state = _state;
         // First pay out any pendingBalances, over a 7200 block period
         uint256 timeDelta = block.timestamp - state.lastSync;
         if (timeDelta == 0) {

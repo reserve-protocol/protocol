@@ -273,7 +273,8 @@ const makeAaveFiatCollateralTestSuite = (
       // which sync allows you to do without the other stuff that happens in claimRewards
       await vaultWithClaimableRewards.sync()
 
-      await advanceBlocks(hre, 7200)
+      await advanceTime(hre, 86400 * 7)
+      await advanceBlocks(hre, 7200 * 7)
       expect(await vaultWithClaimableRewards.connect(alice).claimRewards())
       expect(
         await erc20Factory.attach(networkConfigToUse.tokens.MORPHO!).balanceOf(aliceAddress)
@@ -326,15 +327,15 @@ const makeAaveFiatCollateralTestSuite = (
       await vault.connect(bob).redeem(depositAmount.mul(10), bobAddress, bobAddress)
 
       // After the inflation attack
-      await advanceTime(hre, 86400)
-      await advanceBlocks(hre, 7200)
+      await advanceTime(hre, 86400 * 7)
+      await advanceBlocks(hre, 7200 * 7)
       await vault.connect(alice).claimRewards()
 
       // Shown below is that it is no longer economical to inflate own shares
       // bob only managed to steal approx 1/7200 * 90% of the reward because hardhat increments block by 1
       // in practise it would be 0 as inflation attacks typically flashloan assets.
-      expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(bn('999978956350737311521'))
-      expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(bn('10521885521885454'))
+      expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(bn('999996993749479075487'))
+      expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(bn('1503126503126363'))
     })
   }
 
