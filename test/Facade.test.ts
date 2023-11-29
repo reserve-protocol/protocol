@@ -8,6 +8,8 @@ import { expectEvents } from '../common/events'
 import { IConfig } from '#/common/configuration'
 import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
+import { disableBatchTrade, disableDutchTrade } from './utils/trades'
+
 import {
   Asset,
   BackingManagerP1,
@@ -18,6 +20,7 @@ import {
   CTokenWrapperMock,
   ERC20Mock,
   FacadeAct,
+  FacadeInvariantMonitor,
   FacadeRead,
   FacadeTest,
   MockV3Aggregator,
@@ -49,7 +52,13 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus, TradeKind, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
+import {
+  CollateralStatus,
+  TradeKind,
+  MAX_UINT256,
+  ONE_PERIOD,
+  ZERO_ADDRESS,
+} from '#/common/constants'
 import { expectTrade } from './utils/trades'
 import { mintCollaterals } from './utils/tokens'
 
@@ -57,7 +66,7 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 
 const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
-describe('FacadeRead + FacadeAct contracts', () => {
+describe('FacadeRead + FacadeAct + FacadeInvariantMonitor contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -85,6 +94,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeAct: FacadeAct
+  let facadeInvariantMonitor: FacadeInvariantMonitor
 
   // Main
   let rToken: TestIRToken
@@ -127,6 +137,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       facade,
       facadeAct,
       facadeTest,
+      facadeInvariantMonitor,
       rToken,
       main,
       basketHandler,
@@ -1045,6 +1056,264 @@ describe('FacadeRead + FacadeAct contracts', () => {
         expect(max).to.equal(0)
       })
     }
+  })
+
+  describe('FacadeInvariantMonitor', () => {
+    beforeEach(async () => {
+      // Mint Tokens
+      initialBal = bn('10000000000e18')
+      await token.connect(owner).mint(addr1.address, initialBal)
+      await usdc.connect(owner).mint(addr1.address, initialBal)
+      await aToken.connect(owner).mint(addr1.address, initialBal)
+      await cTokenVault.connect(owner).mint(addr1.address, initialBal)
+
+      // Provide approvals
+      await token.connect(addr1).approve(rToken.address, initialBal)
+      await usdc.connect(addr1).approve(rToken.address, initialBal)
+      await aToken.connect(addr1).approve(rToken.address, initialBal)
+      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
+    })
+
+    it('should return batch auctions disabled correctly', async () => {
+      expect(await facadeInvariantMonitor.batchAuctionsDisabled(rToken.address)).to.equal(false)
+
+      // Disable Broker Batch Auctions
+      await disableBatchTrade(broker)
+
+      expect(await facadeInvariantMonitor.batchAuctionsDisabled(rToken.address)).to.equal(true)
+    })
+
+    it('should return dutch auctions disabled correctly', async () => {
+      expect(await facadeInvariantMonitor.dutchAuctionsDisabled(rToken.address)).to.equal(false)
+
+      // Disable Broker Dutch Auctions for token0
+      await disableDutchTrade(broker, token.address)
+
+      expect(await facadeInvariantMonitor.dutchAuctionsDisabled(rToken.address)).to.equal(true)
+    })
+
+    it('should return issuance available', async () => {
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1')) // no supply
+
+      // Issue some RTokens (1%)
+      const issueAmount = bn('10000e18')
+
+      // Issue rTokens (1%)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // check throttles updated
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.99'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issue additional rTokens (another 1%)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Should be 2% down minus some recharging
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.98'),
+        fp('0.001')
+      )
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Advance time significantly
+      await advanceTime(10000000)
+
+      // Check new issuance available - fully recharged
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issuance #2 - Consume all throttle
+      const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount2)
+
+      // Check new issuance available - all consumed
+      expect(await rToken.issuanceAvailable()).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+    })
+
+    it('should return redemption available', async () => {
+      const issueAmount = bn('100000e18')
+
+      // Decrease redemption allowed amount
+      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
+      await rToken.connect(owner).setRedemptionThrottleParams(redeemThrottleParams)
+
+      // Check with no supply
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issue some RTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // check throttles - redemption still fully available
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.9'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redeem RTokens (50% of throttle)
+      await rToken.connect(addr1).redeem(issueAmount.div(4))
+
+      // check throttle - redemption allowed decreased to 50%
+      expect(await rToken.redemptionAvailable()).to.equal(issueAmount.div(4))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('0.5'))
+
+      // Advance time significantly
+      await advanceTime(10000000)
+
+      //  Check redemption available - fully recharged
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redemption #2 - Consume all throttle
+      await rToken.connect(addr1).redeem(issueAmount.div(2))
+
+      // Check new redemption available - all consumed
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(bn(0))
+    })
+
+    it('Should handle issuance/redemption throttles correctly, using percent', async function () {
+      // Full issuance available. Nothing to redeem
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issue full throttle
+      const issueAmount1: BigNumber = config.issuanceThrottle.amtRate
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount1)
+
+      // Check redemption throttles updated
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Advance time significantly
+      await advanceTime(1000000000)
+
+      // Check new issuance available - fully recharged
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(issueAmount1)
+
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issuance #2 - Full throttle again - will be processed
+      const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount2)
+
+      // Check new issuance available - all consumed
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(bn(0))
+
+      // Check redemption throttle updated - fixed in max (does not exceed)
+      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Set issuance throttle to percent only
+      const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+
+      // Advance time significantly
+      await advanceTime(1000000000)
+
+      // Check new issuance available - 10% of supply (2 M) = 200K
+      const supplyThrottle = bn('200000e18')
+      expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle)
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Check redemption throttle unchanged
+      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issuance #3 - Should be allowed, does not exceed supply restriction
+      const issueAmount3: BigNumber = bn('100000e18')
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount3)
+
+      // Check issuance throttle updated - Previous issuances recharged
+      expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle.sub(issueAmount3))
+
+      // Hourly Limit: 210K (10% of total supply of 2.1 M)
+      // Available: 100 K / 201K (~ 0.47619)
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.476'),
+        fp('0.001')
+      )
+
+      // Check redemption throttle unchanged
+      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Check all issuances are confirmed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(
+        issueAmount1.add(issueAmount2).add(issueAmount3)
+      )
+
+      // Advance time, issuance will recharge a bit
+      await advanceTime(100)
+
+      // Now 50% of hourly limit available (~105.8K / 210 K)
+      expect(await rToken.issuanceAvailable()).to.be.closeTo(fp('105800'), fp('100'))
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.5'),
+        fp('0.01')
+      )
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      const issueAmount4: BigNumber = fp('105800')
+      // Issuance #4 - almost all available
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount4)
+
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.003'),
+        fp('0.001')
+      )
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Advance time significantly to fully recharge
+      await advanceTime(1000000000)
+
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Check redemptions
+      // Set redemption throttle to percent only
+      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+      const totalSupply = await rToken.totalSupply()
+      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(10)) // 10%
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redeem half of the available throttle
+      await rToken.connect(addr1).redeem(totalSupply.div(10).div(2))
+
+      // About 52% now used of redemption throttle
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.be.closeTo(
+        fp('0.52'),
+        fp('0.01')
+      )
+
+      // Advance time significantly to fully recharge
+      await advanceTime(1000000000)
+
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redeem all remaining
+      await rToken.connect(addr1).redeem(await rToken.redemptionAvailable())
+
+      // Check all consumed
+      expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(bn(0))
+    })
   })
 
   // P1 only

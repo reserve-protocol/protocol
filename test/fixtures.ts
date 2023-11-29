@@ -24,6 +24,7 @@ import {
   DutchTrade,
   FacadeRead,
   FacadeAct,
+  FacadeInvariantMonitor,
   FacadeTest,
   DistributorP1,
   FiatCollateral,
@@ -412,6 +413,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
+  facadeInvariantMonitor: FacadeInvariantMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -483,6 +485,14 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
+
+  // Deploy FacadeInvariantMonitor
+  const FacadeInvariantMonitorFactory: ContractFactory = await ethers.getContractFactory(
+    'FacadeInvariantMonitor'
+  )
+  const facadeInvariantMonitor = <FacadeInvariantMonitor>(
+    await FacadeInvariantMonitorFactory.deploy()
+  )
 
   // Deploy RSR chainlink feed
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
@@ -751,6 +761,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     facadeAct,
     facadeTest,
+    facadeInvariantMonitor,
     rsrTrader,
     rTokenTrader,
     bySymbol,

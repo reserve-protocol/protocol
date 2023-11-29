@@ -54,6 +54,7 @@ import {
   TestIRToken,
   TestIStRSR,
   RecollateralizationLibP1,
+  FacadeInvariantMonitor,
 } from '../../typechain'
 import {
   Collateral,
@@ -247,6 +248,7 @@ export async function collateralFixture(
         'stat' + symbol
       )
     )
+
     const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
@@ -603,6 +605,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
+  facadeInvariantMonitor: FacadeInvariantMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -674,6 +677,12 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
+
+  // Deploy FacadeTest
+  const FacadeInvariantMonitorFactory: ContractFactory = await ethers.getContractFactory(
+    'FacadeInvariantMonitor'
+  )
+  const facadeInvariantMonitor = <FacadeTest>await FacadeInvariantMonitorFactory.deploy()
 
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
@@ -930,6 +939,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     facadeAct,
     facadeTest,
+    facadeInvariantMonitor,
     rsrTrader,
     rTokenTrader,
   }
