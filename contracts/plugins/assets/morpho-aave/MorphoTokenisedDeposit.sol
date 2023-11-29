@@ -52,28 +52,25 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     }
 
     function _claimAssetRewards() internal override {
-        MorphoTokenisedDepositRewardsAccountingState storage state = _state;
         // First pay out any pendingBalances, over a 7200 block period
-        uint256 timeDelta = block.timestamp - state.lastSync;
+        uint256 timeDelta = block.timestamp - _state.lastSync;
         if (timeDelta == 0) {
             return;
         }
         if (timeDelta > PAYOUT_PERIOD) {
             timeDelta = PAYOUT_PERIOD;
         }
-        uint256 amtToPayOut = (state.pendingBalance * ((timeDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
-        state.pendingBalance -= amtToPayOut;
-        state.availableBalance += amtToPayOut;
+        uint256 amtToPayOut = (_state.pendingBalance * ((timeDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
+        _state.pendingBalance -= amtToPayOut;
+        _state.availableBalance += amtToPayOut;
 
         // If we detect any new balances add it to pending and reset payout period
-        uint256 totalAccumulated = state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
-        uint256 newlyAccumulated = totalAccumulated - state.totalAccumulatedBalance;
-        state.totalAccumulatedBalance = totalAccumulated;
-        state.pendingBalance += newlyAccumulated;
+        uint256 totalAccumulated = _state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
+        uint256 newlyAccumulated = totalAccumulated - _state.totalAccumulatedBalance;
+        _state.totalAccumulatedBalance = totalAccumulated;
+        _state.pendingBalance += newlyAccumulated;
 
-        state.lastSync = block.timestamp;
-
-        _state = state;
+        _state.lastSync = block.timestamp;
     }
 
     function _rewardTokenBalance() internal view override returns (uint256) {
