@@ -54,7 +54,7 @@ import {
   getLatestBlockTimestamp,
   getLatestBlockNumber,
 } from './utils/time'
-import { ITradeRequest } from './utils/trades'
+import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
 
@@ -131,30 +131,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     )
     prices = { sellLow: fp('1'), sellHigh: fp('1'), buyLow: fp('1'), buyHigh: fp('1') }
   })
-
-  const disableBatchTrade = async () => {
-    if (IMPLEMENTATION == Implementation.P1) {
-      const slot = await getStorageAt(broker.address, 205)
-      await setStorageAt(
-        broker.address,
-        205,
-        slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
-      )
-    } else {
-      const slot = await getStorageAt(broker.address, 56)
-      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
-    }
-    expect(await broker.batchTradeDisabled()).to.equal(true)
-  }
-
-  const disableDutchTrade = async (erc20: string) => {
-    const mappingSlot = IMPLEMENTATION == Implementation.P1 ? bn('208') : bn('57')
-    const p = mappingSlot.toHexString().slice(2).padStart(64, '0')
-    const key = erc20.slice(2).padStart(64, '0')
-    const slot = ethers.utils.keccak256('0x' + key + p)
-    await setStorageAt(broker.address, slot, '0x' + '1'.padStart(64, '0'))
-    expect(await broker.dutchTradeDisabled(erc20)).to.equal(true)
-  }
 
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
@@ -412,7 +388,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Disable batch trade manually
-      await disableBatchTrade()
+      await disableBatchTrade(broker)
       expect(await broker.batchTradeDisabled()).to.equal(true)
 
       // Enable batch trade with owner
@@ -425,7 +401,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Disable dutch trade manually
-      await disableDutchTrade(token0.address)
+      await disableDutchTrade(broker, token0.address)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
 
       // Enable dutch trade with owner
@@ -444,7 +420,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Trade Management', () => {
     it('Should not allow to open Batch trade if Disabled', async () => {
       // Disable Broker Batch Auctions
-      await disableBatchTrade()
+      await disableBatchTrade(broker)
 
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
@@ -479,7 +455,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
 
         // Disable Broker Dutch Auctions for token0
-        await disableDutchTrade(token0.address)
+        await disableDutchTrade(broker, token0.address)
 
         // Dutch Auction openTrade should fail now
         await expect(
@@ -498,7 +474,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
 
         // Disable Broker Dutch Auctions for token1
-        await disableDutchTrade(token1.address)
+        await disableDutchTrade(broker, token1.address)
 
         // Dutch Auction openTrade should fail now
         await expect(
