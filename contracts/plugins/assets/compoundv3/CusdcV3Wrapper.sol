@@ -26,7 +26,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     ICometRewards public immutable rewardsAddr;
     IERC20 public immutable rewardERC20;
 
-    mapping(address => uint64) public baseTrackingIndex; // uint64 to stay consistent with CometHelpers
+    mapping(address => uint64) public baseTrackingIndex; // uint64 for consistency with CometHelpers
     mapping(address => uint256) public baseTrackingAccrued; // uint256 to avoid overflow in L:199
     mapping(address => uint256) public rewardsClaimed;
 
