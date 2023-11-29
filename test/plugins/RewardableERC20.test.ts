@@ -512,7 +512,7 @@ for (const wrapperName of wrapperNames) {
         })
       })
 
-      it('Frontrun claimRewards by inflating your shares', async () => {
+      it('Cannot frontrun claimRewards by inflating your shares', async () => {
         await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
         await rewardableAsset.mint(bob.address, initBalance.mul(100))
         await rewardableVault.connect(alice).deposit(initBalance, alice.address)
