@@ -24,7 +24,7 @@ import { MorphoAaveCollateralFixtureContext, mintCollateralTo } from './mintColl
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
 import { whileImpersonating } from '#/utils/impersonation'
 import { whales } from '#/tasks/testing/upgrade-checker-utils/constants'
-import { advanceBlocks } from '#/utils/time'
+import { advanceBlocks, advanceTime } from '#/utils/time'
 
 interface MAFiatCollateralOpts extends CollateralOpts {
   underlyingToken?: string
@@ -279,62 +279,63 @@ const makeAaveFiatCollateralTestSuite = (
         await erc20Factory.attach(networkConfigToUse.tokens.MORPHO!).balanceOf(aliceAddress)
       ).to.be.eq(bn('14162082619942089266'))
     }),
-      it('Frontrunning claiming rewards is not economical', async () => {
-        const alice = hre.ethers.provider.getSigner(1)
-        const aliceAddress = await alice.getAddress()
-        const bob = hre.ethers.provider.getSigner(2)
-        const bobAddress = await bob.getAddress()
+    it.only('Frontrunning claiming rewards is not economical', async () => {
+      const alice = hre.ethers.provider.getSigner(1)
+      const aliceAddress = await alice.getAddress()
+      const bob = hre.ethers.provider.getSigner(2)
+      const bobAddress = await bob.getAddress()
 
-        const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
-          'MorphoAaveV2TokenisedDeposit'
-        )
-        const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
-        const mockRewardsToken = await ERC20Factory.deploy('MockMorphoReward', 'MMrp')
-        const underlyingERC20 = ERC20Factory.attach(defaultCollateralOpts.underlyingToken!)
+      const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
+        'MorphoAaveV2TokenisedDeposit'
+      )
+      const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
+      const mockRewardsToken = await ERC20Factory.deploy('MockMorphoReward', 'MMrp')
+      const underlyingERC20 = ERC20Factory.attach(defaultCollateralOpts.underlyingToken!)
 
-        const vault = await MorphoTokenisedDepositFactory.deploy({
-          morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
-          morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
-          underlyingERC20: defaultCollateralOpts.underlyingToken!,
-          poolToken: defaultCollateralOpts.poolToken!,
-          rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
-          rewardToken: mockRewardsToken.address,
-        })
-
-        const depositAmount = utils.parseUnits('1000', 6)
-
-        await whileImpersonating(
-          hre,
-          whales[defaultCollateralOpts.underlyingToken!.toLowerCase()],
-          async (whaleSigner) => {
-            await underlyingERC20.connect(whaleSigner).transfer(aliceAddress, depositAmount)
-            await underlyingERC20.connect(whaleSigner).transfer(bobAddress, depositAmount.mul(10))
-          }
-        )
-
-        await underlyingERC20.connect(alice).approve(vault.address, ethers.constants.MaxUint256)
-        await vault.connect(alice).mint(depositAmount, aliceAddress)
-
-        // Simulate inflation attack
-        await underlyingERC20.connect(bob).approve(vault.address, ethers.constants.MaxUint256)
-        await vault.connect(bob).mint(depositAmount.mul(10), bobAddress)
-
-        await mockRewardsToken.mint(vault.address, bn('1000000000000000000000'))
-        await vault.sync()
-
-        await vault.connect(bob).claimRewards()
-        await vault.connect(bob).redeem(depositAmount.mul(10), bobAddress, bobAddress)
-
-        // After the inflation attack
-        await advanceBlocks(hre, 7200)
-        await vault.connect(alice).claimRewards()
-
-        // Shown below is that it is no longer economical to inflate own shares
-        // bob only managed to steal approx 1/7200 * 90% of the reward because hardhat increments block by 1
-        // in practise it would be 0 as inflation attacks typically flashloan assets.
-        expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(bn('999621247194163862346'))
-        expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(bn('126262626262625454'))
+      const vault = await MorphoTokenisedDepositFactory.deploy({
+        morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
+        morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
+        underlyingERC20: defaultCollateralOpts.underlyingToken!,
+        poolToken: defaultCollateralOpts.poolToken!,
+        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
+        rewardToken: mockRewardsToken.address,
       })
+
+      const depositAmount = utils.parseUnits('1000', 6)
+
+      await whileImpersonating(
+        hre,
+        whales[defaultCollateralOpts.underlyingToken!.toLowerCase()],
+        async (whaleSigner) => {
+          await underlyingERC20.connect(whaleSigner).transfer(aliceAddress, depositAmount)
+          await underlyingERC20.connect(whaleSigner).transfer(bobAddress, depositAmount.mul(10))
+        }
+      )
+
+      await underlyingERC20.connect(alice).approve(vault.address, ethers.constants.MaxUint256)
+      await vault.connect(alice).mint(depositAmount, aliceAddress)
+
+      // Simulate inflation attack
+      await underlyingERC20.connect(bob).approve(vault.address, ethers.constants.MaxUint256)
+      await vault.connect(bob).mint(depositAmount.mul(10), bobAddress)
+
+      await mockRewardsToken.mint(vault.address, bn('1000000000000000000000'))
+      await vault.sync()
+
+      await vault.connect(bob).claimRewards()
+      await vault.connect(bob).redeem(depositAmount.mul(10), bobAddress, bobAddress)
+
+      // After the inflation attack
+      await advanceTime(hre, 86400)
+      await advanceBlocks(hre, 7200)
+      await vault.connect(alice).claimRewards()
+
+      // Shown below is that it is no longer economical to inflate own shares
+      // bob only managed to steal approx 1/7200 * 90% of the reward because hardhat increments block by 1
+      // in practise it would be 0 as inflation attacks typically flashloan assets.
+      expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(bn('999978956350737311521'))
+      expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(bn('10521885521885454'))
+    })
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function

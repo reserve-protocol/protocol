@@ -23,7 +23,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         uint256 lastSync;
     }
 
-    uint256 private constant PAYOUT_PERIOD = 7200;
+    uint256 private constant PAYOUT_PERIOD = 1 days;
 
     IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
@@ -44,7 +44,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         morphoController = config.morphoController;
         poolToken = address(config.poolToken);
         rewardsDistributor = config.rewardsDistributor;
-        _state.lastSync = uint48(block.number);
+        _state.lastSync = uint48(block.timestamp);
     }
 
     function sync() external {
@@ -54,26 +54,25 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     function _claimAssetRewards() internal override {
         MorphoTokenisedDepositRewardsAccountingState memory state = _state;
         // First pay out any pendingBalances, over a 7200 block period
-        uint256 blockDelta = block.number - state.lastSync;
-        if (blockDelta == 0) {
+        uint256 timeDelta = block.timestamp - state.lastSync;
+        if (timeDelta == 0) {
             return;
         }
-        if (blockDelta > PAYOUT_PERIOD) {
-            blockDelta = PAYOUT_PERIOD;
+        if (timeDelta > PAYOUT_PERIOD) {
+            timeDelta = PAYOUT_PERIOD;
         }
-        uint256 amtToPayOut = (state.pendingBalance * ((blockDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
+        uint256 amtToPayOut = (state.pendingBalance * ((timeDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
         state.pendingBalance -= amtToPayOut;
         state.availableBalance += amtToPayOut;
 
         // If we detect any new balances add it to pending and reset payout period
-        uint256 newAccumulated = state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
-        uint256 accumulatedTokens = newAccumulated - state.totalAccumulatedBalance;
-        state.totalAccumulatedBalance = newAccumulated;
-        state.pendingBalance += accumulatedTokens;
+        uint256 totalAccumulated = state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
+        uint256 newlyAccumulated = totalAccumulated - state.totalAccumulatedBalance;
+        state.totalAccumulatedBalance = totalAccumulated;
+        state.pendingBalance += newlyAccumulated;
 
-        if (accumulatedTokens > 0) {
-            state.lastSync = block.number;
-        }
+        state.lastSync = block.timestamp;
+        
         _state = state;
     }
 
