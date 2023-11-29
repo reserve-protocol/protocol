@@ -257,7 +257,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
         uint256 newBaseTrackingAccrued = baseTrackingAccrued[account] +
-            safe64((safe104(balanceOf(account)) * indexDelta) / TRACKING_INDEX_SCALE);
+            (safe104(balanceOf(account)) * indexDelta) /
+            TRACKING_INDEX_SCALE;
 
         uint256 claimed = rewardsClaimed[account];
         uint256 accrued = newBaseTrackingAccrued * RESCALE_FACTOR;
