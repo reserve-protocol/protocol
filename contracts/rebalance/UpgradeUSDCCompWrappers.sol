@@ -33,8 +33,6 @@ interface Vault {
 }
 
 contract UpgradeUSDCCompWrappers {
-    error InsuficientFunds();
-
     using SafeERC20 for IERC20Metadata;
     using SafeERC20 for ICToken;
     using SafeERC20 for CTokenWrapper;
@@ -184,10 +182,7 @@ contract UpgradeUSDCCompWrappers {
         uint256[] memory,
         bytes memory userData
     ) external {
-        require(msg.sender == address(VAULT), "Only vault");
         State memory state = abi.decode(userData, (State));
-        require(tokens[0] == USDC, "Invalid token");
-
         uint256 tokensIn = amounts[0];
         DutchTrade trade = DutchTrade(
             address(
@@ -195,7 +190,6 @@ contract UpgradeUSDCCompWrappers {
             )
         );
         wrap(address(state.buy));
-
         if (state.bidAmountUnderlying < state.sellAmountUnderlying) {
             uint256 amountToDonateUnderlying = state.sellAmountUnderlying -
                 state.bidAmountUnderlying;
