@@ -27,6 +27,7 @@ interface IAaveProtocolDataProvider {
 }
 
 interface IStaticATokenLM is IERC20 {
+    // solhint-disable-next-line func-name-mixedcase
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 
     function dynamicBalanceOf(address account) external view returns (uint256);
