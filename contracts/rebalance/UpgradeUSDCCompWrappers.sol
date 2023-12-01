@@ -57,7 +57,8 @@ contract UpgradeUSDCCompWrappers {
     ICusdcV3Wrapper internal constant OLD_CUSDCV3WRAPPER =
         ICusdcV3Wrapper(0x7e1e077b289c0153b5ceAD9F264d66215341c9Ab);
 
-    ICusdcV3Wrapper internal constant NEW_CUSDCV3WRAPPER = ICusdcV3Wrapper(address(0));
+    ICusdcV3Wrapper internal constant NEW_CUSDCV3WRAPPER =
+        ICusdcV3Wrapper(0x093c07787920eB34A0A0c7a09823510725Aee4Af);
 
     constructor() {
         USDC.safeApprove(address(FUSDC), type(uint256).max);
