@@ -232,7 +232,7 @@ contract UpgradeUSDCCompWrappers {
         wrap(address(state.buy));
 
         if (state.donation > 0) {
-            state.buy.safeTransfer(address(trade), (state.donation * 99) / 100);
+            state.buy.safeTransfer(address(trade), state.donation);
         }
 
         // Bid on active dutch trade
