@@ -1,24 +1,8 @@
+import { bn } from '#/common/numbers'
+import { Proposal } from '#/utils/subgraph'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { expect } from 'chai'
 import { ProposalBuilder, buildProposal, proposeUpgrade } from '../governance'
-import { Proposal } from '#/utils/subgraph'
-import { networkConfig } from '#/common/configuration'
-import { bn, fp, toBNDecimals } from '#/common/numbers'
-import { CollateralStatus, TradeKind, ZERO_ADDRESS } from '#/common/constants'
-import { pushOraclesForward, setOraclePrice } from '../oracles'
-import { whileImpersonating } from '#/utils/impersonation'
-import { whales } from '../constants'
-import { getTokens, runDutchTrade } from '../trades'
-import { EURFiatCollateral, MockV3Aggregator } from '../../../../typechain'
-import {
-  advanceTime,
-  advanceToTimestamp,
-  getLatestBlockTimestamp,
-  setNextBlockTimestamp,
-} from '#/utils/time'
-import { useEnv } from '#/utils/env'
-import { resetFork } from '#/utils/chain'
 
 export const proposal_3_0_1: ProposalBuilder = async (
   hre: HardhatRuntimeEnvironment,
@@ -48,6 +32,8 @@ export const proposal_3_0_1: ProposalBuilder = async (
   const rsrTraderImplAddr = '0x5e3e13d3d2a0adfe16f8EF5E7a2992A88E9e65AF'
   const rTokenTraderImplAddr = '0x5e3e13d3d2a0adfe16f8EF5E7a2992A88E9e65AF'
   const fUSDC = '0x3C0a9143063Fc306F7D3cBB923ff4879d70Cf1EA'
+  const cusdcv3 = '0x7Dee4DbeF75f93cCA06823Ac915Df990be3F1538'
+  
 
   // Step 1 - Update implementations
   const txs = [
@@ -56,30 +42,34 @@ export const proposal_3_0_1: ProposalBuilder = async (
     await rTokenTrader.populateTransaction.upgradeTo(rTokenTraderImplAddr),
     await broker.populateTransaction.setBatchTradeImplementation(batchTradeImplAddr),
     await assetRegistry.populateTransaction.register(fUSDC),
+    await assetRegistry.populateTransaction.register(cusdcv3),
   ]
 
   // Step 2 - Basket change
   txs.push(
     await basketHandler.populateTransaction.setPrimeBasket(
-        ['0x7e1e077b289c0153b5ceAD9F264d66215341c9Ab', '0x465a5a630482f3abD6d3b84B39B29b07214d19e5', '0x7f7B77e49d5b30445f222764a794AFE14af062eB'],
-        [bn('333329999999999960'), bn('333329999999999960'), bn('333340000000000025')]
-      ),
+      [
+        '0x093c07787920eB34A0A0c7a09823510725Aee4Af',
+        '0x465a5a630482f3abD6d3b84B39B29b07214d19e5',
+        '0x7f7B77e49d5b30445f222764a794AFE14af062eB',
+      ],
+      [bn('333329999999999960'), bn('333329999999999960'), bn('333340000000000025')]
+    ),
     await basketHandler.populateTransaction.refreshBasket()
   )
 
-  const description =
-    'Upgrade to 3.0.1, update basket to use fUSDC instead of fUSDC-Vault'
+  const description = 'Upgrade to 3.0.1, update basket to use fUSDC instead of fUSDC-Vault'
 
   return buildProposal(txs, description)
 }
 
 task('upgrade-usdc-plus', 'Mints all the tokens to an address')
   .addParam('rtoken', 'the address of the RToken being upgraded')
-  .addParam('governor', 'the address of the governor')
   .setAction(async (params, hre) => {
     // await resetFork(hre, Number(useEnv('FORK_BLOCK')))
     const [tester] = await hre.ethers.getSigners()
-
-    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_1)
+    console.log(tester.address)
+    
+    await proposeUpgrade(hre, params.rtoken, "0xc837C557071D604bCb1058c8c4891ddBe8FDD630", proposal_3_0_1)
     console.log('proposal submitted')
-})
+  })

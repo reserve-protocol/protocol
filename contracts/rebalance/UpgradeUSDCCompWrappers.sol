@@ -15,10 +15,13 @@ import { CometInterface } from "../plugins/assets/compoundv3/vendor/CometInterfa
 
 struct State {
     IMain main;
-    uint256 bidAmount;
+    DutchTrade trade;
     uint256 sellAmount;
     uint256 sellAmountUnderlying;
+    uint256 bidAmount;
     uint256 bidAmountUnderlying;
+    uint256 donation;
+    uint256 donationUnderlying;
     IERC20Metadata buy;
     IERC20Metadata sell;
 }
@@ -46,10 +49,9 @@ contract UpgradeUSDCCompWrappers {
     IERC20Metadata internal constant USDC =
         IERC20Metadata(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
-    ICToken internal constant FUSDC = ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563);
-
+    ICToken internal constant FUSDC = ICToken(0x465a5a630482f3abD6d3b84B39B29b07214d19e5);
     CTokenWrapper internal constant FUSDC_VAULT =
-        CTokenWrapper(0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022);
+        CTokenWrapper(0x6D05CB2CB647B58189FA16f81784C05B4bcd4fe9);
 
     CometInterface internal constant CUSDCV3 =
         CometInterface(0xc3d688B66703497DAA19211EEdff47f25384cdc3);
@@ -60,8 +62,9 @@ contract UpgradeUSDCCompWrappers {
     ICusdcV3Wrapper internal constant NEW_CUSDCV3WRAPPER =
         ICusdcV3Wrapper(0x093c07787920eB34A0A0c7a09823510725Aee4Af);
 
-    constructor() {
-        USDC.safeApprove(address(FUSDC), type(uint256).max);
+    function approve(address token, address spender) internal {
+        IERC20Metadata(token).safeApprove(spender, 0);
+        IERC20Metadata(token).safeApprove(spender, type(uint256).max);
     }
 
     // Unwraps available 'token' into USDC
@@ -70,11 +73,37 @@ contract UpgradeUSDCCompWrappers {
             FUSDC_VAULT.withdraw(FUSDC_VAULT.balanceOf(address(this)), address(this));
             FUSDC.redeem(FUSDC.balanceOf(address(this)));
         } else if (token == address(OLD_CUSDCV3WRAPPER)) {
-            OLD_CUSDCV3WRAPPER.withdraw(OLD_CUSDCV3WRAPPER.balanceOf(address(this)));
-            CUSDCV3.withdraw(address(USDC), CUSDCV3.balanceOf(address(this)));
+            uint256 amt = OLD_CUSDCV3WRAPPER.convertStaticToDynamic(
+                uint104(OLD_CUSDCV3WRAPPER.balanceOf(address(this)))
+            );
+            if (amt == 0) {
+                return;
+            }
+            OLD_CUSDCV3WRAPPER.withdraw(amt);
+            amt = CUSDCV3.balanceOf(address(this));
+            if (amt == 0) {
+                return;
+            }
+            CUSDCV3.withdraw(address(USDC), amt);
         } else if (token == address(NEW_CUSDCV3WRAPPER)) {
-            NEW_CUSDCV3WRAPPER.withdraw(NEW_CUSDCV3WRAPPER.balanceOf(address(this)));
-            CUSDCV3.withdraw(address(USDC), CUSDCV3.balanceOf(address(this)));
+            uint256 amt = NEW_CUSDCV3WRAPPER.convertStaticToDynamic(
+                uint104(NEW_CUSDCV3WRAPPER.balanceOf(address(this)))
+            );
+            if (amt == 0) {
+                return;
+            }
+            NEW_CUSDCV3WRAPPER.withdraw(amt);
+            amt = CUSDCV3.balanceOf(address(this));
+            if (amt == 0) {
+                return;
+            }
+            CUSDCV3.withdraw(address(USDC), amt);
+        } else if (token == address(CUSDCV3)) {
+            uint256 amt = CUSDCV3.balanceOf(address(this));
+            if (amt == 0) {
+                return;
+            }
+            CUSDCV3.withdraw(address(USDC), amt);
         } else if (token == address(FUSDC)) {
             FUSDC.redeem(FUSDC.balanceOf(address(this)));
         } else {
@@ -85,25 +114,25 @@ contract UpgradeUSDCCompWrappers {
     // Wraps available USDC into 'token'
     function wrap(address token) internal {
         if (token == address(FUSDC_VAULT)) {
-            USDC.safeApprove(address(FUSDC), USDC.balanceOf(address(this)));
+            approve(address(USDC), address(FUSDC));
             FUSDC.mint(USDC.balanceOf(address(this)));
 
-            FUSDC.safeApprove(address(FUSDC_VAULT), USDC.balanceOf(address(this)));
+            approve(address(FUSDC), address(FUSDC_VAULT));
             FUSDC_VAULT.deposit(FUSDC.balanceOf(address(this)), address(this));
         } else if (token == address(NEW_CUSDCV3WRAPPER)) {
-            USDC.safeApprove(address(CUSDCV3), USDC.balanceOf(address(this)));
+            approve(address(USDC), address(CUSDCV3));
             CUSDCV3.supply(address(USDC), USDC.balanceOf(address(this)));
 
-            CUSDCV3.approve(address(NEW_CUSDCV3WRAPPER), CUSDCV3.balanceOf(address(this)));
-            NEW_CUSDCV3WRAPPER.deposit(NEW_CUSDCV3WRAPPER.balanceOf(address(this)));
+            approve(address(CUSDCV3), address(NEW_CUSDCV3WRAPPER));
+            NEW_CUSDCV3WRAPPER.deposit(CUSDCV3.balanceOf(address(this)));
         } else if (token == address(OLD_CUSDCV3WRAPPER)) {
-            USDC.safeApprove(address(CUSDCV3), USDC.balanceOf(address(this)));
+            approve(address(USDC), address(CUSDCV3));
             CUSDCV3.supply(address(USDC), USDC.balanceOf(address(this)));
 
-            CUSDCV3.approve(address(OLD_CUSDCV3WRAPPER), CUSDCV3.balanceOf(address(this)));
-            OLD_CUSDCV3WRAPPER.deposit(OLD_CUSDCV3WRAPPER.balanceOf(address(this)));
+            approve(address(CUSDCV3), address(OLD_CUSDCV3WRAPPER));
+            OLD_CUSDCV3WRAPPER.deposit(CUSDCV3.balanceOf(address(this)));
         } else if (token == address(FUSDC)) {
-            USDC.safeApprove(address(FUSDC), USDC.balanceOf(address(this)));
+            approve(address(USDC), address(FUSDC));
             FUSDC.mint(USDC.balanceOf(address(this)));
         } else {
             revert("Invalid token");
@@ -116,7 +145,7 @@ contract UpgradeUSDCCompWrappers {
         } else if (token == address(OLD_CUSDCV3WRAPPER)) {
             return OLD_CUSDCV3WRAPPER.convertStaticToDynamic(uint104(amt));
         } else if (token == address(FUSDC)) {
-            return (amt * FUSDC.exchangeRateStored()) / 1e28;
+            return (amt * FUSDC.exchangeRateStored()) / 1e18;
         } else if (token == address(NEW_CUSDCV3WRAPPER)) {
             return NEW_CUSDCV3WRAPPER.convertStaticToDynamic(uint104(amt));
         } else {
@@ -130,7 +159,7 @@ contract UpgradeUSDCCompWrappers {
         } else if (token == address(OLD_CUSDCV3WRAPPER)) {
             return OLD_CUSDCV3WRAPPER.convertDynamicToStatic(amt);
         } else if (token == address(FUSDC)) {
-            return (amt * 1e28) / FUSDC.exchangeRateStored();
+            return (amt * 1e18) / FUSDC.exchangeRateStored();
         } else if (token == address(NEW_CUSDCV3WRAPPER)) {
             return NEW_CUSDCV3WRAPPER.convertDynamicToStatic(amt);
         } else {
@@ -144,21 +173,30 @@ contract UpgradeUSDCCompWrappers {
 
     function _getState(IMain main, IERC20Metadata auctionFor) internal view returns (State memory) {
         State memory state;
-        state.sell = auctionFor;
+
         state.main = main;
         DutchTrade trade = DutchTrade(
             address(BackingManagerP1(address(main.backingManager())).trades(IERC20(auctionFor)))
         );
+
         require(address(trade) != address(0), "Invalid trade");
         require(trade.KIND() == TradeKind.DUTCH_AUCTION, "Invalid trade type");
         require(trade.status() == TradeStatus.OPEN, "Invalid trade status");
-
+        state.trade = trade;
         state.buy = trade.buy();
         state.bidAmount = trade.bidAmount(block.number);
         state.bidAmountUnderlying = wrappedToUnderlying(state.bidAmount, address(state.buy));
 
-        state.sellAmount = trade.sellAmount();
+        state.sell = trade.sell();
+        state.sellAmount = trade.lot();
         state.sellAmountUnderlying = wrappedToUnderlying(state.sellAmount, address(state.sell));
+
+        if (state.bidAmountUnderlying < state.sellAmountUnderlying) {
+            uint256 amountToDonateUnderlying = state.sellAmountUnderlying -
+                state.bidAmountUnderlying;
+            state.donationUnderlying = amountToDonateUnderlying;
+            state.donation = underlyingToWrapped(amountToDonateUnderlying, address(state.buy));
+        }
         return state;
     }
 
@@ -178,7 +216,7 @@ contract UpgradeUSDCCompWrappers {
     }
 
     function receiveFlashLoan(
-        IERC20Metadata[] memory tokens,
+        IERC20Metadata[] memory,
         uint256[] memory amounts,
         uint256[] memory,
         bytes memory userData
@@ -190,23 +228,23 @@ contract UpgradeUSDCCompWrappers {
                 BackingManagerP1(address(state.main.backingManager())).trades(IERC20(state.sell))
             )
         );
+
         wrap(address(state.buy));
-        if (state.bidAmountUnderlying < state.sellAmountUnderlying) {
-            uint256 amountToDonateUnderlying = state.sellAmountUnderlying -
-                state.bidAmountUnderlying;
-            state.buy.safeTransfer(
-                address(trade),
-                underlyingToWrapped(amountToDonateUnderlying, address(state.buy))
-            );
+
+        if (state.donation > 0) {
+            state.buy.safeTransfer(address(trade), (state.donation * 99) / 100);
         }
 
         // Bid on active dutch trade
+        approve(address(state.buy), address(trade));
         trade.bid();
+
+        unwrap(address(state.buy));
         unwrap(address(state.sell));
 
         emit Rebalance(address(USDC), tokensIn, address(USDC), USDC.balanceOf(address(this)));
 
         // Pay back balancer
-        tokens[0].safeTransfer(msg.sender, amounts[0]);
+        USDC.safeTransfer(msg.sender, amounts[0]);
     }
 }
