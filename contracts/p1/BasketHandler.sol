@@ -190,11 +190,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         requireValidCollArray(erc20s);
 
         // Track constant config targets if revaluable
-        bool isConstant = hasConstantConfigTargets(erc20s, targetAmts);
-        require(revaluable || isConstant, "targets not constant");
-        if (revaluable && !isConstant) {
-            emit Revalued(nonce + 1);
-            lastRevalued = nonce + 1; // next nonce
+        if (config.erc20s.length > 0) {
+            bool isConstant = hasConstantConfigTargets(erc20s, targetAmts);
+            require(revaluable || isConstant, "targets not constant");
+            if (revaluable && !isConstant) {
+                emit Revalued(nonce + 1);
+                lastRevalued = nonce + 1; // next nonce
+            }
         }
 
         // Clean up previous basket config
