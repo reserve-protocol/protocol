@@ -10,6 +10,10 @@ import {
 import { ITokens } from '#/common/configuration'
 import { MainP1 } from '@typechain/MainP1'
 import { Contract } from 'ethers'
+const tocFilename = 'docs/deployed-addresses/index.json'
+import toc from '#/docs/deployed-addresses/index.json'
+
+type Network = 'mainnet' | 'base'
 
 task('get-addys', 'Compile the deployed addresses of an RToken deployment')
   .addOptionalParam('rtoken', 'The address of the RToken', undefined, types.string)
@@ -17,17 +21,18 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
   .addOptionalParam('ver', 'The target version', undefined, types.string)
   .setAction(async (params, hre) => {
     /*
-        Helper functions
+    Helper functions
     */
-
-    // hacky api throttler, basescan has rate limits 5req/sec
-    const delay = async (ms: number) => {
-      return new Promise( resolve => setTimeout(resolve, ms) );
+   
+   // hacky api throttler, basescan has rate limits 5req/sec
+   const delay = async (ms: number) => {
+     return new Promise( resolve => setTimeout(resolve, ms) );
     }
-
+    
     const capitalize = (s: string) => s && s[0].toUpperCase() + s.slice(1)
-
-    const network = hre.network.name
+    
+    const chainId = await getChainId(hre)
+    const network: Network = hre.network.name as Network
     let scannerUrl: string;
     let scannerApiUrl: string;
     switch(network) {
@@ -147,20 +152,25 @@ ${collaterals}
     }
 
     const getRTokenFileName = async (rtoken: string) => {
-      const chainId = await getChainId(hre)
       const rToken = await hre.ethers.getContractAt('IRToken', rtoken)
       const rTokenSymbol = await rToken.symbol()
       return `${outputDir}${chainId}-${rTokenSymbol}.md`
     }
 
-    const getAssetFileName = async (version: string) => {
-      const chainId = await getChainId(hre)
-      return `${outputDir}${chainId}-assets-${version}.md`
+    const getAssetFileId = (version: string) => {
+      return `assets-${version}`
     }
 
-    const getComponentFileName = async (version: string) => {
-      const chainId = await getChainId(hre)
-      return `${outputDir}${chainId}-components-${version}.md`
+    const getComponentFileId = (version: string) => {
+      return `components-${version}`
+    }
+
+    const getAssetFileName = (assetFileId: string) => {
+      return `${outputDir}${chainId}-${assetFileId}.md`
+    }
+
+    const getComponentFileName = (componentFileId: string) => {
+      return `${outputDir}${chainId}-${componentFileId}.md`
     }
 
     /*
@@ -229,6 +239,11 @@ ${collaterals}
       const rTokenFileName = await getRTokenFileName(params.rtoken)
       fs.writeFileSync(rTokenFileName, markdown)
       console.log(`Wrote ${rTokenFileName}`)
+      
+      toc[network]['rtokens'].indexOf(rTokenSymbol) === -1 && toc[network]['rtokens'].push(rTokenSymbol)
+      fs.writeFileSync(tocFilename, JSON.stringify(toc, null, 2))
+      console.log(`Updated table of contents`)
+
     } else if (params.ver) {
       console.log(`Collecting addresses for Version: ${params.ver} (${hre.network.name})`)
       // if version is provided, print implementation addresses
@@ -254,7 +269,9 @@ ${collaterals}
         assetRows,
         collateralRows
       )
-      const assetFileName = await getAssetFileName(params.ver)
+      const assetFileId = getAssetFileId(params.ver)
+      const assetFileName = getAssetFileName(assetFileId)
+
       fs.writeFileSync(assetFileName, assetMarkdown)
       console.log(`Wrote ${assetFileName}`)
 
@@ -283,9 +300,16 @@ ${collaterals}
         `Component Implementations (${capitalize(hre.network.name)} ${params.ver})`,
         await createTableRows(components, false, true)
       )
-      const componentFileName = await getComponentFileName(params.ver)
+
+      const componentFileId = getComponentFileId(params.ver)
+      const componentFileName = getComponentFileName(componentFileId)
       fs.writeFileSync(componentFileName, componentMarkdown)
       console.log(`Wrote ${componentFileName}`)
+
+      toc[network]['components'].indexOf(componentFileId) === -1 && toc[network]['components'].push(componentFileId)
+      toc[network]['assets'].indexOf(assetFileId) === -1 && toc[network]['assets'].push(assetFileId)
+      fs.writeFileSync(tocFilename, JSON.stringify(toc, null, 2))
+      console.log(`Updated table of contents`)
     } else {
       // if neither rtoken address nor version number is provided, throw error
       throw new Error(
