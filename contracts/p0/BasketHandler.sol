@@ -148,6 +148,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
+    bool public revaluable; // whether the weights of the target basket be changed
+
+    uint48 private lastRevalued; // {basketNonce} the earliest basket nonce of same target weights
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -168,6 +172,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         lastStatusTimestamp = uint48(block.timestamp);
 
         disabled = true;
+        // revaluable = false;
     }
 
     /// Disable the basket in order to schedule a basket refresh
@@ -244,8 +249,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
-        // If this isn't initial setup, require targets remain constant
-        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
+        // Track constant config targets if revaluable
+        bool isConstant = hasConstantConfigTargets(erc20s, targetAmts);
+        require(revaluable || isConstant, "config targets not constant");
+        if (revaluable && !isConstant) {
+            lastRevalued = nonce + 1; // next nonce
+            emit Revalued(lastRevalued);
+        }
 
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
@@ -466,7 +476,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
-            require(basketNonces[i] <= nonce, "invalid basketNonce");
+            require(
+                basketNonces[i] >= lastRevalued && basketNonces[i] <= nonce,
+                "invalid basketNonce"
+            );
             Basket storage b = basketHistory[basketNonces[i]];
 
             // Add-in refAmts contribution from historical basket
@@ -564,6 +577,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
+    }
+
+    /// @custom:governance
+    function setRevaluable(bool val) public governance {
+        emit RevaluableChanged(revaluable, val);
+        revaluable = val;
     }
 
     /* _switchBasket computes basket' from three inputs:
@@ -760,10 +779,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Require that newERC20s and newTargetAmts preserve the current config targets
-    function requireConstantConfigTargets(
-        IERC20[] calldata newERC20s,
-        uint192[] calldata newTargetAmts
-    ) private {
+    /// @return true iff the target amounts are preserved on a per-target-name basis
+    function hasConstantConfigTargets(IERC20[] calldata newERC20s, uint192[] calldata newTargetAmts)
+        private
+        returns (bool)
+    {
         // Empty _targetAmts mapping
         while (_targetAmts.length() > 0) {
             (bytes32 key, ) = _targetAmts.at(0);
@@ -783,11 +803,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < newERC20s.length; i++) {
             bytes32 targetName = main.assetRegistry().toColl(newERC20s[i]).targetName();
             (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new target weights");
+            if (!contains || amt < newTargetAmts[i]) return false;
             if (amt == newTargetAmts[i]) _targetAmts.remove(targetName);
             else _targetAmts.set(targetName, amt - newTargetAmts[i]);
         }
-        require(_targetAmts.length() == 0, "missing target weights");
+        return (_targetAmts.length() == 0);
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,

@@ -48,6 +48,15 @@ interface IBasketHandler is IComponent {
     /// @param newStatus The new basket status
     event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
+    /// Emitted when the ability to change target weights is changed
+    /// @param oldVal The old revalueable boolean
+    /// @param newVal The new revalueable boolean
+    event RevaluableChanged(bool oldVal, bool newVal);
+
+    /// Emitted when the target basket is revalued (made to be worth different target amounts)
+    /// @param basketNonce The last nonce available for custom redemption
+    event Revalued(uint48 basketNonce);
+
     // Initialization
     function init(IMain main_, uint48 warmupPeriod_) external;
 
@@ -156,4 +165,6 @@ interface TestIBasketHandler is IBasketHandler {
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;
+
+    function setRevaluable(bool val) external;
 }

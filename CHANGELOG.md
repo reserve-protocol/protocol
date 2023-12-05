@@ -1,5 +1,23 @@
 # Changelog
 
+# 3.2.0
+
+This release adds the ability for each RToken to configure whether the target basket should be revaluable or not. An RToken that is not revaluable can have its target basket changed in terms of ERC20s but not in terms of target weights at the target unit level.
+
+### Upgrade Steps
+
+Upgrade BasketHandler
+
+Optional: For slightly nicer RToken documentation, upgrade RToken as well. No change in functionality
+
+### Core Protocol Contracts
+
+- `BasketHandler` [+1 slot]
+  - Add concept of a revaluable basket: a basket that can have its target amounts (once grouped by target unit) changed
+  - Add `revaluable` bool and `Revalued` event
+  - Add `setRevaluable(bool)`
+  - Require `quoteCustomRedemption` only use constant-value baskets
+
 # 3.1.0 - Unreleased
 
 ### Upgrade Steps -- Required
