@@ -1795,21 +1795,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // not possible on non-fresh basketHandler
       await expect(
         freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-      ).to.be.revertedWith('invalid target amount; too large')
+      ).to.be.revertedWith('invalid target amt')
     })
 
     it('Should not allow to increase prime Basket weights', async () => {
       // not possible on freshBasketHandler
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     it('Should not allow to decrease prime Basket weights', async () => {
       // not possible on freshBasketHandler
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     it('Should not allow to set prime Basket with an empty basket', async () => {
@@ -1824,10 +1824,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with a zero amount', async () => {
       await expect(
         freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('invalid target amount; must be nonzero')
+      ).to.be.revertedWith('invalid target amt')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     it('Should be able to set exactly same basket', async () => {
@@ -1870,7 +1870,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
           )
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
 
       await expect(
         basketHandler
@@ -1879,7 +1879,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address, eurToken.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
           )
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     it('Should not allow to set prime Basket as subset of old basket', async () => {
@@ -1890,7 +1890,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
           )
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
       await expect(
         basketHandler
           .connect(owner)
@@ -1898,7 +1898,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address],
             [fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     it('Should not allow to change target unit in old basket', async () => {
@@ -1909,7 +1909,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, eurToken.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
@@ -1963,7 +1963,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('config targets not constant')
+      ).to.be.revertedWith('targets not constant')
     })
 
     describe('Custom Redemption', () => {

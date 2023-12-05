@@ -191,7 +191,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Track constant config targets if revaluable
         bool isConstant = hasConstantConfigTargets(erc20s, targetAmts);
-        require(revaluable || isConstant, "config targets not constant");
+        require(revaluable || isConstant, "targets not constant");
         if (revaluable && !isConstant) {
             emit Revalued(nonce + 1);
             lastRevalued = nonce + 1; // next nonce
@@ -211,8 +211,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
-            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
-            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
+            require(0 < targetAmts[i] && targetAmts[i] <= MAX_TARGET_AMT, "invalid target amt");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];

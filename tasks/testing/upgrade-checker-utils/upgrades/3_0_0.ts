@@ -72,7 +72,7 @@ export default async (
   await whileImpersonating(hre, timelockAddress, async (tl) => {
     await expect(
       basketHandler.connect(tl).setPrimeBasket([usdc.address], [fp('20')])
-    ).to.be.revertedWith('config targets not constant')
+    ).to.be.revertedWith('targets not constant')
   })
 
   // Attempt to change target unit in basket
@@ -103,7 +103,7 @@ export default async (
     await assetRegistry.connect(tl).register(eurFiatCollateral.address)
     await expect(
       basketHandler.connect(tl).setPrimeBasket([eurt.address], [fp('1')])
-    ).to.be.revertedWith('config targets not constant')
+    ).to.be.revertedWith('targets not constant')
     await assetRegistry.connect(tl).unregister(eurFiatCollateral.address)
   })
 

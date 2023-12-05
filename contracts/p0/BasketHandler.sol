@@ -116,7 +116,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
-    // event. config is only modified by governance through setPrimeBakset and setBackupConfig
+    // event. config is only modified by governance through setPrimeBasket and setBackupConfig
     BasketConfig private config;
 
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
@@ -251,7 +251,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Track constant config targets if revaluable
         bool isConstant = hasConstantConfigTargets(erc20s, targetAmts);
-        require(revaluable || isConstant, "config targets not constant");
+        require(revaluable || isConstant, "targets not constant");
         if (revaluable && !isConstant) {
             lastRevalued = nonce + 1; // next nonce
             emit Revalued(lastRevalued);
@@ -272,8 +272,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
-            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
-            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
+            require(0 < targetAmts[i] && targetAmts[i] <= MAX_TARGET_AMT, "invalid target amt");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
