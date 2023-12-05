@@ -220,8 +220,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   amount > 0
     //   amount <= balanceOf(caller)
     //   sum(portions) == FIX_ONE
-    //   require nonce within [bh.lastRevalued, bh.nonce()] for nonce in basketNonces
-    //
+    //   nonce >= basketHandler.primeNonce() for nonce in basketNonces
+
     // effects:
     //   (so totalSupply -= amount and balanceOf(caller) -= amount)
     //   basketsNeeded' / totalSupply' >== basketsNeeded / totalSupply
@@ -234,7 +234,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @dev Allows partial redemptions up to the minAmounts
-    /// @dev Redemption is unavailable after setPrimeBasket() but before switchBasket()
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonces An array of basket nonces to do redemption from

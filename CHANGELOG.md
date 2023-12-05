@@ -14,9 +14,7 @@ Optional: For slightly nicer RToken documentation, upgrade RToken as well. No ch
 
 - `BasketHandler` [+1 slot]
   - Add concept of a revaluable basket: a basket that can have its target amounts (once grouped by target unit) changed
-  - Add `revaluable` bool and `Revalued` event
-  - Add `setRevaluable(bool)`
-  - Require `quoteCustomRedemption` only use constant-value baskets
+  - Add `revaluable` bool and `setRevaluable(bool)`
 
 # 3.1.0 - Unreleased
 

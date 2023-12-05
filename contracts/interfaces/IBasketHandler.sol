@@ -53,10 +53,6 @@ interface IBasketHandler is IComponent {
     /// @param newVal The new revalueable boolean
     event RevaluableChanged(bool oldVal, bool newVal);
 
-    /// Emitted when the target basket is revalued (made to be worth different target amounts)
-    /// @param basketNonce The last nonce available for custom redemption
-    event Revalued(uint48 basketNonce);
-
     // Initialization
     function init(IMain main_, uint48 warmupPeriod_) external;
 

@@ -84,8 +84,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     bool public revaluable; // whether the weights of the target basket be changed
 
-    uint48 private lastRevalued; // {basketNonce} the earliest basket nonce of same target weights
-
     // ===
 
     // ==== Invariants ====
@@ -179,7 +177,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   for all i, 0 < targetAmts[i] <= MAX_TARGET_AMT == 1000
     //
     // effects:
-    //   lastRevalued = nonce + 1, if revaluable
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
@@ -189,14 +186,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
-        // Track constant config targets if revaluable
-        if (config.erc20s.length > 0) {
-            bool isConstant = hasConstantConfigTargets(erc20s, targetAmts);
-            require(revaluable || isConstant, "targets not constant");
-            if (revaluable && !isConstant) {
-                emit Revalued(nonce + 1);
-                lastRevalued = nonce + 1; // next nonce
-            }
+        // If this isn't initial setup, require targets remain constant
+        if (revaluable && config.erc20s.length > 0) {
+            requireConstantConfigTargets(erc20s, targetAmts);
         }
 
         // Clean up previous basket config
@@ -213,7 +205,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
-            require(0 < targetAmts[i] && targetAmts[i] <= MAX_TARGET_AMT, "invalid target amt");
+            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
+            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -424,10 +417,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
-            require(
-                basketNonces[i] >= lastRevalued && basketNonces[i] <= nonce,
-                "invalid basketNonce"
-            );
+            require(basketNonces[i] <= nonce, "invalid basketNonce");
             Basket storage b = basketHistory[basketNonces[i]];
 
             // Add-in refAmts contribution from historical basket
@@ -574,11 +564,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Require that newERC20s and newTargetAmts preserve the current config targets
-    /// @return true iff the target amounts are preserved on a per-target-name basis
-    function hasConstantConfigTargets(IERC20[] calldata newERC20s, uint192[] calldata newTargetAmts)
-        private
-        returns (bool)
-    {
+    function requireConstantConfigTargets(
+        IERC20[] calldata newERC20s,
+        uint192[] calldata newTargetAmts
+    ) private {
         // Populate _targetAmts mapping with old basket config
         uint256 len = config.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
@@ -596,11 +585,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) {
             bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
             (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            if (!contains || amt < newTargetAmts[i]) return false;
+            require(contains && amt >= newTargetAmts[i], "new target weights");
             if (amt > newTargetAmts[i]) _targetAmts.set(targetName, amt - newTargetAmts[i]);
             else _targetAmts.remove(targetName);
         }
-        return (_targetAmts.length() == 0);
+        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Require that erc20s is a valid collateral array
