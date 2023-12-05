@@ -18,6 +18,7 @@ export interface ITokens {
   FRAX?: string
   MIM?: string
   eUSD?: string
+  crvUSD?: string
   aDAI?: string
   aUSDC?: string
   aUSDT?: string
@@ -58,6 +59,7 @@ export interface ITokens {
   cUSDCv3?: string
   cUSDbCv3?: string
   ONDO?: string
+  sFRAX?: string
   sDAI?: string
   cbETH?: string
   STG?: string
@@ -69,6 +71,8 @@ export interface ITokens {
   astETH?: string
   wsgUSDC?: string
   wsgUSDbC?: string
+  yvCurveUSDPcrvUSD?: string
+  yvCurveUSDCcrvUSD?: string
 
   // Morpho Aave
   maUSDC?: string
@@ -140,6 +144,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
       MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
+      crvUSD: '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
@@ -177,6 +182,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
+      sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
       STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
@@ -185,6 +191,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
+      yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
+      yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -199,6 +207,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
+      crvUSD: '0xEEf0C605546958c1f899b6fB336C20671f9cD49F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
@@ -228,7 +237,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x285617313887d43256F852cAE0Ee4de4b68D45B0',
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
-    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
+    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
   },
   '1': {
     name: 'mainnet',
@@ -242,6 +251,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
       MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
+      crvUSD: '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
@@ -279,6 +289,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
+      sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
       STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
@@ -287,6 +298,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
       MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+      yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
+      yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -301,6 +314,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSD: '0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
+      crvUSD: '0xEEf0C605546958c1f899b6fB336C20671f9cD49F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
@@ -327,7 +341,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x285617313887d43256F852cAE0Ee4de4b68D45B0',
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
-    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
+    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
   },
   '3': {
     name: 'tenderly',
@@ -426,7 +440,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x285617313887d43256F852cAE0Ee4de4b68D45B0',
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
-    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
+    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
   },
   '5': {
     name: 'goerli',
@@ -530,7 +544,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
-      STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df'
+      STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -543,6 +557,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 2%, 24hr
       wstETHstETHexr: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24hr
       cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
+      STG: '0x63Af8341b62E683B87bB540896bF283D96B4D385',
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
@@ -551,7 +566,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x2F9E3953b2Ef89fA265f2a32ed9F80D00229125B',
     AAVE_V3_POOL: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
     AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
-    STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C'
+    STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C',
   },
 }
 

@@ -20,14 +20,14 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     /// From cUSDCv3, used in principal <> present calculations
     uint256 public constant TRACKING_INDEX_SCALE = 1e15;
     /// From cUSDCv3, scaling factor for USDC rewards
-    uint64 public constant RESCALE_FACTOR = 1e12;
+    uint256 public constant RESCALE_FACTOR = 1e12;
 
     CometInterface public immutable underlyingComet;
     ICometRewards public immutable rewardsAddr;
     IERC20 public immutable rewardERC20;
 
-    mapping(address => uint64) public baseTrackingIndex;
-    mapping(address => uint64) public baseTrackingAccrued;
+    mapping(address => uint64) public baseTrackingIndex; // uint64 for consistency with CometHelpers
+    mapping(address => uint256) public baseTrackingAccrued; // uint256 to avoid overflow in L:199
     mapping(address => uint256) public rewardsClaimed;
 
     constructor(
@@ -260,7 +260,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
         uint256 newBaseTrackingAccrued = baseTrackingAccrued[account] +
-            safe64((safe104(balanceOf(account)) * indexDelta) / TRACKING_INDEX_SCALE);
+            (safe104(balanceOf(account)) * indexDelta) /
+            TRACKING_INDEX_SCALE;
 
         uint256 claimed = rewardsClaimed[account];
         uint256 accrued = newBaseTrackingAccrued * RESCALE_FACTOR;
@@ -289,9 +290,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         (, uint64 trackingSupplyIndex) = getSupplyIndices();
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
 
-        baseTrackingAccrued[account] += safe64(
-            (safe104(accountBal) * indexDelta) / TRACKING_INDEX_SCALE
-        );
+        baseTrackingAccrued[account] += (safe104(accountBal) * indexDelta) / TRACKING_INDEX_SCALE;
         baseTrackingIndex[account] = trackingSupplyIndex;
     }
 
