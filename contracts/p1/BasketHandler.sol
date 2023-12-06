@@ -187,7 +187,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         requireValidCollArray(erc20s);
 
         // If this isn't initial setup, require targets remain constant
-        if (revaluable && config.erc20s.length > 0) {
+        if (!revaluable && config.erc20s.length > 0) {
             requireConstantConfigTargets(erc20s, targetAmts);
         }
 
