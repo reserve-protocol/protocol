@@ -1753,39 +1753,39 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
       ).to.be.revertedWith('new target weights')
 
-      // Should fail differently after revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should fail differently after becomes reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
       ).to.be.revertedWith('invalid target amount; too large')
     })
 
-    it('Should allow to make revaluable', async () => {
-      await expect(basketHandler.connect(owner).setRevaluable(true))
-        .to.emit(basketHandler, 'RevaluableChanged')
+    it('Should allow to make reweightable', async () => {
+      await expect(basketHandler.connect(owner).setReweightable(true))
+        .to.emit(basketHandler, 'ReweightableChanged')
         .withArgs(false, true)
-      await expect(basketHandler.connect(owner).setRevaluable(false))
-        .to.emit(basketHandler, 'RevaluableChanged')
+      await expect(basketHandler.connect(owner).setReweightable(false))
+        .to.emit(basketHandler, 'ReweightableChanged')
         .withArgs(true, false)
     })
 
-    it('Should not allow to increase prime Basket weights unless revaluable', async () => {
+    it('Should not allow to increase prime Basket weights unless reweightable', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
       ).to.be.revertedWith('new target weights')
 
-      // Should work once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should work once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
     })
 
-    it('Should not allow to decrease prime Basket weights unless revaluable', async () => {
+    it('Should not allow to decrease prime Basket weights unless reweightable', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
       ).to.be.revertedWith('missing target weights')
 
-      // Should work once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should work once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
     })
 
@@ -1794,8 +1794,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         'empty basket'
       )
 
-      // Should still fail after revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should still fail after becomes reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
         'empty basket'
       )
@@ -1806,8 +1806,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
       ).to.be.revertedWith('missing target weights')
 
-      // Should still fail after revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should still fail after becomes reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
       ).to.be.revertedWith('invalid target amount; must be nonzero')
@@ -1821,8 +1821,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
         )
 
-      // Should still work once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should still work once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler
         .connect(owner)
         .setPrimeBasket(
@@ -1872,8 +1872,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           )
       ).to.be.revertedWith('new target weights')
 
-      // Should work once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should work once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler
         .connect(owner)
         .setPrimeBasket(
@@ -1900,8 +1900,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           )
       ).to.be.revertedWith('missing target weights')
 
-      // Should work once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should work once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler
         .connect(owner)
         .setPrimeBasket(
@@ -1920,8 +1920,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           )
       ).to.be.revertedWith('new target weights')
 
-      // Should work once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should work once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler
         .connect(owner)
         .setPrimeBasket(
@@ -1940,8 +1940,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
       ).to.be.revertedWith('invalid collateral')
 
-      // Should still fail once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should still fail once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await expect(
         basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
       ).to.be.revertedWith('invalid collateral')
@@ -1985,8 +1985,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           )
       ).to.be.revertedWith('new target weights')
 
-      // Should not revert once revaluable
-      await basketHandler.connect(owner).setRevaluable(true)
+      // Should not revert once reweightable
+      await basketHandler.connect(owner).setReweightable(true)
       await basketHandler
         .connect(owner)
         .setPrimeBasket(
@@ -2905,7 +2905,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await newColl.refresh()
 
       // Set basket with single collateral
-      await basketHandler.setRevaluable(true)
+      await basketHandler.setReweightable(true)
       await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1000')])
 
       // Change basket - valid at this point
@@ -2924,7 +2924,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 2', async () => {
       // Set basket with single collateral
-      await basketHandler.setRevaluable(true)
+      await basketHandler.setReweightable(true)
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1.1')])
       await basketHandler.refreshBasket()
 

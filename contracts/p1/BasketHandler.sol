@@ -82,7 +82,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // ===
     // Added in 3.2.0
 
-    bool public revaluable; // whether the total weights of the target basket can be changed
+    bool public reweightable; // whether the total weights of the target basket can be changed
 
     // ===
 
@@ -112,7 +112,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         lastStatusTimestamp = uint48(block.timestamp);
 
         disabled = true;
-        // revaluable = false;
+        // reweightable = false;
     }
 
     /// Disable the basket in order to schedule a basket refresh
@@ -187,7 +187,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         requireValidCollArray(erc20s);
 
         // If this isn't initial setup, require targets remain constant
-        if (!revaluable && config.erc20s.length > 0) {
+        if (!reweightable && config.erc20s.length > 0) {
             requireConstantConfigTargets(erc20s, targetAmts);
         }
 
@@ -522,10 +522,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// @custom:governance
-    function setRevaluable(bool val) public {
+    function setReweightable(bool val) public {
         requireGovernanceOnly();
-        emit RevaluableChanged(revaluable, val);
-        revaluable = val;
+        emit ReweightableChanged(reweightable, val);
+        reweightable = val;
     }
 
     // === Private ===
