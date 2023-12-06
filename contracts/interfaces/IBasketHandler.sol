@@ -48,7 +48,7 @@ interface IBasketHandler is IComponent {
     /// @param newStatus The new basket status
     event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
-    /// Emitted when the ability to change target weights is changed
+    /// Emitted when the ability to change total target weights is changed
     /// @param oldVal The old revalueable boolean
     /// @param newVal The new revalueable boolean
     event RevaluableChanged(bool oldVal, bool newVal);

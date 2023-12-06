@@ -148,7 +148,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
-    bool public revaluable; // whether the weights of the target basket be changed
+    bool public revaluable; // whether the total weights of the target basket can be changed
 
     // ==== Invariants ====
     // basket is a valid Basket:

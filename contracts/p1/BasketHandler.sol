@@ -82,7 +82,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // ===
     // Added in 3.2.0
 
-    bool public revaluable; // whether the weights of the target basket be changed
+    bool public revaluable; // whether the total weights of the target basket can be changed
 
     // ===
 
