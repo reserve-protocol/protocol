@@ -91,7 +91,7 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {
         // {ref/tok} = {ref/LP token} * {LP token/tok}
-        return _safeWrap(curvePool.get_virtual_price()).mul(_pricePerShare());
+        return _safeWrap(curvePool.get_virtual_price()).mul(_pricePerShare(), FLOOR);
     }
 
     /// @return {LP token/tok}
