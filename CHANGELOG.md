@@ -8,8 +8,6 @@ This release adds the ability for each RToken to configure whether the target ba
 
 Upgrade BasketHandler
 
-Optional: For slightly nicer RToken documentation, upgrade RToken as well. No change in functionality
-
 ### Core Protocol Contracts
 
 - `BasketHandler` [+1 slot]

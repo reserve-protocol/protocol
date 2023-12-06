@@ -221,7 +221,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   amount <= balanceOf(caller)
     //   sum(portions) == FIX_ONE
     //   nonce >= basketHandler.primeNonce() for nonce in basketNonces
-
+    //
     // effects:
     //   (so totalSupply -= amount and balanceOf(caller) -= amount)
     //   basketsNeeded' / totalSupply' >== basketsNeeded / totalSupply
