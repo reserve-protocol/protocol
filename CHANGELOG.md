@@ -10,9 +10,13 @@ Upgrade BasketHandler
 
 ### Core Protocol Contracts
 
+New governance param added to `DeploymentParams`: `reweightable`
+
 - `BasketHandler` [+1 slot]
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
   - Add immutable-after-init `reweightable` bool
+- `Deployer`
+  - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
 
 # 3.1.0 - Unreleased
 
