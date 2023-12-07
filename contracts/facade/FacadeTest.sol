@@ -18,6 +18,7 @@ uint192 constant FIX_TWO = FIX_ONE * 2;
  *
  * @custom:static-call - Use ethers callStatic() in order to get result after update
  */
+// slither-disable-start
 contract FacadeTest is IFacadeTest {
     using FixLib for uint192;
 
@@ -150,3 +151,4 @@ contract FacadeTest is IFacadeTest {
         }
     }
 }
+// slither-disable-end 

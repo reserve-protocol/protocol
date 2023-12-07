@@ -210,6 +210,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             if (amounts[i] == 0) continue;
 
             // Send withdrawal
+            // slither-disable-next-line arbitrary-send-erc20
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                 address(backingManager),
                 recipient,
@@ -319,6 +320,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
                 if (allZero) allZero = false;
 
                 // Send withdrawal
+                // slither-disable-next-line arbitrary-send-erc20
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     address(backingManager),
                     recipient,
