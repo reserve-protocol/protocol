@@ -1689,7 +1689,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Basket Handling', () => {
-    let reweightableBH: TestIBasketHandler // a BasketHandler with reweightable = true
+    let reweightableBH: TestIBasketHandler // need to have both this and regular basketHandler around
     let eurToken: ERC20Mock
 
     beforeEach(async () => {
@@ -1827,7 +1827,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should be able to set exactly same basket', async () => {
-      await reweightableBH
+      await basketHandler
         .connect(owner)
         .setPrimeBasket(
           [token0.address, token1.address, token2.address, token3.address],
@@ -1867,6 +1867,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
           )
       ).to.be.revertedWith('new target weights')
+
       await expect(
         basketHandler
           .connect(owner)
@@ -1875,14 +1876,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
           )
       ).to.be.revertedWith('new target weights')
-
-      // Should work once reweightable
-      await reweightableBH
-        .connect(owner)
-        .setPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
-        )
     })
 
     it('Should not allow to set prime Basket as subset of old basket', async () => {
@@ -1902,14 +1895,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [fp('0.25'), fp('0.25'), fp('0.25')]
           )
       ).to.be.revertedWith('missing target weights')
-
-      // Should work once reweightable
-      await reweightableBH
-        .connect(owner)
-        .setPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
-        )
     })
 
     it('Should not allow to change target unit in old basket', async () => {
@@ -1921,32 +1906,23 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
       ).to.be.revertedWith('new target weights')
-
-      // Should work once reweightable
-      await reweightableBH
-        .connect(owner)
-        .setPrimeBasket(
-          [token0.address, token1.address, token2.address, eurToken.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-        )
     })
 
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
       await expect(
-        basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('invalid collateral')
-
-      // Should still fail once reweightable
-      await expect(
         reweightableBH.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
       ).to.be.revertedWith('invalid collateral')
       await expect(
+        basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
+      ).to.be.revertedWith('invalid collateral')
+
+      await expect(
         reweightableBH
+          .connect(owner)
+          .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+      ).to.be.revertedWith('invalid collateral')
+      await expect(
+        basketHandler
           .connect(owner)
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
       ).to.be.revertedWith('invalid collateral')
@@ -1984,14 +1960,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
       ).to.be.revertedWith('new target weights')
-
-      // Should not revert once reweightable
-      await reweightableBH
-        .connect(owner)
-        .setPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-        )
     })
 
     describe('Custom Redemption', () => {
