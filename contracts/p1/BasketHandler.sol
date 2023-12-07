@@ -82,7 +82,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // ===
     // Added in 3.2.0
 
-    bool public reweightable; // whether the total weights of the target basket can be changed
+    // Whether the total weights of the target basket can be changed
+    bool public reweightable; // immutable after init
 
     // ===
 
@@ -96,7 +97,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // if basket.erc20s is empty then disabled == true
 
     // BasketHandler.init() just leaves the BasketHandler state zeroed
-    function init(IMain main_, uint48 warmupPeriod_) external initializer {
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external initializer {
         __Component_init(main_);
 
         assetRegistry = main_.assetRegistry();
@@ -106,13 +111,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         stRSR = main_.stRSR();
 
         setWarmupPeriod(warmupPeriod_);
+        reweightable = reweightable_; // immutable thereafter
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
         lastStatusTimestamp = uint48(block.timestamp);
 
         disabled = true;
-        // reweightable = false;
     }
 
     /// Disable the basket in order to schedule a basket refresh
@@ -519,13 +524,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
-    }
-
-    /// @custom:governance
-    function setReweightable(bool val) public {
-        requireGovernanceOnly();
-        emit ReweightableChanged(reweightable, val);
-        reweightable = val;
     }
 
     // === Private ===

@@ -48,13 +48,12 @@ interface IBasketHandler is IComponent {
     /// @param newStatus The new basket status
     event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
-    /// Emitted when the ability to change total target weights is changed
-    /// @param oldVal The old reweightable boolean
-    /// @param newVal The new reweightable boolean
-    event ReweightableChanged(bool oldVal, bool newVal);
-
     // Initialization
-    function init(IMain main_, uint48 warmupPeriod_) external;
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external;
 
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
@@ -161,6 +160,4 @@ interface TestIBasketHandler is IBasketHandler {
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;
-
-    function setReweightable(bool val) external;
 }
