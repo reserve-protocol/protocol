@@ -7,6 +7,7 @@ import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
 import "../plugins/assets/compoundv2/CTokenWrapper.sol";
+import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
 
 interface IAaveProtocolDataProvider {
     function getReserveData(address asset)
@@ -14,6 +15,26 @@ interface IAaveProtocolDataProvider {
         view
         returns (
             uint256 availableLiquidity,
+            uint256 totalStableDebt,
+            uint256 totalVariableDebt,
+            uint256 liquidityRate,
+            uint256 variableBorrowRate,
+            uint256 stableBorrowRate,
+            uint256 averageStableBorrowRate,
+            uint256 liquidityIndex,
+            uint256 variableBorrowIndex,
+            uint40 lastUpdateTimestamp
+        );
+}
+
+interface IAaveV3ProtocolDataProvider {
+    function getReserveData(address asset)
+        external
+        view
+        returns (
+            uint256 unbacked,
+            uint256 accruedToTreasuryScaled,
+            uint256 totalAToken,
             uint256 totalStableDebt,
             uint256 totalVariableDebt,
             uint256 liquidityRate,
@@ -40,8 +61,13 @@ interface IStaticATokenLM is IERC20 {
 contract FacadeInvariantMonitor is IFacadeInvariantMonitor {
     using FixLib for uint192;
 
-    IAaveProtocolDataProvider public constant AAVE_V2_DATA_PROVIDER =
-        IAaveProtocolDataProvider(0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d);
+    address public immutable AAVE_V2_DATA_PROVIDER;
+    address public immutable AAVE_V3_DATA_PROVIDER;
+
+    constructor(MonitorParams memory params) {
+        AAVE_V2_DATA_PROVIDER = params.AAVE_V2_DATA_PROVIDER_ADDR;
+        AAVE_V3_DATA_PROVIDER = params.AAVE_V3_DATA_PROVIDER_ADDR;
+    }
 
     // === Views ===
 
@@ -106,9 +132,34 @@ contract FacadeInvariantMonitor is IFacadeInvariantMonitor {
             IStaticATokenLM staticAToken = IStaticATokenLM(address(erc20));
 
             backingBalance = staticAToken.dynamicBalanceOf(address(rToken.main().backingManager()));
-            (availableLiquidity, , , , , , , , , ) = AAVE_V2_DATA_PROVIDER.getReserveData(
-                address(staticAToken.UNDERLYING_ASSET_ADDRESS())
+            (availableLiquidity, , , , , , , , , ) = IAaveProtocolDataProvider(
+                AAVE_V2_DATA_PROVIDER
+            ).getReserveData(address(staticAToken.UNDERLYING_ASSET_ADDRESS()));
+        } else if (collType == CollPluginType.AAVE_V3) {
+            StaticATokenV3LM staticAToken = StaticATokenV3LM(address(erc20));
+
+            backingBalance = staticAToken.convertToAssets(
+                staticAToken.balanceOf(address(rToken.main().backingManager()))
             );
+            (
+                ,
+                ,
+                uint256 totalAToken,
+                uint256 totalStableDebt,
+                uint256 totalVariableDebt,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+
+            ) = IAaveV3ProtocolDataProvider(AAVE_V3_DATA_PROVIDER).getReserveData(
+                address(staticAToken.asset())
+            );
+
+            uint256 totalDebt = totalStableDebt + totalVariableDebt;
+            if (totalAToken >= totalDebt) availableLiquidity = totalAToken - totalDebt;
         } else if (collType == CollPluginType.COMPOUND_V2) {
             CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
             ICToken cToken = ICToken(address(cTokenVault.underlying()));

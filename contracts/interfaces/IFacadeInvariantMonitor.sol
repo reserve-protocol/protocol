@@ -11,7 +11,22 @@ import "./IRToken.sol";
 /// PluginType
 enum CollPluginType {
     AAVE_V2,
+    AAVE_V3,
     COMPOUND_V2
+}
+
+/**
+ * @title MonitorParams
+ * @notice The set of protocol params needed for the required calculations
+ * Should be defined at deployment based on network
+ */
+
+// solhint-disable var-name-mixedcase
+struct MonitorParams {
+    // === AAVE_V2===
+    address AAVE_V2_DATA_PROVIDER_ADDR;
+    // === AAVE_V3===
+    address AAVE_V3_DATA_PROVIDER_ADDR;
 }
 
 interface IFacadeInvariantMonitor {
