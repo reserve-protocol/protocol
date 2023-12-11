@@ -12,7 +12,7 @@ interface ICurvePool {
     // For Curve Plain Pools and V2 Metapools
     function coins(uint256) external view returns (address);
 
-    // Only exists in Curve Lending Pools
+    // Only exists in Curve Lending Pools; not used currently
     function underlying_coins(uint256) external view returns (address);
 
     // Only exists in V1 Curve Metapools; not used currently
@@ -23,13 +23,6 @@ interface ICurvePool {
     function get_virtual_price() external view returns (uint256);
 
     function token() external view returns (address);
-
-    function exchange(
-        int128,
-        int128,
-        uint256,
-        uint256
-    ) external;
 }
 
 /// Supports Curve base pools for up to 4 tokens
@@ -135,7 +128,7 @@ contract PoolTokens {
         token3 = (nTokens > 3) ? tokens[3] : IERC20Metadata(address(0));
 
         // === Feeds + timeouts ===
-        // I know this lots extremely verbose and quite silly, but it actually makes sense:
+        // I know this section at-first looks verbose and silly, but it's actually well-justified:
         //   - immutable variables cannot be conditionally written to
         //   - a struct or an array would not be able to be immutable
         //   - immutable variables means values get in-lined in the bytecode

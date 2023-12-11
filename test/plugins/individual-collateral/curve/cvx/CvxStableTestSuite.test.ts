@@ -428,6 +428,7 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
+  itClaimsRewards: it,
   isMetapool: false,
   resetFork,
   collateralName: 'CurveStableCollateral - ConvexStakingWrapper',
