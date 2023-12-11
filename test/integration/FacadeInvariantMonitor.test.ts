@@ -185,7 +185,7 @@ describeFork(
         })
       })
 
-      context('AAVE V2', () => {
+      describe('AAVE V2', () => {
         const issueAmount: BigNumber = bn('1000000e18')
         let lendingPool: ILendingPool
 
@@ -357,7 +357,7 @@ describeFork(
         })
       })
 
-      context('AAVE V3', () => {
+      describe('AAVE V3', () => {
         const issueAmount: BigNumber = bn('1000000e18')
         let stataUsdcV3: StaticATokenV3LM
         let pool: IPool
@@ -600,7 +600,7 @@ describeFork(
         })
       })
 
-      context('Compound V2', () => {
+      describe('Compound V2', () => {
         const issueAmount: BigNumber = bn('1000000e18')
         let comptroller: IComptroller
 

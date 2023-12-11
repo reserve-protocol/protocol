@@ -674,7 +674,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Setup Monitor Params based on network
   const monitorParams: IMonitorParams = {
-    AAVE_V2_DATA_PROVIDER_ADDR: networkConfig[chainId].AAVE_DATA_PROVIDER ?? ZERO_ADDRESS
+    AAVE_V2_DATA_PROVIDER_ADDR: networkConfig[chainId].AAVE_DATA_PROVIDER ?? ZERO_ADDRESS,
   }
 
   // Deploy FacadeRead
