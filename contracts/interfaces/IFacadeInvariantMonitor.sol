@@ -12,7 +12,8 @@ import "./IRToken.sol";
 enum CollPluginType {
     AAVE_V2,
     AAVE_V3,
-    COMPOUND_V2
+    COMPOUND_V2,
+    COMPOUND_V3
 }
 
 /**
@@ -25,8 +26,6 @@ enum CollPluginType {
 struct MonitorParams {
     // === AAVE_V2===
     address AAVE_V2_DATA_PROVIDER_ADDR;
-    // === AAVE_V3===
-    address AAVE_V3_DATA_PROVIDER_ADDR;
 }
 
 interface IFacadeInvariantMonitor {

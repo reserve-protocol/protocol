@@ -2,6 +2,9 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IFacadeInvariantMonitor.sol";
 import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
@@ -27,26 +30,6 @@ interface IAaveProtocolDataProvider {
         );
 }
 
-interface IAaveV3ProtocolDataProvider {
-    function getReserveData(address asset)
-        external
-        view
-        returns (
-            uint256 unbacked,
-            uint256 accruedToTreasuryScaled,
-            uint256 totalAToken,
-            uint256 totalStableDebt,
-            uint256 totalVariableDebt,
-            uint256 liquidityRate,
-            uint256 variableBorrowRate,
-            uint256 stableBorrowRate,
-            uint256 averageStableBorrowRate,
-            uint256 liquidityIndex,
-            uint256 variableBorrowIndex,
-            uint40 lastUpdateTimestamp
-        );
-}
-
 interface IStaticATokenLM is IERC20 {
     // solhint-disable-next-line func-name-mixedcase
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
@@ -58,15 +41,30 @@ interface IStaticATokenLM is IERC20 {
  * @title FacadeInvariantMonitor
  * @notice A UX-friendly layer for monitoring invariants of specific RToken
  */
-contract FacadeInvariantMonitor is IFacadeInvariantMonitor {
+contract FacadeInvariantMonitor is
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    IFacadeInvariantMonitor
+{
     using FixLib for uint192;
 
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
     address public immutable AAVE_V2_DATA_PROVIDER;
-    address public immutable AAVE_V3_DATA_PROVIDER;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(MonitorParams memory params) {
         AAVE_V2_DATA_PROVIDER = params.AAVE_V2_DATA_PROVIDER_ADDR;
-        AAVE_V3_DATA_PROVIDER = params.AAVE_V3_DATA_PROVIDER_ADDR;
+        _disableInitializers();
+    }
+
+    function init(address initialOwner) public initializer {
+        require(initialOwner != address(0), "invalid owner address");
+
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        _transferOwnership(initialOwner);
     }
 
     // === Views ===
@@ -137,29 +135,14 @@ contract FacadeInvariantMonitor is IFacadeInvariantMonitor {
             ).getReserveData(address(staticAToken.UNDERLYING_ASSET_ADDRESS()));
         } else if (collType == CollPluginType.AAVE_V3) {
             StaticATokenV3LM staticAToken = StaticATokenV3LM(address(erc20));
+            IERC20 aToken = staticAToken.aToken();
+            IERC20 underlying = IERC20(staticAToken.asset());
 
             backingBalance = staticAToken.convertToAssets(
                 staticAToken.balanceOf(address(rToken.main().backingManager()))
             );
-            (
-                ,
-                ,
-                uint256 totalAToken,
-                uint256 totalStableDebt,
-                uint256 totalVariableDebt,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
 
-            ) = IAaveV3ProtocolDataProvider(AAVE_V3_DATA_PROVIDER).getReserveData(
-                address(staticAToken.asset())
-            );
-
-            uint256 totalDebt = totalStableDebt + totalVariableDebt;
-            if (totalAToken >= totalDebt) availableLiquidity = totalAToken - totalDebt;
+            availableLiquidity = underlying.balanceOf(address(aToken));
         } else if (collType == CollPluginType.COMPOUND_V2) {
             CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
             ICToken cToken = ICToken(address(cTokenVault.underlying()));
@@ -184,4 +167,7 @@ contract FacadeInvariantMonitor is IFacadeInvariantMonitor {
         // Calculate the percentage
         return (availableLiquidity * FIX_ONE_256) / backingBalance;
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
