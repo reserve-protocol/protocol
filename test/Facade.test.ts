@@ -3,9 +3,9 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, upgrades } from 'hardhat'
 import { expectEvents } from '../common/events'
-import { IConfig } from '#/common/configuration'
+import { IConfig, IMonitorParams } from '#/common/configuration'
 import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
 import { disableBatchTrade, disableDutchTrade } from './utils/trades'
@@ -21,6 +21,7 @@ import {
   ERC20Mock,
   FacadeAct,
   FacadeInvariantMonitor,
+  FacadeInvariantMonitorV2,
   FacadeRead,
   FacadeTest,
   MockV3Aggregator,
@@ -1058,7 +1059,11 @@ describe('FacadeRead + FacadeAct + FacadeInvariantMonitor contracts', () => {
     }
   })
 
-  describe('FacadeInvariantMonitor', () => {
+  describe.only('FacadeInvariantMonitor', () => {
+    const monitorParams: IMonitorParams = {
+      AAVE_V2_DATA_PROVIDER_ADDR: ZERO_ADDRESS,
+    }
+
     beforeEach(async () => {
       // Mint Tokens
       initialBal = bn('10000000000e18')
@@ -1313,6 +1318,66 @@ describe('FacadeRead + FacadeAct + FacadeInvariantMonitor contracts', () => {
       expect(await facadeInvariantMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await rToken.redemptionAvailable()).to.equal(bn(0))
       expect(await facadeInvariantMonitor.redemptionAvailable(rToken.address)).to.equal(bn(0))
+    })
+
+    it('Should not allow empty owner on initialization', async () => {
+      const FacadeInvariantMonitorFactory: ContractFactory = await ethers.getContractFactory(
+        'FacadeInvariantMonitor'
+      )
+
+      const newFacadeInvariantMonitor = <FacadeInvariantMonitor>await upgrades.deployProxy(
+        FacadeInvariantMonitorFactory,
+        [],
+        {
+          constructorArgs: [monitorParams],
+          kind: 'uups',
+        }
+      )
+
+      await expect(newFacadeInvariantMonitor.init(ZERO_ADDRESS)).to.be.revertedWith(
+        'invalid owner address'
+      )
+    })
+
+    it('Should only allow owner to upgrade', async () => {
+      const FacadeInvariantMonitorV2Factory: ContractFactory = await ethers.getContractFactory(
+        'FacadeInvariantMonitorV2'
+      )
+      const facadeInvariantMonitorV2 = await FacadeInvariantMonitorV2Factory.deploy(monitorParams)
+
+      await expect(
+        facadeInvariantMonitor.connect(addr1).upgradeTo(facadeInvariantMonitorV2.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(
+        facadeInvariantMonitor.connect(owner).upgradeTo(facadeInvariantMonitorV2.address)
+      ).to.not.be.reverted
+    })
+
+    it('Should upgrade correctly', async () => {
+      // Upgrading
+      const FacadeInvariantMonitorV2Factory: ContractFactory = await ethers.getContractFactory(
+        'FacadeInvariantMonitorV2'
+      )
+      const facadeInvariantMonitorV2: FacadeInvariantMonitorV2 = <FacadeInvariantMonitorV2>(
+        await upgrades.upgradeProxy(
+          facadeInvariantMonitor.address,
+          FacadeInvariantMonitorV2Factory,
+          { constructorArgs: [monitorParams] }
+        )
+      )
+
+      // Check address is maintained
+      expect(facadeInvariantMonitorV2.address).to.equal(facadeInvariantMonitor.address)
+
+      // Check state is preserved
+      expect(await facadeInvariantMonitorV2.owner()).to.equal(owner.address)
+
+      // Check new version is implemented
+      expect(await facadeInvariantMonitorV2.version()).to.equal('2.0.0')
+
+      expect(await facadeInvariantMonitorV2.newValue()).to.equal(0)
+      await facadeInvariantMonitorV2.connect(owner).setNewValue(bn(1000))
+      expect(await facadeInvariantMonitorV2.newValue()).to.equal(bn(1000))
     })
   })
 

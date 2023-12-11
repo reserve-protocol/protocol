@@ -1,8 +1,14 @@
 import { BigNumber, ContractFactory } from 'ethers'
-import hre, { ethers } from 'hardhat'
+import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
-import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
-import { PAUSER, SHORT_FREEZER, LONG_FREEZER } from '../../common/constants'
+import {
+  IConfig,
+  IImplementations,
+  IMonitorParams,
+  IRevenueShare,
+  networkConfig,
+} from '../../common/configuration'
+import { PAUSER, SHORT_FREEZER, LONG_FREEZER, ZERO_ADDRESS } from '../../common/constants'
 import { expectInReceipt } from '../../common/events'
 import { advanceTime } from '../utils/time'
 import { bn, fp } from '../../common/numbers'
@@ -666,6 +672,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     },
   }
 
+  // Setup Monitor Params based on network
+  const monitorParams: IMonitorParams = {
+    AAVE_V2_DATA_PROVIDER_ADDR: networkConfig[chainId].AAVE_DATA_PROVIDER ?? ZERO_ADDRESS
+  }
+
   // Deploy FacadeRead
   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
   const facade = <FacadeRead>await FacadeReadFactory.deploy()
@@ -678,11 +689,20 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
-  // Deploy FacadeTest
+  // Deploy FacadeInvariantMonitor
   const FacadeInvariantMonitorFactory: ContractFactory = await ethers.getContractFactory(
     'FacadeInvariantMonitor'
   )
-  const facadeInvariantMonitor = <FacadeTest>await FacadeInvariantMonitorFactory.deploy()
+
+  const facadeInvariantMonitor = <FacadeInvariantMonitor>await upgrades.deployProxy(
+    FacadeInvariantMonitorFactory,
+    [owner.address],
+    {
+      kind: 'uups',
+      initializer: 'init',
+      constructorArgs: [monitorParams],
+    }
+  )
 
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory(

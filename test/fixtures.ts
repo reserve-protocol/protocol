@@ -1,11 +1,23 @@
 import { ContractFactory } from 'ethers'
 import { expect } from 'chai'
-import hre, { ethers } from 'hardhat'
+import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
+import {
+  IConfig,
+  IImplementations,
+  IMonitorParams,
+  IRevenueShare,
+  networkConfig,
+} from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
+import {
+  CollateralStatus,
+  PAUSER,
+  LONG_FREEZER,
+  SHORT_FREEZER,
+  ZERO_ADDRESS,
+} from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -470,6 +482,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     },
   }
 
+  // Setup Monitor Params (mock addrs for local deployment)
+  const monitorParams: IMonitorParams = {
+    AAVE_V2_DATA_PROVIDER_ADDR: ZERO_ADDRESS,
+  }
+
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
@@ -490,8 +507,16 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const FacadeInvariantMonitorFactory: ContractFactory = await ethers.getContractFactory(
     'FacadeInvariantMonitor'
   )
-  const facadeInvariantMonitor = <FacadeInvariantMonitor>(
-    await FacadeInvariantMonitorFactory.deploy()
+  //let facadeInvariantMonitor: FacadeInvariantMonitor = <FacadeInvariantMonitor>await FacadeInvariantMonitorFactory.deploy(monitorParams)
+
+  const facadeInvariantMonitor = <FacadeInvariantMonitor>await upgrades.deployProxy(
+    FacadeInvariantMonitorFactory,
+    [owner.address],
+    {
+      kind: 'uups',
+      initializer: 'init',
+      constructorArgs: [monitorParams],
+    }
   )
 
   // Deploy RSR chainlink feed
