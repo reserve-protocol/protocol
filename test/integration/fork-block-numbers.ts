@@ -5,7 +5,7 @@ const forkBlockNumber = {
   'mainnet-deployment': 15690042, // Ethereum
   'flux-finance': 16836855, // Ethereum
   'mainnet-2.0': 17522362, // Ethereum
-  'facade-invariant-monitor': 14916729, // Ethereum
+  'facade-invariant-monitor': 18742016, // Ethereum
   default: 18522901, // Ethereum
 }
 
