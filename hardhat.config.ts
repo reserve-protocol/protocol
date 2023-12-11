@@ -137,7 +137,10 @@ const config: HardhatUserConfig = {
     enabled: !!useEnv('REPORT_GAS'),
   },
   etherscan: {
-    apiKey: useEnv('ETHERSCAN_API_KEY'),
+    apiKey: {
+      mainnet: useEnv('ETHERSCAN_API_KEY'),
+      base: useEnv('BASESCAN_API_KEY')
+    },
     customChains: [
       {
         network: 'base',
