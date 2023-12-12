@@ -5,8 +5,14 @@ import { developmentChains, networkConfig, IMonitorParams } from '../../common/c
 import { ZERO_ADDRESS } from '../../common/constants'
 import { ContractFactory } from 'ethers'
 
-task('deploy-facade-monitor', 'Deploys the FacadeMonitor proxy')
-  .addParam('owner', 'The address that will own the FacadeMonitor')
+let facadeMonitor: FacadeMonitor
+
+task(
+  'deploy-facade-monitor',
+  'Deploys the FacadeMonitor implementation and proxy (if its not an upgrade)'
+)
+  .addParam('upgrade', 'Set to true if this is for a later upgrade', false, types.boolean)
+  .addOptionalParam('owner', 'The address that will own the FacadeMonitor', '', types.string)
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [wallet] = await hre.ethers.getSigners()
@@ -16,6 +22,14 @@ task('deploy-facade-monitor', 'Deploys the FacadeMonitor proxy')
     // ********** Read config **********
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
+    }
+
+    if (!params.upgrade) {
+      if (!params.owner) {
+        throw new Error(
+          `An --owner must be specified for the initial deployment to ${hre.network.name}`
+        )
+      }
     }
 
     if (!params.noOutput) {
@@ -44,22 +58,23 @@ task('deploy-facade-monitor', 'Deploys the FacadeMonitor proxy')
       )
     }
 
-    const facadeMonitor = <FacadeMonitor>await hre.upgrades.deployProxy(
-      FacadeMonitorFactory,
-      [params.owner],
-      {
-        kind: 'uups',
-        initializer: 'init',
-        constructorArgs: [monitorParams],
-      }
-    )
-
-    if (!params.noOutput) {
-      console.log(
-        `Deployed FacadeMonitor (Proxy) to ${hre.network.name} (${chainId}): ${facadeMonitor.address}`
+    if (!params.upgrade) {
+      facadeMonitor = <FacadeMonitor>await hre.upgrades.deployProxy(
+        FacadeMonitorFactory,
+        [params.owner],
+        {
+          kind: 'uups',
+          initializer: 'init',
+          constructorArgs: [monitorParams],
+        }
       )
-    }
 
+      if (!params.noOutput) {
+        console.log(
+          `Deployed FacadeMonitor (Proxy) to ${hre.network.name} (${chainId}): ${facadeMonitor.address}`
+        )
+      }
+    }
     // Verify if its not a development chain
     if (!developmentChains.includes(hre.network.name)) {
       // Uncomment to verify
@@ -88,5 +103,5 @@ task('deploy-facade-monitor', 'Deploys the FacadeMonitor proxy')
       }
     }
 
-    return { facadeMonitor: facadeMonitor.address, facadeMonitorImplAddr }
+    return { facadeMonitor: facadeMonitor ? facadeMonitor.address : 'N/A', facadeMonitorImplAddr }
   })
