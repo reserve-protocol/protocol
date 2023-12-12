@@ -16,6 +16,7 @@ import forkBlockNumber from './fork-block-numbers'
 import {
   ATokenFiatCollateral,
   AaveV3FiatCollateral,
+  CTokenV3Collateral,
   ERC20Mock,
   FacadeTest,
   FacadeInvariantMonitor,
@@ -35,6 +36,8 @@ import {
   USDCMock,
   CTokenWrapper,
   StaticATokenV3LM,
+  CusdcV3Wrapper,
+  CometInterface,
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
 import { MAX_UINT256 } from '#/common/constants'
@@ -43,6 +46,7 @@ enum CollPluginType {
   AAVE_V2,
   AAVE_V3,
   COMPOUND_V2,
+  COMPOUND_V3,
 }
 
 // Relevant addresses (Mainnet)
@@ -50,6 +54,7 @@ const holderCDAI = '0x01d127D90513CCB6071F83eFE15611C4d9890668'
 const holderADAI = '0x07edE94cF6316F4809f2B725f5d79AD303fB4Dc8'
 const holderaUSDCV3 = '0x1eAb3B222A5B57474E0c237E7E1C4312C1066855'
 const holderWETH = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+const holdercUSDCV3 = '0x7f714b13249BeD8fdE2ef3FBDfB18Ed525544B03'
 
 let owner: SignerWithAddress
 
@@ -73,7 +78,7 @@ describeFork(
     let weth: IWETH
     let cDai: TestICToken
     let cDaiVault: CTokenWrapper
-
+    let cusdcV3: CometInterface
     let daiCollateral: FiatCollateral
     let aDaiCollateral: ATokenFiatCollateral
 
@@ -256,6 +261,7 @@ describeFork(
           await expect(lendingPool.connect(addr2).withdraw(dai.address, MAX_UINT256, addr2.address))
             .to.not.be.reverted
           expect(await dai.balanceOf(addr2.address)).to.be.gt(bn(0))
+          expect(await aDai.balanceOf(addr2.address)).to.equal(bn(0))
         })
 
         it('Should return backing redeemable percent correctly', async function () {
@@ -295,7 +301,7 @@ describeFork(
             )
           ).to.be.closeTo(fp('0.40'), fp('0.01'))
 
-          // Confirm we cannot redeemd full balance
+          // Confirm we cannot redeem full balance
           expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
           const bmBalanceAmt = await stataDai.balanceOf(backingManager.address)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -466,7 +472,7 @@ describeFork(
             )
           ).to.equal(fp('1'))
 
-          // Confirm all can be redeemd
+          // Confirm all can be redeemed
           expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
           const bmBalanceAmt = await stataUsdcV3.balanceOf(backingManager.address)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -483,6 +489,7 @@ describeFork(
           await expect(pool.connect(addr2).withdraw(usdc.address, MAX_UINT256, addr2.address)).to
             .not.be.reverted
           expect(await usdc.balanceOf(addr2.address)).to.be.gt(bn(0))
+          expect(await aUsdcV3.balanceOf(addr2.address)).to.equal(bn(0))
         })
 
         it('Should return backing redeemable percent correctly', async function () {
@@ -513,7 +520,7 @@ describeFork(
             .connect(addr1)
             .borrow(usdc.address, remainingLiquidity.div(2), 2, 0, addr1.address)
 
-          // Only 40% available to be redeemd
+          // Only 40% available to be redeemed
           expect(
             await facadeInvariantMonitor.backingReedemable(
               rToken.address,
@@ -522,7 +529,7 @@ describeFork(
             )
           ).to.be.closeTo(fp('0.40'), fp('0.01'))
 
-          // Confirm we cannot redeemd full balance
+          // Confirm we cannot redeem full balance
           expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
           const bmBalanceAmt = await stataUsdcV3.balanceOf(backingManager.address)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -676,7 +683,7 @@ describeFork(
             )
           ).to.equal(fp('1'))
 
-          // Confirm all can be redeemd
+          // Confirm all can be redeemed
           expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
           const bmBalanceAmt = await cDaiVault.balanceOf(backingManager.address)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -687,6 +694,7 @@ describeFork(
 
           await expect(cDai.connect(addr2).redeem(bmBalanceAmt)).to.not.be.reverted
           expect(await dai.balanceOf(addr2.address)).to.be.gt(bn(0))
+          expect(await cDai.balanceOf(addr2.address)).to.equal(bn(0))
         })
 
         it('Should return backing redeemable percent correctly', async function () {
@@ -724,7 +732,7 @@ describeFork(
             )
           ).to.be.closeTo(fp('0.40'), fp('0.01'))
 
-          // Confirm we cannot redeemd full balance
+          // Confirm we cannot redeem full balance
           expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
           const bmBalanceAmt = await cDaiVault.balanceOf(backingManager.address)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -771,6 +779,219 @@ describeFork(
           await expect(cDai.connect(addr2).redeem((await cDai.balanceOf(addr2.address)).div(100)))
             .to.be.reverted
           expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
+        })
+      })
+
+      describe('Compound V3', () => {
+        const issueAmount: BigNumber = bn('1000000e18')
+        let wcusdcV3: CusdcV3Wrapper
+
+        beforeEach(async () => {
+          initialBal = bn('10000000e6')
+
+          const CUsdcV3WrapperFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
+
+          cusdcV3 = <CometInterface>(
+            await ethers.getContractAt(
+              'CometInterface',
+              networkConfig[chainId].tokens.cUSDCv3 || ''
+            )
+          )
+
+          wcusdcV3 = <CusdcV3Wrapper>(
+            await CUsdcV3WrapperFactory.deploy(
+              cusdcV3.address,
+              networkConfig[chainId].COMET_REWARDS || '',
+              networkConfig[chainId].tokens.COMP || ''
+            )
+          )
+          await wcusdcV3.deployed()
+
+          /********  Deploy Compound V3 USDC collateral plugin  **************************/
+          const CollateralFactory = await ethers.getContractFactory('CTokenV3Collateral')
+
+          const usdcOracleTimeout = '86400' // 24 hr
+          const usdcOracleError = baseL2Chains.includes(hre.network.name)
+            ? fp('0.003')
+            : fp('0.0025') // 0.3% (Base) or 0.25%
+
+          const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+          const chainlinkFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+          const collateral = <CTokenV3Collateral>await CollateralFactory.connect(owner).deploy(
+            {
+              priceTimeout: bn('604800'),
+              chainlinkFeed: chainlinkFeed.address,
+              oracleError: usdcOracleError.toString(),
+              erc20: wcusdcV3.address,
+              maxTradeVolume: fp('1e6').toString(), // $1m,
+              oracleTimeout: usdcOracleTimeout, // 24h hr,
+              targetName: hre.ethers.utils.formatBytes32String('USD'),
+              defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
+              delayUntilDefault: bn('86400').toString(), // 24h
+            },
+            fp('1e-6'),
+            bn('10000e6').toString() // $10k
+          )
+
+          // Register and update collateral
+          await collateral.deployed()
+          await (await collateral.refresh()).wait()
+          await pushOracleForward(chainlinkFeed.address)
+          await assetRegistry.connect(owner).register(collateral.address)
+
+          // Fund user
+          await whileImpersonating(holdercUSDCV3, async (cusdcV3Signer) => {
+            // Wrap CUSDCV3 into Wrapper
+            await cusdcV3.connect(cusdcV3Signer).transfer(addr1.address, initialBal)
+            await cusdcV3.connect(addr1).allow(wcusdcV3.address, true)
+            await wcusdcV3.connect(addr1).deposit(initialBal)
+          })
+
+          // Get current liquidity
+          fullLiquidityAmt = await usdc.balanceOf(cusdcV3.address)
+
+          // Setup basket
+          await pushOracleForward(chainlinkFeed.address)
+          await basketHandler.connect(owner).setPrimeBasket([wcusdcV3.address], [fp('1')])
+          await basketHandler.connect(owner).refreshBasket()
+          await advanceTime(Number(config.warmupPeriod) + 1)
+
+          // Provide approvals
+          await wcusdcV3.connect(addr1).approve(rToken.address, MAX_UINT256)
+
+          // Advance time significantly - Recharge throttle
+          await advanceTime(100000)
+          await pushOracleForward(chainlinkFeed.address)
+
+          // Issue rTokens
+          await rToken.connect(addr1).issue(issueAmount)
+
+          // Provide liquidity to be able to borrow
+          const amountToDeposit = fp('500000')
+          await weth.connect(addr1).approve(cusdcV3.address, amountToDeposit)
+          await cusdcV3.connect(addr1).supply(weth.address, amountToDeposit.div(2))
+        })
+
+        it('Should return 100% when full liquidity available', async function () {
+          // Check asset value
+          expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+            issueAmount,
+            fp('150')
+          )
+
+          // Compound V3 - All redeemable
+          expect(
+            await facadeInvariantMonitor.backingReedemable(
+              rToken.address,
+              CollPluginType.COMPOUND_V3,
+              wcusdcV3.address
+            )
+          ).to.equal(fp('1'))
+
+          // Confirm all can be redeemed
+          expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+          const bmBalanceAmt = await wcusdcV3.balanceOf(backingManager.address)
+          await whileImpersonating(backingManager.address, async (bmSigner) => {
+            await wcusdcV3.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+          })
+          await wcusdcV3.connect(addr2).withdraw(MAX_UINT256)
+
+          await expect(cusdcV3.connect(addr2).withdraw(usdc.address, MAX_UINT256)).to.not.be
+            .reverted
+          expect(await usdc.balanceOf(addr2.address)).to.be.gt(bn(0))
+          expect(await cusdcV3.balanceOf(addr2.address)).to.equal(bn(0))
+        })
+
+        it('Should return backing redeemable percent correctly', async function () {
+          // AAVE V3 - All redeemable
+          expect(
+            await facadeInvariantMonitor.backingReedemable(
+              rToken.address,
+              CollPluginType.COMPOUND_V3,
+              wcusdcV3.address
+            )
+          ).to.equal(fp('1'))
+
+          // Leave only 80% of backing to be able to be redeemed
+          const borrowAmount = fullLiquidityAmt.sub(toBNDecimals(issueAmount, 6).mul(80).div(100))
+          await cusdcV3.connect(addr1).withdraw(usdc.address, borrowAmount)
+
+          expect(
+            await facadeInvariantMonitor.backingReedemable(
+              rToken.address,
+              CollPluginType.COMPOUND_V3,
+              wcusdcV3.address
+            )
+          ).to.be.closeTo(fp('0.80'), fp('0.01'))
+
+          // Borrow half of the remaining liquidity
+          const remainingLiquidity = fullLiquidityAmt.sub(borrowAmount)
+          await cusdcV3.connect(addr1).withdraw(usdc.address, remainingLiquidity.div(2))
+
+          // Only 40% available to be redeemed
+          expect(
+            await facadeInvariantMonitor.backingReedemable(
+              rToken.address,
+              CollPluginType.COMPOUND_V3,
+              wcusdcV3.address
+            )
+          ).to.be.closeTo(fp('0.40'), fp('0.01'))
+
+          // Confirm we cannot redeem full balance
+          expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+          const bmBalanceAmt = await wcusdcV3.balanceOf(backingManager.address)
+          await whileImpersonating(backingManager.address, async (bmSigner) => {
+            await wcusdcV3.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+          })
+          await wcusdcV3.connect(addr2).withdraw(MAX_UINT256)
+
+          await expect(cusdcV3.connect(addr2).withdraw(usdc.address, MAX_UINT256)).to.be.reverted
+          expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
+
+          // We can redeem if we reduce to 30%
+          await expect(
+            cusdcV3
+              .connect(addr2)
+              .withdraw(usdc.address, (await cusdcV3.balanceOf(addr2.address)).mul(30).div(100))
+          ).to.not.be.reverted
+          expect(await usdc.balanceOf(addr2.address)).to.be.gt(0)
+        })
+
+        it('Should handle no liquidity', async function () {
+          expect(
+            await facadeInvariantMonitor.backingReedemable(
+              rToken.address,
+              CollPluginType.COMPOUND_V3,
+              wcusdcV3.address
+            )
+          ).to.equal(fp('1'))
+
+          // Borrow full liquidity
+          await cusdcV3.connect(addr1).withdraw(usdc.address, fullLiquidityAmt)
+
+          expect(
+            await facadeInvariantMonitor.backingReedemable(
+              rToken.address,
+              CollPluginType.COMPOUND_V3,
+              wcusdcV3.address
+            )
+          ).to.be.closeTo(fp('0'), fp('0.01'))
+
+          // Confirm we cannot redeem anything, not even 1%
+          expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+          const bmBalanceAmt = await wcusdcV3.balanceOf(backingManager.address)
+          await whileImpersonating(backingManager.address, async (bmSigner) => {
+            await wcusdcV3.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+          })
+          await wcusdcV3.connect(addr2).withdraw(MAX_UINT256)
+
+          await expect(
+            cusdcV3
+              .connect(addr2)
+              .withdraw(usdc.address, (await cusdcV3.balanceOf(addr2.address)).div(100))
+          ).to.be.reverted
+          expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
         })
       })
     })

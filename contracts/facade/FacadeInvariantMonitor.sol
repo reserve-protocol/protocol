@@ -10,6 +10,7 @@ import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
 import "../plugins/assets/compoundv2/CTokenWrapper.sol";
+import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
 
 interface IAaveProtocolDataProvider {
@@ -154,6 +155,15 @@ contract FacadeInvariantMonitor is
 
             backingBalance = (cTokenBal * exchangeRate) / (10**underlyingDecimals);
             availableLiquidity = underlying.balanceOf(address(cToken));
+        } else if (collType == CollPluginType.COMPOUND_V3) {
+            ICusdcV3Wrapper cTokenV3Wrapper = ICusdcV3Wrapper(address(erc20));
+            CometInterface cTokenV3 = CometInterface(address(cTokenV3Wrapper.underlyingComet()));
+            IERC20 underlying = IERC20(cTokenV3.baseToken());
+
+            backingBalance = cTokenV3Wrapper.underlyingBalanceOf(
+                address(rToken.main().backingManager())
+            );
+            availableLiquidity = underlying.balanceOf(address(cTokenV3));
         }
 
         if (availableLiquidity == 0) {
