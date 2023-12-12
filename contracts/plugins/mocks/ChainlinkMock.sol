@@ -24,6 +24,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
     // Additional variable to be able to test invalid behavior
     uint256 public latestAnsweredRound;
     address public aggregator;
+    address public priceSource;
 
     mapping(uint256 => int256) public getAnswer;
     mapping(uint256 => uint256) public getTimestamp;
@@ -32,6 +33,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
     constructor(uint8 _decimals, int256 _initialAnswer) {
         decimals = _decimals;
         aggregator = address(this);
+        priceSource = address(this);
         updateAnswer(_initialAnswer);
     }
 
@@ -44,6 +46,17 @@ contract MockV3Aggregator is AggregatorV3Interface {
         latestTimestamp = block.timestamp;
         latestRound++;
         getAnswer[latestRound] = _answer;
+        getTimestamp[latestRound] = block.timestamp;
+        getStartedAt[latestRound] = block.timestamp;
+        latestAnsweredRound = latestRound;
+    }
+
+    // used by Frax oracl
+    function addRoundData(bool isBadData, uint104 low, uint104 high, uint40 timestamp) public {
+        latestAnswer = int104(low + high) / 2;
+        latestTimestamp = block.timestamp;
+        latestRound++;
+        getAnswer[latestRound] = latestAnswer;
         getTimestamp[latestRound] = block.timestamp;
         getStartedAt[latestRound] = block.timestamp;
         latestAnsweredRound = latestRound;

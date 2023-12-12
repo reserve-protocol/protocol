@@ -5,7 +5,9 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
+import "../FraxOracleLib.sol";
 import "./vendor/IsfrxEth.sol";
+import "hardhat/console.sol";
 
 /**
  * ************************************************************
@@ -23,17 +25,27 @@ import "./vendor/IsfrxEth.sol";
  */
 contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
+    using FraxOracleLib for FraxAggregatorV3Interface;
     using FixLib for uint192;
 
-    // solhint-disable no-empty-blocks
-    /// @param config.chainlinkFeed Feed units: {UoA/target}
-    constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
-    {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
-    }
+    FraxAggregatorV3Interface public immutable targetPerTokChainlinkFeed; // {target/tok}
+    uint48 public immutable targetPerTokChainlinkTimeout;
 
-    // solhint-enable no-empty-blocks
+    /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
+    /// @param _targetPerTokChainlinkFeed {target/tok} price of cbETH in ETH terms
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding,
+        FraxAggregatorV3Interface _targetPerTokChainlinkFeed,
+        uint48 _targetPerTokChainlinkTimeout
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
+        require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
+
+        targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+    }
 
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
@@ -49,22 +61,22 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok} = {UoA/target} * {ref/tok} * {target/ref} (1)
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        console.log(address(targetPerTokChainlinkFeed), address(chainlinkFeed));
+        uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
+        // {UoA/tok} = {UoA/target} * {target/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
         uint192 err = p.mul(oracleError, CEIL);
 
-        low = p - err;
         high = p + err;
+        low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        // TODO: Currently not checking for depegs between `frxETH` and `ETH`
-        // Should be modified to use a `frxETH/ETH` oracle when available
-        pegPrice = targetPerRef();
+        // {target/ref} = {target/tok} / {ref/tok}
+        pegPrice = targetPerTok.div(_underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = IsfrxEth(address(erc20)).pricePerShare();
-        return _safeWrap(rate);
+        return _safeWrap(IsfrxEth(address(erc20)).pricePerShare());
     }
 }
