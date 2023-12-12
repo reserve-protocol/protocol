@@ -36,7 +36,7 @@ import {
   DutchTrade,
   FacadeRead,
   FacadeAct,
-  FacadeInvariantMonitor,
+  FacadeMonitor,
   FacadeTest,
   DistributorP1,
   FiatCollateral,
@@ -425,7 +425,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
-  facadeInvariantMonitor: FacadeInvariantMonitor
+  facadeMonitor: FacadeMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -503,14 +503,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
-  // Deploy FacadeInvariantMonitor
-  const FacadeInvariantMonitorFactory: ContractFactory = await ethers.getContractFactory(
-    'FacadeInvariantMonitor'
-  )
-  //let facadeInvariantMonitor: FacadeInvariantMonitor = <FacadeInvariantMonitor>await FacadeInvariantMonitorFactory.deploy(monitorParams)
+  // Deploy FacadeMonitor
+  const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
 
-  const facadeInvariantMonitor = <FacadeInvariantMonitor>await upgrades.deployProxy(
-    FacadeInvariantMonitorFactory,
+  const facadeMonitor = <FacadeMonitor>await upgrades.deployProxy(
+    FacadeMonitorFactory,
     [owner.address],
     {
       kind: 'uups',
@@ -786,7 +783,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     facadeAct,
     facadeTest,
-    facadeInvariantMonitor,
+    facadeMonitor,
     rsrTrader,
     rTokenTrader,
     bySymbol,

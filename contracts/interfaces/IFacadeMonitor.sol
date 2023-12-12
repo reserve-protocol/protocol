@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "./IRToken.sol";
 
 /**
- * @title IFacadeInvariantMonitor
+ * @title IFacadeMonitor
  * @notice A monitoring layer for RTokens
  */
 
@@ -28,7 +28,7 @@ struct MonitorParams {
     address AAVE_V2_DATA_PROVIDER_ADDR;
 }
 
-interface IFacadeInvariantMonitor {
+interface IFacadeMonitor {
     // === Views ===
     function batchAuctionsDisabled(IRToken rToken) external view returns (bool);
 

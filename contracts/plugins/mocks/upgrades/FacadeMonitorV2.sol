@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "../../../facade/FacadeInvariantMonitor.sol";
+import "../../../facade/FacadeMonitor.sol";
 
 /**
- * @title FacadeInvariantMonitorV2
- * @notice Mock to test upgradeability for the FacadeInvariantMonitor contract
+ * @title FacadeMonitorV2
+ * @notice Mock to test upgradeability for the FacadeMonitor contract
  */
-contract FacadeInvariantMonitorV2 is FacadeInvariantMonitor {
+contract FacadeMonitorV2 is FacadeMonitor {
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(MonitorParams memory params) FacadeInvariantMonitor(params) {}
+    constructor(MonitorParams memory params) FacadeMonitor(params) {}
 
     uint256 public newValue;
 

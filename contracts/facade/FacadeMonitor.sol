@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "../interfaces/IFacadeInvariantMonitor.sol";
+import "../interfaces/IFacadeMonitor.sol";
 import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
@@ -39,15 +39,10 @@ interface IStaticATokenLM is IERC20 {
 }
 
 /**
- * @title FacadeInvariantMonitor
- * @notice A UX-friendly layer for monitoring invariants of specific RToken
+ * @title FacadeMonitor
+ * @notice A UX-friendly layer for monitoring RTokens
  */
-contract FacadeInvariantMonitor is
-    Initializable,
-    OwnableUpgradeable,
-    UUPSUpgradeable,
-    IFacadeInvariantMonitor
-{
+contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IFacadeMonitor {
     using FixLib for uint192;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
