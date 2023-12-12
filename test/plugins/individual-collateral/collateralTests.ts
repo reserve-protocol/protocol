@@ -91,7 +91,7 @@ export default function fn<X extends CollateralFixtureContext>(
   } = fixtures
 
   getDescribeFork(targetNetwork)(`Collateral: ${collateralName}`, () => {
-    beforeEach(resetFork)
+    before(resetFork)
 
     describe('constructor validation', () => {
       it('validates targetName', async () => {
@@ -633,7 +633,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
     })
 
-    describe.only('integration tests', () => {
+    describe('integration tests', () => {
       before(resetFork)
 
       let ctx: X
