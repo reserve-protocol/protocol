@@ -452,6 +452,8 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('status', () => {
+        before(resetFork)
+        
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)

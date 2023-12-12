@@ -14,6 +14,7 @@ import { useEnv } from '#/utils/env'
 import { forkRpcs, Network } from '#/utils/fork'
 import { HardhatUserConfig } from 'hardhat/types'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
+import { fp } from './common/numbers'
 
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
@@ -45,6 +46,11 @@ const config: HardhatUserConfig = {
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
+      accounts: [
+        { privateKey: new Array(65).join('1'), balance: fp(1e6).toString() },
+        { privateKey: new Array(65).join('2'), balance: fp(1e6).toString() },
+        { privateKey: new Array(65).join('3'), balance: fp(1e6).toString() },
+      ]
     },
     localhost: {
       // network for long-lived mainnet forks

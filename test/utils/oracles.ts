@@ -182,7 +182,6 @@ export const pushFraxOracleForward = async (chainlinkAddr: string) => {
   const chainlinkFeed = await ethers.getContractAt('FraxAggregatorV3Interface', chainlinkAddr)
   let initPrice = (await chainlinkFeed.latestRoundData()).answer
   await whileImpersonating(await chainlinkFeed.priceSource(), async (owner) => {
-    // await user.sendTransaction({ to: owner.address, value: ethers.utils.parseEther('1') })
     await chainlinkFeed.connect(owner).addRoundData(false, initPrice, initPrice, await getLatestBlockTimestamp() + 1)
   })
 }

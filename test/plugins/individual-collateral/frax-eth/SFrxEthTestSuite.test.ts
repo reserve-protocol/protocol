@@ -99,10 +99,10 @@ export const deployCollateral = async (opts: SfrxEthCollateralOpts = {}): Promis
 
   // Push forward chainlink fee
   await pushOracleForward(opts.chainlinkFeed!)
-  await pushOracleForward(opts.targetPerTokChainlinkFeed!)
-  // opts.targetPerTokChainlinkFeed?.toLocaleLowerCase() == SFRXETH_ETH_PRICE_FEED.toLocaleLowerCase() ?
-  //   await pushFraxOracleForward(opts.targetPerTokChainlinkFeed ?? SFRXETH_ETH_PRICE_FEED) :
-  //   await pushOracleForward(opts.targetPerTokChainlinkFeed!)
+  // await pushOracleForward(opts.targetPerTokChainlinkFeed!)
+  opts.targetPerTokChainlinkFeed?.toLocaleLowerCase() == SFRXETH_ETH_PRICE_FEED.toLocaleLowerCase() ?
+    await pushFraxOracleForward(opts.targetPerTokChainlinkFeed ?? SFRXETH_ETH_PRICE_FEED) :
+    await pushOracleForward(opts.targetPerTokChainlinkFeed!)
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
