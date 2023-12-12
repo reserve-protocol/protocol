@@ -592,7 +592,7 @@ type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   CollateralFixture &
   ModuleFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
+export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: TestIDeployer

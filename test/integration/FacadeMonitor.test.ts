@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
-import { defaultFixtureNoBasket } from './fixtures'
+import { defaultFixtureNoBasket, DefaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, baseL2Chains, networkConfig } from '../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
@@ -135,7 +135,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         facadeTest,
         facadeMonitor,
         config,
-      } = await loadFixture(defaultFixtureNoBasket))
+      } = <DefaultFixture>await loadFixture(defaultFixtureNoBasket))
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
@@ -180,9 +180,39 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         networkConfig[chainId].tokens.aEthUSDC || ''
       )
 
+      cusdcV3 = <CometInterface>(
+        await ethers.getContractAt('CometInterface', networkConfig[chainId].tokens.cUSDCv3 || '')
+      )
+
+      initialBal = bn('2500000e18')
+
+      // Fund user with static aDAI
+      await whileImpersonating(holderADAI, async (adaiSigner) => {
+        // Wrap ADAI into static ADAI
+        await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
+        await aDai.connect(addr1).approve(stataDai.address, initialBal)
+        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
+      })
+
+      // Fund user with aUSDCV3
+      await whileImpersonating(holderaUSDCV3, async (ausdcV3Signer) => {
+        await aUsdcV3.connect(ausdcV3Signer).transfer(addr1.address, toBNDecimals(initialBal, 6))
+      })
+
+      // Fund user with cDAI
+      await whileImpersonating(holderCDAI, async (cdaiSigner) => {
+        await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+        await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
+        await cDaiVault.connect(addr1).deposit(toBNDecimals(initialBal, 8).mul(100), addr1.address)
+      })
+
+      // Fund user with cUSDCV3
+      await whileImpersonating(holdercUSDCV3, async (cusdcV3Signer) => {
+        await cusdcV3.connect(cusdcV3Signer).transfer(addr1.address, toBNDecimals(initialBal, 6))
+      })
+
       // Fund user with WETH
       weth = <IWETH>await ethers.getContractAt('IWETH', networkConfig[chainId].tokens.WETH || '')
-
       await whileImpersonating(holderWETH, async (signer) => {
         await weth.connect(signer).transfer(addr1.address, fp('500000'))
       })
@@ -193,16 +223,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       let lendingPool: ILendingPool
 
       beforeEach(async () => {
-        initialBal = bn('2000000e18')
-
-        // aDAI
-        await whileImpersonating(holderADAI, async (adaiSigner) => {
-          // Wrap ADAI into static ADAI
-          await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
-          await aDai.connect(addr1).approve(stataDai.address, initialBal)
-          await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
-        })
-
         // Setup basket
         await basketHandler.connect(owner).setPrimeBasket([stataDai.address], [fp('1')])
         await basketHandler.connect(owner).refreshBasket()
@@ -362,8 +382,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       let pool: IPool
 
       beforeEach(async () => {
-        initialBal = bn('10000000e6')
-
         const StaticATokenFactory = await hre.ethers.getContractFactory('StaticATokenV3LM')
         stataUsdcV3 = await StaticATokenFactory.deploy(
           networkConfig[chainId].AAVE_V3_POOL!,
@@ -408,15 +426,16 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await pushOracleForward(chainlinkFeed.address)
         await assetRegistry.connect(owner).register(collateral.address)
 
-        // Fund user
-        await whileImpersonating(holderaUSDCV3, async (ausdcV3Signer) => {
-          // Wrap AUSDC V3 into static AUSDC
-          await aUsdcV3.connect(ausdcV3Signer).transfer(addr1.address, initialBal)
-          await aUsdcV3.connect(addr1).approve(stataUsdcV3.address, initialBal)
-          await stataUsdcV3
-            .connect(addr1)
-            ['deposit(uint256,address,uint16,bool)'](initialBal, addr1.address, 0, false)
-        })
+        // Wrap aUsdcV3
+        await aUsdcV3.connect(addr1).approve(stataUsdcV3.address, toBNDecimals(initialBal, 6))
+        await stataUsdcV3
+          .connect(addr1)
+          ['deposit(uint256,address,uint16,bool)'](
+            toBNDecimals(initialBal, 6),
+            addr1.address,
+            0,
+            false
+          )
 
         // Get current liquidity
         fullLiquidityAmt = await usdc.balanceOf(aUsdcV3.address)
@@ -601,19 +620,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       let comptroller: IComptroller
 
       beforeEach(async () => {
-        initialBal = bn('2000000e18')
-
-        // cDAI
-        await whileImpersonating(holderCDAI, async (cdaiSigner) => {
-          await cDai
-            .connect(cdaiSigner)
-            .transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
-          await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
-          await cDaiVault
-            .connect(addr1)
-            .deposit(toBNDecimals(initialBal, 8).mul(100), addr1.address)
-        })
-
         // Setup basket
         await basketHandler.connect(owner).setPrimeBasket([cDaiVault.address], [fp('1')])
         await basketHandler.connect(owner).refreshBasket()
@@ -771,13 +777,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       let wcusdcV3: CusdcV3Wrapper
 
       beforeEach(async () => {
-        initialBal = bn('10000000e6')
-
         const CUsdcV3WrapperFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
-
-        cusdcV3 = <CometInterface>(
-          await ethers.getContractAt('CometInterface', networkConfig[chainId].tokens.cUSDCv3 || '')
-        )
 
         wcusdcV3 = <CusdcV3Wrapper>(
           await CUsdcV3WrapperFactory.deploy(
@@ -819,13 +819,9 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await pushOracleForward(chainlinkFeed.address)
         await assetRegistry.connect(owner).register(collateral.address)
 
-        // Fund user
-        await whileImpersonating(holdercUSDCV3, async (cusdcV3Signer) => {
-          // Wrap CUSDCV3 into Wrapper
-          await cusdcV3.connect(cusdcV3Signer).transfer(addr1.address, initialBal)
-          await cusdcV3.connect(addr1).allow(wcusdcV3.address, true)
-          await wcusdcV3.connect(addr1).deposit(initialBal)
-        })
+        // Wrap cUSDCV3
+        await cusdcV3.connect(addr1).allow(wcusdcV3.address, true)
+        await wcusdcV3.connect(addr1).deposit(toBNDecimals(initialBal, 6))
 
         // Get current liquidity
         fullLiquidityAmt = await usdc.balanceOf(cusdcV3.address)
