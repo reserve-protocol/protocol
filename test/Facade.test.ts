@@ -1349,10 +1349,12 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       const FacadeMonitorV2Factory: ContractFactory = await ethers.getContractFactory(
         'FacadeMonitorV2'
       )
-      const facadeMonitorV2: FacadeMonitorV2 = <FacadeMonitorV2>(
-        await upgrades.upgradeProxy(facadeMonitor.address, FacadeMonitorV2Factory, {
+      const facadeMonitorV2: FacadeMonitorV2 = <FacadeMonitorV2>await upgrades.upgradeProxy(
+        facadeMonitor.address,
+        FacadeMonitorV2Factory,
+        {
           constructorArgs: [monitorParams],
-        })
+        }
       )
 
       // Check address is maintained
