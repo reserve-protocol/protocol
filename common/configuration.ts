@@ -646,6 +646,10 @@ export interface IRTokenConfig {
   params: IConfig
 }
 
+export interface IMonitorParams {
+  AAVE_V2_DATA_PROVIDER_ADDR: string
+}
+
 export interface IBackupInfo {
   backupUnit: string
   diversityFactor: BigNumber
