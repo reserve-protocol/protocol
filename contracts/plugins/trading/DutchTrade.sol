@@ -9,6 +9,20 @@ import "../../interfaces/IAsset.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
 
+interface IDutchTradeCallee {
+    function dutchTradeCallback(
+        address buyToken,
+        uint256 buyAmount,
+        bytes calldata data
+    ) external;
+}
+
+enum BidType {
+    NONE,
+    BID,
+    BID_CB
+}
+
 // A dutch auction in 4 parts:
 //   1.  0% -  20%: Geometric decay from 1000x the bestPrice to ~1.5x the bestPrice
 //   2. 20% -  45%: Linear decay from ~1.5x the bestPrice to the bestPrice
@@ -99,6 +113,8 @@ contract DutchTrade is ITrade {
     address public bidder;
     // the bid amount is just whatever token balance is in the contract at settlement time
 
+    BidType public bidType = BidType.NONE;
+
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
         require(status == begin, "Invalid trade state");
@@ -183,12 +199,54 @@ contract DutchTrade is ITrade {
         bestPrice = _bestPrice; // gas-saver
     }
 
+    /// Bid with callback for the auction lot at the current price;
+    ///  Sold funds are sent back to the callee, callee.dutchTradeCallback(...) is invoked
+    ///  balance of buy token must increase by bidAmount(current block) after callback
+    ///  Trade is settled atomically via a callback
+    ///
+    /// @param data {bytes} The data to pass to the callback
+    /// @dev Caller must implement IDutchTradeCallee
+    /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
+    function bidCb(bytes calldata data) external returns (uint256 amountIn) {
+        require(bidder == address(0), "bid already received");
+        bidType = BidType.BID_CB;
+        // {buyTok/sellTok}
+        uint192 price = _price(block.number); // enforces auction ongoing
+
+        // {qBuyTok}
+        amountIn = _bidAmount(price);
+
+        // Transfer in buy tokens
+        bidder = msg.sender;
+
+        // status must begin OPEN
+        assert(status == TradeStatus.OPEN);
+
+        // reportViolation if auction cleared in geometric phase
+        if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
+            broker.reportViolation();
+        }
+        sell.safeTransfer(bidder, lot()); // {qSellTok}
+        uint256 balanceBefore = buy.balanceOf(address(this));
+        IDutchTradeCallee(bidder).dutchTradeCallback(address(buy), amountIn, data);
+        require(
+            amountIn <= buy.balanceOf(address(this)) - balanceBefore,
+            "insufficient buy tokens"
+        );
+
+        // settle() via callback
+        origin.settleTrade(sell);
+
+        // confirm callback succeeded
+        assert(status == TradeStatus.CLOSED);
+    }
+
     /// Bid for the auction lot at the current price; settling atomically via a callback
     /// @dev Caller must have provided approval
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid() external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
-
+        bidType = BidType.BID;
         // {buyTok/sellTok}
         uint192 price = _price(block.number); // enforces auction ongoing
 
@@ -226,8 +284,16 @@ contract DutchTrade is ITrade {
 
         // Received bid
         if (bidder != address(0)) {
-            soldAmt = lot(); // {qSellTok}
-            sell.safeTransfer(bidder, soldAmt); // {qSellTok}
+            if (bidType == BidType.BID) {
+                // {qSellTok}
+                soldAmt = lot();
+                sell.safeTransfer(bidder, soldAmt); // {qSellTok}
+            } else if (bidType == BidType.BID_CB) {
+                // {qSellTok}
+                soldAmt = lot();
+            } else {
+                revert("invalid bid type");
+            }
         } else {
             require(block.number > endBlock, "auction not over");
         }

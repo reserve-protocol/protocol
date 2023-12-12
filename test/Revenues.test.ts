@@ -2,7 +2,7 @@ import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardha
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet, constants } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, GNOSIS_MAX_TOKENS } from '../common/configuration'
 import {
@@ -3491,6 +3491,73 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
           // Cannot bid once is settled
           await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+        })
+
+        /// Tests callback based bidding
+        describe('Callback based bidding', () => {
+          it('Supports bidCb', async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+
+            // Bid
+            const bidder = await (
+              await ethers.getContractFactory('CallbackDutchTraderBidder')
+            ).deploy()
+            await rToken.connect(addr1).transfer(bidder.address, issueAmount)
+            await bidder.connect(addr1).bid(trade.address)
+
+            expect(await trade.bidder()).to.equal(bidder.address)
+            expect(await trade.status()).to.be.eq(2) // Status.CLOSED
+          })
+
+          it('Will revert if bidder submits the wrong bid', async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+
+            // Bid
+            const bidder = await (
+              await ethers.getContractFactory('CallbackDutchTraderBidderLowBaller')
+            ).deploy()
+            await rToken.connect(addr1).transfer(bidder.address, issueAmount)
+            await expect(bidder.connect(addr1).bid(trade.address)).to.be.revertedWith(
+              'insufficient buy tokens'
+            )
+
+            expect(await trade.bidder()).to.equal(constants.AddressZero)
+            expect(await trade.status()).to.be.eq(1) // Status.OPEN
+          })
+
+          it('Will revert if bidder submits the no bid', async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+
+            // Bid
+            const bidder = await (
+              await ethers.getContractFactory('CallbackDutchTraderBidderNoPayer')
+            ).deploy()
+            await rToken.connect(addr1).transfer(bidder.address, issueAmount)
+            await expect(bidder.connect(addr1).bid(trade.address)).to.be.revertedWith(
+              'insufficient buy tokens'
+            )
+
+            expect(await trade.bidder()).to.equal(constants.AddressZero)
+            expect(await trade.status()).to.be.eq(1) // Status.OPEN
+          })
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
