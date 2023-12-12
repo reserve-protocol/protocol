@@ -519,9 +519,7 @@ export default function fn<X extends CollateralFixtureContext>(
             const delayUntilDefault = await collateral.delayUntilDefault()
 
             // Check initial state
-            console.log("start")
             expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            console.log("1")
             expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
             // Depeg - Reducing price by 20%
@@ -635,7 +633,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
     })
 
-    describe('integration tests', () => {
+    describe.only('integration tests', () => {
       before(resetFork)
 
       let ctx: X
@@ -725,7 +723,7 @@ export default function fn<X extends CollateralFixtureContext>(
         ;({ ctx, protocol } = await loadFixture(integrationFixture))
         ;({ collateral } = ctx)
         ;({ deployer, facadeWrite, govParams } = protocol)
-
+        await collateral.refresh()
         supply = fp('1')
 
         // Create a paired collateral of the same targetName
@@ -810,7 +808,6 @@ export default function fn<X extends CollateralFixtureContext>(
         // Should issue
         await collateralERC20.connect(addr1).approve(rToken.address, MAX_UINT256)
         await pairedERC20.connect(addr1).approve(rToken.address, MAX_UINT256)
-        console.log("is ready?", await collateral.status())
         await rToken.connect(addr1).issue(supply)
       })
 

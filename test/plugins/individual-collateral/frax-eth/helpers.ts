@@ -11,7 +11,8 @@ export const mintSfrxETH = async (
   account: SignerWithAddress,
   amount: BigNumberish,
   recipient: string,
-  chainlinkFeed: MockV3Aggregator
+  chainlinkFeed: MockV3Aggregator,
+  targetPerTokChainlinkFeed: MockV3Aggregator
 ) => {
   const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
     await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER)
@@ -28,8 +29,11 @@ export const mintSfrxETH = async (
   await frxEthMinter.connect(account).submitAndDeposit(recipient, { value: depositAmount })
 
   // push chainlink oracle forward so that tryPrice() still works
-  const lastAnswer = await chainlinkFeed.latestAnswer()
-  await chainlinkFeed.updateAnswer(lastAnswer)
+  const lastAnswer = await chainlinkFeed.latestRoundData()
+  await chainlinkFeed.updateAnswer(lastAnswer.answer)
+
+  const lastAnswerTpR = await targetPerTokChainlinkFeed.latestRoundData()
+  await targetPerTokChainlinkFeed.updateAnswer(lastAnswerTpR.answer)
 }
 
 export const mintFrxETH = async (

@@ -105,9 +105,7 @@ export const deployCollateral = async (opts: SfrxEthCollateralOpts = {}): Promis
   //   await pushOracleForward(opts.targetPerTokChainlinkFeed!)
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
-  console.log('fail here refresh')
   await expect(collateral.refresh())
-  console.log('failed', await collateral.status())
 
   return collateral
 }
@@ -168,7 +166,7 @@ const mintCollateralTo: MintCollateralFunc<SFrxEthCollateralFixtureContext> = as
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed)
+  await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed, ctx.targetPerTokChainlinkFeed)
 }
 
 const changeTargetPerRef = async (ctx: SFrxEthCollateralFixtureContext, percentChange: BigNumber) => {

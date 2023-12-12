@@ -7,7 +7,6 @@ import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
 import "../FraxOracleLib.sol";
 import "./vendor/IsfrxEth.sol";
-import "hardhat/console.sol";
 
 /**
  * ************************************************************
@@ -61,7 +60,6 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        console.log(address(targetPerTokChainlinkFeed), address(chainlinkFeed));
         uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
         // {UoA/tok} = {UoA/target} * {target/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
