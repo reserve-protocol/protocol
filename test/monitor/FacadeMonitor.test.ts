@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
-import { defaultFixtureNoBasket, DefaultFixture } from './fixtures'
+import { defaultFixtureNoBasket, DefaultFixture } from '../integration/fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, baseL2Chains, networkConfig } from '../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
@@ -12,7 +12,7 @@ import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { pushOracleForward } from '../utils/oracles'
 
-import forkBlockNumber from './fork-block-numbers'
+import forkBlockNumber from '../integration/fork-block-numbers'
 import {
   ATokenFiatCollateral,
   AaveV3FiatCollateral,
@@ -114,7 +114,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   describe('FacadeMonitor', () => {
     before(async () => {
-      await setup(forkBlockNumber['facade-monitor'])
+      // await setup(forkBlockNumber['facade-monitor'])
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
