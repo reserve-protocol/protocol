@@ -1,20 +1,21 @@
+import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
+import { bn, fp } from '#/common/numbers'
+import { bidOnTrade } from '#/test/utils/bidOnTrade'
 import { whileImpersonating } from '#/utils/impersonation'
 import {
   advanceBlocks,
   advanceTime,
-  getLatestBlockTimestamp,
   getLatestBlockNumber,
+  getLatestBlockTimestamp,
 } from '#/utils/time'
+import { DutchTrade } from '@typechain/DutchTrade'
+import { GnosisTrade } from '@typechain/GnosisTrade'
 import { TestITrading } from '@typechain/TestITrading'
 import { BigNumber, ContractTransaction } from 'ethers'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { Interface, LogDescription } from 'ethers/lib/utils'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { collateralToUnderlying, whales } from './constants'
-import { bn, fp } from '#/common/numbers'
 import { logToken } from './logs'
-import { GnosisTrade } from '@typechain/GnosisTrade'
-import { DutchTrade } from '@typechain/DutchTrade'
 
 export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -116,9 +117,12 @@ export const runDutchTrade = async (
 
   await whileImpersonating(hre, whaleAddr, async (whale) => {
     const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-    await sellToken.connect(whale).approve(trade.address, buyAmount)
     // Bid
-    ;[tradesRemain, newSellToken] = await callAndGetNextTrade(trade.connect(whale).bid(), trader)
+
+    ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
+      bidOnTrade(trade, sellToken, whale),
+      trader
+    )
   })
 
   if (

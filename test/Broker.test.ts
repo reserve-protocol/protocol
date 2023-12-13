@@ -57,6 +57,7 @@ import {
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
+import { bidOnTrade } from './utils/bidOnTrade'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -1405,6 +1406,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       auctionSellAmt,
       progression,
     ]: BigNumber[]) {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
       // Factories
       const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
@@ -1492,7 +1494,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(bidAmt).to.be.gt(0)
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
-      await expect(trade.connect(addr1).bid())
+
+      await expect(bidOnTrade(trade, buyTok, router, addr1))
         .to.emit(backingManager, 'TradeSettled')
         .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
 

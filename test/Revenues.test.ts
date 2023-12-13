@@ -67,6 +67,7 @@ import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
+import { bidOnTrade, bidOnTradeStatic, ensureApproval } from './utils/bidOnTrade'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -2813,7 +2814,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
-
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -2905,16 +2906,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
 
         // Should settle RSR auction without disabling dutch auctions
-        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
-        await expect(rsrTrade.connect(addr1).bid())
+        await expect(bidOnTrade(rsrTrade, rsr, router, addr1))
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
+
         expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
         expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
 
         // Should still be able to settle RToken auction
-        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
-        await expect(rTokenTrade.connect(addr1).bid())
+        await expect(bidOnTrade(rTokenTrade, rToken, router, addr1))
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
 
@@ -2927,7 +2927,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not report violation when Dutch Auction clears in first linear phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
-
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -3019,14 +3019,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceBlocks(config.dutchAuctionLength.div(12).div(3))
 
         // Should settle RSR auction
-        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
-        await expect(rsrTrade.connect(addr1).bid())
+        await expect(bidOnTrade(rsrTrade, rsr, router, addr1))
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
 
         // Should settle RToken auction
-        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
-        await expect(rTokenTrade.connect(addr1).bid())
+        await expect(bidOnTrade(rTokenTrade, rToken, router, addr1))
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
 
@@ -3476,6 +3474,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should allow one bidder', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
@@ -3485,12 +3484,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           )
 
           // Bid
-          await rToken.connect(addr1).approve(trade.address, issueAmount)
-          await trade.connect(addr1).bid()
-          expect(await trade.bidder()).to.equal(addr1.address)
-
+          await bidOnTrade(trade, rToken, router, addr1)
+          expect(await trade.bidder()).to.equal(router.address)
           // Cannot bid once is settled
-          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+          await expect(bidOnTrade(trade, rToken, router, addr1)).to.be.revertedWith(
+            'trade not open'
+          )
         })
 
         /// Tests callback based bidding
@@ -3562,19 +3561,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           issueAmount = issueAmount.div(10000)
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await ensureApproval(rToken, addr1, trade.address, router)
 
           const start = await trade.startBlock()
           const end = await trade.endBlock()
 
           // Simulate 30 minutes of blocks, should swap at right price each time
           let now = bn(await getLatestBlockNumber())
+
           while (now.lt(end)) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = await dutchBuyAmount(
@@ -3586,27 +3588,29 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             )
             expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
 
-            const staticResult = await trade.connect(addr1).callStatic.bid()
-            expect(staticResult).to.equal(actual)
+            const staticResult = await bidOnTradeStatic(trade, rToken, router, addr1)
+
+            expect(staticResult.amountIn).to.equal(actual)
             await advanceBlocks(1)
             now = bn(await getLatestBlockNumber())
           }
         })
 
         it('Should handle no bid case correctly', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(trade.address, initialBal)
 
           await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
           await expect(
             trade.connect(addr1).bidAmount(await getLatestBlockNumber())
           ).to.be.revertedWith('auction over')
-          await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
+
+          await expect(bidOnTrade(trade, rToken, router, addr1)).be.revertedWith('auction over')
 
           // Should be able to settle
           await expect(trade.settle()).to.be.revertedWith('only origin can settle')
@@ -3619,22 +3623,25 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should bid at exactly endBlock() and not launch another auction', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+          await ensureApproval(rToken, addr1, addr1.address, router)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(trade.address, initialBal)
           await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
 
           // Snipe auction at 0s left
           await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-          await trade.connect(addr1).bid()
+          await bidOnTrade(trade, rToken, router, addr1)
           expect(await trade.canSettle()).to.equal(false)
           expect(await trade.status()).to.equal(2) // Status.CLOSED
-          expect(await trade.bidder()).to.equal(addr1.address)
-          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+          expect(await trade.bidder()).to.equal(router.address)
+          expect(await token0.balanceOf(addr1.address)).to.equal(
+            initialBal.sub(issueAmount.div(4)).sub(1)
+          )
 
           const expected = await dutchBuyAmount(
             fp(auctionLength).div(auctionLength), // last possible second

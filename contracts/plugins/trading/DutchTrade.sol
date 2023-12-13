@@ -11,6 +11,7 @@ import "../../interfaces/ITrade.sol";
 
 interface IDutchTradeCallee {
     function dutchTradeCallback(
+        address caller,
         address buyToken,
         uint256 buyAmount,
         bytes calldata data
@@ -207,7 +208,7 @@ contract DutchTrade is ITrade {
     /// @param data {bytes} The data to pass to the callback
     /// @dev Caller must implement IDutchTradeCallee
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bidCb(bytes calldata data) external returns (uint256 amountIn) {
+    function bid(bytes calldata data) external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
         bidType = BidType.BID_CB;
         // {buyTok/sellTok}
@@ -228,42 +229,11 @@ contract DutchTrade is ITrade {
         }
         sell.safeTransfer(bidder, lot()); // {qSellTok}
         uint256 balanceBefore = buy.balanceOf(address(this));
-        IDutchTradeCallee(bidder).dutchTradeCallback(address(buy), amountIn, data);
+        IDutchTradeCallee(bidder).dutchTradeCallback(msg.sender, address(buy), amountIn, data);
         require(
             amountIn <= buy.balanceOf(address(this)) - balanceBefore,
             "insufficient buy tokens"
         );
-
-        // settle() via callback
-        origin.settleTrade(sell);
-
-        // confirm callback succeeded
-        assert(status == TradeStatus.CLOSED);
-    }
-
-    /// Bid for the auction lot at the current price; settling atomically via a callback
-    /// @dev Caller must have provided approval
-    /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bid() external returns (uint256 amountIn) {
-        require(bidder == address(0), "bid already received");
-        bidType = BidType.BID;
-        // {buyTok/sellTok}
-        uint192 price = _price(block.number); // enforces auction ongoing
-
-        // {qBuyTok}
-        amountIn = _bidAmount(price);
-
-        // Transfer in buy tokens
-        bidder = msg.sender;
-        buy.safeTransferFrom(msg.sender, address(this), amountIn);
-
-        // status must begin OPEN
-        assert(status == TradeStatus.OPEN);
-
-        // reportViolation if auction cleared in geometric phase
-        if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
-            broker.reportViolation();
-        }
 
         // settle() via callback
         origin.settleTrade(sell);

@@ -55,6 +55,7 @@ import {
 } from '../../../../typechain'
 import snapshotGasCost from '../../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation, ORACLE_ERROR, PRICE_TIMEOUT } from '../../../fixtures'
+import { bidOnTrade } from '#/test/utils/bidOnTrade'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -1001,7 +1002,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         await pairedERC20.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
         const pairedBal = await pairedERC20.balanceOf(backingManager.address)
-        await expect(trade.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
+        await expect(bidOnTrade(trade, pairedERC20, addr1)).to.emit(backingManager, 'TradeSettled')
         expect(await pairedERC20.balanceOf(backingManager.address)).to.be.gt(pairedBal)
         expect(await backingManager.tradesOpen()).to.equal(0)
       })
@@ -1032,7 +1033,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         const buyAmt = await trade.bidAmount(await trade.endBlock())
         await rToken.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-        await expect(trade.connect(addr1).bid()).to.emit(rTokenTrader, 'TradeSettled')
+
+        await expect(bidOnTrade(trade, rToken, addr1)).to.emit(rTokenTrader, 'TradeSettled')
         expect(await rTokenTrader.tradesOpen()).to.equal(0)
       })
 

@@ -6,10 +6,11 @@ import { IDutchTradeCallee, DutchTrade } from "../trading/DutchTrade.sol";
 
 contract CallbackDutchTraderBidder is IDutchTradeCallee {
     function bid(DutchTrade trade) external {
-        trade.bidCb(new bytes(0));
+        trade.bid(new bytes(0));
     }
 
     function dutchTradeCallback(
+        address,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
@@ -18,13 +19,13 @@ contract CallbackDutchTraderBidder is IDutchTradeCallee {
     }
 }
 
-
 contract CallbackDutchTraderBidderLowBaller is IDutchTradeCallee {
     function bid(DutchTrade trade) external {
-        trade.bidCb(new bytes(0));
+        trade.bid(new bytes(0));
     }
 
     function dutchTradeCallback(
+        address,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
@@ -33,16 +34,15 @@ contract CallbackDutchTraderBidderLowBaller is IDutchTradeCallee {
     }
 }
 
-
 contract CallbackDutchTraderBidderNoPayer is IDutchTradeCallee {
     function bid(DutchTrade trade) external {
-        trade.bidCb(new bytes(0));
+        trade.bid(new bytes(0));
     }
 
     function dutchTradeCallback(
+        address,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
-    ) external {
-    }
+    ) external {}
 }

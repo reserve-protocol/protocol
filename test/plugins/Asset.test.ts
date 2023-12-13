@@ -56,6 +56,7 @@ import {
 import { getTrade } from '../utils/trades'
 import { useEnv } from '#/utils/env'
 import snapshotGasCost from '../utils/snapshotGasCost'
+import { bidOnTrade, ensureApproval } from '../utils/bidOnTrade'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -517,6 +518,8 @@ describe('Assets contracts #fast', () => {
     })
 
     it('Should handle tokens being out on trade for RTokenAsset', async () => {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+      await ensureApproval(usdc, wallet, wallet.address, router)
       // Summary:
       // - Run a dutch auction that does not fill
       // - Run a batch auction that fills for partial volume
@@ -599,7 +602,7 @@ describe('Assets contracts #fast', () => {
       const buyAmt = await trade.bidAmount(await trade.endBlock())
       await usdc.approve(trade.address, buyAmt)
       await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-      await expect(trade.bid()).to.emit(backingManager, 'TradeSettled')
+      await expect(bidOnTrade(trade, usdc, router)).to.emit(backingManager, 'TradeSettled')
       expect(await backingManager.tradesOpen()).to.equal(1) // launches another trade!
       await expectExactPrice(rTokenAsset.address, [low3, bn('1007427552565834095')]) // high end starts to fall
     })

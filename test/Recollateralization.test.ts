@@ -36,6 +36,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
+  DutchTradeRouter,
 } from '../typechain'
 import {
   advanceTime,
@@ -60,6 +61,7 @@ import { withinQuad } from './utils/matchers'
 import { expectRTokenPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
+import { bidOnTrade, bidOnTradeStatic, ensureApproval } from './utils/bidOnTrade'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
@@ -3237,6 +3239,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           const end = await trade.endBlock()
 
           // Simulate 30 minutes of blocks, should swap at right price each time
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+          await ensureApproval(token1, addr1, router.address, router)
           let now = bn(await getLatestBlockNumber())
           while (now.lt(end)) {
             const actual = await trade.connect(addr1).bidAmount(now)
@@ -3252,27 +3256,27 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             )
             expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
 
-            const staticResult = await trade.connect(addr1).callStatic.bid()
-            expect(staticResult).to.equal(actual)
+            const staticResult = await bidOnTradeStatic(trade, token1, router, addr1)
+            expect(staticResult.amountIn).to.equal(actual)
             await advanceBlocks(1)
             now = bn(await getLatestBlockNumber())
           }
         })
 
         it('Should handle no bid case correctly', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+          await ensureApproval(token1, addr1, addr1.address, router)
           await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await backingManager.trades(token0.address)
           )
           await token1.connect(addr1).approve(trade.address, initialBal)
-
           await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
           await expect(
             trade.connect(addr1).bidAmount(await getLatestBlockNumber())
           ).to.be.revertedWith('auction over')
-          await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
-
+          await expect(bidOnTrade(trade, token1, router, addr1)).be.revertedWith('auction over')
           // Should be able to settle
           await expect(trade.settle()).to.be.revertedWith('only origin can settle')
           await expect(backingManager.settleTrade(token0.address))
@@ -3286,8 +3290,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         context('Should successfully recollateralize after default', () => {
           let trade1: DutchTrade // token0 -> token1
           let trade2: DutchTrade // RSR -> token1
-
+          let router: DutchTradeRouter
           beforeEach(async () => {
+            router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+            await ensureApproval(token1, addr1, addr1.address, router)
+            await ensureApproval(token0, addr1, addr1.address, router)
             await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
             trade1 = await ethers.getContractAt(
               'DutchTrade',
@@ -3297,11 +3304,12 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
             // Snipe auction at 0s left
             await advanceBlocks((await trade1.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-            await trade1.connect(addr1).bid()
+
+            await bidOnTrade(trade1, token1, router, addr1)
             expect(await trade1.canSettle()).to.equal(false)
             expect(await trade1.status()).to.equal(2) // Status.CLOSED
-            expect(await trade1.bidder()).to.equal(addr1.address)
-            expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+            expect(await trade1.bidder()).to.equal(router.address)
+            expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(1))
 
             const expected = divCeil(
               await dutchBuyAmount(
@@ -3340,7 +3348,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             expect(await trade2.canSettle()).to.equal(false)
 
             // Bid + settle RSR auction
-            await expect(trade2.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
+
+            await expect(bidOnTrade(trade2, token1, router, addr1)).to.emit(
+              backingManager,
+              'TradeSettled'
+            )
           })
 
           it('via fallback to Batch Auction', async () => {
@@ -5082,6 +5094,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     })
 
     it('rebalance() - DutchTrade ', async () => {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
       // Register Collateral
       await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -5121,7 +5134,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       let trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await backupToken1.connect(addr1).approve(trade.address, initialBal)
       await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-      await snapshotGasCost(trade.connect(addr1).bid())
+
+      await snapshotGasCost(bidOnTrade(trade, backupToken1, router, addr1))
 
       // Expect new trade started -- bid in last block
       expect(await backingManager.tradesOpen()).to.equal(1)
@@ -5130,7 +5144,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       tradeAddr = await backingManager.trades(rsr.address)
       trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await backupToken1.connect(addr1).approve(trade.address, initialBal)
-      await snapshotGasCost(trade.connect(addr1).bid())
+      await snapshotGasCost(bidOnTrade(trade, backupToken1, router, addr1))
 
       // No new trade
       expect(await backingManager.tradesOpen()).to.equal(0)
