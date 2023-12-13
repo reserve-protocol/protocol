@@ -5,6 +5,8 @@ import { BigNumberish } from 'ethers'
 import { FORK_BLOCK, FRX_ETH_MINTER } from './constants'
 import { getResetFork } from '../helpers'
 import { setNextBlockTimestamp, getLatestBlockTimestamp } from '../../../utils/time'
+import { fp } from '#/common/numbers'
+import { setBalance } from '@nomicfoundation/hardhat-network-helpers'
 
 export const mintSfrxETH = async (
   sfrxEth: IsfrxEth,
@@ -14,6 +16,7 @@ export const mintSfrxETH = async (
   chainlinkFeed: MockV3Aggregator,
   targetPerTokChainlinkFeed: MockV3Aggregator
 ) => {
+  await setBalance(account.address, fp(100000));
   const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
     await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER)
   )

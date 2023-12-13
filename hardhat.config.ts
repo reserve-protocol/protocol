@@ -45,12 +45,7 @@ const config: HardhatUserConfig = {
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
-      allowUnlimitedContractSize: true,
-      accounts: [
-        { privateKey: new Array(65).join('1'), balance: fp(1e6).toString() },
-        { privateKey: new Array(65).join('2'), balance: fp(1e6).toString() },
-        { privateKey: new Array(65).join('3'), balance: fp(1e6).toString() },
-      ]
+      allowUnlimitedContractSize: true
     },
     localhost: {
       // network for long-lived mainnet forks

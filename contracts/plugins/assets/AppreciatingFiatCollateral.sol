@@ -85,7 +85,6 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
 
         // {ref/tok} = {ref/tok} * {1}
         uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
-
         // uint192(<) is equivalent to Fix.lt
         if (underlyingRefPerTok < exposedReferencePrice) {
             exposedReferencePrice = underlyingRefPerTok;

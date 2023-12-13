@@ -216,8 +216,7 @@ const increaseRefPerTok = async (
   await advanceTime(86400)
   // push chainlink oracle forward so that tryPrice() still works
   const latestRoundData = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = latestRoundData.answer.add(latestRoundData.answer.mul(pctIncrease).div(100))
-  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+  await ctx.chainlinkFeed.updateAnswer(latestRoundData.answer)
   const latestRoundDataTpR = await ctx.targetPerTokChainlinkFeed.latestRoundData()
   const nextAnswerTpR = latestRoundDataTpR.answer.add(latestRoundDataTpR.answer.mul(pctIncrease).div(100))
   await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswerTpR)
@@ -312,8 +311,8 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it.skip, // implemnted in this file
+  itChecksNonZeroDefaultThreshold: it,
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,

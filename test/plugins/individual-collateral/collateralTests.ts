@@ -223,6 +223,14 @@ export default function fn<X extends CollateralFixtureContext>(
       describe('prices', () => {
         before(resetFork) // important for getting prices/refPerToks to behave predictably
 
+        it('enters IFFY state when price becomes stale', async () => {
+          const oracleTimeout = await collateral.oracleTimeout()
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+          await advanceBlocks(oracleTimeout / 12)
+          await collateral.refresh()
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+        })
+
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
@@ -408,14 +416,6 @@ export default function fn<X extends CollateralFixtureContext>(
           await invalidChainlinkFeed.setSimplyRevert(false)
           await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
           expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-        })
-
-        it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(oracleTimeout / 12)
-          await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
         it('decays price over priceTimeout period', async () => {
