@@ -18,12 +18,6 @@ interface IDutchTradeCallee {
     ) external;
 }
 
-enum BidType {
-    NONE,
-    BID,
-    BID_CB
-}
-
 // A dutch auction in 4 parts:
 //   1.  0% -  20%: Geometric decay from 1000x the bestPrice to ~1.5x the bestPrice
 //   2. 20% -  45%: Linear decay from ~1.5x the bestPrice to the bestPrice
@@ -113,8 +107,6 @@ contract DutchTrade is ITrade {
     // === Bid ===
     address public bidder;
     // the bid amount is just whatever token balance is in the contract at settlement time
-
-    BidType public bidType = BidType.NONE;
 
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
@@ -210,7 +202,6 @@ contract DutchTrade is ITrade {
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid(bytes calldata data) external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
-        bidType = BidType.BID_CB;
         // {buyTok/sellTok}
         uint192 price = _price(block.number); // enforces auction ongoing
 
@@ -254,16 +245,8 @@ contract DutchTrade is ITrade {
 
         // Received bid
         if (bidder != address(0)) {
-            if (bidType == BidType.BID) {
-                // {qSellTok}
-                soldAmt = lot();
-                sell.safeTransfer(bidder, soldAmt); // {qSellTok}
-            } else if (bidType == BidType.BID_CB) {
-                // {qSellTok}
-                soldAmt = lot();
-            } else {
-                revert("invalid bid type");
-            }
+            // {qSellTok}
+            soldAmt = lot();
         } else {
             require(block.number > endBlock, "auction not over");
         }

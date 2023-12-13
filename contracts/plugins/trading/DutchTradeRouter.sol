@@ -59,28 +59,6 @@ contract DutchTradeRouter is IDutchTradeCallee {
         return out;
     }
 
-    /// Bid on multiple dutch auctions at once in a single transaction
-    /// Profits from one dutch trade may be used to bid on next
-    /// @param trades The DutchTrade's to bid on
-    /// @param recipient The recipient of the tokens out
-    /// @dev Requires msg.sender has sufficient approval on the tokenIn with router
-    /// @dev Requires msg.sender has sufficient balance on the tokenIn
-    function bidMultiple(DutchTrade[] calldata trades, address recipient)
-        external
-        returns (Bid[] memory)
-    {
-        uint256 tradeCount = trades.length;
-        Bid[] memory bids = new Bid[](tradeCount);
-        for (uint256 i; i < tradeCount; i++) {
-            _placeBid(trades[i], bids[i], msg.sender);
-        }
-        for (uint256 i; i < tradeCount; i++) {
-            _sendBalanceTo(bids[i].tokenIn, recipient);
-            _sendBalanceTo(bids[i].tokenOut, recipient);
-        }
-        return bids;
-    }
-
     /// @notice Callback for DutchTrade
     /// @param caller The caller of the callback, should be the router
     /// @param buyToken The token DutchTrade is expecting to receive
