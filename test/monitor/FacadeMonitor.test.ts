@@ -114,7 +114,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   describe('FacadeMonitor', () => {
     before(async () => {
-      // await setup(forkBlockNumber['facade-monitor'])
+      await setup(forkBlockNumber['facade-monitor'])
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
