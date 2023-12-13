@@ -210,7 +210,7 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
-          BASE_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
           FORK_BLOCK: 18742016
           FORK: 1
