@@ -5,7 +5,7 @@ import { ethers, network } from 'hardhat'
 import { expect } from 'chai'
 import { fp, bn, divCeil } from '../../common/numbers'
 import { MAX_UINT192 } from '../../common/constants'
-import { getLatestBlockNumber, getLatestBlockTimestamp } from './time'
+import { getLatestBlockTimestamp } from './time'
 import { whileImpersonating } from './impersonation'
 
 const toleranceDivisor = bn('1e15') // 1 part in 1000 trillions
@@ -143,9 +143,9 @@ export const overrideOracle = async (oracleAddress: string): Promise<EACAggregat
     'contracts/plugins/mocks/EACAggregatorProxyMock.sol:EACAggregatorProxy',
     oracleAddress
   )
-  let aggregator = await oracle.aggregator()
+  const aggregator = await oracle.aggregator()
   const accessController = await oracle.accessController()
-  let initPrice;
+  let initPrice
   try {
     initPrice = await oracle.latestAnswer()
   } catch {
@@ -160,7 +160,7 @@ export const overrideOracle = async (oracleAddress: string): Promise<EACAggregat
 
 export const pushOracleForward = async (chainlinkAddr: string) => {
   const chainlinkFeed = await ethers.getContractAt('MockV3Aggregator', await chainlinkAddr)
-  let initPrice;
+  let initPrice
   // awkward workaround for sfrxETH oracle
   try {
     initPrice = await chainlinkFeed.latestAnswer()
@@ -178,10 +178,11 @@ export const pushOracleForward = async (chainlinkAddr: string) => {
 }
 
 export const pushFraxOracleForward = async (chainlinkAddr: string) => {
-  const [user] = await ethers.getSigners()
   const chainlinkFeed = await ethers.getContractAt('FraxAggregatorV3Interface', chainlinkAddr)
-  let initPrice = (await chainlinkFeed.latestRoundData()).answer
+  const initPrice = (await chainlinkFeed.latestRoundData()).answer
   await whileImpersonating(await chainlinkFeed.priceSource(), async (owner) => {
-    await chainlinkFeed.connect(owner).addRoundData(false, initPrice, initPrice, await getLatestBlockTimestamp() + 1)
+    await chainlinkFeed
+      .connect(owner)
+      .addRoundData(false, initPrice, initPrice, (await getLatestBlockTimestamp()) + 1)
   })
 }

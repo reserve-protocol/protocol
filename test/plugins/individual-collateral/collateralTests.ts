@@ -402,6 +402,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
             await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
           )
+
           const invalidCollateral = await deployCollateral({
             erc20: ctx.tok.address,
             chainlinkFeed: invalidChainlinkFeed.address,
@@ -453,7 +454,7 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('status', () => {
         before(resetFork)
-        
+
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -725,7 +726,7 @@ export default function fn<X extends CollateralFixtureContext>(
         ;({ ctx, protocol } = await loadFixture(integrationFixture))
         ;({ collateral } = ctx)
         ;({ deployer, facadeWrite, govParams } = protocol)
-        await collateral.refresh()
+
         supply = fp('1')
 
         // Create a paired collateral of the same targetName

@@ -14,7 +14,6 @@ import { useEnv } from '#/utils/env'
 import { forkRpcs, Network } from '#/utils/fork'
 import { HardhatUserConfig } from 'hardhat/types'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
-import { fp } from './common/numbers'
 
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')

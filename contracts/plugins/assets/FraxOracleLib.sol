@@ -7,7 +7,13 @@ import "./OracleErrors.sol";
 
 interface FraxAggregatorV3Interface is AggregatorV3Interface {
     function priceSource() external view returns (address);
-    function addRoundData(bool _isBadData, uint104 _priceLow, uint104 _priceHigh, uint40 _timestamp) external;
+
+    function addRoundData(
+        bool _isBadData,
+        uint104 _priceLow,
+        uint104 _priceHigh,
+        uint40 _timestamp
+    ) external;
 }
 
 /// Used by asset plugins to price their collateral

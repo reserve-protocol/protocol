@@ -68,10 +68,12 @@ export const defaultRethCollateralOpts: SfrxEthCollateralOpts = {
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
   targetPerTokChainlinkFeed: SFRXETH_ETH_PRICE_FEED,
-  targetPerTokChainlinkTimeout: ORACLE_TIMEOUT
+  targetPerTokChainlinkTimeout: ORACLE_TIMEOUT,
 }
 
-export const deployCollateral = async (opts: SfrxEthCollateralOpts = {}): Promise<TestICollateral> => {
+export const deployCollateral = async (
+  opts: SfrxEthCollateralOpts = {}
+): Promise<TestICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -97,12 +99,12 @@ export const deployCollateral = async (opts: SfrxEthCollateralOpts = {}): Promis
   )
   await collateral.deployed()
 
-  // Push forward chainlink fee
+  // Push forward chainlink feed
   await pushOracleForward(opts.chainlinkFeed!)
   // await pushOracleForward(opts.targetPerTokChainlinkFeed!)
-  opts.targetPerTokChainlinkFeed?.toLocaleLowerCase() == SFRXETH_ETH_PRICE_FEED.toLocaleLowerCase() ?
-    await pushFraxOracleForward(opts.targetPerTokChainlinkFeed ?? SFRXETH_ETH_PRICE_FEED) :
-    await pushOracleForward(opts.targetPerTokChainlinkFeed!)
+  opts.targetPerTokChainlinkFeed?.toLocaleLowerCase() == SFRXETH_ETH_PRICE_FEED.toLocaleLowerCase()
+    ? await pushFraxOracleForward(opts.targetPerTokChainlinkFeed ?? SFRXETH_ETH_PRICE_FEED)
+    : await pushOracleForward(opts.targetPerTokChainlinkFeed!)
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
@@ -166,10 +168,20 @@ const mintCollateralTo: MintCollateralFunc<SFrxEthCollateralFixtureContext> = as
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed, ctx.targetPerTokChainlinkFeed)
+  await mintSfrxETH(
+    ctx.sfrxEth,
+    user,
+    amount,
+    recipient,
+    ctx.chainlinkFeed,
+    ctx.targetPerTokChainlinkFeed
+  )
 }
 
-const changeTargetPerRef = async (ctx: SFrxEthCollateralFixtureContext, percentChange: BigNumber) => {
+const changeTargetPerRef = async (
+  ctx: SFrxEthCollateralFixtureContext,
+  percentChange: BigNumber
+) => {
   // We leave the actual refPerTok exchange where it is and just change {target/tok}
   {
     const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
@@ -256,7 +268,9 @@ const collateralSpecificStatusTests = () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, chainlinkDefaultAnswer)
     )
     const targetPerTokenChainlinkFeed = <MockV3Aggregator>(
-      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(18, targetPerTokChainlinkDefaultAnswer)
+      await (
+        await ethers.getContractFactory('MockV3Aggregator')
+      ).deploy(18, targetPerTokChainlinkDefaultAnswer)
     )
 
     const collateral = await deployCollateral({

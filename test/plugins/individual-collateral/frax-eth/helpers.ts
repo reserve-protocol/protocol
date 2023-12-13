@@ -16,7 +16,7 @@ export const mintSfrxETH = async (
   chainlinkFeed: MockV3Aggregator,
   targetPerTokChainlinkFeed: MockV3Aggregator
 ) => {
-  await setBalance(account.address, fp(100000));
+  await setBalance(account.address, fp(100000))
   const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
     await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER)
   )
