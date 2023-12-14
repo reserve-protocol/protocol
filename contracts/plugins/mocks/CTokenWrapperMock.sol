@@ -42,9 +42,11 @@ contract CTokenWrapperMock is ERC20Mock, IRewardable {
             revert("reverting claim rewards");
         }
         uint256 oldBal = comp.balanceOf(msg.sender);
+        address[] memory holders = new address[](1);
         address[] memory cTokens = new address[](1);
+        holders[0] = msg.sender;
         cTokens[0] = address(underlying);
-        comptroller.claimComp(msg.sender, cTokens);
+        comptroller.claimComp(holders, cTokens, false, true);
         emit RewardsClaimed(IERC20(address(comp)), comp.balanceOf(msg.sender) - oldBal);
     }
 

@@ -88,7 +88,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
 
         // uint192(<) is equivalent to Fix.lt
         if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
+            exposedReferencePrice = underlyingRefPerTok;
             markStatus(CollateralStatus.DISABLED);
         } else if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;

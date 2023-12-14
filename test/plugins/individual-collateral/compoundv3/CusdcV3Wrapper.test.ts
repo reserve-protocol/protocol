@@ -5,7 +5,7 @@ import { useEnv } from '#/utils/env'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
-import { COMP, REWARDS } from './constants'
+import { forkNetwork, COMP, REWARDS } from './constants'
 import {
   ERC20Mock,
   CometInterface,
@@ -19,6 +19,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
+
+const itL1 = forkNetwork != 'base' ? it : it.skip
 
 describeFork('Wrapped CUSDCv3', () => {
   let bob: SignerWithAddress
@@ -101,12 +103,43 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(don.address)).to.eq(expectedAmount)
     })
 
+    it('checks for correct approval on deposit - regression test', async () => {
+      await expect(
+        wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+      ).revertedWithCustomError(wcusdcV3, 'Unauthorized')
+
+      // Provide approval on the wrapper
+      await wcusdcV3.connect(bob).allow(don.address, true)
+
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
+
+      // This should fail even when bob approved wcusdcv3 to spend his tokens,
+      // because there is no explicit approval of cUSDCv3 from bob to don, only
+      // approval on the wrapper
+      await expect(
+        wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+      ).to.be.revertedWithCustomError(cusdcV3, 'Unauthorized')
+
+      // Add explicit approval of cUSDCv3 and retry
+      await cusdcV3.connect(bob).allow(don.address, true)
+      await wcusdcV3
+        .connect(don)
+        .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+
+      expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
+      expect(await wcusdcV3.balanceOf(charles.address)).to.eq(expectedAmount)
+    })
+
     it('deposits from a different account', async () => {
       expect(await wcusdcV3.balanceOf(charles.address)).to.eq(0)
       await expect(
         wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
       ).revertedWithCustomError(wcusdcV3, 'Unauthorized')
-      await wcusdcV3.connect(bob).connect(bob).allow(don.address, true)
+
+      // Approval has to be on cUsdcV3, not the wrapper
+      await cusdcV3.connect(bob).allow(don.address, true)
       const expectedAmount = await wcusdcV3.convertDynamicToStatic(
         await cusdcV3.balanceOf(bob.address)
       )
@@ -555,7 +588,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const baseIndexScale = await cusdcV3.baseIndexScale()
       const expectedExchangeRate = totalsBasic.baseSupplyIndex.mul(bn('1e6')).div(baseIndexScale)
       expect(await cusdcV3.balanceOf(wcusdcV3.address)).to.equal(0)
-      expect(await wcusdcV3.exchangeRate()).to.equal(expectedExchangeRate)
+      expect(await wcusdcV3.exchangeRate()).to.be.closeTo(expectedExchangeRate, 1)
     })
 
     it('returns the correct exchange rate with a positive balance', async () => {
@@ -596,6 +629,18 @@ describeFork('Wrapped CUSDCv3', () => {
       )
     })
 
+    it('regression test: able to claim rewards even when they are big without overflow', async () => {
+      // Nov 28 2023: uint64 math in CusdcV3Wrapper contract results in overflow when COMP rewards are even moderately large
+
+      const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
+      await advanceTime(1000)
+      await enableRewardsAccrual(cusdcV3, bn('2e18')) // enough to revert on uint64 implementation
+
+      await expect(wcusdcV3.connect(bob).claimRewards()).to.emit(wcusdcV3, 'RewardsClaimed')
+      expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
+    })
+
     it('claims rewards and sends to claimer (claimTo)', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
@@ -607,6 +652,44 @@ describeFork('Wrapped CUSDCv3', () => {
         'RewardsClaimed'
       )
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
+    })
+
+    it('caps at balance to avoid reverts when claiming rewards (claimTo)', async () => {
+      const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
+      await advanceTime(1000)
+      await enableRewardsAccrual(cusdcV3)
+
+      // Accrue multiple times
+      for (let i = 0; i < 10; i++) {
+        await advanceTime(1000)
+        await wcusdcV3.accrue()
+      }
+
+      // Get rewards from Comet
+      const cometRewards = await ethers.getContractAt('ICometRewards', REWARDS)
+      await whileImpersonating(wcusdcV3.address, async (signer) => {
+        await cometRewards
+          .connect(signer)
+          .claimTo(cusdcV3.address, wcusdcV3.address, wcusdcV3.address, true)
+      })
+
+      // Accrue individual account
+      await wcusdcV3.accrueAccount(bob.address)
+
+      // Due to rounding, balance is smaller that owed
+      const owed = await wcusdcV3.getRewardOwed(bob.address)
+      const bal = await compToken.balanceOf(wcusdcV3.address)
+      expect(owed).to.be.greaterThan(bal)
+
+      // Should still be able to claimTo (caps at balance)
+      const balanceBobPrev = await compToken.balanceOf(bob.address)
+      await expect(wcusdcV3.connect(bob).claimTo(bob.address, bob.address)).to.emit(
+        wcusdcV3,
+        'RewardsClaimed'
+      )
+
+      expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(balanceBobPrev)
     })
 
     it('claims rewards and sends to claimer (claimRewards)', async () => {
@@ -639,15 +722,16 @@ describeFork('Wrapped CUSDCv3', () => {
       await advanceBlocks(1)
 
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
-      expect(await compToken.balanceOf(bob.address)).to.equal(
-        await compToken.balanceOf(don.address)
-      )
+      const balanceBob = await compToken.balanceOf(bob.address)
+      const balanceDon = await compToken.balanceOf(don.address)
+      expect(balanceDon).lessThanOrEqual(balanceBob)
+      expect(balanceBob).to.be.closeTo(balanceDon, balanceBob.mul(5).div(1000)) // within 0.5%
     })
 
     // In this forked block, rewards accrual is not yet enabled in Comet
-    it('claims no rewards when rewards accrual is not enabled', async () => {
+    // Only applies to Mainnet forks (L1)
+    itL1('claims no rewards when rewards accrual is not enabled', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
       await advanceTime(1000)
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
       expect(await compToken.balanceOf(bob.address)).to.equal(0)

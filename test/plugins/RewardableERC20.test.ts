@@ -18,12 +18,16 @@ import snapshotGasCost from '../utils/snapshotGasCost'
 import { formatUnits, parseUnits } from 'ethers/lib/utils'
 import { MAX_UINT256 } from '#/common/constants'
 
+const SHARE_DECIMAL_OFFSET = 9 // decimals buffer for shares and rewards per share
+const BN_SHARE_FACTOR = bn(10).pow(SHARE_DECIMAL_OFFSET)
+
 type Fixture<T> = () => Promise<T>
 
 interface RewardableERC20Fixture {
   rewardableVault: RewardableERC4626VaultTest | RewardableERC20WrapperTest
   rewardableAsset: ERC20MockRewarding
   rewardToken: ERC20MockDecimals
+  rewardableVaultFactory: ContractFactory
 }
 
 // 18 cases: test two wrappers with 2 combinations of decimals [6, 8, 18]
@@ -76,6 +80,7 @@ for (const wrapperName of wrapperNames) {
           rewardableVault,
           rewardableAsset,
           rewardToken,
+          rewardableVaultFactory,
         }
       }
     return fixture
@@ -118,18 +123,19 @@ for (const wrapperName of wrapperNames) {
     describe(wrapperName, () => {
       // Decimals
       let shareDecimals: number
-
+      let rewardShareDecimals: number
       // Assets
       let rewardableVault: RewardableERC20WrapperTest | RewardableERC4626VaultTest
       let rewardableAsset: ERC20MockRewarding
       let rewardToken: ERC20MockDecimals
+      let rewardableVaultFactory: ContractFactory
 
       // Main
       let alice: Wallet
       let bob: Wallet
 
       const initBalance = parseUnits('10000', assetDecimals)
-      const rewardAmount = parseUnits('200', rewardDecimals)
+      let rewardAmount = parseUnits('200', rewardDecimals)
       let oneShare: BigNumber
       let initShares: BigNumber
 
@@ -141,14 +147,16 @@ for (const wrapperName of wrapperNames) {
 
       beforeEach(async () => {
         // Deploy fixture
-        ;({ rewardableVault, rewardableAsset, rewardToken } = await loadFixture(fixture))
+        ;({ rewardableVault, rewardableAsset, rewardToken, rewardableVaultFactory } =
+          await loadFixture(fixture))
 
         await rewardableAsset.mint(alice.address, initBalance)
         await rewardableAsset.connect(alice).approve(rewardableVault.address, initBalance)
         await rewardableAsset.mint(bob.address, initBalance)
         await rewardableAsset.connect(bob).approve(rewardableVault.address, initBalance)
 
-        shareDecimals = await rewardableVault.decimals()
+        shareDecimals = (await rewardableVault.decimals()) + SHARE_DECIMAL_OFFSET
+        rewardShareDecimals = rewardDecimals + SHARE_DECIMAL_OFFSET
         initShares = toShares(initBalance, assetDecimals, shareDecimals)
         oneShare = bn('1').mul(bn(10).pow(shareDecimals))
       })
@@ -181,7 +189,9 @@ for (const wrapperName of wrapperNames) {
           expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
           await rewardToken.mint(rewardableVault.address, parseUnits('10', rewardDecimals))
           await rewardableVault.sync()
-          expect(await rewardableVault.rewardsPerShare()).to.equal(parseUnits('1', rewardDecimals))
+          expect(await rewardableVault.rewardsPerShare()).to.equal(
+            parseUnits('1', rewardShareDecimals)
+          )
         })
 
         it('correctly handles reward tracking if supply is burned', async () => {
@@ -192,7 +202,9 @@ for (const wrapperName of wrapperNames) {
           expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
           await rewardToken.mint(rewardableVault.address, parseUnits('10', rewardDecimals))
           await rewardableVault.sync()
-          expect(await rewardableVault.rewardsPerShare()).to.equal(parseUnits('1', rewardDecimals))
+          expect(await rewardableVault.rewardsPerShare()).to.equal(
+            parseUnits('1', rewardShareDecimals)
+          )
 
           // Setting supply to 0
           await withdrawAll(rewardableVault.connect(alice))
@@ -211,7 +223,9 @@ for (const wrapperName of wrapperNames) {
 
           // Nothing updates.. as totalSupply as totalSupply is 0
           await rewardableVault.sync()
-          expect(await rewardableVault.rewardsPerShare()).to.equal(parseUnits('1', rewardDecimals))
+          expect(await rewardableVault.rewardsPerShare()).to.equal(
+            parseUnits('1', rewardShareDecimals)
+          )
           await rewardableVault
             .connect(alice)
             .deposit(parseUnits('10', assetDecimals), alice.address)
@@ -221,6 +235,23 @@ for (const wrapperName of wrapperNames) {
           expect(await rewardToken.balanceOf(alice.address)).to.be.equal(
             parseUnits('20', rewardDecimals)
           )
+        })
+
+        it('checks reward and underlying token are not the same', async () => {
+          const errorMsg =
+            wrapperName == Wrapper.ERC4626
+              ? 'reward and asset cannot match'
+              : 'reward and underlying cannot match'
+
+          // Attempt to deploy with same reward and underlying
+          await expect(
+            rewardableVaultFactory.deploy(
+              rewardableAsset.address,
+              'Rewarding Test Asset Vault',
+              'vrewardTEST',
+              rewardableAsset.address
+            )
+          ).to.be.revertedWith(errorMsg)
         })
 
         it('1 wei supply', async () => {
@@ -259,7 +290,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('alice shows correct balance', async () => {
-          expect(initShares.mul(3).div(8)).equal(await rewardableVault.balanceOf(alice.address))
+          expect(initShares.mul(3).div(8).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(alice.address)
+          )
         })
 
         it('alice shows correct lastRewardsPerShare', async () => {
@@ -267,7 +300,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('bob shows correct balance', async () => {
-          expect(initShares.div(8)).equal(await rewardableVault.balanceOf(bob.address))
+          expect(initShares.div(8).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(bob.address)
+          )
         })
 
         it('bob shows correct lastRewardsPerShare', async () => {
@@ -276,7 +311,9 @@ for (const wrapperName of wrapperNames) {
 
         it('rewardsPerShare is correct', async () => {
           // rewards / alice's deposit
-          expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
+          expect(rewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(BN_SHARE_FACTOR)
+          )
         })
       })
 
@@ -303,7 +340,9 @@ for (const wrapperName of wrapperNames) {
 
         it('alice shows correct lastRewardsPerShare', async () => {
           // rewards / alice's deposit
-          expect(initRewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
+          expect(initRewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(BN_SHARE_FACTOR)
+          )
           expect(initRewardsPerShare).equal(
             await rewardableVault.lastRewardsPerShare(alice.address)
           )
@@ -314,6 +353,7 @@ for (const wrapperName of wrapperNames) {
             .mul(oneShare)
             .div(initShares.div(4))
             .add(rewardAmount.mul(oneShare).div(initShares.div(2)))
+            .mul(BN_SHARE_FACTOR)
           expect(rewardsPerShare).equal(expectedRewardsPerShare)
           expect(rewardsPerShare).equal(await rewardableVault.lastRewardsPerShare(bob.address))
         })
@@ -337,7 +377,9 @@ for (const wrapperName of wrapperNames) {
 
         it('rewardsPerShare is correct', async () => {
           // rewards / alice's deposit
-          expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
+          expect(rewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(BN_SHARE_FACTOR)
+          )
         })
       })
 
@@ -378,7 +420,9 @@ for (const wrapperName of wrapperNames) {
 
         it('rewardsPerShare is correct', async () => {
           // rewards / alice's deposit
-          expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
+          expect(rewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(BN_SHARE_FACTOR)
+          )
         })
       })
 
@@ -404,7 +448,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('bob shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(bob.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(bob.address)
+          )
         })
 
         it('bob shows correct lastRewardsPerShare', async () => {
@@ -413,7 +459,9 @@ for (const wrapperName of wrapperNames) {
 
         it('rewardsPerShare is correct', async () => {
           // rewards / alice's deposit
-          expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
+          expect(rewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(BN_SHARE_FACTOR)
+          )
         })
       })
 
@@ -433,7 +481,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('alice shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(alice.address)
+          )
         })
 
         it('alice has claimed rewards', async () => {
@@ -445,7 +495,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('bob shows correct balance', async () => {
-          expect(initShares.div(8)).equal(await rewardableVault.balanceOf(bob.address))
+          expect(initShares.div(8).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(bob.address)
+          )
         })
 
         it('bob shows correct lastRewardsPerShare', async () => {
@@ -454,8 +506,27 @@ for (const wrapperName of wrapperNames) {
 
         it('rewardsPerShare is correct', async () => {
           // rewards / alice's deposit
-          expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
+          expect(rewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(BN_SHARE_FACTOR)
+          )
         })
+      })
+
+      it('Cannot frontrun claimRewards by inflating your shares', async () => {
+        await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+        await rewardableAsset.mint(bob.address, initBalance.mul(100))
+        await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+        await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+
+        // Bob 'flashloans' 100x the current balance of the vault and claims rewards
+        await rewardableVault.connect(bob).deposit(initBalance.mul(100), bob.address)
+        await rewardableVault.connect(bob).claimRewards()
+
+        // Alice claimsRewards a bit later
+        await rewardableVault.connect(alice).claimRewards()
+        expect(await rewardToken.balanceOf(alice.address)).to.be.gt(
+          await rewardToken.balanceOf(bob.address)
+        )
       })
 
       describe('alice deposit, accrue, bob deposit, accrue, bob claim, alice claim', () => {
@@ -480,7 +551,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('alice shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(alice.address)
+          )
         })
 
         it('alice has claimed rewards', async () => {
@@ -494,7 +567,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('bob shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(bob.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(bob.address)
+          )
         })
 
         it('bob shows correct lastRewardsPerShare', async () => {
@@ -511,6 +586,7 @@ for (const wrapperName of wrapperNames) {
             .mul(oneShare)
             .div(initShares.div(4))
             .add(rewardAmount.mul(oneShare).div(initShares.div(2)))
+            .mul(BN_SHARE_FACTOR)
           expect(rewardsPerShare).equal(expectedRewardsPerShare)
         })
       })
@@ -540,7 +616,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('alice shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(alice.address)
+          )
         })
 
         it('alice shows correct lastRewardsPerShare', async () => {
@@ -552,7 +630,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('bob shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(bob.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(bob.address)
+          )
         })
 
         it('bob shows correct lastRewardsPerShare', async () => {
@@ -565,7 +645,9 @@ for (const wrapperName of wrapperNames) {
 
         it('rewardsPerShare is correct', async () => {
           // (rewards / alice's deposit) + (rewards / bob's deposit)
-          expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)).mul(2))
+          expect(rewardsPerShare).equal(
+            rewardAmount.mul(oneShare).div(initShares.div(4)).mul(2).mul(BN_SHARE_FACTOR)
+          )
         })
       })
 
@@ -576,7 +658,9 @@ for (const wrapperName of wrapperNames) {
           await rewardableVault.connect(alice).deposit(initBalance.div(4), alice.address)
           await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
           await rewardableVault.connect(bob).deposit(initBalance.div(4), bob.address)
-          await rewardableVault.connect(alice).transfer(bob.address, initShares.div(4))
+          await rewardableVault
+            .connect(alice)
+            .transfer(bob.address, initShares.div(4).div(BN_SHARE_FACTOR))
           await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
           await rewardableVault.connect(alice).deposit(initBalance.div(4), alice.address)
           await rewardableVault.connect(bob).claimRewards()
@@ -586,7 +670,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('alice shows correct balance', async () => {
-          expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+          expect(initShares.div(4).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(alice.address)
+          )
         })
 
         it('alice shows correct lastRewardsPerShare', async () => {
@@ -598,7 +684,9 @@ for (const wrapperName of wrapperNames) {
         })
 
         it('bob shows correct balance', async () => {
-          expect(initShares.div(2)).equal(await rewardableVault.balanceOf(bob.address))
+          expect(initShares.div(2).div(BN_SHARE_FACTOR)).equal(
+            await rewardableVault.balanceOf(bob.address)
+          )
         })
 
         it('bob shows correct lastRewardsPerShare', async () => {
@@ -616,6 +704,84 @@ for (const wrapperName of wrapperNames) {
               .mul(oneShare)
               .div(initShares.div(4))
               .add(rewardAmount.mul(oneShare).div(initShares.div(2)))
+              .mul(BN_SHARE_FACTOR)
+          )
+        })
+      })
+
+      describe('correctly applies fractional reward tracking', () => {
+        rewardAmount = parseUnits('1.9', rewardDecimals)
+
+        beforeEach(async () => {
+          // Deploy fixture
+          ;({ rewardableVault, rewardableAsset } = await loadFixture(fixture))
+
+          await rewardableAsset.mint(alice.address, initBalance)
+          await rewardableAsset.connect(alice).approve(rewardableVault.address, MAX_UINT256)
+          await rewardableAsset.mint(bob.address, initBalance)
+          await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+        })
+
+        it('Correctly handles fractional rewards', async () => {
+          expect(await rewardableVault.rewardsPerShare()).to.equal(0)
+
+          await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+
+          for (let i = 0; i < 10; i++) {
+            await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+            await rewardableVault.claimRewards()
+            expect(await rewardableVault.rewardsPerShare()).to.equal(
+              rewardAmount
+                .mul(i + 1)
+                .mul(oneShare)
+                .div(initShares)
+                .mul(BN_SHARE_FACTOR)
+            )
+          }
+        })
+      })
+
+      describe(`correctly rounds rewards`, () => {
+        // Assets
+        rewardAmount = parseUnits('1.7', rewardDecimals)
+
+        beforeEach(async () => {
+          // Deploy fixture
+          ;({ rewardableVault, rewardableAsset, rewardToken } = await loadFixture(fixture))
+
+          await rewardableAsset.mint(alice.address, initBalance)
+          await rewardableAsset.connect(alice).approve(rewardableVault.address, MAX_UINT256)
+          await rewardableAsset.mint(bob.address, initBalance)
+          await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+        })
+
+        it('Avoids wrong distribution of rewards when rounding', async () => {
+          expect(await rewardToken.balanceOf(alice.address)).to.equal(bn(0))
+          expect(await rewardToken.balanceOf(bob.address)).to.equal(bn(0))
+          expect(await rewardableVault.rewardsPerShare()).to.equal(0)
+
+          // alice deposit and accrue rewards
+          await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+          await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+
+          // bob deposit
+          await rewardableVault.connect(bob).deposit(initBalance, bob.address)
+
+          // accrue additional rewards (twice the amount)
+          await rewardableAsset.accrueRewards(rewardAmount.mul(2), rewardableVault.address)
+
+          // claim all rewards
+          await rewardableVault.connect(bob).claimRewards()
+          await rewardableVault.connect(alice).claimRewards()
+
+          // Alice got all first rewards plus half of the second
+          expect(await rewardToken.balanceOf(alice.address)).to.equal(rewardAmount.mul(2))
+
+          // Bob only got half of the second rewards
+          expect(await rewardToken.balanceOf(bob.address)).to.equal(rewardAmount)
+
+          expect(await rewardableVault.rewardsPerShare()).equal(
+            rewardAmount.mul(2).mul(oneShare).div(initShares).mul(BN_SHARE_FACTOR)
           )
         })
       })
@@ -667,9 +833,67 @@ for (const wrapperName of wrapperNames) {
       for (let i = 0; i < 10; i++) {
         await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
         await rewardableVault.claimRewards()
-
-        expect(await rewardableVault.rewardsPerShare()).to.equal(Math.floor(1.9 * (i + 1)))
+        expect(await rewardableVault.rewardsPerShare()).to.equal(
+          bn(`1.9e${SHARE_DECIMAL_OFFSET}`).mul(i + 1)
+        )
       }
+    })
+  })
+
+  describe(`${wrapperName.replace('Test', '')} Special Case: Rounding - Regression test`, () => {
+    // Assets
+    let rewardableVault: RewardableERC20WrapperTest | RewardableERC4626VaultTest
+    let rewardableAsset: ERC20MockRewarding
+    let rewardToken: ERC20MockDecimals
+    // Main
+    let alice: Wallet
+    let bob: Wallet
+
+    const initBalance = parseUnits('1000000', 18)
+    const rewardAmount = parseUnits('1.7', 6)
+
+    const fixture = getFixture(18, 6)
+
+    before('load wallets', async () => {
+      ;[alice, bob] = (await ethers.getSigners()) as unknown as Wallet[]
+    })
+
+    beforeEach(async () => {
+      // Deploy fixture
+      ;({ rewardableVault, rewardableAsset, rewardToken } = await loadFixture(fixture))
+
+      await rewardableAsset.mint(alice.address, initBalance)
+      await rewardableAsset.connect(alice).approve(rewardableVault.address, MAX_UINT256)
+      await rewardableAsset.mint(bob.address, initBalance)
+      await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+    })
+
+    it('Avoids wrong distribution of rewards when rounding', async () => {
+      expect(await rewardToken.balanceOf(alice.address)).to.equal(bn(0))
+      expect(await rewardToken.balanceOf(bob.address)).to.equal(bn(0))
+      expect(await rewardableVault.rewardsPerShare()).to.equal(0)
+
+      // alice deposit and accrue rewards
+      await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+      await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+
+      // bob deposit
+      await rewardableVault.connect(bob).deposit(initBalance, bob.address)
+
+      // accrue additional rewards (twice the amount)
+      await rewardableAsset.accrueRewards(rewardAmount.mul(2), rewardableVault.address)
+
+      // claim all rewards
+      await rewardableVault.connect(bob).claimRewards()
+      await rewardableVault.connect(alice).claimRewards()
+
+      // Alice got all first rewards plus half of the second
+      expect(await rewardToken.balanceOf(alice.address)).to.equal(bn(3.4e6))
+
+      // Bob only got half of the second rewards
+      expect(await rewardToken.balanceOf(bob.address)).to.equal(bn(1.7e6))
+
+      expect(await rewardableVault.rewardsPerShare()).to.equal(bn(`3.4e${SHARE_DECIMAL_OFFSET}`))
     })
   })
 

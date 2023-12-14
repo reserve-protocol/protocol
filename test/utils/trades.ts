@@ -81,7 +81,6 @@ export const dutchBuyAmount = async (
   assetInAddr: string,
   assetOutAddr: string,
   outAmount: BigNumber,
-  minTradeVolume: BigNumber,
   maxTradeSlippage: BigNumber
 ): Promise<BigNumber> => {
   const assetIn = await ethers.getContractAt('IAsset', assetInAddr)

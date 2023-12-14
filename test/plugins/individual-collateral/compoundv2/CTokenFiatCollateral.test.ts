@@ -10,7 +10,13 @@ import {
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../../../fixtures'
-import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  DefaultFixture,
+  Fixture,
+  getDefaultFixture,
+  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
+} from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
 import {
@@ -22,7 +28,12 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../../common/configuration'
-import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import {
+  CollateralStatus,
+  MAX_UINT48,
+  MAX_UINT192,
+  ZERO_ADDRESS,
+} from '../../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -207,7 +218,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         ORACLE_ERROR,
         compToken.address,
         config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT
+        ORACLE_TIMEOUT_PRE_BUFFER
       )
     )
 
@@ -230,7 +241,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         oracleError: ORACLE_ERROR,
         erc20: cDaiVault.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -425,7 +436,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: ZERO_ADDRESS,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -461,7 +472,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: vault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -469,6 +480,24 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           REVENUE_HIDING
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
+
+      // defaultThreshold = 0
+      await expect(
+        CTokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+            oracleError: ORACLE_ERROR,
+            erc20: cDaiVault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: bn(0),
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
     })
   })
 
@@ -666,10 +695,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
 
-      // Compound
-      await expectUnpriced(cDaiCollateral.address)
+      // Price is at saved prices
+      const savedLowPrice = await cDaiCollateral.savedLowPrice()
+      const savedHighPrice = await cDaiCollateral.savedHighPrice()
+      const p = await cDaiCollateral.price()
+      expect(p[0]).to.equal(savedLowPrice)
+      expect(p[1]).to.equal(savedHighPrice)
 
       // Refresh should mark status IFFY
       await cDaiCollateral.refresh()
@@ -685,7 +718,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           oracleError: ORACLE_ERROR,
           erc20: cDaiVault.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -710,7 +743,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           oracleError: ORACLE_ERROR,
           erc20: cDaiVault.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -726,6 +759,15 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Refresh should mark status IFFY
       await zeropriceCtokenCollateral.refresh()
       expect(await zeropriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('lotPrice (deprecated) is equal to price()', async () => {
+      const lotPrice = await cDaiCollateral.lotPrice()
+      const price = await cDaiCollateral.price()
+      expect(price.length).to.equal(2)
+      expect(lotPrice.length).to.equal(price.length)
+      expect(lotPrice[0]).to.equal(price[0])
+      expect(lotPrice[1]).to.equal(price[1])
     })
   })
 
@@ -1054,9 +1096,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await advanceTime(
           (await cDaiCollateral.priceTimeout()) + (await cDaiCollateral.oracleTimeout())
         )
-        const lotP = await cDaiCollateral.lotPrice()
-        expect(lotP[0]).to.equal(0)
-        expect(lotP[1]).to.equal(0)
+        const p = await cDaiCollateral.price()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(MAX_UINT192)
         await snapshotGasCost(cDaiCollateral.refresh())
         await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })

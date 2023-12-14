@@ -74,7 +74,11 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         //
         // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
         // amount is > 0 and < type(uint256).max.
-        AllowanceLib.safeApproveFallbackToMax(req.sell.erc20(), address(broker), req.sellAmount);
+        AllowanceLib.safeApproveFallbackToMax(
+            address(req.sell.erc20()),
+            address(broker),
+            req.sellAmount
+        );
 
         trade = broker.openTrade(kind, req, prices);
         trades[req.sell.erc20()] = trade;

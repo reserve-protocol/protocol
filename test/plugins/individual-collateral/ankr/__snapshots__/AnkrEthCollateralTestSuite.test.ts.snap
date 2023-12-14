@@ -4,26 +4,26 @@ exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting ERC20 
 
 exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting ERC20 transfer 2`] = `43994`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `60337`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `60326`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `55868`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `55857`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 1`] = `99413`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 1`] = `99391`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 2`] = `91730`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 2`] = `91708`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `60337`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `60326`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `55868`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `55857`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after soft default 1`] = `55527`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after soft default 1`] = `55516`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after soft default 2`] = `55527`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after soft default 2`] = `55516`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `91657`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `91635`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `91657`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `91635`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during soft default 1`] = `99208`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during soft default 1`] = `99186`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during soft default 2`] = `91939`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during soft default 2`] = `91917`;

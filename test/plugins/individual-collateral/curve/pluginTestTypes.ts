@@ -72,6 +72,9 @@ export interface CurveCollateralTestSuiteFixtures<T extends CurveCollateralFixtu
   // a group of tests, specific to the collateral plugin, focused on status checks
   collateralSpecificStatusTests: () => void
 
+  // toggle on or off: tests that claim rewards (off if the plugin does not receive rewards)
+  itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // a function to deploy and return the plugin-specific test suite context
   makeCollateralFixtureContext: MakeCurveCollateralFixtureFunc<T>
 

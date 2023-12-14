@@ -12,6 +12,7 @@ import {
   TestICollateral,
   IsfrxEth,
 } from '../../../../typechain'
+import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -84,6 +85,10 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(opts.chainlinkFeed!)
+
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
@@ -193,7 +198,7 @@ const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
-  it('does revenue hiding', async () => {
+  it('does revenue hiding correctly', async () => {
     const MockFactory = await ethers.getContractFactory('SfraxEthMock')
     const erc20 = (await MockFactory.deploy()) as SfraxEthMock
     let currentPPS = await (await ethers.getContractAt('IsfrxEth', SFRX_ETH)).pricePerShare()
@@ -210,14 +215,24 @@ const collateralSpecificStatusTests = () => {
     })
 
     // Should remain SOUND after a 1% decrease
-    await erc20.setPricePerShare(currentPPS.sub(currentPPS.div(100)))
+    let refPerTok = await collateral.refPerTok()
+    const newPPS = currentPPS.sub(currentPPS.div(100))
+    await erc20.setPricePerShare(newPPS)
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-    // Should become DISABLED if drops more than that
-    await erc20.setPricePerShare(currentPPS.sub(currentPPS.div(99)))
+    // refPerTok should be unchanged
+    expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
+
+    // Should become DISABLED if drops another 1%
+    refPerTok = await collateral.refPerTok()
+    await erc20.setPricePerShare(newPPS.sub(newPPS.div(100)))
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+    // refPerTok should have fallen 1%
+    refPerTok = refPerTok.sub(refPerTok.div(100))
+    expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
   })
 }
 
@@ -244,6 +259,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
+  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it.skip, // implemnted in this file
   resetFork,
   collateralName: 'SFraxEthCollateral',

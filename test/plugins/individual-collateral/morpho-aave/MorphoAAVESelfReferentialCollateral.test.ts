@@ -15,6 +15,7 @@ import { ethers } from 'hardhat'
 import collateralTests from '../collateralTests'
 import { getResetFork } from '../helpers'
 import { CollateralOpts } from '../pluginTestTypes'
+import { pushOracleForward } from '../../../utils/oracles'
 import {
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
@@ -69,6 +70,9 @@ const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestIC
     { gasLimit: 2000000000 }
   )) as unknown as TestICollateral
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(opts.chainlinkFeed!)
 
   await expect(collateral.refresh())
 
@@ -225,6 +229,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itChecksNonZeroDefaultThreshold: it.skip,
   itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK),
   collateralName: 'MorphoAAVEV2SelfReferentialCollateral - WETH',

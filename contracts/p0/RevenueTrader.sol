@@ -32,14 +32,14 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        override(ITrading, TradingP0)
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) returns (ITrade trade) {
         trade = super.settleTrade(sell);
-        _distributeTokenToBuy();
+
+        // solhint-disable-next-line no-empty-blocks
+        try this.distributeTokenToBuy() {} catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+        }
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
@@ -80,10 +80,18 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     {
         require(erc20s.length > 0, "empty erc20s list");
         require(erc20s.length == kinds.length, "length mismatch");
+
+        RevenueTotals memory revTotals = main.distributor().totals();
+        require(
+            (tokenToBuy == main.rsr() && revTotals.rsrTotal > 0) ||
+                (address(tokenToBuy) == address(main.rToken()) && revTotals.rTokenTotal > 0),
+            "zero distribution"
+        );
+
         main.assetRegistry().refresh();
 
         IAsset assetToBuy = main.assetRegistry().toAsset(tokenToBuy);
-        (uint192 buyLow, uint192 buyHigh) = assetToBuy.lotPrice(); // {UoA/tok}
+        (uint192 buyLow, uint192 buyHigh) = assetToBuy.price(); // {UoA/tok}
         require(buyHigh > 0 && buyHigh < FIX_MAX, "buy asset price unknown");
 
         // For each ERC20: start auction of given kind
@@ -99,7 +107,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             require(address(trades[erc20]) == address(0), "trade open");
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
-            (uint192 sellLow, uint192 sellHigh) = assetToSell.lotPrice(); // {UoA/tok}
+            (uint192 sellLow, uint192 sellHigh) = assetToSell.price(); // {UoA/tok}
 
             TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
                 sell: assetToSell,
@@ -130,7 +138,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         uint256 bal = tokenToBuy.balanceOf(address(this));
         tokenToBuy.safeApprove(address(main.distributor()), 0);
         tokenToBuy.safeApprove(address(main.distributor()), bal);
-        
         // do not need to use AllowanceLib.safeApproveFallbackToCustom here because
         // tokenToBuy can be assumed to be either RSR or the RToken
 
