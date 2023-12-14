@@ -9,12 +9,6 @@ import "../FraxOracleLib.sol";
 import "./vendor/IsfrxEth.sol";
 
 /**
- * ************************************************************
- * WARNING: this plugin is not ready to be used in Production
- * ************************************************************
- */
-
-/**
  * @title SFraxEthCollateral
  * @notice Collateral plugin for Frax-ETH,
  * tok = sfrxETH
@@ -27,23 +21,23 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using FraxOracleLib for FraxAggregatorV3Interface;
     using FixLib for uint192;
 
-    FraxAggregatorV3Interface public immutable targetPerTokChainlinkFeed; // {target/tok}
-    uint48 public immutable targetPerTokChainlinkTimeout;
+    FraxAggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {target/tok}
+    uint48 public immutable targetPerRefChainlinkTimeout;
 
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
-    /// @param _targetPerTokChainlinkFeed {target/tok} price of cbETH in ETH terms
+    /// @param _targetPerRefChainlinkFeed {target/tok} price of frxETH in ETH terms
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        FraxAggregatorV3Interface _targetPerTokChainlinkFeed,
-        uint48 _targetPerTokChainlinkTimeout
+        FraxAggregatorV3Interface _targetPerRefChainlinkFeed,
+        uint48 _targetPerRefChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
-        require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
-        require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
+        require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
+        require(_targetPerRefChainlinkTimeout != 0, "targetPerRefChainlinkTimeout zero");
 
-        targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
-        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
+        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -60,17 +54,16 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
-        // {UoA/tok} = {UoA/target} * {target/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
+        // {target/ref} Get current market peg ({eth/sfrxeth})
+        pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
+
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
-
-        // {target/ref} = {target/tok} / {ref/tok}
-        pegPrice = targetPerTok.div(_underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

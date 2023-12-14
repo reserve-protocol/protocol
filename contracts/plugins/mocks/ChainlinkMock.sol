@@ -51,7 +51,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
         latestAnsweredRound = latestRound;
     }
 
-    // used by Frax oracl
+    // used by Frax oracle
     function addRoundData(bool isBadData, uint104 low, uint104 high, uint40 timestamp) public {
         latestAnswer = int104(low + high) / 2;
         latestTimestamp = block.timestamp;
