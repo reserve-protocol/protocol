@@ -3639,9 +3639,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await trade.canSettle()).to.equal(false)
           expect(await trade.status()).to.equal(2) // Status.CLOSED
           expect(await trade.bidder()).to.equal(router.address)
-          expect(await token0.balanceOf(addr1.address)).to.equal(
-            initialBal.sub(issueAmount.div(4)).sub(1)
-          )
+          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
 
           const expected = await dutchBuyAmount(
             fp(auctionLength).div(auctionLength), // last possible second

@@ -77,10 +77,10 @@ contract DutchTradeRouter is IDutchTradeCallee {
 
     function _sendBalanceTo(IERC20 token, address to) internal {
         uint256 bal = token.balanceOf(address(this));
-        if (bal <= 1) {
+        if (bal == 0) {
             return;
         }
-        token.safeTransfer(to, bal - 1);
+        token.safeTransfer(to, bal);
     }
 
     // Places a bid on a Dutch auction

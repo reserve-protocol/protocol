@@ -3309,7 +3309,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             expect(await trade1.canSettle()).to.equal(false)
             expect(await trade1.status()).to.equal(2) // Status.CLOSED
             expect(await trade1.bidder()).to.equal(router.address)
-            expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(1))
+            expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
 
             const expected = divCeil(
               await dutchBuyAmount(
