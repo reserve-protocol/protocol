@@ -834,6 +834,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       it('rebalances out of the collateral', async () => {
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         // Remove collateral from basket
         await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-4')])
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -857,12 +858,16 @@ export default function fn<X extends CollateralFixtureContext>(
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
         const pairedBal = await pairedERC20.balanceOf(backingManager.address)
 
-        await expect(bidOnTrade(trade, pairedERC20, addr1)).to.emit(backingManager, 'TradeSettled')
+        await expect(bidOnTrade(trade, pairedERC20, router, addr1)).to.emit(
+          backingManager,
+          'TradeSettled'
+        )
         expect(await pairedERC20.balanceOf(backingManager.address)).to.be.gt(pairedBal)
         expect(await backingManager.tradesOpen()).to.equal(0)
       })
 
       it('forwards revenue and sells in a revenue auction', async () => {
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         // Send excess collateral to the RToken trader via forwardRevenue()
         const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
         await mintCollateralTo(
@@ -889,7 +894,7 @@ export default function fn<X extends CollateralFixtureContext>(
         await rToken.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
 
-        await expect(bidOnTrade(trade, rToken, addr1)).to.emit(rTokenTrader, 'TradeSettled')
+        await expect(bidOnTrade(trade, rToken, router, addr1)).to.emit(rTokenTrader, 'TradeSettled')
         expect(await rTokenTrader.tradesOpen()).to.equal(0)
       })
 

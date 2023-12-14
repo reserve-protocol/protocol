@@ -57,7 +57,7 @@ import {
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
-import { bidOnTrade } from './utils/bidOnTrade'
+import { bidOnTrade, ensureApproval } from './utils/bidOnTrade'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -1480,6 +1480,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const tradeAddr = await backingManager.trades(sellTok.address)
       await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      await ensureApproval(buyTok, addr1, addr1.address, router)
       const currentBlock = bn(await getLatestBlockNumber())
       const toAdvance = progression
         .mul((await trade.endBlock()).sub(currentBlock))
