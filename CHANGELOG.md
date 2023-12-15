@@ -6,7 +6,9 @@ This release gives new RTokens being deployed the option to enable a variable ta
 
 ### Upgrade Steps
 
-Upgrade BasketHandler
+Upgrade BasketHandler and Distributor
+
+Call `Distributor.cacheComponents()` if this is the first upgrade to a >=3.0.0 token.
 
 ### Core Protocol Contracts
 
@@ -17,6 +19,8 @@ New governance param added to `DeploymentParams`: `reweightable`
   - Add immutable-after-init `reweightable` bool
 - `Deployer`
   - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
+- `Distributor`
+  - Minor gas-optimization
 
 # 3.1.0 - Unreleased
 
