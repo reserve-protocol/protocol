@@ -592,6 +592,7 @@ export interface IConfig {
   unstakingDelay: BigNumber
   withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
+  reweightable: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber

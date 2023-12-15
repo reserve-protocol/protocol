@@ -1,5 +1,23 @@
 # Changelog
 
+# 3.2.0
+
+This release gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
+
+### Upgrade Steps
+
+Upgrade BasketHandler
+
+### Core Protocol Contracts
+
+New governance param added to `DeploymentParams`: `reweightable`
+
+- `BasketHandler` [+1 slot]
+  - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
+  - Add immutable-after-init `reweightable` bool
+- `Deployer`
+  - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
+
 # 3.1.0 - Unreleased
 
 ### Upgrade Steps -- Required

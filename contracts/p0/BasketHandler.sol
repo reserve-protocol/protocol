@@ -116,7 +116,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
-    // event. config is only modified by governance through setPrimeBakset and setBackupConfig
+    // event. config is only modified by governance through setPrimeBasket and setBackupConfig
     BasketConfig private config;
 
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
@@ -148,6 +148,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
+    // Whether the total weights of the target basket can be changed
+    bool public reweightable; // immutable after init
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -158,10 +161,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // if basket.erc20s is empty then disabled == true
 
     // BasketHandler.init() just leaves the BasketHandler state zeroed
-    function init(IMain main_, uint48 warmupPeriod_) external initializer {
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external initializer {
         __Component_init(main_);
 
         setWarmupPeriod(warmupPeriod_);
+        reweightable = reweightable_; // immutable thereafter
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -245,7 +253,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         requireValidCollArray(erc20s);
 
         // If this isn't initial setup, require targets remain constant
-        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
+        if (!reweightable && config.erc20s.length > 0) {
+            requireConstantConfigTargets(erc20s, targetAmts);
+        }
 
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {

@@ -80,6 +80,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
 
     // ===
+    // Added in 3.2.0
+
+    // Whether the total weights of the target basket can be changed
+    bool public reweightable; // immutable after init
+
+    // ===
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -91,7 +97,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // if basket.erc20s is empty then disabled == true
 
     // BasketHandler.init() just leaves the BasketHandler state zeroed
-    function init(IMain main_, uint48 warmupPeriod_) external initializer {
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external initializer {
         __Component_init(main_);
 
         assetRegistry = main_.assetRegistry();
@@ -101,6 +111,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         stRSR = main_.stRSR();
 
         setWarmupPeriod(warmupPeriod_);
+        reweightable = reweightable_; // immutable thereafter
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -174,16 +185,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
-    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts)
-        external
-        governance
-    {
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        requireGovernanceOnly();
         require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
         // If this isn't initial setup, require targets remain constant
-        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
+        if (!reweightable && config.erc20s.length > 0) {
+            requireConstantConfigTargets(erc20s, targetAmts);
+        }
 
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
@@ -224,7 +235,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] calldata erc20s
-    ) external governance {
+    ) external {
+        requireGovernanceOnly();
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -507,13 +519,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // === Governance Setters ===
 
     /// @custom:governance
-    function setWarmupPeriod(uint48 val) public governance {
+    function setWarmupPeriod(uint48 val) public {
+        requireGovernanceOnly();
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
     }
 
     // === Private ===
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireGovernanceOnly() private governance {}
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     function _switchBasket() private {
@@ -673,5 +690,5 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[37] private __gap;
+    uint256[36] private __gap;
 }
