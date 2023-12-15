@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { revenueHiding, priceTimeout, oracleTimeout } from '../../utils'
+import { revenueHiding, priceTimeout } from '../../utils'
 import {
   StargatePoolFiatCollateral,
   StargatePoolFiatCollateral__factory,
@@ -50,7 +50,7 @@ async function main() {
 
   /********  Deploy Stargate USDT Wrapper  **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargatePoolWrapper')
+  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargateRewardableWrapper')
 
   const erc20 = await WrapperFactory.deploy(
     'Wrapped Stargate USDT',
@@ -77,7 +77,7 @@ async function main() {
       oracleError: fp('0.0025').toString(), // 0.25%,
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
+      oracleTimeout: '86400', // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h

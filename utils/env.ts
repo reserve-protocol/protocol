@@ -13,6 +13,7 @@ type IEnvVars =
   | 'PROTO'
   | 'PROTO_IMPL'
   | 'ETHERSCAN_API_KEY'
+  | 'BASESCAN_API_KEY'
   | 'NO_OPT'
   | 'ONLY_FAST'
   | 'JOBS'

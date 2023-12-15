@@ -97,7 +97,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-        emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
+        emit TradeSettled(trade, sell, trade.buy(), soldAmt, boughtAmt);
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
@@ -119,14 +119,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         TradePrices memory prices
     ) internal returns (ITrade trade) {
         IERC20 sell = req.sell.erc20();
-        assert(address(trades[sell]) == address(0));
+        assert(address(trades[sell]) == address(0)); // ensure calling class has checked this
 
         // Set allowance via custom approval -- first sets allowance to 0, then sets allowance
         // to either the requested amount or the maximum possible amount, if that fails.
         //
         // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
         // amount is > 0 and < type(uint256).max.
-        AllowanceLib.safeApproveFallbackToMax(req.sell.erc20(), address(broker), req.sellAmount);
+        AllowanceLib.safeApproveFallbackToMax(address(sell), address(broker), req.sellAmount);
 
         trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;

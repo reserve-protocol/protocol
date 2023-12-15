@@ -4,26 +4,26 @@ exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper 
 
 exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting ERC20 Wrapper transfer 2`] = `175188`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `69638`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `485368`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `65170`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `480900`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `226883`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `594734`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `222001`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `589778`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `101429`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `478546`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `96961`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `474004`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `96620`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `544811`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `96620`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `536931`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `221998`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `713433`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `221998`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `713507`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `209488`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `701125`;
 
-exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `202220`;
+exports[`Collateral: CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `693635`;

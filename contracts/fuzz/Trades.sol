@@ -24,6 +24,8 @@ contract GnosisTradeMock is ITrade {
     uint48 public endTime;
     address public origin;
 
+    uint192 public sellAmount;
+
     enum GnosisTradeMockStatus {
         NOT_STARTED, // before init()
         OPEN, // after init(), before settle()
@@ -49,6 +51,8 @@ contract GnosisTradeMock is ITrade {
 
         requestedSellAmt = req.sellAmount;
         requestedBuyAmt = req.minBuyAmount;
+
+        sellAmount = shiftl_toFix(req.sellAmount, -int8(sell.decimals())); // {sellTok}
     }
 
     function canSettle() external view returns (bool) {

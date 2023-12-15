@@ -17,12 +17,14 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using FixLib for uint192;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
-    IMain public immutable main;
-    IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
+    IBasketHandler public immutable basketHandler;
     IBackingManager public immutable backingManager;
+    IFurnace public immutable furnace;
+    IERC20 public immutable rsr;
+    IStRSR public immutable stRSR;
 
-    IERC20Metadata public immutable erc20;
+    IERC20Metadata public immutable erc20; // The RToken
 
     uint8 public immutable erc20Decimals;
 
@@ -36,10 +38,13 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
-        main = erc20_.main();
-        basketHandler = main.basketHandler();
+        IMain main = erc20_.main();
         assetRegistry = main.assetRegistry();
+        basketHandler = main.basketHandler();
         backingManager = main.backingManager();
+        furnace = main.furnace();
+        rsr = main.rsr();
+        stRSR = main.stRSR();
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
@@ -54,10 +59,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     ///   `basketHandler.price()`. When `range.bottom == range.top` then there is no compounding.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    function tryPrice(bool useLotPrice) external view virtual returns (uint192 low, uint192 high) {
-        (uint192 lowBUPrice, uint192 highBUPrice) = useLotPrice
-            ? basketHandler.lotPrice()
-            : basketHandler.price(); // {UoA/BU}
+    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
+        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
         require(lowBUPrice != 0 && highBUPrice != FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
@@ -78,21 +81,21 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         assert(low <= high); // not obviously true
     }
 
-    // solhint-disable no-empty-blocks
     function refresh() public virtual override {
-        // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
+        // No need to save lastPrice; can piggyback off the backing collateral's saved prices
+
+        furnace.melt();
+        if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
 
         cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
-
-    // solhint-enable no-empty-blocks
 
     /// Should not revert
     /// @dev See `tryPrice` caveat about possible compounding error in calculating price
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        try this.tryPrice(false) returns (uint192 low, uint192 high) {
+        try this.tryPrice() returns (uint192 low, uint192 high) {
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -103,18 +106,11 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     /// Should not revert
     /// lotLow should be nonzero when the asset might be worth selling
-    /// @dev See `tryPrice` caveat about possible compounding error in calculating price
+    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        try this.tryPrice(true) returns (uint192 low, uint192 high) {
-            lotLow = low;
-            lotHigh = high;
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            return (0, 0);
-        }
+    function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
+        return price();
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
@@ -142,10 +138,15 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     // solhint-enable no-empty-blocks
 
+    /// Force an update to the cache, including refreshing underlying assets
+    /// @dev Can revert if RToken is unpriced
     function forceUpdatePrice() external {
         _updateCachedPrice();
     }
 
+    /// @dev Can revert if RToken is unpriced
+    /// @return rTokenPrice {UoA/tok} The mean price estimate
+    /// @return updatedAt {s} The timestamp of the cache update
     function latestPrice() external returns (uint192 rTokenPrice, uint256 updatedAt) {
         // Situations that require an update, from most common to least common.
         if (
@@ -157,15 +158,17 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             _updateCachedPrice();
         }
 
-        return (cachedOracleData.cachedPrice, cachedOracleData.cachedAtTime);
+        rTokenPrice = cachedOracleData.cachedPrice;
+        updatedAt = cachedOracleData.cachedAtTime;
     }
 
     // ==== Private ====
 
     // Update Oracle Data
     function _updateCachedPrice() internal {
-        (uint192 low, uint192 high) = price();
+        assetRegistry.refresh(); // will call furnace.melt()
 
+        (uint192 low, uint192 high) = price();
         require(low != 0 && high != FIX_MAX, "invalid price");
 
         cachedOracleData = CachedOracleData(
@@ -177,7 +180,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         );
     }
 
-    /// Computationally expensive basketRange calculation; used in price() & lotPrice()
+    /// Computationally expensive basketRange calculation; used in price()
     function basketRange() private view returns (BasketRange memory range) {
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
@@ -192,24 +195,9 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             // the absence of an external price feed. Any RToken that gets reasonably big
             // should switch over to an asset with a price feed.
 
-            TradingContext memory ctx;
-
-            ctx.basketsHeld = basketsHeld;
-            ctx.bm = backingManager;
-            ctx.bh = basketHandler;
-            ctx.ar = assetRegistry;
-            ctx.stRSR = main.stRSR();
-            ctx.rsr = main.rsr();
-            ctx.rToken = main.rToken();
-            ctx.minTradeVolume = backingManager.minTradeVolume();
-            ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
-
-            // Calculate quantities
-            Registry memory reg = ctx.ar.getRegistry();
-            ctx.quantities = new uint192[](reg.erc20s.length);
-            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
-            }
+            (TradingContext memory ctx, Registry memory reg) = backingManager.tradingContext(
+                basketsHeld
+            );
 
             // will exclude UoA value from RToken balances at BackingManager
             range = RecollateralizationLibP1.basketRange(ctx, reg);

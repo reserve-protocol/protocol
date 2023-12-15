@@ -215,6 +215,9 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
             params.minTradeVolume
         );
 
+        // Init Furnace
+        furnace.init(this, params.rewardRatio);
+
         // Init Asset Registry, with default assets for all tokens
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new AssetMock(
@@ -229,9 +232,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
         // Init Distributor
         distributor.init(this, params.dist);
-
-        // Init Furnace
-        furnace.init(this, params.rewardRatio);
 
         // Init Broker
         // `tradeImplmentation` and `gnosis` are unused in BrokerP1Fuzz

@@ -10,8 +10,8 @@ import "../../../interfaces/IRewardable.sol";
 interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
     struct UserBasic {
         uint104 principal;
-        uint64 baseTrackingAccrued;
         uint64 baseTrackingIndex;
+        uint64 baseTrackingAccrued;
         uint256 rewardsClaimed;
     }
 
@@ -51,7 +51,7 @@ interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
 
     function convertDynamicToStatic(uint256 amount) external view returns (uint104);
 
-    function baseTrackingAccrued(address account) external view returns (uint64);
+    function baseTrackingAccrued(address account) external view returns (uint256);
 
     function baseTrackingIndex(address account) external view returns (uint64);
 

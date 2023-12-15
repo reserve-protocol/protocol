@@ -14,7 +14,7 @@ import {
   fileExists,
 } from '../../common'
 import { CurveStableCollateral } from '../../../../typechain'
-import { revenueHiding, oracleTimeout } from '../../utils'
+import { revenueHiding } from '../../utils'
 import {
   CurvePoolType,
   DAI_ORACLE_ERROR,
@@ -65,11 +65,8 @@ async function main() {
 
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
-  const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: CvxMining.address },
-  })
+  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
   const w3Pool = await ConvexStakingWrapperFactory.deploy()
   await w3Pool.deployed()
@@ -88,7 +85,7 @@ async function main() {
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
       oracleError: bn('1'), // unused but cannot be zero
-      oracleTimeout: oracleTimeout(chainId, USDC_ORACLE_TIMEOUT), // max of oracleTimeouts
+      oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
       maxTradeVolume: MAX_TRADE_VOL,
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -99,11 +96,7 @@ async function main() {
       curvePool: THREE_POOL,
       poolType: CurvePoolType.Plain,
       feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
-      oracleTimeouts: [
-        [oracleTimeout(chainId, DAI_ORACLE_TIMEOUT)],
-        [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
-        [oracleTimeout(chainId, USDT_ORACLE_TIMEOUT)],
-      ],
+      oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
       oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
       lpToken: THREE_POOL_TOKEN,
     }

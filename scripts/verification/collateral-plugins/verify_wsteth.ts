@@ -7,7 +7,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, oracleTimeout, verifyContract } from '../../deployment/utils'
+import { priceTimeout, verifyContract } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -38,14 +38,14 @@ async function main() {
         oracleError: fp('0.01').toString(), // 1%: only for stETHUSD feed
         erc20: networkConfig[chainId].tokens.wstETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
+        oracleTimeout: '3600', // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethETH feed oracleError
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4'), // revenueHiding = 0.01%
       networkConfig[chainId].chainlinkFeeds.stETHETH, // targetPerRefChainlinkFeed
-      oracleTimeout(chainId, '86400').toString(), // targetPerRefChainlinkTimeout
+      '86400', // targetPerRefChainlinkTimeout
     ],
     'contracts/plugins/assets/lido/LidoStakedEthCollateral.sol:LidoStakedEthCollateral'
   )

@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: forkRpcs[(useEnv('FORK_NETWORK') ?? 'mainnet') as Network],
+            url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
             blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
           }
         : undefined,
@@ -54,9 +54,6 @@ const config: HardhatUserConfig = {
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
     },
-    // anvil: {
-    //   url: 'http://127.0.0.1:8545/',
-    // },
     goerli: {
       chainId: 5,
       url: GOERLI_RPC_URL,
@@ -147,7 +144,10 @@ const config: HardhatUserConfig = {
     enabled: !!useEnv('REPORT_GAS'),
   },
   etherscan: {
-    apiKey: useEnv('ETHERSCAN_API_KEY'),
+    apiKey: {
+      mainnet: useEnv('ETHERSCAN_API_KEY'),
+      base: useEnv('BASESCAN_API_KEY')
+    },
     customChains: [
       {
         network: 'base',

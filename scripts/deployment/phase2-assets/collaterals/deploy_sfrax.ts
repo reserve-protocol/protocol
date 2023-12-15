@@ -12,17 +12,9 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout } from '../../utils'
-import {
-  StargatePoolETHCollateral,
-  StargatePoolETHCollateral__factory,
-} from '../../../../typechain'
+import { priceTimeout } from '../../utils'
+import { SFraxCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
-
-import {
-  SETH,
-  STAKING_CONTRACT,
-} from '../../../../test/plugins/individual-collateral/stargate/constants'
 
 async function main() {
   // ==== Read Configuration ====
@@ -48,22 +40,27 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Stargate ETH Wrapper  **************************/
+  /********  Deploy SFRAX Collateral - sFRAX  **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargatePoolWrapper')
-
-  const erc20 = await WrapperFactory.deploy(
-    'Wrapped Stargate ETH',
-    'wSTG-ETH',
-    networkConfig[chainId].tokens.STG,
-    STAKING_CONTRACT,
-    SETH
+  const SFraxCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'SFraxCollateral'
   )
-  await erc20.deployed()
 
-  console.log(
-    `Deployed Wrapper for Stargate ETH on ${hre.network.name} (${chainId}): ${erc20.address} `
+  const collateral = <SFraxCollateral>await SFraxCollateralFactory.connect(deployer).deploy(
+    {
+      priceTimeout: priceTimeout.toString(),
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.FRAX,
+      oracleError: fp('0.01').toString(), // 1%
+      erc20: networkConfig[chainId].tokens.sFRAX,
+      maxTradeVolume: fp('1e6').toString(), // $1m,
+      oracleTimeout: '3600', // 1 hr
+      targetName: hre.ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: fp('0.02').toString(), // 2% = 1% oracleError + 1% buffer
+      delayUntilDefault: bn('86400').toString(), // 24h
+    },
+    '0' // revenueHiding = 0
   )
+<<<<<<< HEAD:scripts/deployment/phase2-assets/collaterals/deploy_stargate_eth_collateral.ts
 
   const StargateCollateralFactory: StargatePoolETHCollateral__factory =
     await hre.ethers.getContractFactory('StargatePoolETHCollateral')
@@ -81,14 +78,16 @@ async function main() {
     defaultThreshold: 0,
     delayUntilDefault: 0,
   })
+=======
+>>>>>>> 3.1.0:scripts/deployment/phase2-assets/collaterals/deploy_sfrax.ts
   await collateral.deployed()
+
+  console.log(`Deployed sFRAX to ${hre.network.name} (${chainId}): ${collateral.address}`)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Stargate ETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
-
-  assetCollDeployments.collateral.sETH = collateral.address
-  assetCollDeployments.erc20s.sETH = erc20.address
+  assetCollDeployments.collateral.sFRAX = collateral.address
+  assetCollDeployments.erc20s.sFRAX = networkConfig[chainId].tokens.sFRAX
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

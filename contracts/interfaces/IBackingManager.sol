@@ -2,9 +2,37 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IAssetRegistry.sol";
+import "./IBasketHandler.sol";
 import "./IBroker.sol";
 import "./IComponent.sol";
+import "./IRToken.sol";
+import "./IStRSR.sol";
 import "./ITrading.sol";
+
+/// Memory struct for RecollateralizationLibP1 + RTokenAsset
+/// Struct purposes:
+///   1. Configure trading
+///   2. Stay under stack limit with fewer vars
+///   3. Cache information such as component addresses and basket quantities, to save on gas
+struct TradingContext {
+    BasketRange basketsHeld; // {BU}
+    // basketsHeld.top is the number of partial baskets units held
+    // basketsHeld.bottom is the number of full basket units held
+
+    // Components
+    IBasketHandler bh;
+    IAssetRegistry ar;
+    IStRSR stRSR;
+    IERC20 rsr;
+    IRToken rToken;
+    // Gov Vars
+    uint192 minTradeVolume; // {UoA}
+    uint192 maxTradeSlippage; // {1}
+    // Cached values
+    uint192[] quantities; // {tok/BU} basket quantities
+    uint192[] bals; // {tok} balances in BackingManager + out on trades
+}
 
 /**
  * @title IBackingManager
@@ -48,6 +76,15 @@ interface IBackingManager is IComponent, ITrading {
     /// @param erc20s The tokens to forward
     /// @custom:interaction RCEI
     function forwardRevenue(IERC20[] calldata erc20s) external;
+
+    /// Structs for trading
+    /// @param basketsHeld The number of baskets held by the BackingManager
+    /// @return ctx The TradingContext
+    /// @return reg Contents of AssetRegistry.getRegistry()
+    function tradingContext(BasketRange memory basketsHeld)
+        external
+        view
+        returns (TradingContext memory ctx, Registry memory reg);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

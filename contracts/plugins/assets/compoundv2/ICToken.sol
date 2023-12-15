@@ -35,7 +35,12 @@ interface ICToken is IERC20Metadata {
 
 interface IComptroller {
     /// Claim comp for an account, to an account
-    function claimComp(address account, address[] memory cTokens) external;
+    function claimComp(
+        address[] memory holders,
+        address[] memory cTokens,
+        bool borrowers,
+        bool suppliers
+    ) external;
 
     /// @return The address for COMP token
     function getCompAddress() external view returns (address);

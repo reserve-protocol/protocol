@@ -42,12 +42,14 @@ interface IAsset is IRewardable {
   function refresh() external;
 
   /// Should not revert
+  /// low should be nonzero when the asset might be worth selling
   /// @return low {UoA/tok} The lower end of the price estimate
   /// @return high {UoA/tok} The upper end of the price estimate
   function price() external view returns (uint192 low, uint192 high);
 
   /// Should not revert
   /// lotLow should be nonzero when the asset might be worth selling
+  /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
   /// @return lotLow {UoA/tok} The lower end of the lot price estimate
   /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
   function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
@@ -219,7 +221,7 @@ This would be sensible for many UNI v2 pools, but someone holding value in a two
 
 Revenue Hiding should be employed when the function underlying `refPerTok()` is not necessarily _strongly_ non-decreasing, or simply if there is uncertainty surrounding the guarantee. In general we recommend including a very small amount (1e-6) of revenue hiding for all appreciating collateral. This is already implemented in [AppreciatingFiatCollateral.sol](../contracts/plugins/assets/AppreciatingFiatCollateral.sol).
 
-When implementing Revenue Hiding, the `price/lotPrice()` functions should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable.
+When implementing Revenue Hiding, the `price` function should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable.
 
 ## Important Properties for Collateral Plugins
 
@@ -252,7 +254,7 @@ There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20W
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
 
-To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/assets/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`lotPrice()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
+To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/assets/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
 
 ### The `IFFY` status should be temporary.
 
@@ -299,7 +301,7 @@ The values returned by the following view methods should never change:
 
 Collateral implementors who extend from [Fiat Collateral](../contracts/plugins/assets/FiatCollateral.sol) or [AppreciatingFiatCollateral.sol](../contracts/plugins/assets/AppreciatingFiatCollateral.sol) can restrict their attention to overriding the following three functions:
 
-- `tryPrice()` (not on the ICollateral interface; used by `price()`/`lotPrice()`/`refresh()`)
+- `tryPrice()` (not on the ICollateral interface; used by `price()`/`refresh()`)
 - `refPerTok()`
 - `targetPerRef()`
 
@@ -366,21 +368,17 @@ The difference between the upper and lower estimate should not exceed 5%, though
 
 Lower estimate must be <= upper estimate.
 
-Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
+Under no price data, the low estimate shoulddecay downwards and high estimate upwards.
+
+Should return `(0, FIX_MAX)` if pricing data is _completely_ unavailable or stale.
 
 Should be gas-efficient.
-
-The difference between the upper and lower estimate should not exceed ~5%, though this is not a hard-and-fast rule. When the difference (usually arising from an oracleError) is large, it can lead to [the price estimation of the RToken](../contracts/plugins/assets/RTokenAsset.sol) somewhat degrading. While this is not usually an issue it can come into play when one RToken is using another RToken as collateral either directly or indirectly through an LP token. If there is RSR overcollateralization then this issue is mitigated.
 
 ### lotPrice() `{UoA/tok}`
 
-Should never revert.
+Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility.
 
-Lower estimate must be <= upper estimate.
-
-The low estimate should be nonzero while the asset is worth selling.
-
-Should be gas-efficient.
+Recommend implement `lotPrice()` by calling `price()`. If you are inheriting from any of our existing collateral plugins, this is already done for you. See [Asset.sol](../contracts/plugins/Asset.sol) for the implementation.
 
 ### refPerTok() `{ref/tok}`
 

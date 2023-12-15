@@ -10,7 +10,7 @@ import {
   IAssetCollDeployments,
   fileExists,
 } from '../../../deployment/common'
-import { priceTimeout, oracleTimeout } from '../../../deployment/utils'
+import { priceTimeout } from '../../../deployment/utils'
 import { Asset } from '../../../../typechain'
 
 async function main() {
@@ -43,7 +43,7 @@ async function main() {
     oracleError: fp('0.02').toString(), // 2%
     tokenAddress: networkConfig[chainId].tokens.CVX,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+    oracleTimeout: '86400', // 24 hr
   })
   await (<Asset>await ethers.getContractAt('Asset', cvxAsset)).refresh()
 

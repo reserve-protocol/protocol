@@ -71,14 +71,8 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
   const wrapper = await wrapperFactory.deploy()
   await wrapper.initialize(THREE_POOL_CVX_POOL_ID)
 
@@ -124,14 +118,8 @@ export const makeWSUSDPoolStable = async (): Promise<WrappedSUSDPoolFixtureStabl
 
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
   const wrapper = await wrapperFactory.deploy()
   await wrapper.initialize(SUSD_POOL_CVX_POOL_ID)
 
@@ -165,14 +153,8 @@ export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureV
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
   const wrapper = await wrapperFactory.deploy()
   await wrapper.initialize(TRI_CRYPTO_CVX_POOL_ID)
 
@@ -268,14 +250,8 @@ export const makeWeUSDFraxBP = async (
   await metapoolToken.setVirtualPrice(await realMetapool.get_virtual_price())
   await metapoolToken.mint(eUSD_FRAX_HOLDER, await realMetapool.balanceOf(eUSD_FRAX_HOLDER))
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
   const wPool = await wrapperFactory.deploy()
   await wPool.initialize(eUSD_FRAX_BP_POOL_ID)
 
@@ -342,14 +318,8 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
     await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER)
   )
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
   const wPool = await wrapperFactory.deploy()
   await wPool.initialize(MIM_THREE_POOL_POOL_ID)
 

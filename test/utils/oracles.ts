@@ -8,6 +8,13 @@ import { MAX_UINT192 } from '../../common/constants'
 
 const toleranceDivisor = bn('1e15') // 1 part in 1000 trillions
 
+export const expectExactPrice = async (assetAddr: string, price: [BigNumber, BigNumber]) => {
+  const asset = await ethers.getContractAt('Asset', assetAddr)
+  const [lowPrice, highPrice] = await asset.price()
+  expect(lowPrice).to.equal(price[0])
+  expect(highPrice).to.equal(price[1])
+}
+
 // Expects a price around `avgPrice` assuming a consistent percentage oracle error
 // If near is truthy, allows a small error of 1 part in 1000 trillions
 export const expectPrice = async (
@@ -84,6 +91,15 @@ export const expectRTokenPrice = async (
   expect(lowPrice).to.be.lte(avgPrice)
   expect(highPrice).to.be.lte(expectedHigh)
   expect(highPrice).to.be.gte(avgPrice)
+}
+
+export const expectDecayedPrice = async (assetAddr: string) => {
+  const asset = await ethers.getContractAt('Asset', assetAddr)
+  const [lowPrice, highPrice] = await asset.price()
+  expect(lowPrice).to.be.gt(0)
+  expect(lowPrice).to.be.lt(await asset.savedLowPrice())
+  expect(highPrice).to.be.gt(await asset.savedHighPrice())
+  expect(highPrice).to.be.lt(MAX_UINT192)
 }
 
 // Expects an unpriced asset with low = 0 and high = FIX_MAX

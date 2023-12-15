@@ -88,7 +88,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
         // uint192(<) is equivalent to Fix.lt
         if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
+            exposedReferencePrice = underlyingRefPerTok;
             markStatus(CollateralStatus.DISABLED);
         } else if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;
@@ -132,7 +132,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
-    function claimRewards() external override(Asset, IRewardable) {
+    function claimRewards() external virtual override(Asset, IRewardable) {
         IRewardable(address(erc20)).claimRewards();
     }
 

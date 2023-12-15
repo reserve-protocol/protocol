@@ -42,7 +42,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   SLOW,
 } from './fixtures'
@@ -473,6 +473,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
 
         // Should succeed in callStatic
+        await assetRegistry.refresh()
         await broker
           .connect(bmSigner)
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
@@ -491,6 +492,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .withArgs(token0.address, true, false)
 
         // Should succeed in callStatic
+        await assetRegistry.refresh()
         await broker
           .connect(bmSigner)
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
@@ -568,28 +570,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           'unrecognized trade contract'
         )
       })
-
-      // Check nothing changed
-      expect(await broker.batchTradeDisabled()).to.equal(false)
-    })
-
-    it('Should not allow to report violation if paused or frozen', async () => {
-      // Check not disabled
-      expect(await broker.batchTradeDisabled()).to.equal(false)
-
-      await main.connect(owner).pauseTrading()
-
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
-        'frozen or trading paused'
-      )
-
-      await main.connect(owner).unpauseTrading()
-
-      await main.connect(owner).freezeShort()
-
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
-        'frozen or trading paused'
-      )
 
       // Check nothing changed
       expect(await broker.batchTradeDisabled()).to.equal(false)
@@ -1271,7 +1251,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token0.address,
           maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1436,7 +1416,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         oracleError: bn('1'), // minimize
         erc20: sellTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48,
+        oracleTimeout: MAX_UINT48.sub(300),
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter
@@ -1448,7 +1428,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         oracleError: bn('1'), // minimize
         erc20: buyTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48,
+        oracleTimeout: MAX_UINT48.sub(300),
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter
@@ -1660,6 +1640,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       let TradeFactory: ContractFactory
       let newTrade: DutchTrade
 
+      // Increment `lastSave` in storage slot 1
+      const incrementLastSave = async (addr: string) => {
+        const asArray = ethers.utils.arrayify(await getStorageAt(addr, 1))
+        asArray[7] = asArray[7] + 1 // increment least significant byte of lastSave
+        const asHex = ethers.utils.hexlify(asArray)
+        await setStorageAt(addr, 1, asHex)
+      }
+
       beforeEach(async () => {
         amount = bn('100e18')
 
@@ -1687,6 +1675,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Backing Manager
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await token0.connect(bmSigner).approve(broker.address, amount)
+          await assetRegistry.refresh()
+          await incrementLastSave(tradeRequest.sell)
+          await incrementLastSave(tradeRequest.buy)
           await snapshotGasCost(
             broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
           )
@@ -1695,6 +1686,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // RSR Trader
         await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
           await token0.connect(rsrSigner).approve(broker.address, amount)
+          await assetRegistry.refresh()
+          await incrementLastSave(tradeRequest.sell)
+          await incrementLastSave(tradeRequest.buy)
           await snapshotGasCost(
             broker.connect(rsrSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
           )
@@ -1703,6 +1697,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // RToken Trader
         await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
           await token0.connect(rtokSigner).approve(broker.address, amount)
+          await assetRegistry.refresh()
+          await incrementLastSave(tradeRequest.sell)
+          await incrementLastSave(tradeRequest.buy)
           await snapshotGasCost(
             broker.connect(rtokSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
           )

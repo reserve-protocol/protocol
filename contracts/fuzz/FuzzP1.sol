@@ -135,10 +135,17 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
                 reg.assets[i]
             );
         }
+        uint192[] memory bals = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            bals[i] = reg.assets[i].bal(address(this)) + tokensOut[reg.erc20s[i]];
+
+            // include StRSR's balance for RSR
+            if (reg.erc20s[i] == IMainFuzz(address(main)).rsr())
+                bals[i] += reg.assets[i].bal(address(IMainFuzz(address(main)).stRSR()));
+        }
 
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
-            bm: IBackingManager(address(this)),
             bh: IMainFuzz(address(main)).basketHandler(),
             ar: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
@@ -146,7 +153,8 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             rToken: IMainFuzz(address(main)).rToken(),
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage(),
-            quantities: quantities
+            quantities: quantities,
+            bals: bals
         });
 
         IERC20[] memory erc20s = components.ar.erc20s();
@@ -161,7 +169,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             if (erc20s[i] == components.rsr) continue;
 
             IAsset asset = components.ar.toAsset(erc20s[i]);
-            uint192 bal = asset.bal(address(components.bm)); // {tok}
+            uint192 bal = asset.bal(address(this)); // {tok}
             uint192 needed = range.top.mul(
                 IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]),
                 CEIL
@@ -213,10 +221,17 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
                 reg.assets[i]
             );
         }
+        uint192[] memory bals = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            bals[i] = reg.assets[i].bal(address(this)) + tokensOut[reg.erc20s[i]];
+
+            // include StRSR's balance for RSR
+            if (reg.erc20s[i] == IMainFuzz(address(main)).rsr())
+                bals[i] += reg.assets[i].bal(address(IMainFuzz(address(main)).stRSR()));
+        }
 
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
-            bm: IBackingManager(address(this)),
             bh: IMainFuzz(address(main)).basketHandler(),
             ar: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
@@ -224,7 +239,8 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             rToken: IMainFuzz(address(main)).rToken(),
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage(),
-            quantities: quantities
+            quantities: quantities,
+            bals: bals
         });
 
         return RecollateralizationLibP1.basketRange(components, reg);

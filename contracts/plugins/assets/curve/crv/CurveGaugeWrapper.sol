@@ -16,6 +16,9 @@ interface ILiquidityGauge {
     function withdraw(uint256 _value) external;
 }
 
+// Note: Only supports CRV rewards. If a Curve pool with multiple reward tokens is
+// used, other reward tokens beyond CRV will never be claimed and distributed to
+// depositors. These unclaimed rewards will be lost forever.
 contract CurveGaugeWrapper is RewardableERC20Wrapper {
     using SafeERC20 for IERC20;
 
@@ -45,6 +48,7 @@ contract CurveGaugeWrapper is RewardableERC20Wrapper {
         gauge.withdraw(_amount);
     }
 
+    // claim rewards - only supports CRV rewards
     function _claimAssetRewards() internal virtual override {
         MINTER.mint(address(gauge));
     }

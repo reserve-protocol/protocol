@@ -19,12 +19,6 @@ import "./vendor/IComet.sol";
  * UoA = USD
  */
 contract CTokenV3Collateral is AppreciatingFiatCollateral {
-    struct CometCollateralConfig {
-        IERC20 rewardERC20;
-        uint256 reservesThresholdIffy;
-        uint256 reservesThresholdDisabled;
-    }
-
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -39,14 +33,11 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         uint192 revenueHiding,
         uint256 reservesThresholdIffy_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
         rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;
         cometDecimals = comet.decimals();
-    }
-
-    function bal(address account) external view override(Asset, IAsset) returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 
     /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
@@ -76,7 +67,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
 
         // uint192(<) is equivalent to Fix.lt
         if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
+            exposedReferencePrice = underlyingRefPerTok;
             markStatus(CollateralStatus.DISABLED);
         } else if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;
