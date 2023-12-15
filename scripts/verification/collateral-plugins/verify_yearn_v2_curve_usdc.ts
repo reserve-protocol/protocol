@@ -8,7 +8,10 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { priceTimeout, oracleTimeout, verifyContract } from '../../deployment/utils'
-import { YVUSDC_LP_TOKEN } from '../../../test/plugins/individual-collateral/yearnv2/constants'
+import {
+  PRICE_PER_SHARE_HELPER,
+  YVUSDC_LP_TOKEN,
+} from '../../../test/plugins/individual-collateral/yearnv2/constants'
 
 let deployments: IAssetCollDeployments
 
@@ -42,7 +45,7 @@ async function main() {
         defaultThreshold: fp('0.015').toString(), // 1.5% = max oracleError + 1%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
-      fp('1e-3').toString(), // revenueHiding = 0.1%, high for Yearn to tolerate small strategy losses
+      fp('1e-6').toString(), // revenueHiding = 0.0001%, low since underlying curve pool should be up-only
       {
         nTokens: '2',
         curvePool: YVUSDC_LP_TOKEN,
@@ -58,6 +61,7 @@ async function main() {
         oracleErrors: [fp('0.0025').toString(), fp('0.005').toString()],
         lpToken: YVUSDC_LP_TOKEN,
       },
+      PRICE_PER_SHARE_HELPER,
     ],
     'contracts/plugins/assets/yearnv2/YearnV2CurveFiatCollateral.sol:YearnV2CurveFiatCollateral'
   )
