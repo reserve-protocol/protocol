@@ -45,7 +45,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
     // === 3.0.1 ===
-    mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
+    mapping(IERC20 => uint192) internal tokensOut; // {tok} token balances out in ITrades
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER

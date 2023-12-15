@@ -34,7 +34,7 @@ library RecollateralizationLibP1 {
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(...) taking the minBuyAmount as the dependent variable
     function prepareRecollateralizationTrade(TradingContext memory ctx, Registry memory reg)
-        external
+        internal
         view
         returns (
             bool doTrade,

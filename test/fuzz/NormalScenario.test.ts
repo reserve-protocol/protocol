@@ -242,6 +242,7 @@ const scenarioSpecificTests = () => {
     })
 
     it('stRSR tries to pay revenue to no stakers', async () => {
+      await comp.rsr.mint(comp.rsrTrader.address, exa)
       await advanceTime(600000)
       await scenario.distributeTokenToBuy(0)
       await advanceTime(200000)
@@ -261,6 +262,7 @@ const scenarioSpecificTests = () => {
     })
 
     it('rate falling after distributing revenue, staking, and unstaking', async () => {
+      await comp.rsr.mint(comp.rsrTrader.address, exa)
       await advanceTime(410_000)
       await scenario.distributeTokenToBuy(0) // Distribute 50 atto RSR from alice
       await advanceTime(410_000)
