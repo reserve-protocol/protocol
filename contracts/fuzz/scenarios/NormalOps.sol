@@ -499,6 +499,7 @@ contract NormalOpsScenario {
         DistributorP1(address(main.distributor())).cacheComponents();
         RevenueTraderP1(address(main.rsrTrader())).cacheComponents();
         RevenueTraderP1(address(main.rTokenTrader())).cacheComponents();
+        BrokerP1(address(main.broker())).cacheComponents();
     }
 
     function trackBasketStatus() public {
