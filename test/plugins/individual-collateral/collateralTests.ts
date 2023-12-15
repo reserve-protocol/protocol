@@ -53,7 +53,6 @@ import {
 } from '../../../typechain'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
-import { bidOnTrade, ensureApproval } from '#/test/utils/bidOnTrade'
 
 const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
@@ -835,7 +834,7 @@ export default function fn<X extends CollateralFixtureContext>(
 
       it('rebalances out of the collateral', async () => {
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-        await ensureApproval(pairedERC20, addr1, addr1.address, router)
+        await pairedERC20.connect(addr1).approve(router.address, MAX_UINT256)
         // Remove collateral from basket
         await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-4')])
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -859,7 +858,7 @@ export default function fn<X extends CollateralFixtureContext>(
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
         const pairedBal = await pairedERC20.balanceOf(backingManager.address)
 
-        await expect(bidOnTrade(trade, pairedERC20, router, addr1)).to.emit(
+        await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
           backingManager,
           'TradeSettled'
         )
@@ -869,7 +868,7 @@ export default function fn<X extends CollateralFixtureContext>(
 
       it('forwards revenue and sells in a revenue auction', async () => {
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-        await ensureApproval(rToken, addr1, addr1.address, router)
+        await rToken.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
         const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
         await mintCollateralTo(
@@ -896,7 +895,10 @@ export default function fn<X extends CollateralFixtureContext>(
         await rToken.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
 
-        await expect(bidOnTrade(trade, rToken, router, addr1)).to.emit(rTokenTrader, 'TradeSettled')
+        await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
+          rTokenTrader,
+          'TradeSettled'
+        )
         expect(await rTokenTrader.tradesOpen()).to.equal(0)
       })
 

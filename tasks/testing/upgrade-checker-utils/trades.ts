@@ -1,6 +1,5 @@
 import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { bn, fp } from '#/common/numbers'
-import { bidOnTrade } from '#/test/utils/bidOnTrade'
 import { whileImpersonating } from '#/utils/impersonation'
 import {
   advanceBlocks,
@@ -87,6 +86,7 @@ export const runDutchTrade = async (
   trader: TestITrading,
   tradeToken: string
 ): Promise<[boolean, string]> => {
+  const router = await (await hre.ethers.getContractFactory('DutchTradeRouter')).deploy()
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
@@ -120,7 +120,7 @@ export const runDutchTrade = async (
     // Bid
 
     ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
-      bidOnTrade(trade, sellToken, whale),
+      router.bid(trade.address, await router.signer.getAddress()),
       trader
     )
   })

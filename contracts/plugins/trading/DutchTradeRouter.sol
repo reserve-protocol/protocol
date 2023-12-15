@@ -12,13 +12,13 @@ contract DutchTradeRouter is IDutchTradeCallee {
         /// @notice The DutchTrade that was bid on
         DutchTrade trade;
         /// @notice The token sold to the protocol
-        IERC20 tokenIn;
+        IERC20 sellToken;
         /// @notice The amount of tokenIn the protocol got
-        uint256 amountIn;
+        uint256 sellAmt;
         /// @notice The token bought from the trade
-        IERC20 tokenOut;
+        IERC20 buyToken;
         /// @notice The amount of tokenOut the we got
-        uint256 amountOut;
+        uint256 buyAmt;
     }
 
     /// @notice Emitted when a bid is placed
@@ -48,14 +48,14 @@ contract DutchTradeRouter is IDutchTradeCallee {
     function bid(DutchTrade trade, address recipient) external returns (Bid memory) {
         Bid memory out = Bid({
             trade: DutchTrade(address(0)),
-            tokenIn: IERC20(address(0)),
-            amountIn: 0,
-            tokenOut: IERC20(address(0)),
-            amountOut: 0
+            sellToken: IERC20(address(0)),
+            sellAmt: 0,
+            buyToken: IERC20(address(0)),
+            buyAmt: 0
         });
         _placeBid(trade, out, msg.sender);
-        _sendBalanceTo(out.tokenIn, recipient);
-        _sendBalanceTo(out.tokenOut, recipient);
+        _sendBalanceTo(out.sellToken, recipient);
+        _sendBalanceTo(out.buyToken, recipient);
         return out;
     }
 
@@ -95,30 +95,30 @@ contract DutchTradeRouter is IDutchTradeCallee {
         require(_currentTrade == DutchTrade(address(0)), "already bidding");
         require(trade.status() == TradeStatus.OPEN, "trade not open");
         out.trade = trade;
-        out.tokenIn = IERC20(trade.buy());
-        out.tokenOut = IERC20(trade.sell());
-        out.amountIn = trade.bidAmount(block.number);
+        out.buyToken = IERC20(trade.buy());
+        out.sellToken = IERC20(trade.sell());
+        out.buyAmt = trade.bidAmount(block.number);
 
-        uint256 currentBalance = out.tokenIn.balanceOf(address(this));
-        if (currentBalance < out.amountIn) {
-            out.tokenIn.safeTransferFrom(bidder, address(this), out.amountIn - currentBalance);
+        uint256 currentBalance = out.buyToken.balanceOf(address(this));
+        if (currentBalance < out.buyAmt) {
+            out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt - currentBalance);
         }
-        uint256 amountOut = out.tokenOut.balanceOf(address(this));
+        uint256 sellAmt = out.sellToken.balanceOf(address(this));
         _currentTrade = trade;
-        uint256 expectedAmountOut = trade.lot();
+        uint256 expectedSellAmt = trade.lot();
         trade.bid(new bytes(0));
-        amountOut = out.tokenOut.balanceOf(address(this)) - amountOut;
-        require(amountOut >= expectedAmountOut, "insufficient amount out");
-        out.amountOut = amountOut;
+        sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt;
+        require(sellAmt >= expectedSellAmt, "insufficient amount out");
+        out.sellAmt = sellAmt;
 
         emit BidPlaced(
             IMain(address(out.trade.broker().main())),
             out.trade,
             bidder,
-            out.tokenOut,
-            amountOut,
-            out.tokenIn,
-            out.amountIn
+            out.sellToken,
+            out.sellAmt,
+            out.buyToken,
+            out.buyAmt
         );
         _currentTrade = DutchTrade(address(0));
     }

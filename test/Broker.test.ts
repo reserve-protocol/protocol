@@ -2,7 +2,7 @@ import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardha
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber, ContractFactory, constants } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import {
@@ -57,7 +57,6 @@ import {
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
-import { bidOnTrade, ensureApproval } from './utils/bidOnTrade'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -1480,7 +1479,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const tradeAddr = await backingManager.trades(sellTok.address)
       await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
-      await ensureApproval(buyTok, addr1, addr1.address, router)
+      await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
       const currentBlock = bn(await getLatestBlockNumber())
       const toAdvance = progression
         .mul((await trade.endBlock()).sub(currentBlock))
@@ -1496,7 +1495,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
 
-      await expect(bidOnTrade(trade, buyTok, router, addr1))
+      await expect(router.connect(addr1).bid(trade.address, addr1.address))
         .to.emit(backingManager, 'TradeSettled')
         .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
 
