@@ -10,6 +10,10 @@ import {
 import { ITokens } from '#/common/configuration'
 import { MainP1 } from '@typechain/MainP1'
 import { Contract } from 'ethers'
+const tocFilename = 'docs/deployed-addresses/index.json'
+import toc from '#/docs/deployed-addresses/index.json'
+
+type Network = 'mainnet' | 'base'
 
 task('get-addys', 'Compile the deployed addresses of an RToken deployment')
   .addOptionalParam('rtoken', 'The address of the RToken', undefined, types.string)
@@ -17,11 +21,32 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
   .addOptionalParam('ver', 'The target version', undefined, types.string)
   .setAction(async (params, hre) => {
     /*
-        Helper functions
+    Helper functions
     */
+   
+   // hacky api throttler, basescan has rate limits 5req/sec
+   const delay = async (ms: number) => {
+     return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+    
     const capitalize = (s: string) => s && s[0].toUpperCase() + s.slice(1)
-
-    const etherscanUrl = 'https://etherscan.io/address/'
+    
+    const chainId = await getChainId(hre)
+    const network: Network = hre.network.name as Network
+    let scannerUrl: string;
+    let scannerApiUrl: string;
+    switch(network) {
+      case 'mainnet':
+        scannerUrl = 'https://etherscan.io/address/'
+        scannerApiUrl = `https://api.etherscan.io/api`
+        break
+      case 'base':
+        scannerUrl = 'https://basescan.org/address/'
+        scannerApiUrl = `https://api.basescan.org/api`
+        break
+      default:
+        throw new Error(`Unsupported network: ${network}`)
+    }
 
     const getVersion = async (c: Contract) => {
       try {
@@ -32,29 +57,46 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     }
 
     const createRTokenTableRow = async (name: string, address: string) => {
-      const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      await delay(200)
       const response = await fetch(url)
       const data = await response.json()
       const implementation = data.result[0].Implementation
       const component = await hre.ethers.getContractAt('ComponentP1', address)
-      return `| ${name} | [${address}](${etherscanUrl}${address}) | [${implementation}](${etherscanUrl}${implementation}#code) | ${await getVersion(
-        component
-      )} |`
+      let row = `| ${name} | [${address}](${scannerUrl}${address}) |`
+      if (!!implementation) {
+        row += `[${implementation}](${scannerUrl}${implementation}#code) | ${await getVersion(component)} |`
+      }
+      return row
+    }
+
+    const createComponentTableRow = async (name: string, address: string) => {
+      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      await delay(200)
+      const response = await fetch(url)
+      const data = await response.json()
+      const implementation = data.result[0].Implementation
+      const component = await hre.ethers.getContractAt('ComponentP1', address)
+      return `| ${name} | [${address}](${scannerUrl}${address}) | ${await getVersion(component)} |`
     }
 
     const createAssetTableRow = async (name: string, address: string) => {
-      return `| ${name} | [${address}](${etherscanUrl}${address}) |`
+      return `| ${name} | [${address}](${scannerUrl}${address}) |`
     }
 
     const createTableRows = async (
       components: { name: string; address: string }[],
-      isRToken: boolean
+      isRToken: boolean,
+      isComponent: boolean = false
     ) => {
       const rows = []
       for (const component of components) {
+        if (!component.address) continue
         isRToken
           ? rows.push(await createRTokenTableRow(component.name, component.address))
-          : rows.push(await createAssetTableRow(component.name, component.address))
+          : isComponent
+            ? rows.push(await createComponentTableRow(component.name, component.address))
+            : rows.push(await createAssetTableRow(component.name, component.address))
       }
       return rows.join('\n')
     }
@@ -65,7 +107,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
       rows: string,
       govRows: string | undefined
     ) => {
-      return `# [${name}](${etherscanUrl}${address})
+      return `# [${name}](${scannerUrl}${address})
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
@@ -75,11 +117,23 @@ ${
   govRows &&
   `
 ## Governance Addresses
-| Contract | Address | Implementation | Version |
-| --- | --- | --- | --- |
+| Contract | Address |
+| --- | --- |
 ${govRows}
 `
 }
+        `
+    }
+
+    const createComponentMarkdown = async (
+      name: string,
+      rows: string
+    ) => {
+      return `# ${name}
+## Component Addresses
+| Contract | Address | Version |
+| --- | --- | --- |
+${rows}
         `
     }
 
@@ -98,50 +152,25 @@ ${collaterals}
     }
 
     const getRTokenFileName = async (rtoken: string) => {
-      const chainId = await getChainId(hre)
       const rToken = await hre.ethers.getContractAt('IRToken', rtoken)
       const rTokenSymbol = await rToken.symbol()
       return `${outputDir}${chainId}-${rTokenSymbol}.md`
     }
 
-    const getAssetFileName = async (version: string) => {
-      const chainId = await getChainId(hre)
-      return `${outputDir}${chainId}-assets-${version}.md`
+    const getAssetFileId = (version: string) => {
+      return `assets-${version}`
     }
 
-    const getComponentFileName = async (version: string) => {
-      const chainId = await getChainId(hre)
-      return `${outputDir}${chainId}-components-${version}.md`
+    const getComponentFileId = (version: string) => {
+      return `components-${version}`
     }
 
-    const getActiveRoleHolders = async (main: MainP1, role: string) => {
-      // get active owners
-      //
-      const grantedFilter = main.filters.RoleGranted(role)
-      const revokedFilter = main.filters.RoleRevoked(role)
+    const getAssetFileName = (assetFileId: string) => {
+      return `${outputDir}${chainId}-${assetFileId}.md`
+    }
 
-      // get granted owners
-      const ownersGranted = await main.queryFilter(grantedFilter)
-      let owners = ownersGranted.map((event) => {
-        return event.args![1]
-      })
-      interface OwnerCount {
-        [key: string]: number
-      }
-
-      // count granted owners
-      let ownerCount: OwnerCount = {}
-      owners.forEach((owner: string) => {
-        ownerCount[owner] = (ownerCount[owner] || 0) + 1
-      })
-
-      // reduce counts by revoked owners
-      const ownersRevoked = await main.queryFilter(revokedFilter)
-      ownersRevoked.forEach((event) => {
-        const owner = event.args![1]
-        ownerCount[owner] = (ownerCount[owner] || 0) - 1
-      })
-      return Object.keys(ownerCount).filter((owner) => ownerCount[owner] > 0)
+    const getComponentFileName = (componentFileId: string) => {
+      return `${outputDir}${chainId}-${componentFileId}.md`
     }
 
     /*
@@ -152,8 +181,10 @@ ${collaterals}
 
     if (params.rtoken && params.gov) {
       // if rtoken address is provided, print component addresses
-
+      
       const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
+      const symbol = await rToken.symbol()
+      console.log(`Collecting addresses for RToken: ${symbol} (${params.rtoken}))`)
       const mainAddress = await rToken.main()
       const main = await hre.ethers.getContractAt('MainP1', mainAddress)
       const backingManagerAddress = await main.backingManager()
@@ -200,13 +231,21 @@ ${collaterals}
       const rows = await createTableRows(components, true)
       const govRows = await createTableRows(govComponents, true)
       const markdown = await createRTokenMarkdown(
-        `${rTokenSymbol} (${rTokenName})`,
+        `${rTokenSymbol} (${rTokenName}) - ${capitalize(hre.network.name)}`,
         params.rtoken,
         rows,
         govRows
       )
-      fs.writeFileSync(await getRTokenFileName(params.rtoken), markdown)
+      const rTokenFileName = await getRTokenFileName(params.rtoken)
+      fs.writeFileSync(rTokenFileName, markdown)
+      console.log(`Wrote ${rTokenFileName}`)
+      
+      toc[network]['rtokens'].indexOf(rTokenSymbol) === -1 && toc[network]['rtokens'].push(rTokenSymbol)
+      fs.writeFileSync(tocFilename, JSON.stringify(toc, null, 2))
+      console.log(`Updated table of contents`)
+
     } else if (params.ver) {
+      console.log(`Collecting addresses for Version: ${params.ver} (${hre.network.name})`)
       // if version is provided, print implementation addresses
       const version = `${hre.network.name}-${params.ver}`
       const collateralDepl = getDeploymentFile(
@@ -230,7 +269,11 @@ ${collaterals}
         assetRows,
         collateralRows
       )
-      fs.writeFileSync(await getAssetFileName(params.ver), assetMarkdown)
+      const assetFileId = getAssetFileId(params.ver)
+      const assetFileName = getAssetFileName(assetFileId)
+
+      fs.writeFileSync(assetFileName, assetMarkdown)
+      console.log(`Wrote ${assetFileName}`)
 
       const componentDepl = getDeploymentFile(getDeploymentFilename(await getChainId(hre), version))
       const recursiveDestructure = (
@@ -253,13 +296,20 @@ ${collaterals}
         address: string
       }>
       components = components.sort((a, b) => a.name.localeCompare(b.name))
-      const componentMarkdown = await createRTokenMarkdown(
+      const componentMarkdown = await createComponentMarkdown(
         `Component Implementations (${capitalize(hre.network.name)} ${params.ver})`,
-        params.version,
-        await createTableRows(components, false),
-        undefined
+        await createTableRows(components, false, true)
       )
-      fs.writeFileSync(await getComponentFileName(params.ver), componentMarkdown)
+
+      const componentFileId = getComponentFileId(params.ver)
+      const componentFileName = getComponentFileName(componentFileId)
+      fs.writeFileSync(componentFileName, componentMarkdown)
+      console.log(`Wrote ${componentFileName}`)
+
+      toc[network]['components'].indexOf(componentFileId) === -1 && toc[network]['components'].push(componentFileId)
+      toc[network]['assets'].indexOf(assetFileId) === -1 && toc[network]['assets'].push(assetFileId)
+      fs.writeFileSync(tocFilename, JSON.stringify(toc, null, 2))
+      console.log(`Updated table of contents`)
     } else {
       // if neither rtoken address nor version number is provided, throw error
       throw new Error(

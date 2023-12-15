@@ -63,7 +63,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdc.ts',
-      'phase2-assets/collaterals/deploy_yearn_v2_curve_usdp.ts'
+      'phase2-assets/collaterals/deploy_yearn_v2_curve_usdp.ts',
+      'phase2-assets/collaterals/deploy_sfrax.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
