@@ -51,7 +51,11 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192
+        )
     {
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
