@@ -38,6 +38,9 @@ import {
   StaticATokenV3LM,
   CusdcV3Wrapper,
   CometInterface,
+  StargateRewardableWrapper,
+  StargatePoolFiatCollateral,
+  IStargatePool,
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
 import { MAX_UINT256 } from '#/common/constants'
@@ -47,6 +50,7 @@ enum CollPluginType {
   AAVE_V3,
   COMPOUND_V2,
   COMPOUND_V3,
+  STARGATE,
 }
 
 // Relevant addresses (Mainnet)
@@ -55,6 +59,7 @@ const holderADAI = '0x07edE94cF6316F4809f2B725f5d79AD303fB4Dc8'
 const holderaUSDCV3 = '0x1eAb3B222A5B57474E0c237E7E1C4312C1066855'
 const holderWETH = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
 const holdercUSDCV3 = '0x7f714b13249BeD8fdE2ef3FBDfB18Ed525544B03'
+const holdersUSDC = '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
 
 let owner: SignerWithAddress
 
@@ -73,6 +78,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let stataDai: StaticATokenLM
   let usdc: USDCMock
   let aUsdcV3: IAToken
+  let sUsdc: IStargatePool
   let weth: IWETH
   let cDai: TestICToken
   let cDaiVault: CTokenWrapper
@@ -184,6 +190,10 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractAt('CometInterface', networkConfig[chainId].tokens.cUSDCv3 || '')
       )
 
+      sUsdc = <IStargatePool>(
+        await ethers.getContractAt('IStargatePool', networkConfig[chainId].tokens.sUSDC || '')
+      )
+
       initialBal = bn('2500000e18')
 
       // Fund user with static aDAI
@@ -209,6 +219,11 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Fund user with cUSDCV3
       await whileImpersonating(holdercUSDCV3, async (cusdcV3Signer) => {
         await cusdcV3.connect(cusdcV3Signer).transfer(addr1.address, toBNDecimals(initialBal, 6))
+      })
+
+      // Fund user with sUSDC
+      await whileImpersonating(holdersUSDC, async (susdcSigner) => {
+        await sUsdc.connect(susdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
       })
 
       // Fund user with WETH
@@ -966,6 +981,95 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             .withdraw(usdc.address, (await cusdcV3.balanceOf(addr2.address)).div(100))
         ).to.be.reverted
         expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+      })
+    })
+
+    describe('Stargate', () => {
+      const issueAmount: BigNumber = bn('1000000e18')
+      let wstgUsdc: StargateRewardableWrapper
+
+      beforeEach(async () => {
+        const SthWrapperFactory = await hre.ethers.getContractFactory('StargateRewardableWrapper')
+
+        wstgUsdc = await SthWrapperFactory.deploy(
+          'Wrapped Stargate USDC',
+          'wsgUSDC',
+          networkConfig[chainId].tokens.STG!,
+          networkConfig[chainId].STARGATE_STAKING_CONTRACT!,
+          networkConfig[chainId].tokens.sUSDC!
+        )
+        await wstgUsdc.deployed()
+
+        /********  Deploy Stargate USDC collateral plugin  **************************/
+        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
+        const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+        const chainlinkFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+        const CollateralFactory = await hre.ethers.getContractFactory('StargatePoolFiatCollateral')
+        const collateral = <StargatePoolFiatCollateral>await CollateralFactory.connect(
+          owner
+        ).deploy(
+          {
+            priceTimeout: bn('604800'),
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: usdcOracleError,
+            erc20: wstgUsdc.address,
+            maxTradeVolume: fp('1e6'),
+            oracleTimeout: usdcOracleTimeout,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.01').add(usdcOracleError),
+            delayUntilDefault: bn('86400'),
+          },
+          fp('1e-6')
+        )
+
+        // Register and update collateral
+        await collateral.deployed()
+        await (await collateral.refresh()).wait()
+        await pushOracleForward(chainlinkFeed.address)
+        await assetRegistry.connect(owner).register(collateral.address)
+
+        // Wrap sUsdc
+        await sUsdc.connect(addr1).approve(wstgUsdc.address, toBNDecimals(initialBal, 6))
+        await wstgUsdc.connect(addr1).deposit(toBNDecimals(initialBal, 6), addr1.address)
+
+        // Get current liquidity
+        fullLiquidityAmt = await sUsdc.totalLiquidity()
+
+        // Setup basket
+        await pushOracleForward(chainlinkFeed.address)
+        await basketHandler.connect(owner).setPrimeBasket([wstgUsdc.address], [fp('1')])
+        await basketHandler.connect(owner).refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
+        // Provide approvals
+        await wstgUsdc.connect(addr1).approve(rToken.address, issueAmount)
+
+        // Advance time significantly - Recharge throttle
+        await advanceTime(100000)
+        await pushOracleForward(chainlinkFeed.address)
+
+        // Issue rTokens
+        await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      it('Should return 100%, full liquidity available at all times', async function () {
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          issueAmount,
+          fp('150')
+        )
+
+        // AAVE V3 - All redeemable
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.STARGATE,
+            wstgUsdc.address
+          )
+        ).to.equal(fp('1'))
       })
     })
   })

@@ -11,6 +11,7 @@ import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
 import "../plugins/assets/compoundv2/CTokenWrapper.sol";
 import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
+import "../plugins/assets/stargate/StargateRewardableWrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
 
 interface IAaveProtocolDataProvider {
@@ -159,6 +160,14 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
                 address(rToken.main().backingManager())
             );
             availableLiquidity = underlying.balanceOf(address(cTokenV3));
+        } else if (collType == CollPluginType.STARGATE) {
+            StargateRewardableWrapper stgWrapper = StargateRewardableWrapper(address(erc20));
+            IStargatePool stgPool = stgWrapper.pool();
+
+            uint256 wstgBal = stgWrapper.balanceOf(address(rToken.main().backingManager()));
+
+            backingBalance = stgPool.amountLPtoLD(wstgBal);
+            availableLiquidity = stgPool.totalLiquidity();
         }
 
         if (availableLiquidity == 0) {
