@@ -1331,6 +1331,26 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await expect(newFacadeMonitor.init(ZERO_ADDRESS)).to.be.revertedWith('invalid owner address')
     })
 
+    it('Should allow owner to transfer ownership', async () => {
+      expect(await facadeMonitor.owner()).to.equal(owner.address)
+
+      // Attempt to transfer ownership with another account
+      await expect(
+        facadeMonitor.connect(addr1).transferOwnership(addr1.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      // Owner remains the same
+      expect(await facadeMonitor.owner()).to.equal(owner.address)
+
+      // Transfer ownership with owner
+      await expect(facadeMonitor.connect(owner).transferOwnership(addr1.address))
+        .to.emit(facadeMonitor, 'OwnershipTransferred')
+        .withArgs(owner.address, addr1.address)
+
+      // Owner changed
+      expect(await facadeMonitor.owner()).to.equal(addr1.address)
+    })
+
     it('Should only allow owner to upgrade', async () => {
       const FacadeMonitorV2Factory: ContractFactory = await ethers.getContractFactory(
         'FacadeMonitorV2'
