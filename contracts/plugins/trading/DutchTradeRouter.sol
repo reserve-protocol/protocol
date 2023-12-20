@@ -38,7 +38,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
         IERC20 buyToken,
         uint256 boughtAmt
     );
-    DutchTrade private _currentTrade = DutchTrade(address(0));
+    DutchTrade private _currentTrade;
 
     /// Place a bid on an OPEN dutch auction
     /// @param trade The DutchTrade to bid on
@@ -46,14 +46,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
     /// @dev Requires msg.sender has sufficient approval on the tokenIn with router
     /// @dev Requires msg.sender has sufficient balance on the tokenIn
     function bid(DutchTrade trade, address recipient) external returns (Bid memory) {
-        Bid memory out = Bid({
-            trade: DutchTrade(address(0)),
-            sellToken: IERC20(address(0)),
-            sellAmt: 0,
-            buyToken: IERC20(address(0)),
-            buyAmt: 0
-        });
-        _placeBid(trade, out, msg.sender);
+        Bid memory out = _placeBid(trade, msg.sender);
         _sendBalanceTo(out.sellToken, recipient);
         _sendBalanceTo(out.buyToken, recipient);
         return out;
@@ -77,40 +70,33 @@ contract DutchTradeRouter is IDutchTradeCallee {
 
     function _sendBalanceTo(IERC20 token, address to) internal {
         uint256 bal = token.balanceOf(address(this));
-        if (bal == 0) {
-            return;
-        }
         token.safeTransfer(to, bal);
     }
 
-    // Places a bid on a Dutch auction
-    // Method will dynamically pull funds from msg.sender if needed
-    // This will technically allow us to bid on multiple auctions at once
-    function _placeBid(
-        DutchTrade trade,
-        Bid memory out,
-        address bidder
-    ) internal {
+    /// Helper for placing bid on DutchTrade
+    /// @notice pulls funds from 'bidder'
+    /// @notice Does not send proceeds anywhere, funds have to be transfered out after this call
+    /// @notice non-reentrant, uses _currentTrade to prevent reentrancy
+    function _placeBid(DutchTrade trade, address bidder) internal returns (Bid memory out) {
         // Prevent reentrancy
         require(_currentTrade == DutchTrade(address(0)), "already bidding");
         require(trade.status() == TradeStatus.OPEN, "trade not open");
+        _currentTrade = trade;
         out.trade = trade;
         out.buyToken = IERC20(trade.buy());
         out.sellToken = IERC20(trade.sell());
         out.buyAmt = trade.bidAmount(block.number);
+        out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt);
 
-        uint256 currentBalance = out.buyToken.balanceOf(address(this));
-        if (currentBalance < out.buyAmt) {
-            out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt - currentBalance);
-        }
         uint256 sellAmt = out.sellToken.balanceOf(address(this));
-        _currentTrade = trade;
         uint256 expectedSellAmt = trade.lot();
         trade.bid(new bytes(0));
+
         sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt;
         require(sellAmt >= expectedSellAmt, "insufficient amount out");
         out.sellAmt = sellAmt;
 
+        _currentTrade = DutchTrade(address(0));
         emit BidPlaced(
             IMain(address(out.trade.broker().main())),
             out.trade,
@@ -120,6 +106,5 @@ contract DutchTradeRouter is IDutchTradeCallee {
             out.buyToken,
             out.buyAmt
         );
-        _currentTrade = DutchTrade(address(0));
     }
 }

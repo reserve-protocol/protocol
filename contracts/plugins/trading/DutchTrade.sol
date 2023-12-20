@@ -220,7 +220,7 @@ contract DutchTrade is ITrade {
         }
         sell.safeTransfer(bidder, lot()); // {qSellTok}
         uint256 balanceBefore = buy.balanceOf(address(this));
-        IDutchTradeCallee(bidder).dutchTradeCallback(msg.sender, address(buy), amountIn, data);
+        IDutchTradeCallee(bidder).dutchTradeCallback(bidder, address(buy), amountIn, data);
         require(
             amountIn <= buy.balanceOf(address(this)) - balanceBefore,
             "insufficient buy tokens"
