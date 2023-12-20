@@ -24,7 +24,7 @@ interface IStargateLPStaking {
 
     function poolInfo(uint256) external view returns (PoolInfo memory);
 
-    function pendingStargate(uint256 _pid, address _user) external view returns (uint256);
+    function pendingEmissionToken(uint256 _pid, address _user) external view returns (uint256);
 
     /// @param _pid The pid specifies the pool
     function updatePool(uint256 _pid) external;

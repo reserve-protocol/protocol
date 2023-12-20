@@ -46,9 +46,15 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
     }
 
     function _claimAssetRewards() internal override {
-        if (stakingContract.totalAllocPoint() != 0) {
-            stakingContract.deposit(poolId, 0);
+        if (stakingContract.totalAllocPoint() == 0) {
+            return;
         }
+
+        // `.deposit` call in a try/catch to prevent staking contract
+        // this is because `_claimAssetRewards` is called on all movements
+        // and we want to prevent external calls from bricking the contract
+        // solhint-disable-next-line no-empty-blocks
+        try stakingContract.deposit(poolId, 0) {} catch {}
     }
 
     function _afterDeposit(uint256, address) internal override {
