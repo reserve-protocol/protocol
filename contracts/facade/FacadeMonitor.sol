@@ -138,7 +138,6 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
             backingBalance = staticAToken.convertToAssets(
                 staticAToken.balanceOf(address(rToken.main().backingManager()))
             );
-
             availableLiquidity = underlying.balanceOf(address(aToken));
         } else if (collType == CollPluginType.COMPOUND_V2) {
             CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
@@ -146,10 +145,9 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
             IERC20 underlying = IERC20(cToken.underlying());
 
             uint256 exchangeRate = cToken.exchangeRateStored();
-            uint256 underlyingDecimals = IERC20Metadata(address(underlying)).decimals();
             uint256 cTokenBal = cTokenVault.balanceOf(address(rToken.main().backingManager()));
 
-            backingBalance = (cTokenBal * exchangeRate) / (10**underlyingDecimals);
+            backingBalance = (cTokenBal * exchangeRate) / 1e18;
             availableLiquidity = underlying.balanceOf(address(cToken));
         } else if (collType == CollPluginType.COMPOUND_V3) {
             ICusdcV3Wrapper cTokenV3Wrapper = ICusdcV3Wrapper(address(erc20));
