@@ -689,18 +689,9 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
-  // Deploy FacadeMonitor
+  // Deploy FacadeMonitor - Use implementation to simplify deployments
   const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
-
-  const facadeMonitor = <FacadeMonitor>await upgrades.deployProxy(
-    FacadeMonitorFactory,
-    [owner.address],
-    {
-      kind: 'uups',
-      initializer: 'init',
-      constructorArgs: [monitorParams],
-    }
-  )
+  const facadeMonitor = <FacadeMonitor>await FacadeMonitorFactory.deploy(monitorParams)
 
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
