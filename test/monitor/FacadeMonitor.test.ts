@@ -17,6 +17,7 @@ import {
   ATokenFiatCollateral,
   AaveV3FiatCollateral,
   CTokenV3Collateral,
+  CTokenFiatCollateral,
   ERC20Mock,
   FacadeTest,
   FacadeMonitor,
@@ -51,15 +52,18 @@ enum CollPluginType {
   COMPOUND_V2,
   COMPOUND_V3,
   STARGATE,
+  FLUX,
 }
 
 // Relevant addresses (Mainnet)
+const holderDAI = '0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8'
 const holderCDAI = '0x01d127D90513CCB6071F83eFE15611C4d9890668'
 const holderADAI = '0x07edE94cF6316F4809f2B725f5d79AD303fB4Dc8'
 const holderaUSDCV3 = '0x1eAb3B222A5B57474E0c237E7E1C4312C1066855'
 const holderWETH = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
 const holdercUSDCV3 = '0x7f714b13249BeD8fdE2ef3FBDfB18Ed525544B03'
 const holdersUSDC = '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
+const holderfUSDC = '0x86A07dDED024121b282362f4e7A249b00F5dAB37'
 
 let owner: SignerWithAddress
 
@@ -79,6 +83,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let usdc: USDCMock
   let aUsdcV3: IAToken
   let sUsdc: IStargatePool
+  let fUsdc: TestICToken
   let weth: IWETH
   let cDai: TestICToken
   let cDaiVault: CTokenWrapper
@@ -194,6 +199,10 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractAt('IStargatePool', networkConfig[chainId].tokens.sUSDC || '')
       )
 
+      fUsdc = <TestICToken>(
+        await ethers.getContractAt('TestICToken', networkConfig[chainId].tokens.fUSDC || '')
+      )
+
       initialBal = bn('2500000e18')
 
       // Fund user with static aDAI
@@ -207,6 +216,11 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Fund user with aUSDCV3
       await whileImpersonating(holderaUSDCV3, async (ausdcV3Signer) => {
         await aUsdcV3.connect(ausdcV3Signer).transfer(addr1.address, toBNDecimals(initialBal, 6))
+      })
+
+      // Fund user with DAI
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr1.address, initialBal.mul(8))
       })
 
       // Fund user with cDAI
@@ -224,6 +238,13 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Fund user with sUSDC
       await whileImpersonating(holdersUSDC, async (susdcSigner) => {
         await sUsdc.connect(susdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
+      })
+
+      // Fund user with fUSDC
+      await whileImpersonating(holderfUSDC, async (fusdcSigner) => {
+        await fUsdc
+          .connect(fusdcSigner)
+          .transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
       })
 
       // Fund user with WETH
@@ -1070,6 +1091,84 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             wstgUsdc.address
           )
         ).to.equal(fp('1'))
+      })
+    })
+
+    describe('Flux', () => {
+      const issueAmount: BigNumber = bn('1000000e18')
+
+      beforeEach(async () => {
+        /********  Deploy Flux USDC collateral plugin  **************************/
+        const CollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+
+        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
+        const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+        const chainlinkFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+        const collateral = <CTokenFiatCollateral>await CollateralFactory.connect(owner).deploy(
+          {
+            priceTimeout: bn('604800'),
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: usdcOracleError.toString(),
+            erc20: fUsdc.address,
+            maxTradeVolume: fp('1e6').toString(), // $1m,
+            oracleTimeout: usdcOracleTimeout, // 24h hr,
+            targetName: hre.ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
+            delayUntilDefault: bn('86400').toString(), // 24h
+          },
+          fp('1e-6')
+        )
+
+        // Register and update collateral
+        await collateral.deployed()
+        await (await collateral.refresh()).wait()
+        await pushOracleForward(chainlinkFeed.address)
+        await assetRegistry.connect(owner).register(collateral.address)
+
+        // Get current liquidity
+        fullLiquidityAmt = await usdc.balanceOf(fUsdc.address)
+
+        // Setup basket
+        await pushOracleForward(chainlinkFeed.address)
+        await basketHandler.connect(owner).setPrimeBasket([fUsdc.address], [fp('1')])
+        await basketHandler.connect(owner).refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
+        // Provide approvals
+        await fUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+
+        // Advance time significantly - Recharge throttle
+        await advanceTime(100000)
+        await pushOracleForward(chainlinkFeed.address)
+
+        // Issue rTokens
+        await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      it('Should return 100% when full liquidity available', async function () {
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          issueAmount,
+          fp('150')
+        )
+
+        // FLUX - All redeemable
+        expect(
+          await facadeMonitor.backingReedemable(rToken.address, CollPluginType.FLUX, fUsdc.address)
+        ).to.equal(fp('1'))
+
+        // Confirm all can be redeemed
+        expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+        const bmBalanceAmt = await fUsdc.balanceOf(backingManager.address)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await fUsdc.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+        })
+        await expect(fUsdc.connect(addr2).redeem(bmBalanceAmt)).to.not.be.reverted
+        expect(await usdc.balanceOf(addr2.address)).to.be.gt(bn(0))
+        expect(await fUsdc.balanceOf(addr2.address)).to.equal(bn(0))
       })
     })
   })
