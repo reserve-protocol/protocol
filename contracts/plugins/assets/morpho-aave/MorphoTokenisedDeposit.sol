@@ -8,14 +8,12 @@ import { RewardableERC4626Vault } from "../erc20/RewardableERC4626Vault.sol";
 
 struct MorphoTokenisedDepositConfig {
     IMorpho morphoController;
-    IMorphoRewardsDistributor rewardsDistributor;
     IERC20Metadata underlyingERC20;
     IERC20Metadata poolToken;
     ERC20 rewardToken;
 }
 
 abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
-    IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
     address public immutable poolToken;
     address public immutable underlying;
@@ -31,7 +29,6 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         underlying = address(config.underlyingERC20);
         morphoController = config.morphoController;
         poolToken = address(config.poolToken);
-        rewardsDistributor = config.rewardsDistributor;
     }
 
     function rewardTokenBalance(address account) external returns (uint256 claimableRewards) {

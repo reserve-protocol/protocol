@@ -50,7 +50,6 @@ async function main() {
   const maUSDT = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.USDT!,
     poolToken: networkConfig[chainId].tokens.aUSDT!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -59,7 +58,6 @@ async function main() {
   const maUSDC = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.USDC!,
     poolToken: networkConfig[chainId].tokens.aUSDC!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -68,7 +66,6 @@ async function main() {
   const maDAI = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.DAI!,
     poolToken: networkConfig[chainId].tokens.aDAI!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -77,7 +74,6 @@ async function main() {
   const maWBTC = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.WBTC!,
     poolToken: networkConfig[chainId].tokens.aWBTC!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -86,7 +82,6 @@ async function main() {
   const maWETH = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.WETH!,
     poolToken: networkConfig[chainId].tokens.aWETH!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -95,7 +90,6 @@ async function main() {
   const maStETH = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.stETH!,
     poolToken: networkConfig[chainId].tokens.astETH!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,

@@ -9,7 +9,6 @@ import { MorphoTokenisedDeposit, MorphoTokenisedDepositConfig } from "./MorphoTo
 struct MorphoAaveV2TokenisedDepositConfig {
     IMorpho morphoController;
     IMorphoUsersLens morphoLens;
-    IMorphoRewardsDistributor rewardsDistributor;
     IERC20Metadata underlyingERC20;
     IERC20Metadata poolToken;
     ERC20 rewardToken;
@@ -22,7 +21,6 @@ contract MorphoAaveV2TokenisedDeposit is MorphoTokenisedDeposit {
         MorphoTokenisedDeposit(
             MorphoTokenisedDepositConfig({
                 morphoController: config.morphoController,
-                rewardsDistributor: config.rewardsDistributor,
                 underlyingERC20: config.underlyingERC20,
                 poolToken: config.poolToken,
                 rewardToken: config.rewardToken
