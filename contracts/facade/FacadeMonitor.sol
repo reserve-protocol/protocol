@@ -139,13 +139,22 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
                 staticAToken.balanceOf(address(rToken.main().backingManager()))
             );
             availableLiquidity = underlying.balanceOf(address(aToken));
-        } else if (collType == CollPluginType.COMPOUND_V2) {
-            CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
-            ICToken cToken = ICToken(address(cTokenVault.underlying()));
+        } else if (collType == CollPluginType.COMPOUND_V2 || collType == CollPluginType.FLUX) {
+            ICToken cToken;
+            uint256 cTokenBal;
+            if (collType == CollPluginType.COMPOUND_V2) {
+                // CompoundV2 uses a vault to wrap the CToken
+                CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
+                cToken = ICToken(address(cTokenVault.underlying()));
+                cTokenBal = cTokenVault.balanceOf(address(rToken.main().backingManager()));
+            } else {
+                // FLUX - Uses FToken directly (fork of CToken)
+                cToken = ICToken(address(erc20));
+                cTokenBal = cToken.balanceOf(address(rToken.main().backingManager()));
+            }
             IERC20 underlying = IERC20(cToken.underlying());
 
             uint256 exchangeRate = cToken.exchangeRateStored();
-            uint256 cTokenBal = cTokenVault.balanceOf(address(rToken.main().backingManager()));
 
             backingBalance = (cTokenBal * exchangeRate) / 1e18;
             availableLiquidity = underlying.balanceOf(address(cToken));
