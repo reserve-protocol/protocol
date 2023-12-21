@@ -48,7 +48,6 @@ const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestIC
       morphoLens: networkConfig[1].MORPHO_AAVE_LENS!,
       underlyingERC20: opts.underlyingToken!,
       poolToken: opts.poolToken!,
-      rewardsDistributor: networkConfig[1].MORPHO_REWARDS_DISTRIBUTOR!,
       rewardToken: networkConfig[1].tokens.MORPHO!,
     })
     opts.erc20 = wrapperMock.address
@@ -93,7 +92,6 @@ const makeCollateralFixtureContext = (
       morphoLens: networkConfig[1].MORPHO_AAVE_LENS!,
       underlyingERC20: opts.underlyingToken!,
       poolToken: opts.poolToken!,
-      rewardsDistributor: networkConfig[1].MORPHO_REWARDS_DISTRIBUTOR!,
       rewardToken: networkConfig[1].tokens.MORPHO!,
     })
 
