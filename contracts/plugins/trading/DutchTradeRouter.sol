@@ -13,11 +13,11 @@ contract DutchTradeRouter is IDutchTradeCallee {
         DutchTrade trade;
         /// @notice The token sold to the protocol
         IERC20 sellToken;
-        /// @notice The amount of tokenIn the protocol got
+        /// @notice The amount of tokenIn the protocol got {qSellAmt}
         uint256 sellAmt;
-        /// @notice The token bought from the trade
+        /// @notice The token bought from the trade 
         IERC20 buyToken;
-        /// @notice The amount of tokenOut the we got
+        /// @notice The amount of tokenOut the we got {qBuyAmt}
         uint256 buyAmt;
     }
 
@@ -85,16 +85,17 @@ contract DutchTradeRouter is IDutchTradeCallee {
         out.trade = trade;
         out.buyToken = IERC20(trade.buy());
         out.sellToken = IERC20(trade.sell());
-        out.buyAmt = trade.bidAmount(block.number);
+        out.buyAmt = trade.bidAmount(block.number); // {qBuyToken}
         out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt);
 
-        uint256 sellAmt = out.sellToken.balanceOf(address(this));
-        uint256 expectedSellAmt = trade.lot();
+        uint256 sellAmt = out.sellToken.balanceOf(address(this));  // {qSellToken}
+
+        uint256 expectedSellAmt = trade.lot(); // {qSellToken}
         trade.bid(new bytes(0));
 
-        sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt;
+        sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt;  // {qSellToken}
         require(sellAmt >= expectedSellAmt, "insufficient amount out");
-        out.sellAmt = sellAmt;
+        out.sellAmt = sellAmt;  // {qSellToken}
 
         _currentTrade = DutchTrade(address(0));
         emit BidPlaced(
