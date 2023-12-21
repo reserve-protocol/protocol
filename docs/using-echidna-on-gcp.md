@@ -10,7 +10,7 @@ I'm assuming you've already got `gcloud` installed on your dev machine. If not, 
 
 ```bash
 gcloud auth login
-gcloud config set project rtoken-fuzz
+gcloud config set project rtoken-testing
 gcloud config list project
 
 # assumed defaults
@@ -45,7 +45,7 @@ gcloud compute instances create fuzz-normal --source-machine-image=fuzzbox --zon
 
 ```bash
 gcloud compute config-ssh
-ssh ${NODENAME}.us-central1-a.rtoken-fuzz
+ssh ${NODENAME}.us-central1-a.rtoken-testing
 ```
 
 
@@ -73,7 +73,9 @@ export PATH="$PATH:$HOME/.local/bin" && hash -r
 echo 'export PATH="$PATH:$HOME/.local/bin"' >> .bashrc
 
 # install python packages
-pip3 install solc-select slither_analyzer echidna_parade
+pip3 install solc-select
+pip3 install slither_analyzer==0.9.3
+pip3 install echidna_parade
 # Maybe overkill, but it won't take too long
 solc-select install all
 
@@ -105,7 +107,7 @@ cd protocol
 git switch fuzz
 
 # Install local dependencies. --force is necessary; seems to work fine.
-npm install --force
+yarn install
 
 # Compile our code
 TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
