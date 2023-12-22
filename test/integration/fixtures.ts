@@ -1,5 +1,5 @@
 import { BigNumber, ContractFactory } from 'ethers'
-import hre, { ethers, upgrades } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import {
   IConfig,
