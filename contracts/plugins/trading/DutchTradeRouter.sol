@@ -15,7 +15,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
         IERC20 sellToken;
         /// @notice The amount of tokenIn the protocol got {qSellAmt}
         uint256 sellAmt;
-        /// @notice The token bought from the trade 
+        /// @notice The token bought from the trade
         IERC20 buyToken;
         /// @notice The amount of tokenOut the we got {qBuyAmt}
         uint256 buyAmt;
@@ -26,9 +26,9 @@ contract DutchTradeRouter is IDutchTradeCallee {
     /// @param trade The DutchTrade that was bid on
     /// @param bidder The address of the bidder
     /// @param sellToken The token being sold by the protocol
-    /// @param soldAmt The amount of sellToken sold
+    /// @param soldAmt The amount of sellToken sold {qSellToken}
     /// @param buyToken The token being bought by the protocol
-    /// @param boughtAmt The amount of buyToken bought
+    /// @param boughtAmt The amount of buyToken bought {qBuyToken}
     event BidPlaced(
         IMain main,
         DutchTrade trade,
@@ -55,7 +55,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
     /// @notice Callback for DutchTrade
     /// @param caller The caller of the callback, should be the router
     /// @param buyToken The token DutchTrade is expecting to receive
-    /// @param buyAmount The amt the DutchTrade is expecting to receive
+    /// @param buyAmount The amt the DutchTrade is expecting to receive {qBuyToken}
     /// @notice Data is not used here
     function dutchTradeCallback(
         address caller,
@@ -65,7 +65,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
     ) external {
         require(caller == address(this), "Invalid caller");
         require(msg.sender == address(_currentTrade), "Incorrect callee");
-        IERC20(buyToken).safeTransfer(msg.sender, buyAmount);
+        IERC20(buyToken).safeTransfer(msg.sender, buyAmount); //  {qBuyToken}
     }
 
     function _sendBalanceTo(IERC20 token, address to) internal {
@@ -88,14 +88,14 @@ contract DutchTradeRouter is IDutchTradeCallee {
         out.buyAmt = trade.bidAmount(block.number); // {qBuyToken}
         out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt);
 
-        uint256 sellAmt = out.sellToken.balanceOf(address(this));  // {qSellToken}
+        uint256 sellAmt = out.sellToken.balanceOf(address(this)); // {qSellToken}
 
         uint256 expectedSellAmt = trade.lot(); // {qSellToken}
         trade.bid(new bytes(0));
 
-        sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt;  // {qSellToken}
+        sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt; // {qSellToken}
         require(sellAmt >= expectedSellAmt, "insufficient amount out");
-        out.sellAmt = sellAmt;  // {qSellToken}
+        out.sellAmt = sellAmt; // {qSellToken}
 
         _currentTrade = DutchTrade(address(0));
         emit BidPlaced(

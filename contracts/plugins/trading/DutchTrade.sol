@@ -13,6 +13,7 @@ interface IDutchTradeCallee {
     function dutchTradeCallback(
         address caller,
         address buyToken,
+        // {qBuyTok}
         uint256 buyAmount,
         bytes calldata data
     ) external;
@@ -219,7 +220,7 @@ contract DutchTrade is ITrade {
             broker.reportViolation();
         }
         sell.safeTransfer(bidder, lot()); // {qSellTok}
-        uint256 balanceBefore = buy.balanceOf(address(this));
+        uint256 balanceBefore = buy.balanceOf(address(this)); // {qBuyTok}
         IDutchTradeCallee(bidder).dutchTradeCallback(bidder, address(buy), amountIn, data);
         require(
             amountIn <= buy.balanceOf(address(this)) - balanceBefore,
