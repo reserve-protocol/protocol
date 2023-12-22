@@ -46,7 +46,11 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
     }
 
     function _claimAssetRewards() internal override {
-        if (stakingContract.totalAllocPoint() == 0) {
+        try stakingContract.totalAllocPoint() returns (uint256 totalAllocPoint) {
+            if (totalAllocPoint == 0) {
+                return;
+            }
+        } catch {
             return;
         }
 
@@ -59,24 +63,25 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
 
     function _afterDeposit(uint256, address) internal override {
         uint256 underlyingBalance = underlying.balanceOf(address(this));
-        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
-
-        if (poolInfo.allocPoint != 0 && underlyingBalance != 0) {
-            pool.approve(address(stakingContract), underlyingBalance);
-            stakingContract.deposit(poolId, underlyingBalance);
-        }
+        try stakingContract.poolInfo(poolId) returns (IStargateLPStaking.PoolInfo memory poolInfo) {
+            if (poolInfo.allocPoint != 0 && underlyingBalance != 0) {
+                pool.approve(address(stakingContract), underlyingBalance);
+                try stakingContract.deposit(poolId, underlyingBalance) {} catch {}
+            }
+        } catch {}
     }
 
     function _beforeWithdraw(uint256 _amount, address) internal override {
-        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
+        try stakingContract.poolInfo(poolId) returns (IStargateLPStaking.PoolInfo memory poolInfo) {
+            uint256 underlyingBalance = underlying.balanceOf(address(this));
 
-        uint256 underlyingBalance = underlying.balanceOf(address(this));
-        if (underlyingBalance < _amount) {
-            if (poolInfo.allocPoint != 0) {
-                stakingContract.withdraw(poolId, _amount - underlyingBalance);
-            } else {
-                stakingContract.emergencyWithdraw(poolId);
+            if (underlyingBalance < _amount) {
+                if (poolInfo.allocPoint != 0) {
+                    try stakingContract.withdraw(poolId, _amount - underlyingBalance) {} catch {}
+                } else {
+                    try stakingContract.emergencyWithdraw(poolId) {} catch {}
+                }
             }
-        }
+        } catch {}
     }
 }
