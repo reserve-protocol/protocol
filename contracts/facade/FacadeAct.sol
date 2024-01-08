@@ -15,6 +15,7 @@ import "../interfaces/IFacadeRead.sol";
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely.
  *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
  */
+// slither-disable-start
 contract FacadeAct is IFacadeAct, Multicall {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -286,3 +287,4 @@ contract FacadeAct is IFacadeAct, Multicall {
         revert("unrecognized version");
     }
 }
+// slither-disable-end

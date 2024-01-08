@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 // solhint-disable func-name-mixedcase func-visibility
+// slither-disable-start divide-before-multiply
 pragma solidity ^0.8.19;
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
@@ -674,3 +675,4 @@ function fullMul(uint256 x, uint256 y) pure returns (uint256 hi, uint256 lo) {
         if (mm < lo) hi -= 1;
     }
 }
+// slither-disable-end divide-before-multiply

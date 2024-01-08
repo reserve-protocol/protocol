@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
+// slither-disable-start reentrancy-no-eth
 
 import "@openzeppelin/contracts-v0.7/math/SafeMath.sol";
 import "@openzeppelin/contracts-v0.7/token/ERC20/IERC20.sol";
@@ -186,8 +187,10 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
             registeredRewards[crv] = CRV_INDEX + 1; //mark registered at index+1
             registeredRewards[cvx] = CVX_INDEX + 1; //mark registered at index+1
             //send to self to warmup state
+            //slither-disable-next-line unchecked-transfer
             IERC20(crv).transfer(address(this), 0);
             //send to self to warmup state
+            //slither-disable-next-line unchecked-transfer
             IERC20(cvx).transfer(address(this), 0);
         }
 
@@ -486,3 +489,4 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         _checkpoint([_from, _to]);
     }
 }
+// slither-disable-end reentrancy-no-eth
