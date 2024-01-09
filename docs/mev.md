@@ -27,7 +27,7 @@ Bidding instructions from the `DutchTrade` contract:
 `DutchTrade` (relevant) interface:
 
 ```solidity
-function bid() external; // execute a bid at the current block number
+function bid(bytes memory data) external; // execute a bid at the current block number
 
 function sell() external view returns (IERC20);
 
@@ -42,6 +42,8 @@ function bidAmount(uint256 blockNumber) external view returns (uint256); // {qBu
 ```
 
 To participate:
+
+Make sure calling contract implements the `IDutchTradeCallee` interface. It contains a single method function `dutchTradeCallbac(address buyToken,uint256 buyAmount,bytes calldata data) external;`. This method will be called by the `DutchTrade` as a callback after calling `bid` and before the trade has been resolved. The trader is expected to pay for the trade during the callback. See `DutchTradeRouter.sol` for an example.
 
 1. Call `status()` view; the auction is ongoing if return value is 1
 2. Call `lot()` to see the number of tokens being sold

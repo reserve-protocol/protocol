@@ -11,7 +11,6 @@ import "../../interfaces/ITrade.sol";
 
 interface IDutchTradeCallee {
     function dutchTradeCallback(
-        address caller,
         address buyToken,
         // {qBuyTok}
         uint256 buyAmount,
@@ -209,7 +208,7 @@ contract DutchTrade is ITrade {
         // {qBuyTok}
         amountIn = _bidAmount(price);
 
-        // Transfer in buy tokens
+        // Mark bidder
         bidder = msg.sender;
 
         // status must begin OPEN
@@ -219,9 +218,11 @@ contract DutchTrade is ITrade {
         if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
             broker.reportViolation();
         }
+
+        // Transfer buy tokens from bidder
         sell.safeTransfer(bidder, lot()); // {qSellTok}
         uint256 balanceBefore = buy.balanceOf(address(this)); // {qBuyTok}
-        IDutchTradeCallee(bidder).dutchTradeCallback(bidder, address(buy), amountIn, data);
+        IDutchTradeCallee(bidder).dutchTradeCallback(address(buy), amountIn, data);
         require(
             amountIn <= buy.balanceOf(address(this)) - balanceBefore,
             "insufficient buy tokens"

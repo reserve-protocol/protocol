@@ -6,6 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IDutchTradeCallee, TradeStatus, DutchTrade } from "../trading/DutchTrade.sol";
 import { IMain } from "../../interfaces/IMain.sol";
 
+/** @title DutchTradeRouter
+ * @notice Utility contract for placing bids on DutchTrade auctions
+ * @dev This contract is needed as end user wallets cannot call DutchTrade.bid directly anymore, 
+ tests and UI need to be updated to use this contract
+ */
 contract DutchTradeRouter is IDutchTradeCallee {
     using SafeERC20 for IERC20;
     struct Bid {
@@ -53,17 +58,14 @@ contract DutchTradeRouter is IDutchTradeCallee {
     }
 
     /// @notice Callback for DutchTrade
-    /// @param caller The caller of the callback, should be the router
     /// @param buyToken The token DutchTrade is expecting to receive
     /// @param buyAmount The amt the DutchTrade is expecting to receive {qBuyToken}
     /// @notice Data is not used here
     function dutchTradeCallback(
-        address caller,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
     ) external {
-        require(caller == address(this), "Invalid caller");
         require(msg.sender == address(_currentTrade), "Incorrect callee");
         IERC20(buyToken).safeTransfer(msg.sender, buyAmount); //  {qBuyToken}
     }

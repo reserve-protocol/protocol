@@ -10,7 +10,6 @@ contract CallbackDutchTraderBidder is IDutchTradeCallee {
     }
 
     function dutchTradeCallback(
-        address,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
@@ -25,7 +24,6 @@ contract CallbackDutchTraderBidderLowBaller is IDutchTradeCallee {
     }
 
     function dutchTradeCallback(
-        address,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
@@ -40,7 +38,6 @@ contract CallbackDutchTraderBidderNoPayer is IDutchTradeCallee {
     }
 
     function dutchTradeCallback(
-        address,
         address buyToken,
         uint256 buyAmount,
         bytes calldata
