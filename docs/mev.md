@@ -43,7 +43,7 @@ function bidAmount(uint256 blockNumber) external view returns (uint256); // {qBu
 
 To participate:
 
-Make sure calling contract implements the `IDutchTradeCallee` interface. It contains a single method function `dutchTradeCallbac(address buyToken,uint256 buyAmount,bytes calldata data) external;`. This method will be called by the `DutchTrade` as a callback after calling `bid` and before the trade has been resolved. The trader is expected to pay for the trade during the callback. See `DutchTradeRouter.sol` for an example.
+Make sure calling contract implements the `IDutchTradeCallee` interface. It contains a single method function `dutchTradeCallbac(address buyToken,uint256 buyAmount,bytes calldata data) external;`. This method will be called by the `DutchTrade` as a callback after calling `bidWithCallback` and before the trade has been resolved. The trader is expected to pay for the trade during the callback. See `DutchTradeRouter.sol` for an example.
 
 1. Call `status()` view; the auction is ongoing if return value is 1
 2. Call `lot()` to see the number of tokens being sold
@@ -51,7 +51,7 @@ Make sure calling contract implements the `IDutchTradeCallee` interface. It cont
 4. After finding an attractive bidAmount, provide an approval for the `buy()` token. The spender should be the `DutchTrade` contract.
    **Note**: it is very important to set tight approvals! Do not set more than the `bidAmount()` for the desired bidding block else reorgs present risk.
 5. Wait until the desired block is reached (hopefully not in the first 40% of the auction)
-6. Call `bid()`. If someone else completes the auction first, this will revert with the error message "bid already received". Approvals do not have to be revoked in the event that another MEV searcher wins the auction. (Though ideally the searcher includes the approval in the same tx they `bid()`)
+6. Call `bidWithCallback()`. If someone else completes the auction first, this will revert with the error message "bid already received". Approvals do not have to be revoked in the event that another MEV searcher wins the auction. (Though ideally the searcher includes the approval in the same tx they `bid()`)
 
 For a sample price curve, see [docs/system-design.md](./system-design.md#sample-price-curve)
 

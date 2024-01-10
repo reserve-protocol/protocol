@@ -207,7 +207,7 @@ contract DutchTrade is ITrade {
     /// @param data {bytes} The data to pass to the callback
     /// @dev Caller must implement IDutchTradeCallee
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bidCb(bytes calldata data) external returns (uint256 amountIn) {
+    function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
         // {buyTok/sellTok}
         uint192 price = _price(block.number); // enforces auction ongoing
