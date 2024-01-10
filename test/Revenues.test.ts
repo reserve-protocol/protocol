@@ -3498,6 +3498,35 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             'trade not open'
           )
         })
+        it('Trade should initially have bidType 0', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          expect(await trade.bidType()).to.be.eq(0)
+        })
+        it('It should support non callback bid', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+            .connect(addr1)
+            .approve(trade.address, constants.MaxUint256)
+
+          // Bid
+          await trade.connect(addr1).bid()
+          expect(await trade.bidType()).to.be.eq(2)
+          expect(await trade.bidder()).to.equal(addr1.address)
+          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+        })
 
         /// Tests callback based bidding
         describe('Callback based bidding', () => {
@@ -3516,7 +3545,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ).deploy()
             await rToken.connect(addr1).transfer(bidder.address, issueAmount)
             await bidder.connect(addr1).bid(trade.address)
-
+            expect(await trade.bidType()).to.be.eq(1)
             expect(await trade.bidder()).to.equal(bidder.address)
             expect(await trade.status()).to.be.eq(2) // Status.CLOSED
           })

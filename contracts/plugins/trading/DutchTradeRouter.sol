@@ -93,7 +93,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
         uint256 sellAmt = out.sellToken.balanceOf(address(this)); // {qSellToken}
 
         uint256 expectedSellAmt = trade.lot(); // {qSellToken}
-        trade.bid(new bytes(0));
+        trade.bidCb(new bytes(0));
 
         sellAmt = out.sellToken.balanceOf(address(this)) - sellAmt; // {qSellToken}
         require(sellAmt >= expectedSellAmt, "insufficient amount out");
