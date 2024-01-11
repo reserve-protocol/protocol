@@ -9,7 +9,6 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
-  IERC20,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
@@ -43,7 +42,6 @@ import {
   CRV,
   THREE_POOL_HOLDER,
 } from '../constants'
-import { whileImpersonating } from '#/test/utils/impersonation'
 
 type Fixture<T> = () => Promise<T>
 
