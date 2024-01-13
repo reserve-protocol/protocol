@@ -88,10 +88,11 @@ contract DutchTrade is ITrade {
     using SafeERC20 for IERC20Metadata;
 
     TradeKind public constant KIND = TradeKind.DUTCH_AUCTION;
-    BidType public bidType; // = BidType.NONE
 
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
+
+    BidType public bidType; // = BidType.NONE
 
     TradeStatus public status; // reentrancy protection
 
@@ -199,7 +200,7 @@ contract DutchTrade is ITrade {
         bestPrice = _bestPrice; // gas-saver
     }
 
-    /// Bid for the auction lot at the current price; settling atomically via a callback
+    /// Bid for the auction lot at the current price; settle trade in protocol
     /// @dev Caller must have provided approval
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid() external returns (uint256 amountIn) {
@@ -226,20 +227,19 @@ contract DutchTrade is ITrade {
         // Transfer in buy tokens from bidder
         buy.safeTransferFrom(msg.sender, address(this), amountIn);
 
-        // settle() via callback
+        // settle() in core protocol
         origin.settleTrade(sell);
 
         // confirm .settleTrade() succeeded and .settle() has been called
         assert(status == TradeStatus.CLOSED);
     }
 
-    /// Bid with callback for the auction lot at the current price;
-    ///  Sold funds are sent back to the callee, callee.dutchTradeCallback(...) is invoked
-    ///  balance of buy token must increase by bidAmount(current block) after callback
-    ///  Trade is settled atomically via a callback
+    /// Bid with callback for the auction lot at the current price; settle trade in protocol
+    ///  Sold funds are sent back to the callee first via callee.dutchTradeCallback(...)
+    ///  Balance of buy token must increase by bidAmount(current block) after callback
     ///
-    /// @param data {bytes} The data to pass to the callback
     /// @dev Caller must implement IDutchTradeCallee
+    /// @param data {bytes} The data to pass to the callback
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
@@ -272,7 +272,7 @@ contract DutchTrade is ITrade {
             "insufficient buy tokens"
         );
 
-        // settle() via callback
+        // settle() in core protocol
         origin.settleTrade(sell);
 
         // confirm .settleTrade() succeeded and .settle() has been called
