@@ -1,6 +1,6 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { expect } from 'chai'
-import { Wallet, ContractFactory } from 'ethers'
+import { Wallet, ContractFactory, constants } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import {
@@ -517,6 +517,8 @@ describe('Assets contracts #fast', () => {
     })
 
     it('Should handle tokens being out on trade for RTokenAsset', async () => {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+      await usdc.connect(wallet).approve(router.address, constants.MaxUint256)
       // Summary:
       // - Run a dutch auction that does not fill
       // - Run a batch auction that fills for partial volume
@@ -599,7 +601,11 @@ describe('Assets contracts #fast', () => {
       const buyAmt = await trade.bidAmount(await trade.endBlock())
       await usdc.approve(trade.address, buyAmt)
       await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-      await expect(trade.bid()).to.emit(backingManager, 'TradeSettled')
+
+      await expect(router.bid(trade.address, await router.signer.getAddress())).to.emit(
+        backingManager,
+        'TradeSettled'
+      )
       expect(await backingManager.tradesOpen()).to.equal(1) // launches another trade!
       await expectExactPrice(rTokenAsset.address, [low3, bn('1007427552565834095')]) // high end starts to fall
     })
