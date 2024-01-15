@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber } from 'ethers'
+import { BigNumber, Contract } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixtureNoBasket, DefaultFixture } from '../integration/fixtures'
@@ -42,6 +42,7 @@ import {
   StargateRewardableWrapper,
   StargatePoolFiatCollateral,
   IStargatePool,
+  MorphoAaveV2TokenisedDeposit,
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
 import { MAX_UINT256 } from '#/common/constants'
@@ -53,6 +54,7 @@ enum CollPluginType {
   COMPOUND_V3,
   STARGATE,
   FLUX,
+  MORPHO_AAVE_V2,
 }
 
 // Relevant addresses (Mainnet)
@@ -64,6 +66,7 @@ const holderWETH = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
 const holdercUSDCV3 = '0x7f714b13249BeD8fdE2ef3FBDfB18Ed525544B03'
 const holdersUSDC = '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
 const holderfUSDC = '0x86A07dDED024121b282362f4e7A249b00F5dAB37'
+const holderUSDC = '0x28C6c06298d514Db089934071355E5743bf21d60'
 
 let owner: SignerWithAddress
 
@@ -247,6 +250,11 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           .transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
       })
 
+      // Fund user with USDC
+      await whileImpersonating(holderUSDC, async (usdcSigner) => {
+        await usdc.connect(usdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
+      })
+
       // Fund user with WETH
       weth = <IWETH>await ethers.getContractAt('IWETH', networkConfig[chainId].tokens.WETH || '')
       await whileImpersonating(holderWETH, async (signer) => {
@@ -257,6 +265,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     describe('AAVE V2', () => {
       const issueAmount: BigNumber = bn('1000000e18')
       let lendingPool: ILendingPool
+      let aaveV2DataProvider: Contract
 
       beforeEach(async () => {
         // Setup basket
@@ -277,8 +286,18 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await ethers.getContractAt('ILendingPool', networkConfig[chainId].AAVE_LENDING_POOL || '')
         )
 
+        const aaveV2DataProviderAbi = [
+          'function getReserveData(address asset) external view returns (uint256 availableLiquidity,uint256 totalStableDebt,uint256 totalVariableDebt,uint256 liquidityRate,uint256 variableBorrowRate,uint256 stableBorrowRate,uint256 averageStableBorrowRate,uint256 liquidityIndex,uint256 variableBorrowIndex,uint40 lastUpdateTimestamp)',
+        ]
+        aaveV2DataProvider = await ethers.getContractAt(
+          aaveV2DataProviderAbi,
+          networkConfig[chainId].AAVE_DATA_PROVIDER || ''
+        )
+
         // Get current liquidity
-        fullLiquidityAmt = await dai.balanceOf(aDai.address)
+        ;[fullLiquidityAmt, , , , , , , , ,] = await aaveV2DataProvider
+          .connect(addr1)
+          .getReserveData(dai.address)
 
         // Provide liquidity in AAVE V2 to be able to borrow
         const amountToDeposit = fp('500000')
@@ -1169,6 +1188,229 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expect(fUsdc.connect(addr2).redeem(bmBalanceAmt)).to.not.be.reverted
         expect(await usdc.balanceOf(addr2.address)).to.be.gt(bn(0))
         expect(await fUsdc.balanceOf(addr2.address)).to.equal(bn(0))
+      })
+    })
+
+    describe('MORPHO - AAVE V2', () => {
+      const issueAmount: BigNumber = bn('1000000e18')
+      let lendingPool: ILendingPool
+      let maUSDC: MorphoAaveV2TokenisedDeposit
+      let aaveV2DataProvider: Contract
+
+      beforeEach(async () => {
+        /********  Deploy Morpho AAVE V2 USDC collateral plugin  **************************/
+        const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
+          'MorphoAaveV2TokenisedDeposit'
+        )
+        maUSDC = await MorphoTokenisedDepositFactory.deploy({
+          morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+          morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+          rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
+          underlyingERC20: networkConfig[chainId].tokens.USDC!,
+          poolToken: networkConfig[chainId].tokens.aUSDC!,
+          rewardToken: networkConfig[chainId].tokens.MORPHO!,
+        })
+
+        const CollateralFactory = await hre.ethers.getContractFactory('MorphoFiatCollateral')
+
+        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+        const baseStableConfig = {
+          priceTimeout: bn('604800').toString(),
+          oracleError: usdcOracleError.toString(),
+          maxTradeVolume: fp('1e6').toString(), // $1m,
+          oracleTimeout: usdcOracleTimeout, // 24h
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: usdcOracleError.add(fp('0.01')), // 1.25%
+          delayUntilDefault: bn('86400').toString(), // 24h
+        }
+        const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+        const chainlinkFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+        const collateral = await CollateralFactory.connect(owner).deploy(
+          {
+            ...baseStableConfig,
+            chainlinkFeed: chainlinkFeed.address,
+            erc20: maUSDC.address,
+          },
+          fp('1e-6')
+        )
+
+        // Register and update collateral
+        await collateral.deployed()
+        await (await collateral.refresh()).wait()
+        await pushOracleForward(chainlinkFeed.address)
+        await assetRegistry.connect(owner).register(collateral.address)
+
+        const aaveV2DataProviderAbi = [
+          'function getReserveData(address asset) external view returns (uint256 availableLiquidity,uint256 totalStableDebt,uint256 totalVariableDebt,uint256 liquidityRate,uint256 variableBorrowRate,uint256 stableBorrowRate,uint256 averageStableBorrowRate,uint256 liquidityIndex,uint256 variableBorrowIndex,uint40 lastUpdateTimestamp)',
+        ]
+        aaveV2DataProvider = await ethers.getContractAt(
+          aaveV2DataProviderAbi,
+          networkConfig[chainId].AAVE_DATA_PROVIDER || ''
+        )
+
+        await facadeMonitor.backingReedemable(
+          rToken.address,
+          CollPluginType.MORPHO_AAVE_V2,
+          maUSDC.address
+        )
+
+        // Wrap maUSDC
+        await usdc.connect(addr1).approve(maUSDC.address, 0)
+        await usdc.connect(addr1).approve(maUSDC.address, MAX_UINT256)
+        await maUSDC.connect(addr1).mint(toBNDecimals(initialBal, 15), addr1.address)
+
+        // Setup basket
+        await pushOracleForward(chainlinkFeed.address)
+        await basketHandler.connect(owner).setPrimeBasket([maUSDC.address], [fp('1')])
+        await basketHandler.connect(owner).refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
+        // Provide approvals
+        await maUSDC.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 15))
+
+        // Advance time significantly - Recharge throttle
+        await advanceTime(100000)
+        await pushOracleForward(chainlinkFeed.address)
+
+        // Issue rTokens
+        await rToken.connect(addr1).issue(issueAmount)
+
+        lendingPool = <ILendingPool>(
+          await ethers.getContractAt('ILendingPool', networkConfig[chainId].AAVE_LENDING_POOL || '')
+        )
+
+        // Provide liquidity in AAVE V2 to be able to borrow
+        const amountToDeposit = fp('500000')
+        await weth.connect(addr1).approve(lendingPool.address, amountToDeposit)
+        await lendingPool.connect(addr1).deposit(weth.address, amountToDeposit, addr1.address, 0)
+      })
+
+      it('Should return 100% when full liquidity available', async function () {
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          issueAmount,
+          fp('150')
+        )
+
+        // MORPHO AAVE V2 - All redeemable
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.MORPHO_AAVE_V2,
+            maUSDC.address
+          )
+        ).to.equal(fp('1'))
+
+        // Confirm all can be redeemed
+        expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+        const bmBalanceAmt = await maUSDC.balanceOf(backingManager.address)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await maUSDC.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+        })
+        const maxWithdraw = await maUSDC.maxWithdraw(addr2.address)
+        await expect(maUSDC.connect(addr2).withdraw(maxWithdraw, addr2.address, addr2.address)).to
+          .not.be.reverted
+        expect(await usdc.balanceOf(addr2.address)).to.be.gt(bn(0))
+      })
+
+      it('Should return backing redeemable percent correctly', async function () {
+        // MORPHO AAVE V2 - All redeemable
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.MORPHO_AAVE_V2,
+            maUSDC.address
+          )
+        ).to.equal(fp('1'))
+
+        // Get current liquidity from Aave V2 (Morpho relies on this)
+        ;[fullLiquidityAmt, , , , , , , , ,] = await aaveV2DataProvider
+          .connect(addr1)
+          .getReserveData(usdc.address)
+
+        // Leave only 80% of backing available to be redeemed
+        const borrowAmount = fullLiquidityAmt.sub(toBNDecimals(issueAmount, 6).mul(80).div(100))
+        await lendingPool.connect(addr1).borrow(usdc.address, borrowAmount, 2, 0, addr1.address)
+
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.MORPHO_AAVE_V2,
+            maUSDC.address
+          )
+        ).to.be.closeTo(fp('0.80'), fp('0.01'))
+
+        // Borrow half of the remaining liquidity
+        const remainingLiquidity = fullLiquidityAmt.sub(borrowAmount)
+        await lendingPool
+          .connect(addr1)
+          .borrow(usdc.address, remainingLiquidity.div(2), 2, 0, addr1.address)
+
+        // Now only 40% is available to be redeemed
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.MORPHO_AAVE_V2,
+            maUSDC.address
+          )
+        ).to.be.closeTo(fp('0.40'), fp('0.01'))
+
+        // Confirm we cannot redeem full balance
+        expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+        const bmBalanceAmt = await maUSDC.balanceOf(backingManager.address)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await maUSDC.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+        })
+        const maxWithdraw = await maUSDC.maxWithdraw(addr2.address)
+        await expect(maUSDC.connect(addr2).withdraw(maxWithdraw, addr2.address, addr2.address)).to
+          .be.reverted
+        expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+
+        // But we can redeem if we reduce the amount to 30%
+        await expect(
+          maUSDC.connect(addr2).withdraw(maxWithdraw.mul(30).div(100), addr2.address, addr2.address)
+        ).to.not.be.reverted
+        expect(await usdc.balanceOf(addr2.address)).to.be.gt(0)
+      })
+
+      it('Should handle no liquidity', async function () {
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.MORPHO_AAVE_V2,
+            maUSDC.address
+          )
+        ).to.equal(fp('1'))
+
+        // Get current liquidity from Aave V2 (Morpho relies on this)
+        ;[fullLiquidityAmt, , , , , , , , ,] = await aaveV2DataProvider
+          .connect(addr1)
+          .getReserveData(usdc.address)
+
+        // Borrow full liquidity
+        await lendingPool.connect(addr1).borrow(usdc.address, fullLiquidityAmt, 2, 0, addr1.address)
+
+        expect(
+          await facadeMonitor.backingReedemable(
+            rToken.address,
+            CollPluginType.MORPHO_AAVE_V2,
+            maUSDC.address
+          )
+        ).to.be.closeTo(fp('0'), fp('0.01'))
+
+        // Confirm we cannot redeem anything, not even 1%
+        expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
+        const bmBalanceAmt = await maUSDC.balanceOf(backingManager.address)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await maUSDC.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+        })
+        const maxWithdraw = await maUSDC.maxWithdraw(addr2.address)
+        await expect(
+          maUSDC.connect(addr2).withdraw(maxWithdraw.div(100), addr2.address, addr2.address)
+        ).to.be.reverted
+        expect(await usdc.balanceOf(addr2.address)).to.equal(bn(0))
       })
     })
   })

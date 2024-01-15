@@ -15,7 +15,8 @@ enum CollPluginType {
     COMPOUND_V2,
     COMPOUND_V3,
     STARGATE,
-    FLUX
+    FLUX,
+    MORPHO_AAVE_V2
 }
 
 /**

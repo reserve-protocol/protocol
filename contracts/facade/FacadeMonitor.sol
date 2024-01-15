@@ -13,6 +13,7 @@ import "../plugins/assets/compoundv2/CTokenWrapper.sol";
 import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
 import "../plugins/assets/stargate/StargateRewardableWrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
+import "../plugins/assets/morpho-aave/MorphoAaveV2TokenisedDeposit.sol";
 
 interface IAaveProtocolDataProvider {
     function getReserveData(address asset)
@@ -123,13 +124,29 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
         uint256 backingBalance;
         uint256 availableLiquidity;
 
-        if (collType == CollPluginType.AAVE_V2) {
-            IStaticATokenLM staticAToken = IStaticATokenLM(address(erc20));
+        if (collType == CollPluginType.AAVE_V2 || collType == CollPluginType.MORPHO_AAVE_V2) {
+            address underlying;
+            if (collType == CollPluginType.AAVE_V2) {
+                // AAVE V2 - Uses Static wrapper
+                IStaticATokenLM staticAToken = IStaticATokenLM(address(erc20));
+                backingBalance = staticAToken.dynamicBalanceOf(
+                    address(rToken.main().backingManager())
+                );
+                underlying = staticAToken.UNDERLYING_ASSET_ADDRESS();
+            } else {
+                // MORPHO AAVE V2
+                MorphoAaveV2TokenisedDeposit mrpTknDeposit = MorphoAaveV2TokenisedDeposit(
+                    address(erc20)
+                );
+                backingBalance = mrpTknDeposit.convertToAssets(
+                    mrpTknDeposit.balanceOf(address(rToken.main().backingManager()))
+                );
+                underlying = mrpTknDeposit.underlying();
+            }
 
-            backingBalance = staticAToken.dynamicBalanceOf(address(rToken.main().backingManager()));
             (availableLiquidity, , , , , , , , , ) = IAaveProtocolDataProvider(
                 AAVE_V2_DATA_PROVIDER
-            ).getReserveData(address(staticAToken.UNDERLYING_ASSET_ADDRESS()));
+            ).getReserveData(underlying);
         } else if (collType == CollPluginType.AAVE_V3) {
             StaticATokenV3LM staticAToken = StaticATokenV3LM(address(erc20));
             IERC20 aToken = staticAToken.aToken();
