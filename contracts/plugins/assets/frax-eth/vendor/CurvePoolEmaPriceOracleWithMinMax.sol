@@ -14,6 +14,7 @@ pragma solidity ^0.8.19;
 import { ICurvePoolEmaPriceOracleWithMinMax } from "./ICurvePoolEmaPriceOracleWithMinMax.sol";
 
 interface IEmaPriceOracleStableSwap {
+    // solhint-disable-next-line func-name-mixedcase
     function price_oracle() external view returns (uint256);
 }
 
@@ -28,6 +29,7 @@ struct ConstructorParams {
 /// @notice  An oracle for getting EMA prices from Curve
 contract CurvePoolEmaPriceOracleWithMinMax is ICurvePoolEmaPriceOracleWithMinMax {
     /// @notice Curve pool, source of EMA
+    // solhint-disable-next-line var-name-mixedcase
     address public immutable CURVE_POOL_EMA_PRICE_ORACLE;
 
     /// @notice Precision of Curve pool price_oracle()
@@ -58,7 +60,8 @@ contract CurvePoolEmaPriceOracleWithMinMax is ICurvePoolEmaPriceOracleWithMinMax
         _token1Price = _price < minimumCurvePoolEma ? minimumCurvePoolEma : _price;
     }
 
-    /// @notice The ```getCurvePoolToken1EmaPrice``` function gets the price of the second token in the Curve pool (token1)
+    /// @notice The ```getCurvePoolToken1EmaPrice``` function gets the price of the second token
+    ///     in the Curve pool (token1)
     /// @dev Returned in units of the first token (token0)
     /// @return _emaPrice The price of the second token in the Curve pool
     function getCurvePoolToken1EmaPrice() external view returns (uint256 _emaPrice) {

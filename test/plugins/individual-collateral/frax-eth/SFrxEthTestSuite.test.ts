@@ -147,8 +147,6 @@ const makeCollateralFixtureContext = (
     const sfrxEth = (await ethers.getContractAt('IsfrxEth', SFRX_ETH)) as IsfrxEth
     const collateral = await deployCollateral(collateralOpts)
 
-    const p = await collateral.price()
-
     return {
       alice,
       collateral,
