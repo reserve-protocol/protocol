@@ -185,16 +185,16 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: combinedBTCWBTCError,
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '3600', // 1 hr
+        oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
         erc20: maWBTC.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
-      '86400' // 1 hr
+      networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
+      '3600' // 1 hr
     )
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
@@ -237,16 +237,16 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: combinedOracleErrors,
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '3600', // 1 hr
+        oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
         erc20: maStETH.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
-      '86400' // 1 hr
+      networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
+      '3600' // 1 hr
     )
     assetCollDeployments.collateral.maStETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
