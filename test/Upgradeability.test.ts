@@ -248,7 +248,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BasketHandler', async () => {
       const newBasketHandler: BasketHandlerP1 = <BasketHandlerP1>await upgrades.deployProxy(
         BasketHandlerFactory,
-        [main.address, config.warmupPeriod],
+        [main.address, config.warmupPeriod, config.reweightable],
         {
           initializer: 'init',
           kind: 'uups',

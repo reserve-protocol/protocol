@@ -1,5 +1,27 @@
 # Changelog
 
+# 3.2.0
+
+This release gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
+
+### Upgrade Steps -- Required
+
+Upgrade BasketHandler and Distributor
+
+Call `Distributor.cacheComponents()` if this is the first upgrade to a >=3.0.0 token.
+
+### Core Protocol Contracts
+
+New governance param added to `DeploymentParams`: `reweightable`
+
+- `BasketHandler` [+1 slot]
+  - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
+  - Add immutable-after-init `reweightable` bool
+- `Deployer`
+  - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
+- `Distributor`
+  - Minor gas-optimization
+
 # 3.1.0 - Unreleased
 
 ### Upgrade Steps -- Required
@@ -15,17 +37,6 @@ ERC20s that _do_ need to be upgraded:
 Then, call `Broker.cacheComponents()`.
 
 Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
-
-### Core Protocol Contracts
-
-- `BackingManager` [+2 slots]
-  - Replace use of `lotPrice()` with `price()`
-- `BasketHandler`
-  - Remove `lotPrice()`
-- `Broker` [+1 slot]
-  - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
-- `Furnace`
-  - Allow melting while frozen
 
 ## Plugins
 
