@@ -222,7 +222,7 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
 
   const collateral = ctx.collateral as unknown as SFraxEthCollateral
   const clTpRData = await collateral.getCurvePoolToken1EmaPrice()
-  const clTpRDecimals = await collateral.CURVE_POOL_EMA_PRICE_ORACLE_PRECISION()
+  const clTpRDecimals = await collateral.CURVE_POOL_EMA_PRICE_ORACLE_DECIMALS()
 
   const refPerTok = await ctx.sfrxEth.pricePerShare()
 

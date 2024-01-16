@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 interface ICurvePoolEmaPriceOracleWithMinMax {
     function CURVE_POOL_EMA_PRICE_ORACLE() external view returns (address);
 
-    function CURVE_POOL_EMA_PRICE_ORACLE_PRECISION() external view returns (uint256);
+    function CURVE_POOL_EMA_PRICE_ORACLE_DECIMALS() external view returns (uint256);
 
     function getCurvePoolToken1EmaPrice() external view returns (uint256 _emaPrice);
 

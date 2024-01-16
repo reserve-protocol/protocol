@@ -31,7 +31,7 @@ contract CurvePoolEmaPriceOracleWithMinMax is ICurvePoolEmaPriceOracleWithMinMax
     address public immutable CURVE_POOL_EMA_PRICE_ORACLE;
 
     /// @notice Precision of Curve pool price_oracle()
-    uint256 public constant CURVE_POOL_EMA_PRICE_ORACLE_PRECISION = 1e18;
+    uint256 public constant CURVE_POOL_EMA_PRICE_ORACLE_DECIMALS = 18;
 
     /// @notice Maximum price of token1 in token0 units of the EMA
     /// @dev Must match precision of EMA
