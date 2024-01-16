@@ -13,8 +13,7 @@ export const mintSfrxETH = async (
   account: SignerWithAddress,
   amount: BigNumberish,
   recipient: string,
-  chainlinkFeed: MockV3Aggregator,
-  targetPerTokChainlinkFeed: MockV3Aggregator
+  chainlinkFeed: MockV3Aggregator
 ) => {
   await setBalance(account.address, fp(100000))
   const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
@@ -34,9 +33,6 @@ export const mintSfrxETH = async (
   // push chainlink oracle forward so that tryPrice() still works
   const lastAnswer = await chainlinkFeed.latestRoundData()
   await chainlinkFeed.updateAnswer(lastAnswer.answer)
-
-  const lastAnswerTpR = await targetPerTokChainlinkFeed.latestRoundData()
-  await targetPerTokChainlinkFeed.updateAnswer(lastAnswerTpR.answer)
 }
 
 export const mintFrxETH = async (

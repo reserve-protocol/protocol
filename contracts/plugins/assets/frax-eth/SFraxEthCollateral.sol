@@ -7,6 +7,7 @@ import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
 import "../FraxOracleLib.sol";
 import "./vendor/IsfrxEth.sol";
+import "./vendor/CurvePoolEmaPriceOracleWithMinMax.sol";
 
 /**
  * @title SFraxEthCollateral
@@ -16,28 +17,28 @@ import "./vendor/IsfrxEth.sol";
  * tar = ETH
  * UoA = USD
  */
-contract SFraxEthCollateral is AppreciatingFiatCollateral {
+contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOracleWithMinMax {
     using OracleLib for AggregatorV3Interface;
     using FraxOracleLib for FraxAggregatorV3Interface;
     using FixLib for uint192;
 
-    FraxAggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {target/tok}
-    uint48 public immutable targetPerRefChainlinkTimeout;
-
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
-    /// @param _targetPerRefChainlinkFeed {target/tok} price of frxETH in ETH terms
+    /// @param revenueHiding {1e18} percent amount of revenue to hide
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        FraxAggregatorV3Interface _targetPerRefChainlinkFeed,
-        uint48 _targetPerRefChainlinkTimeout
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+        address curvePoolEmaPriceOracleAddress,
+        uint256 _minimumCurvePoolEma,
+        uint256 _maximumCurvePoolEma
+    )
+        AppreciatingFiatCollateral(config, revenueHiding)
+        CurvePoolEmaPriceOracleWithMinMax(
+            curvePoolEmaPriceOracleAddress,
+            _minimumCurvePoolEma,
+            _maximumCurvePoolEma
+        )
+    {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
-        require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
-        require(_targetPerRefChainlinkTimeout != 0, "targetPerRefChainlinkTimeout zero");
-
-        targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
-        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -54,8 +55,8 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {target/ref} Get current market peg ({eth/sfrxeth})
-        pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
+        // {target/ref} Get current market peg ({eth/frxeth})
+        pegPrice = _safeWrap(_getCurvePoolToken1EmaPrice());
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
