@@ -29,7 +29,8 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
         issuanceThrottle: tParams,
         redemptionThrottle: tParams,
-        warmupPeriod: 259200
+        warmupPeriod: 259200,
+        reweightable: true
     });
 }
 
