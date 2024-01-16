@@ -113,7 +113,7 @@ Tmux and run the tests:
 
 ```
 tmux
-bash ./scripts/run-exhaustive-tests.sh
+bash ./scripts/exhaustive-tests/run-exhaustive-tests.sh
 ```
 
 When the test are complete, you'll find the console output in `tmux-1.log` and `tmux-2.log`.
