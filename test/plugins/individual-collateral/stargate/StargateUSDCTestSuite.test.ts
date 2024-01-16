@@ -312,6 +312,7 @@ export const stableOpts = {
   increaseTargetPerRef,
   itClaimsRewards: it, // reward growth not supported in mock
   itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,

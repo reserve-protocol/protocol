@@ -91,6 +91,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   // toggle on or off: tests that focus on a targetPerRef default
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
 
+  // toggle on or off: tests that focus on a targetPerRef defaulting upwards
+  itChecksTargetPerRefDefaultUp: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // toggle on or off: tests that focus on a refPerTok default
   itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
 

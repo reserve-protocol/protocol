@@ -78,6 +78,7 @@ export default function fn<X extends CollateralFixtureContext>(
     getExpectedPrice,
     itClaimsRewards,
     itChecksTargetPerRefDefault,
+    itChecksTargetPerRefDefaultUp,
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
     itChecksNonZeroDefaultThreshold,
@@ -491,7 +492,7 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         )
 
-        itChecksTargetPerRefDefault(
+        itChecksTargetPerRefDefaultUp(
           'enters IFFY state when target-per-ref depegs above high threshold',
           async () => {
             const delayUntilDefault = await collateral.delayUntilDefault()
