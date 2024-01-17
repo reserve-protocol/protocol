@@ -1407,6 +1407,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       auctionSellAmt,
       progression,
     ]: BigNumber[]) {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
       // Factories
       const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
@@ -1478,7 +1479,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Get Trade
       const tradeAddr = await backingManager.trades(sellTok.address)
+      await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
       const currentBlock = bn(await getLatestBlockNumber())
       const toAdvance = progression
         .mul((await trade.endBlock()).sub(currentBlock))
@@ -1495,13 +1498,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
 
       if (bidType.eq(bn(BidType.CALLBACK))) {
-        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-        await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
         await expect(router.connect(addr1).bid(trade.address, addr1.address))
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
-        await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
         await expect(trade.connect(addr1).bid())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
