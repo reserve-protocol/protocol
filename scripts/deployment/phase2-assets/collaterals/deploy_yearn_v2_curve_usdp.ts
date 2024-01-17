@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout } from '../../utils'
+import { priceTimeout } from '../../utils'
 import { YearnV2CurveFiatCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 import {
@@ -59,7 +59,7 @@ async function main() {
       oracleError: fp('0.0025').toString(), // not used but can't be empty
       erc20: networkConfig[chainId].tokens.yvCurveUSDPcrvUSD,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, bn('86400')).toString(), // 24hr -- max of all oracleTimeouts
+      oracleTimeout: '86400', // 24hr -- max of all oracleTimeouts
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.02').toString(), // 2% = max oracleError + 1%
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -73,10 +73,7 @@ async function main() {
         [networkConfig[chainId].chainlinkFeeds.USDP],
         [networkConfig[chainId].chainlinkFeeds.crvUSD],
       ],
-      oracleTimeouts: [
-        [oracleTimeout(chainId, '3600').toString()],
-        [oracleTimeout(chainId, '86400').toString()],
-      ],
+      oracleTimeouts: [['3600'], ['86400']],
       oracleErrors: [[fp('0.01').toString()], [fp('0.005').toString()]],
       lpToken: YVUSDP_LP_TOKEN,
     },
