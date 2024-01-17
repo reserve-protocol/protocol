@@ -214,3 +214,12 @@ jobs:
           FORK_NETWORK: mainnet
           FORK: 1
           PROTO_IMPL: 1
+
+  slither:
+    name: 'Slither'
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip3 install solc-select slither-analyzer
+      - run: solc-select install 0.8.19
+      - run: solc-select use 0.8.19
+      - run: yarn slither
