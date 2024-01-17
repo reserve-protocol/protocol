@@ -2,13 +2,15 @@
 
 # 3.2.0
 
-This release gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
+This release makes bidding in dutch auctions easier for MEV searchers and gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
 
 ### Upgrade Steps
 
-Upgrade BasketHandler and Distributor
+Upgrade BasketHandler and Distributor.
 
-Call `Distributor.cacheComponents()` if this is the first upgrade to a >=3.0.0 token.
+Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTrade` contract address.
+
+If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
 
 ### Core Protocol Contracts
 
