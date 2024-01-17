@@ -3480,9 +3480,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Run test for both bid types
         const bidTypes = [BidType.CALLBACK, BidType.TRANSFER]
         bidTypes.forEach((bidType) => {
-          it(`Should allow one bidder - Bid Type: ${
-            Object.values(BidType)[bidType]
-          }`, async () => {
+          it(`Should allow one bidder - Bid Type: ${Object.values(BidType)[bidType]}`, async () => {
             const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
             await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
             await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
@@ -3724,7 +3722,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             } else if (bidType == BidType.TRANSFER) {
               await trade.connect(addr1).bid()
               expect(await trade.bidder()).to.equal(addr1.address)
-           
             }
 
             expect(await trade.canSettle()).to.equal(false)

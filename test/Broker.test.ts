@@ -1522,7 +1522,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     // ==== Generate the tests ====
 
     const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
-  
+
     // applied to both buy and sell tokens
     const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
 

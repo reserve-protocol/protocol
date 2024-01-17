@@ -59,7 +59,7 @@ export enum TradeKind {
 export enum BidType {
   NONE,
   CALLBACK,
-  TRANSFER
+  TRANSFER,
 }
 
 export const FURNACE_DEST = '0x0000000000000000000000000000000000000001'
