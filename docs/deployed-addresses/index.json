@@ -1,0 +1,36 @@
+{
+  "mainnet": {
+    "components": [
+      "components-2.0.0",
+      "components-2.1.0",
+      "components-3.0.0",
+      "components-3.0.1"
+    ],
+    "assets": [
+      "assets-2.0.0",
+      "assets-2.1.0",
+      "assets-3.0.0",
+      "assets-3.0.1"
+    ],
+    "rtokens": [
+      "eUSD",
+      "ETH+",
+      "hyUSD",
+      "USDC+"
+    ]
+  },
+  "base": {
+    "components": [
+      "components-3.0.0",
+      "components-3.0.1"
+    ],
+    "assets": [
+      "assets-3.0.0",
+      "assets-3.0.1"
+    ],
+    "rtokens": [
+      "hyUSD",
+      "Vaya"
+    ]
+  }
+}

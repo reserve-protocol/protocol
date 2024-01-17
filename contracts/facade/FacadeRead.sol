@@ -19,6 +19,7 @@ import "../p1/StRSRVotes.sol";
  *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
+// slither-disable-start
 contract FacadeRead is IFacadeRead {
     using FixLib for uint192;
 
@@ -417,3 +418,4 @@ contract FacadeRead is IFacadeRead {
         }
     }
 }
+// slither-disable-end

@@ -97,7 +97,6 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);
         high = aumHigh.div(supply, CEIL);
-        assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
     }

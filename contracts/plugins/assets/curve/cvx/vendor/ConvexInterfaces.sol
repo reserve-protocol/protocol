@@ -59,6 +59,7 @@ interface IVoting {
     function vote_for_gauge_weights(address, uint256) external;
 }
 
+//slither-disable-next-line name-reused
 interface IMinter {
     function mint(address) external;
 }
