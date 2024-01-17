@@ -15,6 +15,7 @@ import {
   STRSR_DEST,
   TradeKind,
   ZERO_ADDRESS,
+  BidType,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
@@ -3476,28 +3477,48 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(actual).to.be.gt(bn(0))
         })
 
-        it('Should allow one bidder', async () => {
-          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
-          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        // Run test for both bid types
+        const bidTypes = [BidType.CALLBACK, BidType.TRANSFER]
+        bidTypes.forEach((bidType) => {
+          it(`Should allow one bidder - Bid Type: ${
+            Object.values(BidType)[bidType]
+          }`, async () => {
+            const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
-          const trade = await ethers.getContractAt(
-            'DutchTrade',
-            await rTokenTrader.trades(token0.address)
-          )
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
 
-          await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
-            .connect(addr1)
-            .approve(router.address, constants.MaxUint256)
+            // Bid
+            if (bidType == BidType.CALLBACK) {
+              await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+                .connect(addr1)
+                .approve(router.address, constants.MaxUint256)
 
-          // Bid
-          await router.connect(addr1).bid(trade.address, addr1.address)
-          expect(await trade.bidder()).to.equal(router.address)
-          // Cannot bid once is settled
-          await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.be.revertedWith(
-            'trade not open'
-          )
+              await router.connect(addr1).bid(trade.address, addr1.address)
+              expect(await trade.bidder()).to.equal(router.address)
+              // Cannot bid once is settled
+              await expect(
+                router.connect(addr1).bid(trade.address, addr1.address)
+              ).to.be.revertedWith('trade not open')
+            }
+
+            if (bidType == BidType.TRANSFER) {
+              await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+                .connect(addr1)
+                .approve(trade.address, constants.MaxUint256)
+
+              await trade.connect(addr1).bid()
+              expect(await trade.bidder()).to.equal(addr1.address)
+              // Cannot bid once is settled
+              await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+            }
+          })
         })
+
         it('Trade should initially have bidType 0', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
@@ -3508,7 +3529,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           )
           expect(await trade.bidType()).to.be.eq(0)
         })
-        it('It should support non callback bid', async () => {
+
+        it('It should support non callback bid and perform validations', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
@@ -3525,6 +3547,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await trade.connect(addr1).bid()
           expect(await trade.bidType()).to.be.eq(2)
           expect(await trade.bidder()).to.equal(addr1.address)
+
+          // Should allow one bidder
           await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
         })
 
@@ -3636,63 +3660,90 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           }
         })
 
-        it('Should handle no bid case correctly', async () => {
-          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
-          const trade = await ethers.getContractAt(
-            'DutchTrade',
-            await rTokenTrader.trades(token0.address)
-          )
+        // Perform test for both Bid Types
+        bidTypes.forEach((bidType) => {
+          it(`Should handle no bid case correctly - Bid Type: ${
+            Object.values(BidType)[bidType]
+          }`, async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
 
-          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
-          await expect(
-            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
-          ).to.be.revertedWith('auction over')
+            await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
+            await expect(
+              trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+            ).to.be.revertedWith('auction over')
 
-          await expect(router.connect(addr1).bid(trade.address, addr1.address)).be.revertedWith(
-            'auction over'
-          )
+            // Bid
+            if (bidType == BidType.CALLBACK) {
+              const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+              await expect(router.connect(addr1).bid(trade.address, addr1.address)).be.revertedWith(
+                'auction over'
+              )
+            } else if (bidType == BidType.TRANSFER) {
+              await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
+            }
 
-          // Should be able to settle
-          await expect(trade.settle()).to.be.revertedWith('only origin can settle')
-          await expect(rTokenTrader.settleTrade(token0.address))
-            .to.emit(rTokenTrader, 'TradeSettled')
-            .withArgs(trade.address, token0.address, rToken.address, 0, 0)
+            // Should be able to settle
+            await expect(trade.settle()).to.be.revertedWith('only origin can settle')
+            await expect(rTokenTrader.settleTrade(token0.address))
+              .to.emit(rTokenTrader, 'TradeSettled')
+              .withArgs(trade.address, token0.address, rToken.address, 0, 0)
 
-          // Should NOT start another auction, since caller was not DutchTrade
-          expect(await backingManager.tradesOpen()).to.equal(0)
+            // Should NOT start another auction, since caller was not DutchTrade
+            expect(await backingManager.tradesOpen()).to.equal(0)
+          })
         })
 
-        it('Should bid at exactly endBlock() and not launch another auction', async () => {
-          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-          await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
-          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
-          const trade = await ethers.getContractAt(
-            'DutchTrade',
-            await rTokenTrader.trades(token0.address)
-          )
-          await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
+        // Perform test for both bid types
+        bidTypes.forEach((bidType) => {
+          it(`Should bid at exactly endBlock() and not launch another auction - Bid Type: ${
+            Object.values(BidType)[bidType]
+          }`, async () => {
+            const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+            await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+            await rToken.connect(addr1).approve(trade.address, constants.MaxUint256)
+            await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
 
-          // Snipe auction at 0s left
-          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-          await router.connect(addr1).bid(trade.address, addr1.address)
-          expect(await trade.canSettle()).to.equal(false)
-          expect(await trade.status()).to.equal(2) // Status.CLOSED
-          expect(await trade.bidder()).to.equal(router.address)
-          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+            // Snipe auction at 0s left
+            await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
 
-          const expected = await dutchBuyAmount(
-            fp(auctionLength).div(auctionLength), // last possible second
-            rTokenAsset.address,
-            collateral0.address,
-            issueAmount,
-            config.maxTradeSlippage
-          )
-          expect(await rTokenTrader.tradesOpen()).to.equal(0)
-          expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
-          expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
+            // Bid
+            if (bidType == BidType.CALLBACK) {
+              await router.connect(addr1).bid(trade.address, addr1.address)
+              expect(await trade.bidder()).to.equal(router.address)
+            } else if (bidType == BidType.TRANSFER) {
+              await trade.connect(addr1).bid()
+              expect(await trade.bidder()).to.equal(addr1.address)
+           
+            }
+
+            expect(await trade.canSettle()).to.equal(false)
+            expect(await trade.status()).to.equal(2) // Status.CLOSED
+            expect(await token0.balanceOf(addr1.address)).to.equal(
+              initialBal.sub(issueAmount.div(4))
+            )
+
+            const expected = await dutchBuyAmount(
+              fp(auctionLength).div(auctionLength), // last possible second
+              rTokenAsset.address,
+              collateral0.address,
+              issueAmount,
+              config.maxTradeSlippage
+            )
+            expect(await rTokenTrader.tradesOpen()).to.equal(0)
+            expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
+            expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
+          })
         })
 
         it('Should return lot() in {qSellTok} and sellAmount() in {sellTok}', async () => {
