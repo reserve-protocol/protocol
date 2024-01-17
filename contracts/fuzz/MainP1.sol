@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/trading/DutchTradeRouter.sol";
 
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
@@ -28,6 +29,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     // Mock-specific singleton contracts in the deployment
     IMarketMock public marketMock;
 
+    DutchTradeRouter public dutchRouter;
+
     EnumerableSet.AddressSet internal aliasedAddrs;
     mapping(address => address) public aliases; // The map of senders
 
@@ -37,6 +40,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     address[] public constAddrs; // constant addresses, for "addrById"
 
     uint48 public deployedAt;
+
 
     function _msgSender() internal view virtual override returns (address) {
         return translateAddr(msg.sender);
@@ -142,6 +146,9 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         rTokenTrader = new RevenueTraderP1Fuzz();
         furnace = new FurnaceP1Fuzz();
         broker = new BrokerP1Fuzz();
+
+        // Deploy dutch trade router
+        dutchRouter = new DutchTradeRouter();
 
         constAddrs.push(address(rsr));
         constAddrs.push(address(rToken));

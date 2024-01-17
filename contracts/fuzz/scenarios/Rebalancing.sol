@@ -250,39 +250,22 @@ contract RebalancingScenario {
     // ================ mutators ================
 
     // ==== user functions: token ops ====
-    function transfer(
-        uint8 userID,
-        uint8 tokenID,
-        uint256 amount
-    ) public asSender {
+    function transfer(uint8 userID, uint8 tokenID, uint256 amount) public asSender {
         IERC20Metadata token = IERC20Metadata(address(main.someToken(tokenID)));
         token.transfer(main.someAddr(userID), amount);
     }
 
-    function approve(
-        uint8 spenderID,
-        uint8 tokenID,
-        uint256 amount
-    ) public asSender {
+    function approve(uint8 spenderID, uint8 tokenID, uint256 amount) public asSender {
         IERC20 token = main.someToken(tokenID);
         token.approve(main.someAddr(spenderID), amount);
     }
 
-    function transferFrom(
-        uint8 fromID,
-        uint8 toID,
-        uint8 tokenID,
-        uint256 amount
-    ) public asSender {
+    function transferFrom(uint8 fromID, uint8 toID, uint8 tokenID, uint256 amount) public asSender {
         IERC20 token = main.someToken(tokenID);
         token.transferFrom(main.someAddr(fromID), main.someAddr(toID), amount);
     }
 
-    function mint(
-        uint8 userID,
-        uint8 tokenID,
-        uint256 amount
-    ) public {
+    function mint(uint8 userID, uint8 tokenID, uint256 amount) public {
         IERC20Metadata token = IERC20Metadata(address(main.someToken(tokenID)));
         require(
             address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
@@ -292,11 +275,7 @@ contract RebalancingScenario {
         require(token.totalSupply() <= 1e57, "Do not mint 'unreasonably' many tokens");
     }
 
-    function burn(
-        uint8 userID,
-        uint8 tokenID,
-        uint256 amount
-    ) public {
+    function burn(uint8 userID, uint8 tokenID, uint256 amount) public {
         IERC20 token = main.someToken(tokenID);
         require(
             address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
@@ -379,10 +358,9 @@ contract RebalancingScenario {
     }
 
     // unregisterAsset:  Only BEFORE Rebalancing
-    function unregisterAsset(uint8 tokenID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-    {
+    function unregisterAsset(
+        uint8 tokenID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         IERC20 erc20 = main.someToken(tokenID);
         IAssetRegistry reg = main.assetRegistry();
         require(reg.isRegistered(erc20), "erc20 not registered");
@@ -415,21 +393,18 @@ contract RebalancingScenario {
     }
 
     // do issuance without doing allowances first
-    function justIssue(uint256 amount)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
+    function justIssue(
+        uint256 amount
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) asSender {
         _saveRTokenRate();
         main.rToken().issue(amount);
     }
 
     // do issuance without doing allowances first
-    function justIssueTo(uint256 amount, uint8 recipientID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
+    function justIssueTo(
+        uint256 amount,
+        uint8 recipientID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
 
@@ -437,11 +412,9 @@ contract RebalancingScenario {
     }
 
     // do allowances as needed, and *then* do issuance
-    function issue(uint256 amount)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
+    function issue(
+        uint256 amount
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) asSender {
         _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
@@ -456,11 +429,10 @@ contract RebalancingScenario {
     }
 
     // do allowances as needed, and *then* do issuance
-    function issueTo(uint256 amount, uint8 recipientID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
+    function issueTo(
+        uint256 amount,
+        uint8 recipientID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
@@ -475,20 +447,17 @@ contract RebalancingScenario {
         main.rToken().issueTo(recipient, amount);
     }
 
-    function redeem(uint256 amount)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
+    function redeem(
+        uint256 amount
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) asSender {
         _saveRTokenRate();
         main.rToken().redeem(amount);
     }
 
-    function redeemTo(uint256 amount, uint8 recipientID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
+    function redeemTo(
+        uint256 amount,
+        uint8 recipientID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount);
@@ -515,8 +484,8 @@ contract RebalancingScenario {
         }
 
         (address[] memory erc20sOut, uint256[] memory amountsOut) = main
-        .basketHandler()
-        .quoteCustomRedemption(redeemableBasketNonces, portions, amount);
+            .basketHandler()
+            .quoteCustomRedemption(redeemableBasketNonces, portions, amount);
 
         main.rToken().redeemCustom(
             recipient,
@@ -576,13 +545,7 @@ contract RebalancingScenario {
 
     // ==== keeper functions ====
     // swapRegisterAsset:  Only impact refPerTok() and targetPerRef() BEFORE Rebalancing
-    function updatePrice(
-        uint256 seedID,
-        uint192 a,
-        uint192 b,
-        uint192 c,
-        uint192 d
-    ) public {
+    function updatePrice(uint256 seedID, uint192 a, uint192 b, uint192 c, uint192 d) public {
         IERC20 erc20 = main.someToken(seedID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
@@ -670,11 +633,7 @@ contract RebalancingScenario {
     }
 
     // do revenue distribution without doing allowances first
-    function justDistributeRevenue(
-        uint256 tokenID,
-        uint8 fromID,
-        uint256 amount
-    ) public asSender {
+    function justDistributeRevenue(uint256 tokenID, uint8 fromID, uint256 amount) public asSender {
         IERC20 token = main.someToken(tokenID);
         // distribute now uses msg.sender (2/1/23), so spoof from caller
         address fromUser = main.someAddr(fromID);
@@ -684,11 +643,7 @@ contract RebalancingScenario {
     }
 
     // do revenue distribution granting allowance first - only RSR or RToken
-    function distributeRevenue(
-        uint8 which,
-        uint8 fromID,
-        uint256 amount
-    ) public {
+    function distributeRevenue(uint8 which, uint8 fromID, uint256 amount) public {
         IERC20 token;
 
         which %= 2;
@@ -758,10 +713,10 @@ contract RebalancingScenario {
     IERC20[] internal backingForPrimeBasket;
     uint192[] internal targetAmtsForPrimeBasket;
 
-    function pushBackingForPrimeBasket(uint256 tokenID, uint256 seed)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-    {
+    function pushBackingForPrimeBasket(
+        uint256 tokenID,
+        uint256 seed
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         backingForPrimeBasket.push(main.someToken(tokenID));
         targetAmtsForPrimeBasket.push(uint192(between(1, 1000e18, seed)));
         // 1000e18 is BH.MAX_TARGET_AMT
@@ -808,10 +763,9 @@ contract RebalancingScenario {
     // Backup basket
     mapping(bytes32 => IERC20[]) internal backingForBackup;
 
-    function pushBackingForBackup(uint256 tokenID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-    {
+    function pushBackingForBackup(
+        uint256 tokenID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         IERC20 token = main.someToken(tokenID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(token)) return;
@@ -823,18 +777,16 @@ contract RebalancingScenario {
         }
     }
 
-    function popBackingForBackup(uint8 targetNameID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-    {
+    function popBackingForBackup(
+        uint8 targetNameID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         bytes32 targetName = someTargetName(targetNameID);
         if (backingForBackup[targetName].length > 0) backingForBackup[targetName].pop();
     }
 
-    function setBackupConfig(uint8 targetNameID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-    {
+    function setBackupConfig(
+        uint8 targetNameID
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
         bytes32 targetName = someTargetName(targetNameID);
         bh.setBackupConfig(
@@ -891,11 +843,7 @@ contract RebalancingScenario {
         TestIRToken(address(main.rToken())).setRedemptionThrottleParams(params);
     }
 
-    function setDistribution(
-        uint256 seedID,
-        uint16 rTokenDist,
-        uint16 rsrDist
-    ) public {
+    function setDistribution(uint256 seedID, uint16 rTokenDist, uint16 rsrDist) public {
         RevenueShare memory dist = RevenueShare(rTokenDist, rsrDist);
         main.distributor().setDistribution(main.someAddr(seedID), dist);
     }
@@ -1258,18 +1206,27 @@ contract RebalancingScenario {
         return true;
     }
 
-    function bidOpenDutchAuction() external mayEndRebalancing {
+    function bidOpenDutchAuction(uint256 bidTypeSeed) external mayEndRebalancing {
         BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
         DutchTrade trade = DutchTrade(address(broker.lastOpenedTrade()));
-        _bidDutchAuction(trade);
+        _bidDutchAuction(trade, bidTypeSeed);
     }
 
-    function _bidDutchAuction(DutchTrade trade) internal {
+    function _bidDutchAuction(DutchTrade trade, uint256 bidTypeSeed) internal {
         uint256 bidAmount = trade.bidAmount(uint48(block.number));
         ERC20Fuzz buy = ERC20Fuzz(address(trade.buy()));
         buy.mint(address(this), bidAmount);
-        buy.approve(address(trade), bidAmount);
-        trade.bid();
+
+        bidTypeSeed %= 2;
+        if (bidTypeSeed == 0) {
+            //TRANSFER
+            buy.approve(address(trade), bidAmount);
+            trade.bid();
+        } else {
+            // CALLBACK
+            buy.approve(address(main.dutchRouter()), bidAmount);
+            main.dutchRouter().bid(trade, address(this));
+        }
     }
 
     function echidna_dutchRebalancingProperties() external returns (bool) {
@@ -1312,8 +1269,8 @@ contract RebalancingScenario {
                 trade = DutchTrade(address(broker.lastOpenedTrade()));
 
                 if (broker.tradeKindSet(address(trade)) == uint256(TradeKind.DUTCH_AUCTION)) {
-                    // Bid & settle the auction
-                    _bidDutchAuction(trade);
+                    // Bid & settle the auction - Use transfer method
+                    _bidDutchAuction(trade, 1);
                     require(trade.status() == TradeStatus.CLOSED, "trade not closed");
 
                     // Check Range
