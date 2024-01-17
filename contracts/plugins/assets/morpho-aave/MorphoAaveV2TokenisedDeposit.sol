@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import { IMorpho, IMorphoRewardsDistributor, IMorphoUsersLens } from "./IMorpho.sol";
+import { IMorpho, IMorphoUsersLens } from "./IMorpho.sol";
 import { MorphoTokenisedDeposit, MorphoTokenisedDepositConfig } from "./MorphoTokenisedDeposit.sol";
 
 struct MorphoAaveV2TokenisedDepositConfig {
