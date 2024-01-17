@@ -183,6 +183,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
+
+        trackStatus();
     }
 
     /// Switch the basket, only callable directly by governance or after a default
@@ -199,7 +201,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         require(
             main.hasRole(OWNER, _msgSender()) ||
-                (status() == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
+                (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );
         _switchBasket();
@@ -377,6 +379,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// Should not revert
     /// lowLow should be nonzero when the asset might be worth selling
+    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
     /// @return lotLow {UoA/BU} The lower end of the lot price estimate
     /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
     // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)

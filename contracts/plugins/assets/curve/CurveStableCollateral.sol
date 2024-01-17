@@ -66,7 +66,6 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);
         high = aumHigh.div(supply, CEIL);
-        assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
     }
@@ -88,7 +87,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
         // uint192(<) is equivalent to Fix.lt
         if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
+            exposedReferencePrice = underlyingRefPerTok;
             markStatus(CollateralStatus.DISABLED);
         } else if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;

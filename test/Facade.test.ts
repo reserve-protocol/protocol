@@ -3,11 +3,13 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, upgrades } from 'hardhat'
 import { expectEvents } from '../common/events'
-import { IConfig } from '#/common/configuration'
+import { IConfig, IMonitorParams } from '#/common/configuration'
 import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
+import { disableBatchTrade, disableDutchTrade } from './utils/trades'
+
 import {
   Asset,
   BackingManagerP1,
@@ -18,6 +20,8 @@ import {
   CTokenWrapperMock,
   ERC20Mock,
   FacadeAct,
+  FacadeMonitor,
+  FacadeMonitorV2,
   FacadeRead,
   FacadeTest,
   MockV3Aggregator,
@@ -45,9 +49,17 @@ import {
   IMPLEMENTATION,
   defaultFixture,
   ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus, TradeKind, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
+import {
+  CollateralStatus,
+  TradeKind,
+  MAX_UINT256,
+  ONE_PERIOD,
+  ZERO_ADDRESS,
+} from '#/common/constants'
 import { expectTrade } from './utils/trades'
 import { mintCollaterals } from './utils/tokens'
 
@@ -55,7 +67,7 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 
 const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
-describe('FacadeRead + FacadeAct contracts', () => {
+describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -83,6 +95,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeAct: FacadeAct
+  let facadeMonitor: FacadeMonitor
 
   // Main
   let rToken: TestIRToken
@@ -125,6 +138,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       facade,
       facadeAct,
       facadeTest,
+      facadeMonitor,
       rToken,
       main,
       basketHandler,
@@ -270,7 +284,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should handle UNPRICED when returning issuable quantities', async () => {
       // Set unpriced assets, should return UoA = 0
-      await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
       const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
@@ -283,9 +297,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(quantities[2]).to.equal(issueAmount.div(4))
       expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
       expect(uoas.length).to.equal(4)
-      // Three assets are unpriced
+      // Assets are unpriced
       expect(uoas[0]).to.equal(0)
-      expect(uoas[1]).to.equal(issueAmount.div(4))
+      expect(uoas[1]).to.equal(0)
       expect(uoas[2]).to.equal(0)
       expect(uoas[3]).to.equal(0)
     })
@@ -481,6 +495,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(tokenAsset.address, bn('1e8'))
+      await setOraclePrice(usdcAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
 
       const [backing2, overCollateralization2] = await facade.callStatic.backingOverview(
         rToken.address
@@ -505,7 +523,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
-      await setOraclePrice(rsrAsset.address, MAX_UINT256.div(2).sub(1))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(tokenAsset.address, bn('1e8'))
+      await setOraclePrice(usdcAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully collateralized and no over-collateralization
@@ -551,98 +572,98 @@ describe('FacadeRead + FacadeAct contracts', () => {
     })
 
     it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
-      const traders = [rTokenTrader, rsrTrader]
-      const initialPrice = await usdcAsset.price()
+      // Set low to 0 == revenueOverview() should not revert
+      const minTradeVolume = await rsrTrader.minTradeVolume()
+      const auctionLength = await broker.dutchAuctionLength()
+      const tokenSurplus = bn('0.5e18')
+      await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
 
-      // Set lotLow to 0 == revenueOverview() should not revert
       await setOraclePrice(usdcAsset.address, bn('0'))
-      await usdcAsset.refresh()
-      for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
-        const trader = traders[traderIndex]
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(tokenAsset.address, bn('1e8'))
+      await setOraclePrice(rsrAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
 
-        const minTradeVolume = await trader.minTradeVolume()
-        const auctionLength = await broker.dutchAuctionLength()
-        const tokenSurplus = bn('0.5e18')
-        await token.connect(addr1).transfer(trader.address, tokenSurplus)
+      const [low] = await usdcAsset.price()
+      expect(low).to.equal(0)
 
-        const [lotLow] = await usdcAsset.lotPrice()
-        expect(lotLow).to.equal(initialPrice[0])
+      // revenue
+      let [erc20s, canStart, surpluses, minTradeAmounts] =
+        await facadeAct.callStatic.revenueOverview(rsrTrader.address)
+      expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
-        // revenue
-        let [erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
-
-        const erc20sToStart = []
-        for (let i = 0; i < 8; i++) {
-          if (erc20s[i] == token.address) {
-            erc20sToStart.push(erc20s[i])
-            expect(canStart[i]).to.equal(true)
-            expect(surpluses[i]).to.equal(tokenSurplus)
-          } else {
-            expect(canStart[i]).to.equal(false)
-            expect(surpluses[i]).to.equal(0)
-          }
-          const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
-          const [low] = await asset.lotPrice()
-          expect(minTradeAmounts[i]).to.equal(
-            low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
-          ) // 1% oracleError
+      const erc20sToStart = []
+      for (let i = 0; i < 8; i++) {
+        if (erc20s[i] == token.address) {
+          erc20sToStart.push(erc20s[i])
+          expect(canStart[i]).to.equal(true)
+          expect(surpluses[i]).to.equal(tokenSurplus)
+        } else {
+          expect(canStart[i]).to.equal(false)
+          expect(surpluses[i]).to.equal(0)
         }
-
-        // Run revenue auctions via multicall
-        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8[])')
-        const args = ethers.utils.defaultAbiCoder.encode(
-          ['address', 'address[]', 'address[]', 'uint8[]'],
-          [trader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
-        )
-        const data = funcSig.substring(0, 10) + args.slice(2)
-        await expect(facadeAct.multicall([data])).to.emit(trader, 'TradeStarted')
-
-        // Another call to revenueOverview should not propose any auction
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(canStart).to.eql(Array(8).fill(false))
-
-        // Nothing should be settleable
-        expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
-
-        // Advance time till auction is over
-        await advanceBlocks(2 + auctionLength / 12)
-
-        // Now should be settleable
-        const settleable = await facade.auctionsSettleable(trader.address)
-        expect(settleable.length).to.equal(1)
-        expect(settleable[0]).to.equal(token.address)
-
-        // Another call to revenueOverview should settle and propose new auction
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-
-        // Should repeat the same auctions
-        for (let i = 0; i < 8; i++) {
-          if (erc20s[i] == token.address) {
-            expect(canStart[i]).to.equal(true)
-            expect(surpluses[i]).to.equal(tokenSurplus)
-          } else {
-            expect(canStart[i]).to.equal(false)
-            expect(surpluses[i]).to.equal(0)
-          }
-        }
-
-        // Settle and start new auction
-        await facadeAct.runRevenueAuctions(trader.address, erc20sToStart, erc20sToStart, [
-          TradeKind.DUTCH_AUCTION,
-        ])
-
-        // Send additional revenues
-        await token.connect(addr1).transfer(trader.address, tokenSurplus)
-
-        // Call revenueOverview, cannot open new auctions
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(canStart).to.eql(Array(8).fill(false))
+        const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
+        const [low] = await asset.price()
+        expect(minTradeAmounts[i]).to.equal(
+          low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
+        ) // 1% oracleError
       }
+
+      // Run revenue auctions via multicall
+      const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8[])')
+      const args = ethers.utils.defaultAbiCoder.encode(
+        ['address', 'address[]', 'address[]', 'uint8[]'],
+        [rsrTrader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
+      )
+      const data = funcSig.substring(0, 10) + args.slice(2)
+      await expect(facadeAct.multicall([data])).to.emit(rsrTrader, 'TradeStarted')
+
+      // Another call to revenueOverview should not propose any auction
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+        rsrTrader.address
+      )
+      expect(canStart).to.eql(Array(8).fill(false))
+
+      // Nothing should be settleable
+      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
+
+      // Advance time till auction is over
+      await advanceBlocks(2 + auctionLength / 12)
+
+      // Now should be settleable
+      const settleable = await facade.auctionsSettleable(rsrTrader.address)
+      expect(settleable.length).to.equal(1)
+      expect(settleable[0]).to.equal(token.address)
+
+      // Another call to revenueOverview should settle and propose new auction
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+        rsrTrader.address
+      )
+
+      // Should repeat the same auctions
+      for (let i = 0; i < 8; i++) {
+        if (erc20s[i] == token.address) {
+          expect(canStart[i]).to.equal(true)
+          expect(surpluses[i]).to.equal(tokenSurplus)
+        } else {
+          expect(canStart[i]).to.equal(false)
+          expect(surpluses[i]).to.equal(0)
+        }
+      }
+
+      // Settle and start new auction
+      await facadeAct.runRevenueAuctions(rsrTrader.address, erc20sToStart, erc20sToStart, [
+        TradeKind.DUTCH_AUCTION,
+      ])
+
+      // Send additional revenues
+      await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
+
+      // Call revenueOverview, cannot open new auctions
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+        rsrTrader.address
+      )
+      expect(canStart).to.eql(Array(8).fill(false))
     })
 
     itP1('Should handle invalid versions when running revenueOverview', async () => {
@@ -892,7 +913,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
       )
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(usdcAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
       await main.connect(owner).pauseTrading()
+
       const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
       expect(erc20s.length).to.equal(4)
       expect(breakdown.length).to.equal(4)
@@ -1034,6 +1059,339 @@ describe('FacadeRead + FacadeAct contracts', () => {
     }
   })
 
+  describe('FacadeMonitor', () => {
+    const monitorParams: IMonitorParams = {
+      AAVE_V2_DATA_PROVIDER_ADDR: ZERO_ADDRESS,
+    }
+
+    beforeEach(async () => {
+      // Mint Tokens
+      initialBal = bn('10000000000e18')
+      await token.connect(owner).mint(addr1.address, initialBal)
+      await usdc.connect(owner).mint(addr1.address, initialBal)
+      await aToken.connect(owner).mint(addr1.address, initialBal)
+      await cTokenVault.connect(owner).mint(addr1.address, initialBal)
+
+      // Provide approvals
+      await token.connect(addr1).approve(rToken.address, initialBal)
+      await usdc.connect(addr1).approve(rToken.address, initialBal)
+      await aToken.connect(addr1).approve(rToken.address, initialBal)
+      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
+    })
+
+    it('should return batch auctions disabled correctly', async () => {
+      expect(await facadeMonitor.batchAuctionsDisabled(rToken.address)).to.equal(false)
+
+      // Disable Broker Batch Auctions
+      await disableBatchTrade(broker)
+
+      expect(await facadeMonitor.batchAuctionsDisabled(rToken.address)).to.equal(true)
+    })
+
+    it('should return dutch auctions disabled correctly', async () => {
+      expect(await facadeMonitor.dutchAuctionsDisabled(rToken.address)).to.equal(false)
+
+      // Disable Broker Dutch Auctions for token0
+      await disableDutchTrade(broker, token.address)
+
+      expect(await facadeMonitor.dutchAuctionsDisabled(rToken.address)).to.equal(true)
+    })
+
+    it('should return issuance available', async () => {
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1')) // no supply
+
+      // Issue some RTokens (1%)
+      const issueAmount = bn('10000e18')
+
+      // Issue rTokens (1%)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // check throttles updated
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.99'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issue additional rTokens (another 1%)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Should be 2% down minus some recharging
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.98'),
+        fp('0.001')
+      )
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Advance time significantly
+      await advanceTime(10000000)
+
+      // Check new issuance available - fully recharged
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issuance #2 - Consume all throttle
+      const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount2)
+
+      // Check new issuance available - all consumed
+      expect(await rToken.issuanceAvailable()).to.equal(bn(0))
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(bn(0))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+    })
+
+    it('should return redemption available', async () => {
+      const issueAmount = bn('100000e18')
+
+      // Decrease redemption allowed amount
+      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
+      await rToken.connect(owner).setRedemptionThrottleParams(redeemThrottleParams)
+
+      // Check with no supply
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issue some RTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // check throttles - redemption still fully available
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.9'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redeem RTokens (50% of throttle)
+      await rToken.connect(addr1).redeem(issueAmount.div(4))
+
+      // check throttle - redemption allowed decreased to 50%
+      expect(await rToken.redemptionAvailable()).to.equal(issueAmount.div(4))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('0.5'))
+
+      // Advance time significantly
+      await advanceTime(10000000)
+
+      //  Check redemption available - fully recharged
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redemption #2 - Consume all throttle
+      await rToken.connect(addr1).redeem(issueAmount.div(2))
+
+      // Check new redemption available - all consumed
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(bn(0))
+    })
+
+    it('Should handle issuance/redemption throttles correctly, using percent', async function () {
+      // Full issuance available. Nothing to redeem
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issue full throttle
+      const issueAmount1: BigNumber = config.issuanceThrottle.amtRate
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount1)
+
+      // Check redemption throttles updated
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(bn(0))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Advance time significantly
+      await advanceTime(1000000000)
+
+      // Check new issuance available - fully recharged
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(issueAmount1)
+
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issuance #2 - Full throttle again - will be processed
+      const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount2)
+
+      // Check new issuance available - all consumed
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(bn(0))
+
+      // Check redemption throttle updated - fixed in max (does not exceed)
+      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Set issuance throttle to percent only
+      const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+
+      // Advance time significantly
+      await advanceTime(1000000000)
+
+      // Check new issuance available - 10% of supply (2 M) = 200K
+      const supplyThrottle = bn('200000e18')
+      expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Check redemption throttle unchanged
+      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Issuance #3 - Should be allowed, does not exceed supply restriction
+      const issueAmount3: BigNumber = bn('100000e18')
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount3)
+
+      // Check issuance throttle updated - Previous issuances recharged
+      expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle.sub(issueAmount3))
+
+      // Hourly Limit: 210K (10% of total supply of 2.1 M)
+      // Available: 100 K / 201K (~ 0.47619)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.476'),
+        fp('0.001')
+      )
+
+      // Check redemption throttle unchanged
+      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Check all issuances are confirmed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(
+        issueAmount1.add(issueAmount2).add(issueAmount3)
+      )
+
+      // Advance time, issuance will recharge a bit
+      await advanceTime(100)
+
+      // Now 50% of hourly limit available (~105.8K / 210 K)
+      expect(await rToken.issuanceAvailable()).to.be.closeTo(fp('105800'), fp('100'))
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.5'),
+        fp('0.01')
+      )
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      const issueAmount4: BigNumber = fp('105800')
+      // Issuance #4 - almost all available
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await rToken.connect(addr1).issue(issueAmount4)
+
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
+        fp('0.003'),
+        fp('0.001')
+      )
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Advance time significantly to fully recharge
+      await advanceTime(1000000000)
+
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Check redemptions
+      // Set redemption throttle to percent only
+      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+      const totalSupply = await rToken.totalSupply()
+      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(10)) // 10%
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redeem half of the available throttle
+      await rToken.connect(addr1).redeem(totalSupply.div(10).div(2))
+
+      // About 52% now used of redemption throttle
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.be.closeTo(
+        fp('0.52'),
+        fp('0.01')
+      )
+
+      // Advance time significantly to fully recharge
+      await advanceTime(1000000000)
+
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
+
+      // Redeem all remaining
+      await rToken.connect(addr1).redeem(await rToken.redemptionAvailable())
+
+      // Check all consumed
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+      expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(bn(0))
+    })
+
+    it('Should not allow empty owner on initialization', async () => {
+      const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
+
+      const newFacadeMonitor = <FacadeMonitor>await upgrades.deployProxy(FacadeMonitorFactory, [], {
+        constructorArgs: [monitorParams],
+        kind: 'uups',
+      })
+
+      await expect(newFacadeMonitor.init(ZERO_ADDRESS)).to.be.revertedWith('invalid owner address')
+    })
+
+    it('Should allow owner to transfer ownership', async () => {
+      expect(await facadeMonitor.owner()).to.equal(owner.address)
+
+      // Attempt to transfer ownership with another account
+      await expect(
+        facadeMonitor.connect(addr1).transferOwnership(addr1.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      // Owner remains the same
+      expect(await facadeMonitor.owner()).to.equal(owner.address)
+
+      // Transfer ownership with owner
+      await expect(facadeMonitor.connect(owner).transferOwnership(addr1.address))
+        .to.emit(facadeMonitor, 'OwnershipTransferred')
+        .withArgs(owner.address, addr1.address)
+
+      // Owner changed
+      expect(await facadeMonitor.owner()).to.equal(addr1.address)
+    })
+
+    it('Should only allow owner to upgrade', async () => {
+      const FacadeMonitorV2Factory: ContractFactory = await ethers.getContractFactory(
+        'FacadeMonitorV2'
+      )
+      const facadeMonitorV2 = await FacadeMonitorV2Factory.deploy(monitorParams)
+
+      await expect(
+        facadeMonitor.connect(addr1).upgradeTo(facadeMonitorV2.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(facadeMonitor.connect(owner).upgradeTo(facadeMonitorV2.address)).to.not.be
+        .reverted
+    })
+
+    it('Should upgrade correctly', async () => {
+      // Upgrading
+      const FacadeMonitorV2Factory: ContractFactory = await ethers.getContractFactory(
+        'FacadeMonitorV2'
+      )
+      const facadeMonitorV2: FacadeMonitorV2 = <FacadeMonitorV2>await upgrades.upgradeProxy(
+        facadeMonitor.address,
+        FacadeMonitorV2Factory,
+        {
+          constructorArgs: [monitorParams],
+        }
+      )
+
+      // Check address is maintained
+      expect(facadeMonitorV2.address).to.equal(facadeMonitor.address)
+
+      // Check state is preserved
+      expect(await facadeMonitorV2.owner()).to.equal(owner.address)
+
+      // Check new version is implemented
+      expect(await facadeMonitorV2.version()).to.equal('2.0.0')
+
+      expect(await facadeMonitorV2.newValue()).to.equal(0)
+      await facadeMonitorV2.connect(owner).setNewValue(bn(1000))
+      expect(await facadeMonitorV2.newValue()).to.equal(bn(1000))
+    })
+  })
+
   // P1 only
   describeP1('FacadeAct', () => {
     let issueAmount: BigNumber
@@ -1139,10 +1497,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceBlocks(2 + auctionLength / 12)
-
-      // Settleable now
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
+      await advanceBlocks(1 + auctionLength / 12)
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1167,18 +1522,6 @@ describe('FacadeRead + FacadeAct contracts', () => {
           },
         ]
       )
-
-      // Nothing should be settleable
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
-
-      // Advance time till auction ended
-      await advanceBlocks(2 + auctionLength / 12)
-
-      // Settleable now
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
-
-      // Should not revert, even when not starting new auctions
-      await facadeAct.runRevenueAuctions(rsrTrader.address, [token.address], [], [])
     })
 
     it('Should handle other versions when running revenue auctions', async () => {

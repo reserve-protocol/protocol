@@ -9,6 +9,7 @@ import {
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../typechain'
+import { pushOracleForward } from '../../../utils/oracles'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
@@ -127,6 +128,9 @@ all.forEach((curr: FTokenEnumeration) => {
       { gasLimit: 2000000000 }
     )
     await collateral.deployed()
+
+    // Push forward chainlink feed
+    await pushOracleForward(opts.chainlinkFeed!)
 
     // sometimes we are trying to test a negative test case and we want this to fail silently
     // fortunately this syntax fails silently because our tools are terrible
@@ -252,6 +256,7 @@ all.forEach((curr: FTokenEnumeration) => {
     itChecksTargetPerRefDefault: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
+    itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
     resetFork,
     collateralName: curr.testName,

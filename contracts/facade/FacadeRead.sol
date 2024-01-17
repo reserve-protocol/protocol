@@ -19,6 +19,7 @@ import "../p1/StRSRVotes.sol";
  *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
+// slither-disable-start
 contract FacadeRead is IFacadeRead {
     using FixLib for uint192;
 
@@ -33,7 +34,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         // {BU}
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
@@ -74,7 +74,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         reg.refresh();
-        main.furnace().melt();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
@@ -120,7 +119,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         uint256 supply = rTok.totalSupply();
 
@@ -202,7 +200,7 @@ contract FacadeRead is IFacadeRead {
         IBasketHandler basketHandler = rToken.main().basketHandler();
 
         // solhint-disable-next-line no-empty-blocks
-        try rToken.main().furnace().melt() {} catch {}
+        try rToken.main().furnace().melt() {} catch {} // <3.1.0 RTokens may revert while frozen
 
         (erc20s, deposits) = basketHandler.quote(FIX_ONE, CEIL);
 
@@ -241,7 +239,6 @@ contract FacadeRead is IFacadeRead {
     {
         IMain main = rToken.main();
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         erc20s = main.assetRegistry().erc20s();
         balances = new uint256[](erc20s.length);
@@ -421,3 +418,4 @@ contract FacadeRead is IFacadeRead {
         }
     }
 }
+// slither-disable-end

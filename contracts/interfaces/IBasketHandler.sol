@@ -133,12 +133,14 @@ interface IBasketHandler is IComponent {
     function basketsHeldBy(address account) external view returns (BasketRange memory);
 
     /// Should not revert
+    /// low should be nonzero when BUs are worth selling
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert
     /// lotLow should be nonzero if a BU could be worth selling
+    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);

@@ -7,6 +7,8 @@ import { formatUnits, parseUnits } from 'ethers/lib/utils'
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { bn } from '#/common/numbers'
+import { getResetFork } from '../helpers'
+import { FORK_BLOCK } from './constants'
 
 type ITokenSymbol = keyof ITokens
 const networkConfigToUse = networkConfig[31337]
@@ -178,7 +180,8 @@ const execTestForToken = ({
     type ITestContext = ReturnType<typeof beforeEachFn> extends Promise<infer U> ? U : never
     let context: ITestContext
 
-    // const resetFork = getResetFork(17591000)
+    before(getResetFork(FORK_BLOCK))
+
     beforeEach(async () => {
       context = await loadFixture(beforeEachFn)
     })

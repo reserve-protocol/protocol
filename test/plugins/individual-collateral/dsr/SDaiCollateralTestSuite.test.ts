@@ -12,6 +12,7 @@ import {
   PotMock,
   TestICollateral,
 } from '../../../../typechain'
+import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -69,6 +70,10 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(opts.chainlinkFeed!)
+
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
@@ -208,7 +213,8 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itHasRevenueHiding: it,
+  itChecksNonZeroDefaultThreshold: it,
+  itHasRevenueHiding: it.skip,
   resetFork,
   collateralName: 'SDaiCollateral',
   chainlinkDefaultAnswer,

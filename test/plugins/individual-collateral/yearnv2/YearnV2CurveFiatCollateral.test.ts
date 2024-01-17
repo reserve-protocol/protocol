@@ -21,6 +21,7 @@ import {
   CRV_USD_USD_FEED,
   CRV_USD_ORACLE_TIMEOUT,
   CRV_USD_ORACLE_ERROR,
+  PRICE_PER_SHARE_HELPER,
   USDP,
   USDP_USD_FEED,
   USDP_ORACLE_TIMEOUT,
@@ -141,7 +142,8 @@ tests.forEach((test: CurveFiatTest) => {
         oracleTimeouts: opts.oracleTimeouts,
         oracleErrors: opts.oracleErrors,
         lpToken: opts.lpToken,
-      }
+      },
+      PRICE_PER_SHARE_HELPER
     )
     await collateral.deployed()
 

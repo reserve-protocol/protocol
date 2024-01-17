@@ -15,6 +15,7 @@ import "../interfaces/IFacadeRead.sol";
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely.
  *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
  */
+// slither-disable-start
 contract FacadeAct is IFacadeAct, Multicall {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -116,11 +117,11 @@ contract FacadeAct is IFacadeAct, Multicall {
             }
 
             surpluses[i] = erc20s[i].balanceOf(address(revenueTrader));
-            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
-            if (lotLow == 0) continue;
+            (uint192 low, ) = reg.assets[i].price(); // {UoA/tok}
+            if (low == 0) continue;
 
             // {qTok} = {UoA} / {UoA/tok}
-            minTradeAmounts[i] = minTradeVolume.safeDiv(lotLow, FLOOR).shiftl_toUint(
+            minTradeAmounts[i] = minTradeVolume.safeDiv(low, FLOOR).shiftl_toUint(
                 int8(reg.assets[i].erc20Decimals())
             );
 
@@ -286,3 +287,4 @@ contract FacadeAct is IFacadeAct, Multicall {
         revert("unrecognized version");
     }
 }
+// slither-disable-end

@@ -220,7 +220,7 @@ yarn deploy:run:confirm --network mainnet
 
 This checks that:
 
-- For each asset, confirm `lotPrice()` and `price()` are close.
+- For each asset, confirm:
 - `main.tradingPaused()` and `main.issuancePaused()` are true
 - `timelockController.minDelay()` is > 1e12
 

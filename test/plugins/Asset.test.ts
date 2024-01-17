@@ -7,11 +7,14 @@ import {
   advanceBlocks,
   advanceTime,
   getLatestBlockTimestamp,
+  getLatestBlockNumber,
   setNextBlockTimestamp,
 } from '../utils/time'
-import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  expectDecayedPrice,
+  expectExactPrice,
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
@@ -26,12 +29,15 @@ import {
   CTokenWrapperMock,
   ERC20Mock,
   FiatCollateral,
+  GnosisMock,
   IAssetRegistry,
   InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
+  TestIFurnace,
   TestIRToken,
   USDCMock,
   UnpricedAssetMock,
@@ -42,10 +48,12 @@ import {
   IMPLEMENTATION,
   Implementation,
   ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
   VERSION,
 } from '../fixtures'
+import { getTrade } from '../utils/trades'
 import { useEnv } from '#/utils/env'
 import snapshotGasCost from '../utils/snapshotGasCost'
 
@@ -86,10 +94,15 @@ describe('Assets contracts #fast', () => {
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let basketHandler: TestIBasketHandler
+  let furnace: TestIFurnace
 
   // Factory
   let AssetFactory: ContractFactory
   let RTokenAssetFactory: ContractFactory
+
+  // Gnosis
+  let gnosis: GnosisMock
 
   const amt = fp('1e4')
 
@@ -109,7 +122,10 @@ describe('Assets contracts #fast', () => {
       basket,
       assetRegistry,
       backingManager,
+      basketHandler,
       config,
+      gnosis,
+      furnace,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -260,34 +276,51 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
+      await setOraclePrice(collateral0.address, bn('0'))
+      await setOraclePrice(collateral1.address, bn('0'))
 
-      // Should be unpriced
+      // Fallback prices should be initial prices
+      await expectExactPrice(compAsset.address, compInitPrice)
+      await expectExactPrice(rsrAsset.address, rsrInitPrice)
+      await expectExactPrice(aaveAsset.address, aaveInitPrice)
+      await expectExactPrice(rTokenAsset.address, rTokenInitPrice)
+
+      // Advance past oracle timeout
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await setOraclePrice(compAsset.address, bn('0'))
+      await setOraclePrice(aaveAsset.address, bn('0'))
+      await setOraclePrice(rsrAsset.address, bn('0'))
+      await setOraclePrice(collateral0.address, bn('0'))
+      await setOraclePrice(collateral1.address, bn('0'))
+      await compAsset.refresh()
+      await rsrAsset.refresh()
+      await aaveAsset.refresh()
+      await collateral0.refresh()
+      await collateral1.refresh()
+
+      // Prices should be decaying
+      await expectDecayedPrice(compAsset.address)
+      await expectDecayedPrice(rsrAsset.address)
+      await expectDecayedPrice(aaveAsset.address)
+      const p = await rTokenAsset.price()
+      expect(p[0]).to.be.gt(0)
+      expect(p[0]).to.be.lt(rTokenInitPrice[0])
+      expect(p[1]).to.be.gt(rTokenInitPrice[1])
+      expect(p[1]).to.be.lt(MAX_UINT192)
+
+      // After price timeout, should be unpriced
+      await advanceTime(PRICE_TIMEOUT.toString())
+      await setOraclePrice(compAsset.address, bn('0'))
+      await setOraclePrice(aaveAsset.address, bn('0'))
+      await setOraclePrice(rsrAsset.address, bn('0'))
+      await setOraclePrice(collateral0.address, bn('0'))
+      await setOraclePrice(collateral1.address, bn('0'))
+
+      // Should be unpriced now
       await expectUnpriced(rsrAsset.address)
       await expectUnpriced(compAsset.address)
       await expectUnpriced(aaveAsset.address)
-
-      // Fallback prices should be initial prices
-      let [lotLow, lotHigh] = await compAsset.lotPrice()
-      expect(lotLow).to.eq(compInitPrice[0])
-      expect(lotHigh).to.eq(compInitPrice[1])
-      ;[lotLow, lotHigh] = await rsrAsset.lotPrice()
-      expect(lotLow).to.eq(rsrInitPrice[0])
-      expect(lotHigh).to.eq(rsrInitPrice[1])
-      ;[lotLow, lotHigh] = await aaveAsset.lotPrice()
-      expect(lotLow).to.eq(aaveInitPrice[0])
-      expect(lotHigh).to.eq(aaveInitPrice[1])
-
-      // Update values of underlying tokens of RToken to 0
-      await setOraclePrice(collateral0.address, bn(0))
-      await setOraclePrice(collateral1.address, bn(0))
-
-      // RTokenAsset should be unpriced now
       await expectUnpriced(rTokenAsset.address)
-
-      // Should have initial lot price
-      ;[lotLow, lotHigh] = await rTokenAsset.lotPrice()
-      expect(lotLow).to.eq(rTokenInitPrice[0])
-      expect(lotHigh).to.eq(rTokenInitPrice[1])
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
@@ -317,12 +350,6 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
-      // Should have lot price, equal to price when feed works OK
-      const [lowPrice, highPrice] = await rTokenAsset.price()
-      const [lotLow, lotHigh] = await rTokenAsset.lotPrice()
-      expect(lotLow).to.equal(lowPrice)
-      expect(lotHigh).to.equal(highPrice)
     })
 
     it('Should calculate trade min correctly', async () => {
@@ -349,38 +376,62 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
-    it('Should be unpriced if price is stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT.toString())
+    it('Should remain at saved price if oracle is stale', async () => {
+      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
 
-      // Check unpriced
-      await expectUnpriced(rsrAsset.address)
-      await expectUnpriced(compAsset.address)
-      await expectUnpriced(aaveAsset.address)
+      // lastSave should not be block timestamp after refresh
+      await rsrAsset.refresh()
+      await compAsset.refresh()
+      await aaveAsset.refresh()
+      expect(await rsrAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await compAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await aaveAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+
+      // Check price
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, false)
     })
 
-    it('Should be unpriced in case of invalid timestamp', async () => {
+    it('Should remain at saved price in case of invalid timestamp', async () => {
       await setInvalidOracleTimestamp(rsrAsset.address)
       await setInvalidOracleTimestamp(compAsset.address)
       await setInvalidOracleTimestamp(aaveAsset.address)
 
-      // Check unpriced
-      await expectUnpriced(rsrAsset.address)
-      await expectUnpriced(compAsset.address)
-      await expectUnpriced(aaveAsset.address)
+      // lastSave should not be block timestamp after refresh
+      await rsrAsset.refresh()
+      await compAsset.refresh()
+      await aaveAsset.refresh()
+      expect(await rsrAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await compAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await aaveAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+
+      // Check price is still at saved price
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, false)
     })
 
-    it('Should be unpriced in case of invalid answered round', async () => {
+    it('Should remain at saved price in case of invalid answered round', async () => {
       await setInvalidOracleAnsweredRound(rsrAsset.address)
       await setInvalidOracleAnsweredRound(compAsset.address)
       await setInvalidOracleAnsweredRound(aaveAsset.address)
 
-      // Check unpriced
-      await expectUnpriced(rsrAsset.address)
-      await expectUnpriced(compAsset.address)
-      await expectUnpriced(aaveAsset.address)
+      // lastSave should not be block timestamp after refresh
+      await rsrAsset.refresh()
+      await compAsset.refresh()
+      await aaveAsset.refresh()
+      expect(await rsrAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await compAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await aaveAsset.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+
+      // Check price is still at saved price
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, false)
     })
 
-    it('Should handle reverting edge cases for RToken', async () => {
+    it('Should handle reverting edge cases for RTokenAsset', async () => {
       // Swap one of the collaterals for an invalid one
       const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
       const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
@@ -390,7 +441,7 @@ describe('Assets contracts #fast', () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral0.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -415,7 +466,7 @@ describe('Assets contracts #fast', () => {
       await expect(rTokenAsset.price()).to.be.reverted
     })
 
-    it('Regression test -- Should handle unpriced collateral for RToken', async () => {
+    it('Regression test -- Should handle unpriced collateral for RTokenAsset', async () => {
       // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
 
       // Swap one of the collaterals for an invalid one
@@ -427,7 +478,7 @@ describe('Assets contracts #fast', () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral0.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -442,6 +493,115 @@ describe('Assets contracts #fast', () => {
 
       // Check RToken is unpriced
       await expectUnpriced(rTokenAsset.address)
+    })
+
+    it('Regression test -- RTokenAsset.refresh() should refresh everything', async () => {
+      // AssetRegistry should refresh
+      const lastRefreshed = await assetRegistry.lastRefresh()
+      await rTokenAsset.refresh()
+      expect(await assetRegistry.lastRefresh()).to.be.gt(lastRefreshed)
+
+      // Furnace should melt
+      const lastPayout = await furnace.lastPayout()
+      await advanceTime(12)
+      await rTokenAsset.refresh()
+      expect(await furnace.lastPayout()).to.be.gt(lastPayout)
+
+      // Should clear oracle cache
+      await rTokenAsset.forceUpdatePrice()
+      let [, cachedAtTime] = await rTokenAsset.cachedOracleData()
+      expect(cachedAtTime).to.be.gt(0)
+      await rTokenAsset.refresh()
+      ;[, cachedAtTime] = await rTokenAsset.cachedOracleData()
+      expect(cachedAtTime).to.eq(0)
+    })
+
+    it('Should handle tokens being out on trade for RTokenAsset', async () => {
+      // Summary:
+      // - Run a dutch auction that does not fill
+      // - Run a batch auction that fills for partial volume
+      // - Run a dutch auction that fills for full volume
+
+      const low0 = fp('0.99')
+      const low1 = bn('975344098811881188') // after a 50% basket change
+      const low2 = bn('975343128415841584') // after batch auction at half volume
+      const low3 = bn('975560049627103964') // after dutch auction at full volume
+
+      // Price should be [$0.99, $1.01] to start
+      await expectExactPrice(rTokenAsset.address, [low0, fp('1.01')])
+
+      // After 50% basket change, expected trading should decrease the lower price to ~$0.9753
+      // Upper price remains $1.01 because of uncertainty around how trading will go
+      await basketHandler
+        .connect(wallet)
+        .setPrimeBasket([token.address, usdc.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(wallet).refreshBasket()
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // After launching a trade token price should not change
+      // Regression -- I've confirmed the lower price drops to ~$0.7352 when not tracking balances out on trade
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Settling trade without bidding should not change price
+      let trade = await ethers.getContractAt(
+        'DutchTrade',
+        await backingManager.trades(aToken.address)
+      )
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()))
+      await expect(backingManager.settleTrade(aToken.address)).to.emit(
+        backingManager,
+        'TradeSettled'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Launching the trade a second time, this time Batch Auction, should not change price
+      await setNextBlockTimestamp((await trade.endTime()) + 13)
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Bid in Gnosis for half volume at even prices
+      const t = await getTrade(backingManager, aToken.address)
+      const sellAmt = (await t.initBal()).div(2) // half volume
+      await token.connect(wallet).approve(gnosis.address, sellAmt)
+      await gnosis.placeBid(0, {
+        bidder: wallet.address,
+        sellAmount: sellAmt,
+        buyAmount: sellAmt,
+      })
+      await advanceTime(config.batchAuctionLength.toNumber())
+      await expect(backingManager.settleTrade(aToken.address)).not.to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      await expectExactPrice(rTokenAsset.address, [low2, fp('1.01')])
+
+      // Starting a 3rd auction should not change balances
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low2, fp('1.01')])
+
+      // Settle 3rd auction for full volume
+      trade = await ethers.getContractAt('DutchTrade', await backingManager.trades(cToken.address))
+      const buyAmt = await trade.bidAmount(await trade.endBlock())
+      await usdc.approve(trade.address, buyAmt)
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+      await expect(trade.bid()).to.emit(backingManager, 'TradeSettled')
+      expect(await backingManager.tradesOpen()).to.equal(1) // launches another trade!
+      await expectExactPrice(rTokenAsset.address, [low3, bn('1007427552565834095')]) // high end starts to fall
     })
 
     it('Should be able to refresh saved prices', async () => {
@@ -494,7 +654,7 @@ describe('Assets contracts #fast', () => {
           ORACLE_ERROR,
           rsr.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT
+          ORACLE_TIMEOUT_PRE_BUFFER
         )
       )
 
@@ -533,37 +693,35 @@ describe('Assets contracts #fast', () => {
       expect(await unpricedRSRAsset.lastSave()).to.equal(currBlockTimestamp)
     })
 
-    it('Should not revert on refresh if unpriced', async () => {
+    it('Should not revert on refresh if stale', async () => {
       // Check initial prices - use RSR as example
-      const currBlockTimestamp: number = await getLatestBlockTimestamp()
-      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      const startBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
       const [prevLowPrice, prevHighPrice] = await rsrAsset.price()
       expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
       expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
-      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+      expect(await rsrAsset.lastSave()).to.equal(startBlockTimestamp)
 
       // Set invalid oracle
       await setInvalidOracleTimestamp(rsrAsset.address)
 
-      // Check unpriced - uses still previous prices
-      await expectUnpriced(rsrAsset.address)
-      let [lowPrice, highPrice] = await rsrAsset.price()
-      expect(lowPrice).to.equal(bn(0))
-      expect(highPrice).to.equal(MAX_UINT192)
-      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
-      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
-      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
-
-      // Perform refresh
+      // Check price - uses still previous prices
       await rsrAsset.refresh()
-
-      // Check still unpriced - no update on prices/timestamp
-      await expectUnpriced(rsrAsset.address)
-      ;[lowPrice, highPrice] = await rsrAsset.price()
-      expect(lowPrice).to.equal(bn(0))
-      expect(highPrice).to.equal(MAX_UINT192)
+      let [lowPrice, highPrice] = await rsrAsset.price()
+      expect(lowPrice).to.equal(prevLowPrice)
+      expect(highPrice).to.equal(prevHighPrice)
       expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
       expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(startBlockTimestamp)
+
+      // Check price - no update on prices/timestamp
+      await rsrAsset.refresh()
+      ;[lowPrice, highPrice] = await rsrAsset.price()
+      expect(lowPrice).to.equal(prevLowPrice)
+      expect(highPrice).to.equal(prevHighPrice)
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(startBlockTimestamp)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas', async () => {
@@ -581,79 +739,82 @@ describe('Assets contracts #fast', () => {
           ORACLE_ERROR,
           rsr.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT
+          ORACLE_TIMEOUT_PRE_BUFFER
         )
       )
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
       await expect(invalidRSRAsset.price()).to.be.reverted
-      await expect(invalidRSRAsset.lotPrice()).to.be.reverted
       await expect(invalidRSRAsset.refresh()).to.be.reverted
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidRSRAsset.price()).to.be.reverted
-      await expect(invalidRSRAsset.lotPrice()).to.be.reverted
       await expect(invalidRSRAsset.refresh()).to.be.reverted
     })
 
-    it('Should handle lot price correctly', async () => {
+    it('Should handle price decay correctly', async () => {
       await rsrAsset.refresh()
 
-      // Check lot prices - use RSR as example
-      const currBlockTimestamp: number = await getLatestBlockTimestamp()
-      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      // Check prices - use RSR as example
+      const startBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
       const [prevLowPrice, prevHighPrice] = await rsrAsset.price()
       expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
       expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
-      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
-
-      // Lot price equals price when feed works OK
-      const [lotLowPrice1, lotHighPrice1] = await rsrAsset.lotPrice()
-      expect(lotLowPrice1).to.equal(prevLowPrice)
-      expect(lotHighPrice1).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(startBlockTimestamp)
 
       // Set invalid oracle
       await setInvalidOracleTimestamp(rsrAsset.address)
 
       // Check unpriced - uses still previous prices
-      await expectUnpriced(rsrAsset.address)
       const [lowPrice, highPrice] = await rsrAsset.price()
-      expect(lowPrice).to.equal(bn(0))
-      expect(highPrice).to.equal(MAX_UINT192)
+      expect(lowPrice).to.equal(prevLowPrice)
+      expect(highPrice).to.equal(prevHighPrice)
       expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
       expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
-      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+      expect(await rsrAsset.lastSave()).to.equal(startBlockTimestamp)
 
-      // At first lot price doesn't decrease
-      const [lotLowPrice2, lotHighPrice2] = await rsrAsset.lotPrice()
-      expect(lotLowPrice2).to.eq(lotLowPrice1)
-      expect(lotHighPrice2).to.eq(lotHighPrice1)
+      // At first price doesn't decrease
+      const [lowPrice2, highPrice2] = await rsrAsset.price()
+      expect(lowPrice2).to.eq(lowPrice)
+      expect(highPrice2).to.eq(highPrice)
 
       // Advance past oracleTimeout
       await advanceTime(await rsrAsset.oracleTimeout())
 
-      // Now lot price decreases
-      const [lotLowPrice3, lotHighPrice3] = await rsrAsset.lotPrice()
-      expect(lotLowPrice3).to.be.lt(lotLowPrice2)
-      expect(lotHighPrice3).to.be.lt(lotHighPrice2)
+      // Now price widens
+      const [lowPrice3, highPrice3] = await rsrAsset.price()
+      expect(lowPrice3).to.be.lt(lowPrice2)
+      expect(highPrice3).to.be.gt(highPrice2)
 
-      // Advance block, lot price keeps decreasing
+      // Advance block, price keeps widening
       await advanceBlocks(1)
-      const [lotLowPrice4, lotHighPrice4] = await rsrAsset.lotPrice()
-      expect(lotLowPrice4).to.be.lt(lotLowPrice3)
-      expect(lotHighPrice4).to.be.lt(lotHighPrice3)
+      const [lowPrice4, highPrice4] = await rsrAsset.price()
+      expect(lowPrice4).to.be.lt(lowPrice3)
+      expect(highPrice4).to.be.gt(highPrice3)
 
-      // Advance blocks beyond PRICE_TIMEOUT
+      // Advance blocks beyond PRICE_TIMEOUT; price should be [O, FIX_MAX]
       await advanceTime(PRICE_TIMEOUT.toNumber())
 
       // Lot price returns 0 once time elapses
-      const [lotLowPrice5, lotHighPrice5] = await rsrAsset.lotPrice()
-      expect(lotLowPrice5).to.be.lt(lotLowPrice4)
-      expect(lotHighPrice5).to.be.lt(lotHighPrice4)
-      expect(lotLowPrice5).to.be.equal(bn(0))
-      expect(lotHighPrice5).to.be.equal(bn(0))
+      const [lowPrice5, highPrice5] = await rsrAsset.price()
+      expect(lowPrice5).to.be.lt(lowPrice4)
+      expect(highPrice5).to.be.gt(highPrice4)
+      expect(lowPrice5).to.be.equal(bn(0))
+      expect(highPrice5).to.be.equal(MAX_UINT192)
+    })
+
+    it('lotPrice (deprecated) is equal to price()', async () => {
+      for (const asset of [rsrAsset, compAsset, aaveAsset, rTokenAsset]) {
+        const lotPrice = await asset.lotPrice()
+        const price = await asset.price()
+        expect(price.length).to.equal(2)
+        expect(lotPrice.length).to.equal(price.length)
+        expect(lotPrice[0]).to.equal(price[0])
+        expect(lotPrice[1]).to.equal(price[1])
+      }
     })
   })
 
@@ -724,9 +885,9 @@ describe('Assets contracts #fast', () => {
 
       it('refresh() after full price timeout', async () => {
         await advanceTime((await rsrAsset.priceTimeout()) + (await rsrAsset.oracleTimeout()))
-        const lotP = await rsrAsset.lotPrice()
-        expect(lotP[0]).to.equal(0)
-        expect(lotP[1]).to.equal(0)
+        const p = await rsrAsset.price()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(MAX_UINT192)
       })
     })
   })

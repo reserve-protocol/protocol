@@ -14,9 +14,22 @@ struct MorphoTokenisedDepositConfig {
 }
 
 abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
+    struct MorphoTokenisedDepositRewardsAccountingState {
+        uint256 totalAccumulatedBalance;
+        uint256 totalPaidOutBalance;
+        uint256 pendingBalance;
+        uint256 availableBalance;
+        uint256 lastSync;
+    }
+
+    uint256 private constant PAYOUT_PERIOD = 7 days;
+
+    IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
     address public immutable poolToken;
     address public immutable underlying;
+
+    MorphoTokenisedDepositRewardsAccountingState private state;
 
     constructor(MorphoTokenisedDepositConfig memory config)
         RewardableERC4626Vault(
@@ -29,16 +42,45 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         underlying = address(config.underlyingERC20);
         morphoController = config.morphoController;
         poolToken = address(config.poolToken);
+        rewardsDistributor = config.rewardsDistributor;
+        state.lastSync = uint48(block.timestamp);
     }
 
-    function rewardTokenBalance(address account) external returns (uint256 claimableRewards) {
+    function sync() external {
         _claimAndSyncRewards();
-        _syncAccount(account);
-        claimableRewards = accumulatedRewards[account] - claimedRewards[account];
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _claimAssetRewards() internal virtual override {}
+    function _claimAssetRewards() internal override {
+        // First pay out any pendingBalances, over a 7200 block period
+        uint256 timeDelta = block.timestamp - state.lastSync;
+        if (timeDelta == 0) {
+            return;
+        }
+        if (timeDelta > PAYOUT_PERIOD) {
+            timeDelta = PAYOUT_PERIOD;
+        }
+        uint256 amtToPayOut = (state.pendingBalance * ((timeDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
+        state.pendingBalance -= amtToPayOut;
+        state.availableBalance += amtToPayOut;
+
+        // If we detect any new balances add it to pending and reset payout period
+        uint256 totalAccumulated = state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
+        uint256 newlyAccumulated = totalAccumulated - state.totalAccumulatedBalance;
+        state.totalAccumulatedBalance = totalAccumulated;
+        state.pendingBalance += newlyAccumulated;
+
+        state.lastSync = block.timestamp;
+    }
+
+    function _rewardTokenBalance() internal view override returns (uint256) {
+        return state.availableBalance;
+    }
+
+    function _distributeReward(address account, uint256 amt) internal override {
+        state.totalPaidOutBalance += uint256(amt);
+        state.availableBalance -= uint256(amt);
+        SafeERC20.safeTransfer(rewardToken, account, amt);
+    }
 
     function getMorphoPoolBalance(address poolToken) internal view virtual returns (uint256);
 

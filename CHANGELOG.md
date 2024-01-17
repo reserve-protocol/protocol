@@ -1,5 +1,39 @@
 # Changelog
 
+# 3.1.0 - Unreleased
+
+### Upgrade Steps -- Required
+
+Upgrade all core contracts and _all_ assets. Most ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
+
+ERC20s that _do_ need to be upgraded:
+
+- Morpho
+- Convex
+- CompoundV3
+
+Then, call `Broker.cacheComponents()`.
+
+Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
+
+### Core Protocol Contracts
+
+- `BackingManager` [+2 slots]
+  - Replace use of `lotPrice()` with `price()`
+- `BasketHandler`
+  - Remove `lotPrice()`
+- `Broker` [+1 slot]
+  - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
+- `Furnace`
+  - Allow melting while frozen
+
+## Plugins
+
+### Assets
+
+- Remove `lotPrice()`
+- Alter `price().high` to decay upwards to 3x over the price timeout
+
 # 3.0.1
 
 ### Upgrade steps
@@ -7,6 +41,8 @@
 Update `BackingManager`, both `RevenueTraders` (rTokenTrader/rsrTrader), and call `Broker.setBatchTradeImplementation()` passing in the new `GnosisTrade` address.
 
 # 3.0.0
+
+Bump solidity version to 0.8.19
 
 ### Upgrade Steps
 
@@ -38,9 +74,7 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
 ### Core Protocol Contracts
 
 - `AssetRegistry` [+1 slot]
-  Summary: StRSR contract need to know when refresh() was last called
-  - # Add last refresh timestamp tracking and expose via `lastRefresh()` getter
-    Summary: Other component contracts need to know when refresh() was last called
+  Summary: Other component contracts need to know when refresh() was last called
   - Add `lastRefresh()` timestamp getter
   - Add `size()` getter for number of registered assets
   - Require asset is SOUND on registration
@@ -180,10 +214,10 @@ Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` a
 - `FacadeRead`
   Summary: Add new data summary views frontends may be interested in
 
-  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
-  - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
-  - Remove `traderBalances(..)`
-  - Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
+- Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
+- Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
+- Remove `traderBalances(..)`
+- Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
 
 - `FacadeWrite`
   Summary: More expressive and fine-grained control over the set of pausers and freezers
