@@ -816,7 +816,7 @@ const scenarioSpecificTests = () => {
       // Settle trades - set some seed > 0
       await scenario.pushSeedForTrades(fp(1000000))
       await scenario.bidOpenDutchAuction(bidType)
-      
+
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
