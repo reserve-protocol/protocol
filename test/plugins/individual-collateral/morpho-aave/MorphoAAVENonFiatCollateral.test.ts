@@ -54,7 +54,6 @@ const makeAaveNonFiatCollateralTestSuite = (
         morphoLens: configToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: configToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: configToUse.tokens.MORPHO!,
       })
       opts.erc20 = wrapperMock.address
@@ -105,7 +104,6 @@ const makeAaveNonFiatCollateralTestSuite = (
         morphoLens: configToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: configToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: configToUse.tokens.MORPHO!,
       })
 
