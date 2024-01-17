@@ -41,7 +41,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
     uint48 public deployedAt;
 
-
     function _msgSender() internal view virtual override returns (address) {
         return translateAddr(msg.sender);
     }
