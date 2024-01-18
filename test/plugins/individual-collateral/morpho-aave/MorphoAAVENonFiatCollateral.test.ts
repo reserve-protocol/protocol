@@ -210,6 +210,7 @@ const makeAaveNonFiatCollateralTestSuite = (
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificStatusTests = () => {}
+
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const beforeEachRewardsTest = async () => {}
   const opts = {
