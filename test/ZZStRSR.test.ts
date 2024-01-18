@@ -1,5 +1,6 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, ContractFactory } from 'ethers'
@@ -534,6 +535,24 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should not unstake if frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('frozen or trading paused')
+    })
+
+    it('Should emit UnstakingStarted event with draftEra -- regression test 01/18/2024', async () => {
+      const amount: BigNumber = bn('1000e18')
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      // Seize half the RSR, bumping the draftEra because the withdrawal queue is empty
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(amount.div(2))
+      })
+
+      // Unstake
+      await expect(stRSR.connect(addr1).unstake(amount))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, 2, addr1.address, amount.div(2), amount, anyValue)
     })
 
     it('Should create Pending withdrawal when unstaking', async () => {
@@ -1277,6 +1296,23 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         beforeEach(async () => {
           stRSRP1 = await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+        })
+
+        it('Should read draftEra', async () => {
+          // Empty withdrawal queue
+          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
+          await stRSR.connect(addr1).withdraw(addr1.address, 1)
+
+          // Eras should begin same
+          expect(await stRSRP1.currentEra()).to.equal(1)
+          expect(await stRSRP1.getDraftEra()).to.equal(1)
+
+          // seizeRSR should bump draftEra but not stakes era
+          await whileImpersonating(backingManager.address, async (signer) => {
+            await stRSR.connect(signer).seizeRSR(amount1)
+          })
+          expect(await stRSRP1.currentEra()).to.equal(1)
+          expect(await stRSRP1.getDraftEra()).to.equal(2)
         })
 
         it('Should read draftRSR', async () => {
