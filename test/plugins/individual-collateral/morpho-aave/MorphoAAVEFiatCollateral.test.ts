@@ -54,7 +54,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
       opts.erc20 = wrapperMock.address
@@ -104,7 +103,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
 
@@ -213,7 +211,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: defaultCollateralOpts.underlyingToken!,
         poolToken: defaultCollateralOpts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
 

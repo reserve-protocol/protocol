@@ -65,7 +65,6 @@ const execTestForToken = ({
           poolToken: poolToken.address,
           morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
           morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
-          rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
           rewardToken: networkConfigToUse.tokens.MORPHO!,
         }),
       }

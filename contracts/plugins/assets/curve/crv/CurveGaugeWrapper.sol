@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../../erc20/RewardableERC20Wrapper.sol";
 
+//slither-disable-next-line name-reused
 interface IMinter {
     /// Mint CRV to msg.sender based on their prorata share of the provided gauge
     function mint(address gaugeAddr) external;

@@ -3,12 +3,11 @@ pragma solidity 0.8.19;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import { IMorpho, IMorphoRewardsDistributor, IMorphoUsersLens } from "./IMorpho.sol";
+import { IMorpho, IMorphoUsersLens } from "./IMorpho.sol";
 import { RewardableERC4626Vault } from "../erc20/RewardableERC4626Vault.sol";
 
 struct MorphoTokenisedDepositConfig {
     IMorpho morphoController;
-    IMorphoRewardsDistributor rewardsDistributor;
     IERC20Metadata underlyingERC20;
     IERC20Metadata poolToken;
     ERC20 rewardToken;
@@ -26,7 +25,6 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
 
     uint256 private constant PAYOUT_PERIOD = 7 days;
 
-    IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
     address public immutable poolToken;
     address public immutable underlying;
@@ -44,7 +42,6 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         underlying = address(config.underlyingERC20);
         morphoController = config.morphoController;
         poolToken = address(config.poolToken);
-        rewardsDistributor = config.rewardsDistributor;
         state.lastSync = uint48(block.timestamp);
     }
 

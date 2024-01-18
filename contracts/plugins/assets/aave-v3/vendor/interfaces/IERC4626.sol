@@ -11,6 +11,7 @@ pragma solidity ^0.8.10;
  *
  * _Available since v4.7._
  */
+//slither-disable-next-line name-reused
 interface IERC4626 {
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
 
