@@ -13,6 +13,7 @@ import {
   TradeStatus,
   ZERO_ADDRESS,
   ONE_ADDRESS,
+  BidType,
 } from '../common/constants'
 import { bn, fp, divCeil, shortString, toBNDecimals } from '../common/numbers'
 import {
@@ -1376,6 +1377,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     if (!(Implementation.P1 && useEnv('EXTREME'))) return // prevents bunch of skipped tests
 
     async function runScenario([
+      bidType,
       sellTokDecimals,
       buyTokDecimals,
       auctionSellAmt,
@@ -1471,9 +1473,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
 
-      await expect(router.connect(addr1).bid(trade.address, addr1.address))
-        .to.emit(backingManager, 'TradeSettled')
-        .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      if (bidType.eq(bn(BidType.CALLBACK))) {
+        await expect(router.connect(addr1).bid(trade.address, addr1.address))
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      } else if (bidType.eq(bn(BidType.TRANSFER))) {
+        await expect(trade.connect(addr1).bid())
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      }
 
       // Check balances
       expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))
@@ -1488,6 +1496,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     }
 
     // ==== Generate the tests ====
+
+    const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
     const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
@@ -1506,7 +1516,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // total cases is 5 * 5 * 3 * 6 = 450
     }
 
-    const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, progression)
+    const paramList = cartesianProduct(bidTypes, decimals, decimals, auctionSellAmts, progression)
 
     const numCases = paramList.length.toString()
     paramList.forEach((params, index) => {
