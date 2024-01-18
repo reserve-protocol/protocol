@@ -274,17 +274,17 @@ contract FacadeRead is IFacadeRead {
         returns (Pending[] memory unstakings)
     {
         StRSRP1Votes stRSR = StRSRP1Votes(address(rToken.main().stRSR()));
-        uint256 era = stRSR.currentEra();
-        uint256 left = stRSR.firstRemainingDraft(era, account);
-        uint256 right = stRSR.draftQueueLen(era, account);
+        uint256 draftEra = stRSR.getDraftEra();
+        uint256 left = stRSR.firstRemainingDraft(draftEra, account);
+        uint256 right = stRSR.draftQueueLen(draftEra, account);
 
         unstakings = new Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
-            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(era, account, i + left);
+            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(draftEra, account, i + left);
 
             uint192 diff = drafts;
             if (i + left > 0) {
-                (uint192 prevDrafts, ) = stRSR.draftQueues(era, account, i + left - 1);
+                (uint192 prevDrafts, ) = stRSR.draftQueues(draftEra, account, i + left - 1);
                 diff = drafts - prevDrafts;
             }
 
