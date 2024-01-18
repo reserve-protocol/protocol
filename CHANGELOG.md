@@ -26,6 +26,13 @@ Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
   - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
 - `Furnace`
   - Allow melting while frozen
+- `StRSR`
+  - Use correct era in `UnstakingStarted` event
+
+### Facades
+
+- `FacadeRead`
+  - Add `draftEra` argument to `pendingUnstakings(..)`
 
 ## Plugins
 
