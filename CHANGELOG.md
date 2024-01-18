@@ -28,6 +28,7 @@ Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
   - Allow melting while frozen
 - `StRSR`
   - Use correct era in `UnstakingStarted` event
+  - Expose `draftEra` via `getDraftEra()` view
 
 ### Facades
 
