@@ -1298,23 +1298,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           stRSRP1 = await ethers.getContractAt('StRSRP1Votes', stRSR.address)
         })
 
-        it('Should read draftEra', async () => {
-          // Empty withdrawal queue
-          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
-          await stRSR.connect(addr1).withdraw(addr1.address, 1)
-
-          // Eras should begin same
-          expect(await stRSRP1.currentEra()).to.equal(1)
-          expect(await stRSRP1.getDraftEra()).to.equal(1)
-
-          // seizeRSR should bump draftEra but not stakes era
-          await whileImpersonating(backingManager.address, async (signer) => {
-            await stRSR.connect(signer).seizeRSR(amount1)
-          })
-          expect(await stRSRP1.currentEra()).to.equal(1)
-          expect(await stRSRP1.getDraftEra()).to.equal(2)
-        })
-
         it('Should read draftRSR', async () => {
           expect(await stRSRP1.getDraftRSR()).to.equal(amount1)
         })

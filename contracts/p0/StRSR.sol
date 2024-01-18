@@ -338,7 +338,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 withdrawalRSRtoTake = (rsrBeingWithdrawn() * rsrAmount + (rsrBalance - 1)) /
             rsrBalance;
         if (
-            withdrawalRSRtoTake == 0 || 
+            withdrawalRSRtoTake == 0 ||
             rsrBeingWithdrawn() - withdrawalRSRtoTake <
             MIN_EXCHANGE_RATE.mulu_toUint(stakeBeingWithdrawn())
         ) {

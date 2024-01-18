@@ -83,8 +83,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint176 drafts; // Total amount of drafts that will become available // {qDrafts}
         uint64 availableAt; // When the last of the drafts will become available
     }
-    // {draftEra} => ({account} => {drafts})
-    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
+    // {draftEra} => ({account} => {qDrafts})
+    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {qDrafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 private totalDrafts; // Total of all drafts {qDrafts}
     uint256 private draftRSR; // Amount of RSR backing all drafts {qRSR}
@@ -562,12 +562,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @return {qDrafts} The amount of StRSR currently being withdrawn
     function getTotalDrafts() external view returns (uint256) {
         return totalDrafts;
-    }
-
-    /// @dev Can differ from the era for stakes
-    /// @return {draftEra} The era of the draft queue
-    function getDraftEra() external view returns (uint256){
-        return draftEra;
     }
 
     // ==== Internal Functions ====
