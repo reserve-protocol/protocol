@@ -302,7 +302,7 @@ const execTestForToken = ({
         amountBN,
       } = context
 
-      await methods.deposit(bob, '100')
+      await methods.deposit(bob, '1')
 
       // Enable transfers on Morpho
       // ugh
@@ -367,7 +367,7 @@ const execTestForToken = ({
         amountBN,
       } = context
 
-      await methods.deposit(bob, '100')
+      await methods.deposit(bob, '1')
 
       // Enable transfers on Morpho
       // ugh
