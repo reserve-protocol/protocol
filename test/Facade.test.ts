@@ -971,6 +971,8 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         await whileImpersonating(backingManager.address, async (signer) => {
           await stRSRP1.connect(signer).seizeRSR(1)
         })
+        const draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(2)
 
         // Stake
         const unstakeAmount = bn('10000e18')
@@ -981,7 +983,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         await stRSRP1.connect(addr1).unstake(unstakeAmount)
         await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
 
-        const pendings = await facade.pendingUnstakings(rToken.address, 2, addr1.address)
+        const pendings = await facade.pendingUnstakings(rToken.address, draftEra, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
         expect(pendings[0][2]).to.eql(unstakeAmount) // amount

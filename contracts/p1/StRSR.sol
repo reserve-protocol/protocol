@@ -564,6 +564,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return totalDrafts;
     }
 
+
+    /// @return {draftEra} The current era for drafts (withdrawals)
+    function getDraftEra() external view returns (uint256) {
+        return draftEra;
+    }
+
     // ==== Internal Functions ====
 
     /// Assign reward payouts to the staker pool
