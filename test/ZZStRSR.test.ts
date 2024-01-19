@@ -2028,7 +2028,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await expect(stRSR.connect(addr1).unstake(one))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 1, addr1.address, bn(0), one, availableAt)
+        .withArgs(0, 2, addr1.address, bn(0), one, availableAt)
 
       // Check withdrawal properly registered - Check draft era
       //await expectWithdrawal(addr1.address, 0, { rsrAmount: bn(1) })
