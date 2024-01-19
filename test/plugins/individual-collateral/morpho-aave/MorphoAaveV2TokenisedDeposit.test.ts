@@ -1,3 +1,4 @@
+import hre from 'hardhat'
 import { ITokens, networkConfig } from '#/common/configuration'
 import { ethers } from 'hardhat'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -9,8 +10,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { bn } from '#/common/numbers'
 import { getResetFork } from '../helpers'
 import { FORK_BLOCK } from './constants'
-import { advanceBlocks, advanceTime } from '#/utils/time'
-import hre from 'hardhat'
+import { advanceTime } from '#/utils/time'
 
 type ITokenSymbol = keyof ITokens
 const networkConfigToUse = networkConfig[31337]
