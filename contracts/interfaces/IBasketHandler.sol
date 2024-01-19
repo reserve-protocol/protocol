@@ -49,7 +49,11 @@ interface IBasketHandler is IComponent {
     event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
     // Initialization
-    function init(IMain main_, uint48 warmupPeriod_) external;
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external;
 
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket

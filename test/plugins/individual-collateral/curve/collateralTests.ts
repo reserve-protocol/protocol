@@ -979,6 +979,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       it('rebalances out of the collateral', async () => {
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await pairedERC20.connect(addr1).approve(router.address, MAX_UINT256)
         // Remove collateral from basket
         await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-4')])
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -1001,12 +1003,17 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         await pairedERC20.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
         const pairedBal = await pairedERC20.balanceOf(backingManager.address)
-        await expect(trade.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
+        await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
+          backingManager,
+          'TradeSettled'
+        )
         expect(await pairedERC20.balanceOf(backingManager.address)).to.be.gt(pairedBal)
         expect(await backingManager.tradesOpen()).to.equal(0)
       })
 
       it('forwards revenue and sells in a revenue auction', async () => {
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await rToken.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
         const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
         await mintCollateralTo(
@@ -1032,7 +1039,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         const buyAmt = await trade.bidAmount(await trade.endBlock())
         await rToken.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-        await expect(trade.connect(addr1).bid()).to.emit(rTokenTrader, 'TradeSettled')
+
+        await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
+          rTokenTrader,
+          'TradeSettled'
+        )
         expect(await rTokenTrader.tradesOpen()).to.equal(0)
       })
 

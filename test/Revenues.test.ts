@@ -1,30 +1,32 @@
-import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
+import { useEnv } from '#/utils/env'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
+import { getStorageAt, loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet, constants } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
-import { IConfig, GNOSIS_MAX_TOKENS } from '../common/configuration'
+import { GNOSIS_MAX_TOKENS, IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
   CollateralStatus,
-  TradeKind,
+  FURNACE_DEST,
   MAX_UINT192,
   ONE_PERIOD,
+  STRSR_DEST,
+  TradeKind,
+  ZERO_ADDRESS,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
 import {
-  Asset,
   ATokenFiatCollateral,
-  ComptrollerMock,
+  Asset,
   CTokenFiatCollateral,
   CTokenWrapperMock,
+  ComptrollerMock,
   ERC20Mock,
   FacadeTest,
+  FiatCollateral,
   GnosisMock,
   IAssetRegistry,
   InvalidATokenFiatCollateralMock,
@@ -36,37 +38,35 @@ import {
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
-  TestIRevenueTrader,
   TestIMain,
   TestIRToken,
+  TestIRevenueTrader,
   TestIStRSR,
   USDCMock,
-  FiatCollateral,
 } from '../typechain'
-import { whileImpersonating } from './utils/impersonation'
-import snapshotGasCost from './utils/snapshotGasCost'
-import {
-  advanceTime,
-  advanceBlocks,
-  getLatestBlockNumber,
-  getLatestBlockTimestamp,
-} from './utils/time'
-import { withinQuad } from './utils/matchers'
 import {
   Collateral,
-  defaultFixture,
-  Implementation,
   IMPLEMENTATION,
-  REVENUE_HIDING,
+  Implementation,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
+  defaultFixture,
 } from './fixtures'
+import { whileImpersonating } from './utils/impersonation'
+import { withinQuad } from './utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
-import { useEnv } from '#/utils/env'
+import snapshotGasCost from './utils/snapshotGasCost'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockNumber,
+  getLatestBlockTimestamp,
+} from './utils/time'
 import { mintCollaterals } from './utils/tokens'
+import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -2813,7 +2813,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
-
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await rsr.connect(addr1).approve(router.address, constants.MaxUint256)
+        await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -2905,16 +2907,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
 
         // Should settle RSR auction without disabling dutch auctions
-        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
-        await expect(rsrTrade.connect(addr1).bid())
+        await expect(router.connect(addr1).bid(rsrTrade.address, addr1.address))
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
+
         expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
         expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
 
         // Should still be able to settle RToken auction
-        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
-        await expect(rTokenTrade.connect(addr1).bid())
+        await expect(router.connect(addr1).bid(rTokenTrade.address, addr1.address))
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
 
@@ -2927,7 +2928,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not report violation when Dutch Auction clears in first linear phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
-
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await rsr.connect(addr1).approve(router.address, constants.MaxUint256)
+        await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -3019,14 +3022,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceBlocks(config.dutchAuctionLength.div(12).div(3))
 
         // Should settle RSR auction
-        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
-        await expect(rsrTrade.connect(addr1).bid())
+        await expect(router.connect(addr1).bid(rsrTrade.address, addr1.address))
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
 
         // Should settle RToken auction
-        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
-        await expect(rTokenTrade.connect(addr1).bid())
+        await expect(router.connect(addr1).bid(rTokenTrade.address, addr1.address))
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
 
@@ -3476,6 +3477,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should allow one bidder', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
@@ -3484,30 +3486,135 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             await rTokenTrader.trades(token0.address)
           )
 
-          // Bid
-          await rToken.connect(addr1).approve(trade.address, issueAmount)
-          await trade.connect(addr1).bid()
-          expect(await trade.bidder()).to.equal(addr1.address)
+          await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+            .connect(addr1)
+            .approve(router.address, constants.MaxUint256)
 
+          // Bid
+          await router.connect(addr1).bid(trade.address, addr1.address)
+          expect(await trade.bidder()).to.equal(router.address)
           // Cannot bid once is settled
+          await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.be.revertedWith(
+            'trade not open'
+          )
+        })
+        it('Trade should initially have bidType 0', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          expect(await trade.bidType()).to.be.eq(0)
+        })
+        it('It should support non callback bid', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+            .connect(addr1)
+            .approve(trade.address, constants.MaxUint256)
+
+          // Bid
+          await trade.connect(addr1).bid()
+          expect(await trade.bidType()).to.be.eq(2)
+          expect(await trade.bidder()).to.equal(addr1.address)
           await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+        })
+
+        /// Tests callback based bidding
+        describe('Callback based bidding', () => {
+          it('Supports bidCb', async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+
+            // Bid
+            const bidder = await (
+              await ethers.getContractFactory('CallbackDutchTraderBidder')
+            ).deploy()
+            await rToken.connect(addr1).transfer(bidder.address, issueAmount)
+            await bidder.connect(addr1).bid(trade.address)
+            expect(await trade.bidType()).to.be.eq(1)
+            expect(await trade.bidder()).to.equal(bidder.address)
+            expect(await trade.status()).to.be.eq(2) // Status.CLOSED
+          })
+
+          it('Will revert if bidder submits the wrong bid', async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+
+            // Bid
+            const bidder = await (
+              await ethers.getContractFactory('CallbackDutchTraderBidderLowBaller')
+            ).deploy()
+            await rToken.connect(addr1).transfer(bidder.address, issueAmount)
+            await expect(bidder.connect(addr1).bid(trade.address)).to.be.revertedWith(
+              'insufficient buy tokens'
+            )
+
+            expect(await trade.bidder()).to.equal(constants.AddressZero)
+            expect(await trade.status()).to.be.eq(1) // Status.OPEN
+          })
+
+          it('Will revert if bidder submits the no bid', async () => {
+            await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+            await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rTokenTrader.trades(token0.address)
+            )
+
+            // Bid
+            const bidder = await (
+              await ethers.getContractFactory('CallbackDutchTraderBidderNoPayer')
+            ).deploy()
+            await rToken.connect(addr1).transfer(bidder.address, issueAmount)
+            await expect(bidder.connect(addr1).bid(trade.address)).to.be.revertedWith(
+              'insufficient buy tokens'
+            )
+
+            expect(await trade.bidder()).to.equal(constants.AddressZero)
+            expect(await trade.status()).to.be.eq(1) // Status.OPEN
+          })
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           issueAmount = issueAmount.div(10000)
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
+          await token0.connect(addr1).approve(router.address, constants.MaxUint256)
+          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
 
           const start = await trade.startBlock()
           const end = await trade.endBlock()
 
           // Simulate 30 minutes of blocks, should swap at right price each time
           let now = bn(await getLatestBlockNumber())
+
           while (now.lt(end)) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = await dutchBuyAmount(
@@ -3519,27 +3626,33 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             )
             expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
 
-            const staticResult = await trade.connect(addr1).callStatic.bid()
-            expect(staticResult).to.equal(actual)
+            const staticResult = await router
+              .connect(addr1)
+              .callStatic.bid(trade.address, addr1.address)
+
+            expect(staticResult.buyAmt).to.equal(actual)
             await advanceBlocks(1)
             now = bn(await getLatestBlockNumber())
           }
         })
 
         it('Should handle no bid case correctly', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(trade.address, initialBal)
 
           await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
           await expect(
             trade.connect(addr1).bidAmount(await getLatestBlockNumber())
           ).to.be.revertedWith('auction over')
-          await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
+
+          await expect(router.connect(addr1).bid(trade.address, addr1.address)).be.revertedWith(
+            'auction over'
+          )
 
           // Should be able to settle
           await expect(trade.settle()).to.be.revertedWith('only origin can settle')
@@ -3552,21 +3665,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should bid at exactly endBlock() and not launch another auction', async () => {
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+          await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(trade.address, initialBal)
           await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
 
           // Snipe auction at 0s left
           await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-          await trade.connect(addr1).bid()
+          await router.connect(addr1).bid(trade.address, addr1.address)
           expect(await trade.canSettle()).to.equal(false)
           expect(await trade.status()).to.equal(2) // Status.CLOSED
-          expect(await trade.bidder()).to.equal(addr1.address)
+          expect(await trade.bidder()).to.equal(router.address)
           expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
 
           const expected = await dutchBuyAmount(

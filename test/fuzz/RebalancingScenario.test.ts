@@ -29,6 +29,12 @@ import { RoundingMode, TradeStatus } from '#/common/constants'
 
 type Fixture<T> = () => Promise<T>
 
+enum BidType {
+  NONE,
+  CALLBACK,
+  TRANSFER
+}
+
 const createFixture: Fixture<FuzzTestFixture> = async () => {
   let scenario: RebalancingScenario
   let main: MainP1Fuzz
@@ -664,7 +670,9 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
 
-  it('can manage scenario states - basket switch - covered by RSR [Dutch auction]', async () => {
+  const bidTypes = [BidType.CALLBACK, BidType.TRANSFER] // TRANSFER and CALL
+  bidTypes.forEach((bidType) => {
+    it(`can manage scenario states - basket switch - covered by RSR [Dutch auction] - Bid Type: ${Object.values(BidType)[bidType]}`, async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })
 
@@ -807,7 +815,7 @@ const scenarioSpecificTests = () => {
 
       // Settle trades - set some seed > 0
       await scenario.pushSeedForTrades(fp(1000000))
-      await scenario.bidOpenDutchAuction()
+      await scenario.bidOpenDutchAuction(bidType)
 
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
@@ -849,7 +857,9 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
   })
+  })
 
+  bidTypes.forEach((bidType) => { 
   it('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('400000'), pctRate: fp('0.05') })
@@ -966,7 +976,7 @@ const scenarioSpecificTests = () => {
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Settle trades - will use previous seed > 0
-      await scenario.bidOpenDutchAuction()
+      await scenario.bidOpenDutchAuction(bidType)
 
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
@@ -985,6 +995,7 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+  })
   })
 
   describe('contains the fix for the bug where', () => {

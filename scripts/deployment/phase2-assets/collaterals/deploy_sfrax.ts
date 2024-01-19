@@ -60,26 +60,7 @@ async function main() {
     },
     '0' // revenueHiding = 0
   )
-<<<<<<< HEAD:scripts/deployment/phase2-assets/collaterals/deploy_stargate_eth_collateral.ts
 
-  const StargateCollateralFactory: StargatePoolETHCollateral__factory =
-    await hre.ethers.getContractFactory('StargatePoolETHCollateral')
-
-  const collateral = <StargatePoolETHCollateral>await StargateCollateralFactory.connect(
-    deployer
-  ).deploy({
-    priceTimeout: priceTimeout.toString(),
-    chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-    oracleError: fp('0.005').toString(), // 0.5%,
-    erc20: erc20.address,
-    maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
-    targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: 0,
-    delayUntilDefault: 0,
-  })
-=======
->>>>>>> 3.1.0:scripts/deployment/phase2-assets/collaterals/deploy_sfrax.ts
   await collateral.deployed()
 
   console.log(`Deployed sFRAX to ${hre.network.name} (${chainId}): ${collateral.address}`)
