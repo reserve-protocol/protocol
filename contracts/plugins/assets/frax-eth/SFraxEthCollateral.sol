@@ -5,13 +5,9 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
+import "../FraxOracleLib.sol";
 import "./vendor/IsfrxEth.sol";
-
-/**
- * ************************************************************
- * WARNING: this plugin is not ready to be used in Production
- * ************************************************************
- */
+import "./vendor/CurvePoolEmaPriceOracleWithMinMax.sol";
 
 /**
  * @title SFraxEthCollateral
@@ -21,19 +17,29 @@ import "./vendor/IsfrxEth.sol";
  * tar = ETH
  * UoA = USD
  */
-contract SFraxEthCollateral is AppreciatingFiatCollateral {
+contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOracleWithMinMax {
     using OracleLib for AggregatorV3Interface;
+    using FraxOracleLib for FraxAggregatorV3Interface;
     using FixLib for uint192;
 
-    // solhint-disable no-empty-blocks
-    /// @param config.chainlinkFeed Feed units: {UoA/target}
-    constructor(CollateralConfig memory config, uint192 revenueHiding)
+    /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
+    /// @param revenueHiding {1e18} percent amount of revenue to hide
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding,
+        address curvePoolEmaPriceOracleAddress,
+        uint256 _minimumCurvePoolEma,
+        uint256 _maximumCurvePoolEma
+    )
         AppreciatingFiatCollateral(config, revenueHiding)
+        CurvePoolEmaPriceOracleWithMinMax(
+            curvePoolEmaPriceOracleAddress,
+            _minimumCurvePoolEma,
+            _maximumCurvePoolEma
+        )
     {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
     }
-
-    // solhint-enable no-empty-blocks
 
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
@@ -49,22 +55,20 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok} = {UoA/target} * {ref/tok} * {target/ref} (1)
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        // {target/ref} Get current market peg ({eth/frxeth})
+        pegPrice = _safeWrap(_getCurvePoolToken1EmaPrice());
+
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
-        low = p - err;
         high = p + err;
+        low = p - err;
         // assert(low <= high); obviously true just by inspection
-
-        // TODO: Currently not checking for depegs between `frxETH` and `ETH`
-        // Should be modified to use a `frxETH/ETH` oracle when available
-        pegPrice = targetPerRef();
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = IsfrxEth(address(erc20)).pricePerShare();
-        return _safeWrap(rate);
+        return _safeWrap(IsfrxEth(address(erc20)).pricePerShare());
     }
 }
