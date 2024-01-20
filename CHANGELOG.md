@@ -4,7 +4,7 @@
 
 This release makes bidding in dutch auctions easier for MEV searchers and gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
 
-### Upgrade Steps
+## Upgrade Steps
 
 Upgrade BasketHandler and Distributor.
 
@@ -12,21 +12,39 @@ Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTra
 
 If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
 
-### Core Protocol Contracts
+## Core Protocol Contracts
 
-New governance param added to `DeploymentParams`: `reweightable`
+New governance param added: `reweightable`
 
 - `BasketHandler` [+1 slot]
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
-  - Add immutable-after-init `reweightable` bool
+  - Add `reweightable()` view
 - `Deployer`
   - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
 - `Distributor`
   - Minor gas-optimization
 
+## Plugins
+
+### Assets
+
+- frax-eth: Add new `sFrxETH` plugin that leverages a curve EMA
+- stargate: Continue transfers of wrapper tokens if stargate rewards break
+
+### Trading
+
+- `DutchTrade`
+
+  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans
+
+- `DutchTradeRouter`
+- New contract to avoid needing to approve each new `DutchTrade` contract
+- `bid(DutchTrade trade, address recipient) retruns (Bid memory)`
+- `dutchTradeCallback(address buyToken, uint256 buyAmount, bytes calldata) external`
+
 # 3.1.0
 
-### Upgrade Steps
+## Upgrade Steps
 
 Upgrade all core contracts and _all_ assets. Most ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
 
@@ -40,7 +58,7 @@ Then, call `Broker.cacheComponents()`.
 
 Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
 
-### Core Protocol Contracts
+## Core Protocol Contracts
 
 - `BackingManager` [+2 slots]
   - Replace use of `lotPrice()` with `price()` everywhere
@@ -72,7 +90,7 @@ Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
   - Use correct era in `UnstakingStarted` event
   - Expose `draftEra` via `getDraftEra()` view
 
-### Facades
+## Facades
 
 - `FacadeMonitor`
   - Add `batchAuctionsDisabled()` view
