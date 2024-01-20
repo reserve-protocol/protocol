@@ -9,7 +9,7 @@ import { IConfig, IMonitorParams } from '#/common/configuration'
 import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
 import { disableBatchTrade, disableDutchTrade } from './utils/trades'
-
+import { whileImpersonating } from './utils/impersonation'
 import {
   Asset,
   BackingManagerP1,
@@ -966,16 +966,24 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       })
 
       it('Should return pending unstakings', async () => {
-        const unstakeAmount = bn('10000e18')
-        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(10))
+        // Bump draftEra by seizing RSR when the withdrawal queue is empty
+        await rsr.connect(owner).mint(stRSRP1.address, 1)
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await stRSRP1.connect(signer).seizeRSR(1)
+        })
+        const draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(2)
 
         // Stake
+        const unstakeAmount = bn('10000e18')
+        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(10))
         await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(10))
         await stRSRP1.connect(addr1).stake(unstakeAmount.mul(10))
+
         await stRSRP1.connect(addr1).unstake(unstakeAmount)
         await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
 
-        const pendings = await facade.pendingUnstakings(rToken.address, addr1.address)
+        const pendings = await facade.pendingUnstakings(rToken.address, draftEra, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
         expect(pendings[0][2]).to.eql(unstakeAmount) // amount
