@@ -5,6 +5,8 @@ import "./interfaces/IStargateLPStaking.sol";
 import "./interfaces/IStargatePool.sol";
 import "../erc20/RewardableERC20Wrapper.sol";
 
+// solhint-disable no-empty-blocks
+
 contract StargateRewardableWrapper is RewardableERC20Wrapper {
     IStargateLPStaking public immutable stakingContract;
     IStargatePool public immutable pool;
