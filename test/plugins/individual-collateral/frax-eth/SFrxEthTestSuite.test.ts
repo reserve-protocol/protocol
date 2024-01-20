@@ -11,6 +11,9 @@ import {
   SfraxEthMock,
   TestICollateral,
   IsfrxEth,
+  SFraxEthCollateral,
+  EmaPriceOracleStableSwapMock__factory,
+  EmaPriceOracleStableSwapMock,
 } from '../../../../typechain'
 import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
@@ -27,6 +30,7 @@ import {
   FRX_ETH,
   SFRX_ETH,
   ETH_USD_PRICE_FEED,
+  CURVE_POOL_EMA_PRICE_ORACLE_ADDRESS,
 } from './constants'
 import {
   advanceTime,
@@ -42,13 +46,20 @@ import {
 interface SFrxEthCollateralFixtureContext extends CollateralFixtureContext {
   frxEth: ERC20Mock
   sfrxEth: IsfrxEth
+  curveEmaOracle: EmaPriceOracleStableSwapMock
 }
 
 /*
   Define deployment functions
 */
 
-export const defaultRethCollateralOpts: CollateralOpts = {
+interface SfrxEthCollateralOpts extends CollateralOpts {
+  curvePoolEmaPriceOracleAddress?: string
+  _minimumCurvePoolEma?: BigNumberish
+  _maximumCurvePoolEma?: BigNumberish
+}
+
+export const defaultRethCollateralOpts: SfrxEthCollateralOpts = {
   erc20: SFRX_ETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: WETH,
@@ -60,9 +71,14 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
+  curvePoolEmaPriceOracleAddress: CURVE_POOL_EMA_PRICE_ORACLE_ADDRESS,
+  _minimumCurvePoolEma: 0,
+  _maximumCurvePoolEma: fp(1),
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
+export const deployCollateral = async (
+  opts: SfrxEthCollateralOpts = {}
+): Promise<TestICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -82,13 +98,15 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
+    opts.curvePoolEmaPriceOracleAddress ?? CURVE_POOL_EMA_PRICE_ORACLE_ADDRESS,
+    opts._minimumCurvePoolEma ?? 0,
+    opts._maximumCurvePoolEma ?? fp(1),
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
 
   // Push forward chainlink feed
   await pushOracleForward(opts.chainlinkFeed!)
-
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
@@ -116,6 +134,15 @@ const makeCollateralFixtureContext = (
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
+    const EmaPriceOracleStableSwapMockFactory = <EmaPriceOracleStableSwapMock__factory>(
+      await ethers.getContractFactory('EmaPriceOracleStableSwapMock')
+    )
+
+    const curveEmaOracle = <EmaPriceOracleStableSwapMock>(
+      await EmaPriceOracleStableSwapMockFactory.deploy(fp('0.997646'))
+    )
+    collateralOpts.curvePoolEmaPriceOracleAddress = curveEmaOracle.address
+
     const frxEth = (await ethers.getContractAt('ERC20Mock', FRX_ETH)) as ERC20Mock
     const sfrxEth = (await ethers.getContractAt('IsfrxEth', SFRX_ETH)) as IsfrxEth
     const collateral = await deployCollateral(collateralOpts)
@@ -126,6 +153,7 @@ const makeCollateralFixtureContext = (
       chainlinkFeed,
       frxEth,
       sfrxEth,
+      curveEmaOracle,
       tok: sfrxEth,
     }
   }
@@ -146,11 +174,27 @@ const mintCollateralTo: MintCollateralFunc<SFrxEthCollateralFixtureContext> = as
   await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const changeTargetPerRef = async (
+  ctx: SFrxEthCollateralFixtureContext,
+  percentChange: BigNumber
+) => {
+  const initPrice = await ctx.curveEmaOracle.price_oracle()
+  await ctx.curveEmaOracle.setPrice(initPrice.add(initPrice.mul(percentChange).div(100)))
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const reduceTargetPerRef = async (
+  ctx: SFrxEthCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease).mul(-1))
+}
+
+const increaseTargetPerRef = async (
+  ctx: SFrxEthCollateralFixtureContext,
+  pctIncrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctIncrease))
+}
 
 // prettier-ignore
 const reduceRefPerTok = async () => {
@@ -172,11 +216,11 @@ const increaseRefPerTok = async (
     await hre.network.provider.send('evm_mine', [])
   }
   await ctx.sfrxEth.syncRewards()
-  await advanceBlocks(1200 / 12)
-  await advanceTime(1200)
+  await advanceBlocks(86400 / 12)
+  await advanceTime(86400)
   // push chainlink oracle forward so that tryPrice() still works
-  const lastAnswer = await ctx.chainlinkFeed.latestAnswer()
-  await ctx.chainlinkFeed.updateAnswer(lastAnswer)
+  const latestRoundData = await ctx.chainlinkFeed.latestRoundData()
+  await ctx.chainlinkFeed.updateAnswer(latestRoundData.answer)
 }
 
 const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<BigNumber> => {
@@ -184,9 +228,18 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
-  const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
-  return expectedPegPrice.mul(refPerTok).div(fp('1'))
+  const collateral = ctx.collateral as unknown as SFraxEthCollateral
+  const clTpRData = await collateral.getCurvePoolToken1EmaPrice()
+  const clTpRDecimals = await collateral.CURVE_POOL_EMA_PRICE_ORACLE_DECIMALS()
+
+  const refPerTok = await ctx.sfrxEth.pricePerShare()
+
+  return clData.answer
+    .mul(bn(10).pow(18 - clDecimals))
+    .mul(clTpRData.mul(bn(10).pow(bn(18).sub(clTpRDecimals))))
+    .div(fp('1'))
+    .mul(refPerTok)
+    .div(fp('1'))
 }
 
 /*
@@ -208,6 +261,7 @@ const collateralSpecificStatusTests = () => {
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, chainlinkDefaultAnswer)
     )
+
     const collateral = await deployCollateral({
       erc20: erc20.address,
       revenueHiding: fp('0.01'),
@@ -256,14 +310,16 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it.skip, // implemnted in this file
+  itChecksNonZeroDefaultThreshold: it,
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)
