@@ -5,8 +5,6 @@ import { ethers, network } from 'hardhat'
 import { expect } from 'chai'
 import { fp, bn, divCeil } from '../../common/numbers'
 import { MAX_UINT192 } from '../../common/constants'
-import { getLatestBlockTimestamp } from './time'
-import { whileImpersonating } from './impersonation'
 
 const toleranceDivisor = bn('1e15') // 1 part in 1000 trillions
 
@@ -145,12 +143,7 @@ export const overrideOracle = async (oracleAddress: string): Promise<EACAggregat
   )
   const aggregator = await oracle.aggregator()
   const accessController = await oracle.accessController()
-  let initPrice
-  try {
-    initPrice = await oracle.latestAnswer()
-  } catch {
-    initPrice = (await oracle.latestRoundData()).answer
-  }
+  const initPrice = await oracle.latestAnswer()
   const mockOracleFactory = await ethers.getContractFactory('EACAggregatorProxyMock')
   const mockOracle = await mockOracleFactory.deploy(aggregator, accessController, initPrice)
   const bytecode = await network.provider.send('eth_getCode', [mockOracle.address])
@@ -160,13 +153,7 @@ export const overrideOracle = async (oracleAddress: string): Promise<EACAggregat
 
 export const pushOracleForward = async (chainlinkAddr: string) => {
   const chainlinkFeed = await ethers.getContractAt('MockV3Aggregator', await chainlinkAddr)
-  let initPrice
-  // awkward workaround for sfrxETH oracle
-  try {
-    initPrice = await chainlinkFeed.latestAnswer()
-  } catch {
-    initPrice = (await chainlinkFeed.latestRoundData()).answer
-  }
+  const initPrice = await chainlinkFeed.latestAnswer()
   try {
     // Try to update as if it's a mock already
     await chainlinkFeed.updateAnswer(initPrice)
@@ -175,14 +162,4 @@ export const pushOracleForward = async (chainlinkAddr: string) => {
     const oracle = await overrideOracle(chainlinkFeed.address)
     await oracle.updateAnswer(initPrice)
   }
-}
-
-export const pushFraxOracleForward = async (chainlinkAddr: string) => {
-  const chainlinkFeed = await ethers.getContractAt('FraxAggregatorV3Interface', chainlinkAddr)
-  const initPrice = (await chainlinkFeed.latestRoundData()).answer
-  await whileImpersonating(await chainlinkFeed.priceSource(), async (owner) => {
-    await chainlinkFeed
-      .connect(owner)
-      .addRoundData(false, initPrice, initPrice, (await getLatestBlockTimestamp()) + 1)
-  })
 }

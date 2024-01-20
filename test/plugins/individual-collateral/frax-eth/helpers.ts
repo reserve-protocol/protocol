@@ -5,8 +5,6 @@ import { BigNumberish } from 'ethers'
 import { FORK_BLOCK, FRX_ETH_MINTER } from './constants'
 import { getResetFork } from '../helpers'
 import { setNextBlockTimestamp, getLatestBlockTimestamp } from '../../../utils/time'
-import { fp } from '#/common/numbers'
-import { setBalance } from '@nomicfoundation/hardhat-network-helpers'
 
 export const mintSfrxETH = async (
   sfrxEth: IsfrxEth,
@@ -15,7 +13,6 @@ export const mintSfrxETH = async (
   recipient: string,
   chainlinkFeed: MockV3Aggregator
 ) => {
-  await setBalance(account.address, fp(100000))
   const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
     await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER)
   )
@@ -31,8 +28,8 @@ export const mintSfrxETH = async (
   await frxEthMinter.connect(account).submitAndDeposit(recipient, { value: depositAmount })
 
   // push chainlink oracle forward so that tryPrice() still works
-  const lastAnswer = await chainlinkFeed.latestRoundData()
-  await chainlinkFeed.updateAnswer(lastAnswer.answer)
+  const lastAnswer = await chainlinkFeed.latestAnswer()
+  await chainlinkFeed.updateAnswer(lastAnswer)
 }
 
 export const mintFrxETH = async (
