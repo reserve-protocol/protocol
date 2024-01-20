@@ -69,7 +69,7 @@ interface TestIAsset is IAsset {
     /// @return {s} Seconds that an oracle value is considered valid
     function oracleTimeout() external view returns (uint48);
 
-    /// @return {s} Seconds that the price().low should decay over, after stale price
+    /// @return {s} Seconds that the price() should decay over, after stale price
     function priceTimeout() external view returns (uint48);
 
     /// @return {UoA/tok} The last saved low price

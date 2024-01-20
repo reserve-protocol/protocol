@@ -45,7 +45,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IFurnace private furnace;
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
-    // === 3.0.1 ===
+    // === 3.1.0 ===
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
     // ==== Invariants ====
