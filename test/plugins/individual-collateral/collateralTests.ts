@@ -78,7 +78,6 @@ export default function fn<X extends CollateralFixtureContext>(
     getExpectedPrice,
     itClaimsRewards,
     itChecksTargetPerRefDefault,
-    itChecksTargetPerRefDefaultUp,
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
     itChecksNonZeroDefaultThreshold,
@@ -223,14 +222,6 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('prices', () => {
         before(resetFork) // important for getting prices/refPerToks to behave predictably
-
-        it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(oracleTimeout / 12)
-          await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-        })
 
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
@@ -420,6 +411,14 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
         })
 
+        it('enters IFFY state when price becomes stale', async () => {
+          const oracleTimeout = await collateral.oracleTimeout()
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+          await advanceBlocks(oracleTimeout / 12)
+          await collateral.refresh()
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+        })
+
         it('decays price over priceTimeout period', async () => {
           await collateral.refresh()
           const savedLow = await collateral.savedLowPrice()
@@ -454,8 +453,6 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('status', () => {
-        before(resetFork)
-
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -492,7 +489,7 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         )
 
-        itChecksTargetPerRefDefaultUp(
+        itChecksTargetPerRefDefault(
           'enters IFFY state when target-per-ref depegs above high threshold',
           async () => {
             const delayUntilDefault = await collateral.delayUntilDefault()
