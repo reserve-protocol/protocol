@@ -79,8 +79,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function grantRTokenAllowance(IERC20 erc20) external notFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        IERC20(address(erc20)).safeApprove(address(main.rToken()), 0);
-        IERC20(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
+        IERC20(address(erc20)).safeApprove(address(rToken), 0);
+        IERC20(address(erc20)).safeApprove(address(rToken), type(uint256).max);
     }
 
     /// Settle a single trade. If the caller is the trade, try chaining into rebalance()
@@ -134,8 +134,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // First dissolve any held RToken balance (above Distributor-dust)
         // gas-optimization: 1 whole RToken must be worth 100 trillion dollars for this to skip $1
-        uint256 balance = main.rToken().balanceOf(address(this));
-        if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) main.rToken().dissolve(balance);
+        uint256 balance = rToken.balanceOf(address(this));
+        if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) rToken.dissolve(balance);
         if (basketsHeld.bottom >= rToken.basketsNeeded()) return; // return if now capitalized
 
         /*
