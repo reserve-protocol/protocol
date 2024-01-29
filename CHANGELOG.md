@@ -16,9 +16,14 @@ If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on 
 
 New governance param added: `reweightable`
 
+- `BackingManager`
+  - Track basket nonce last collateralized at end of `settleTrade()`
 - `BasketHandler` [+1 slot]
+  - Restrict `redeemCustom()` to nonces after `lastCollateralized`
+  - New `LastCollateralizedChanged()` event -- track to determine earliest basket nonce to use for `redeemCustom()`
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
   - Add `reweightable()` view
+  -
 - `Deployer`
   - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
 - `Distributor`
