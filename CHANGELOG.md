@@ -6,11 +6,13 @@ This release makes bidding in dutch auctions easier for MEV searchers and gives 
 
 ## Upgrade Steps
 
-Upgrade BasketHandler and Distributor.
+Upgrade BasketHandler, BackingManager, and Distributor.
 
 Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTrade` contract address.
 
 If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
+
+For plugins, upgrade Stargate.
 
 ## Core Protocol Contracts
 
