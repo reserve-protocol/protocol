@@ -1183,6 +1183,12 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount) // assets kept in backing buffer
 
+          // Regression test -- Jan 29 2024
+          // After recollateralization: should NOT allow redeemCustom at previous basket
+          await expect(
+            rToken.connect(addr1).redeemCustom(addr1.address, bn('1'), [2], [fp('1')], [], [])
+          ).to.be.revertedWith('invalid basketNonce')
+
           // Check price in USD of the current RToken
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         })
