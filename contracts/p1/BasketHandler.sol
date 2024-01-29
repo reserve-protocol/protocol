@@ -76,7 +76,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
-    // Effectively local variable of `requireConstantConfigTargets()`
+    // Effectively local variable of `BasketLibP1.requireConstantConfigTargets()`
     EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
 
     // ===
@@ -84,6 +84,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     // Whether the total weights of the target basket can be changed
     bool public reweightable; // immutable after init
+
+    uint48 public lastCollateralized; // {basketNonce} most recent full collateralization
 
     // ===
 
@@ -170,6 +172,17 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
+    /// Track when last collateralized
+    // effects: lastCollateralized' = nonce if nonce > lastCollateralized && fullyCapitalized
+    /// @custom:refresher
+    function trackCollateralization() external {
+        if (nonce > lastCollateralized && fullyCollateralized()) {
+            emit LastCollateralizedChanged(lastCollateralized, nonce);
+            lastCollateralized = nonce;
+        }
+    }
+
+
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
@@ -193,7 +206,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // If this isn't initial setup, require targets remain constant
         if (!reweightable && config.erc20s.length > 0) {
-            requireConstantConfigTargets(erc20s, targetAmts);
+            BasketLibP1.requireConstantConfigTargets(assetRegistry, config, _targetAmts, erc20s, targetAmts);
         }
 
         // Clean up previous basket config
@@ -253,7 +266,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return Whether this contract owns enough collateral to cover rToken.basketsNeeded() BUs
     /// ie, whether the protocol is currently fully collateralized
-    function fullyCollateralized() external view returns (bool) {
+    function fullyCollateralized() public view returns (bool) {
         BasketRange memory held = basketsHeldBy(address(backingManager));
         return held.bottom >= rToken.basketsNeeded();
     }
@@ -423,7 +436,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
             require(
-                basketNonces[i] >= backingManager.lastCollateralized() && basketNonces[i] <= nonce,
+                basketNonces[i] >= lastCollateralized && basketNonces[i] <= nonce,
                 "invalid basketNonce"
             );
             Basket storage b = basketHistory[basketNonces[i]];
@@ -562,35 +575,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
-    }
-
-    /// Require that newERC20s and newTargetAmts preserve the current config targets
-    function requireConstantConfigTargets(
-        IERC20[] calldata newERC20s,
-        uint192[] calldata newTargetAmts
-    ) private {
-        // Populate _targetAmts mapping with old basket config
-        uint256 len = config.erc20s.length;
-        for (uint256 i = 0; i < len; ++i) {
-            IERC20 erc20 = config.erc20s[i];
-            bytes32 targetName = config.targetNames[erc20];
-            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            _targetAmts.set(
-                targetName,
-                contains ? amt + config.targetAmts[erc20] : config.targetAmts[erc20]
-            );
-        }
-
-        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
-        len = newERC20s.length;
-        for (uint256 i = 0; i < len; ++i) {
-            bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
-            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new target weights");
-            if (amt > newTargetAmts[i]) _targetAmts.set(targetName, amt - newTargetAmts[i]);
-            else _targetAmts.remove(targetName);
-        }
-        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Require that erc20s is a valid collateral array

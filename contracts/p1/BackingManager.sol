@@ -48,9 +48,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // === 3.1.0 ===
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
-    // === 3.2.0 ===
-    uint48 public lastCollateralized; // {basketNonce} nonce of the most recent collateralization
-
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
 
@@ -111,10 +108,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             }
         }
 
-        // Track lastCollateralized basket nonce
-        if (basketHandler.nonce() > lastCollateralized && basketHandler.fullyCollateralized()) {
-            lastCollateralized = basketHandler.nonce();
-        }
+        basketHandler.trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
@@ -122,7 +116,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
+    function rebalance(TradeKind kind) external nonReentrant {
+        requireNotTradingPausedOrFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -194,8 +190,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function forwardRevenue(IERC20[] calldata erc20s)
         external
         nonReentrant
-        notTradingPausedOrFrozen
     {
+        requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         assetRegistry.refresh();
@@ -359,5 +355,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[37] private __gap;
+    uint256[38] private __gap;
 }

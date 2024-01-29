@@ -48,6 +48,11 @@ interface IBasketHandler is IComponent {
     /// @param newStatus The new basket status
     event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
+    /// Emitted when the last basket nonce available for redemption is changed
+    /// @param oldVal The old value of lastCollateralized
+    /// @param newVal The new value of lastCollateralized
+    event LastCollateralizedChanged(uint48 oldVal, uint48 newVal);
+
     // Initialization
     function init(
         IMain main_,
@@ -86,6 +91,10 @@ interface IBasketHandler is IComponent {
     /// Track the basket status changes
     /// @custom:refresher
     function trackStatus() external;
+
+    /// Track when last collateralized
+    /// @custom:refresher
+    function trackCollateralization() external;
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCollateralized() external view returns (bool);

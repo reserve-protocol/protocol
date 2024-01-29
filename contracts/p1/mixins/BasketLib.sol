@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import "../../interfaces/IAssetRegistry.sol";
 import "../../libraries/Fixed.sol";
@@ -56,6 +57,7 @@ struct Basket {
  */
 library BasketLibP1 {
     using BasketLibP1 for Basket;
+    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
@@ -305,5 +307,40 @@ library BasketLibP1 {
         } catch {
             return false;
         }
+    }
+
+
+    // === Contract-size saver ===
+
+    /// Require that newERC20s and newTargetAmts preserve the current config targets
+    function requireConstantConfigTargets(
+        IAssetRegistry assetRegistry,
+        BasketConfig storage config,
+        EnumerableMap.Bytes32ToUintMap storage targetAmts,
+        IERC20[] calldata newERC20s,
+        uint192[] calldata newTargetAmts
+    ) external  {
+        // Populate targetAmts mapping with old basket config
+        uint256 len = config.erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            IERC20 erc20 = config.erc20s[i];
+            bytes32 targetName = config.targetNames[erc20];
+            (bool contains, uint256 amt) = targetAmts.tryGet(targetName);
+            targetAmts.set(
+                targetName,
+                contains ? amt + config.targetAmts[erc20] : config.targetAmts[erc20]
+            );
+        }
+
+        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
+        len = newERC20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
+            (bool contains, uint256 amt) = targetAmts.tryGet(targetName);
+            require(contains && amt >= newTargetAmts[i], "new target weights");
+            if (amt > newTargetAmts[i]) targetAmts.set(targetName, amt - newTargetAmts[i]);
+            else targetAmts.remove(targetName);
+        }
+        require(targetAmts.length() == 0, "missing target weights");
     }
 }

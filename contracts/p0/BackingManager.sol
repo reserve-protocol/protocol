@@ -34,8 +34,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
-    uint48 public lastCollateralized; // {basketNonce} nonce of the most recent collateralization
-
     constructor() {
         ONE_BLOCK = NetworkConfigLib.blocktime();
     }
@@ -85,13 +83,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
         }
 
-        // Track lastCollateralized basket nonce
-        if (
-            main.basketHandler().nonce() > lastCollateralized &&
-            main.basketHandler().fullyCollateralized()
-        ) {
-            lastCollateralized = main.basketHandler().nonce();
-        }
+        main.basketHandler().trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
