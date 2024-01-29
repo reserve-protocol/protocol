@@ -187,10 +187,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function forwardRevenue(IERC20[] calldata erc20s)
-        external
-        nonReentrant
-    {
+    function forwardRevenue(IERC20[] calldata erc20s) external nonReentrant {
         requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 

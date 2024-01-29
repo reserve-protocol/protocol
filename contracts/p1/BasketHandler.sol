@@ -182,7 +182,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
@@ -206,7 +205,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // If this isn't initial setup, require targets remain constant
         if (!reweightable && config.erc20s.length > 0) {
-            BasketLibP1.requireConstantConfigTargets(assetRegistry, config, _targetAmts, erc20s, targetAmts);
+            BasketLibP1.requireConstantConfigTargets(
+                assetRegistry,
+                config,
+                _targetAmts,
+                erc20s,
+                targetAmts
+            );
         }
 
         // Clean up previous basket config

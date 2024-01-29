@@ -309,7 +309,6 @@ library BasketLibP1 {
         }
     }
 
-
     // === Contract-size saver ===
 
     /// Require that newERC20s and newTargetAmts preserve the current config targets
@@ -319,7 +318,7 @@ library BasketLibP1 {
         EnumerableMap.Bytes32ToUintMap storage targetAmts,
         IERC20[] calldata newERC20s,
         uint192[] calldata newTargetAmts
-    ) external  {
+    ) external {
         // Populate targetAmts mapping with old basket config
         uint256 len = config.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {

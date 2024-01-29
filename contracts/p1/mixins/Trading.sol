@@ -58,8 +58,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     }
 
     /// Contract-size helper
-    /// solhint-disable-next-line no-empty-blocks
+    /// solhint-disable no-empty-blocks
     function requireNotTradingPausedOrFrozen() internal view notTradingPausedOrFrozen {}
+
+    /// solhint-enable no-empty-blocks
 
     /// Claim all rewards
     /// Collective Action
