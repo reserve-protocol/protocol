@@ -34,6 +34,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
+    uint48 public lastCollateralized; // {basketNonce} nonce of the most recent collateralization
+
     constructor() {
         ONE_BLOCK = NetworkConfigLib.blocktime();
     }
@@ -81,6 +83,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
+        }
+
+        // Track lastCollateralized basket nonce
+        if (
+            main.basketHandler().nonce() > lastCollateralized &&
+            main.basketHandler().fullyCollateralized()
+        ) {
+            lastCollateralized = main.basketHandler().nonce();
         }
     }
 

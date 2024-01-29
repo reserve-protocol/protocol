@@ -48,6 +48,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // === 3.1.0 ===
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
+    // === 3.2.0 ===
+    uint48 public lastCollateralized; // {basketNonce} nonce of the most recent collateralization
+
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
 
@@ -106,6 +109,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
+        }
+
+        // Track lastCollateralized basket nonce
+        if (basketHandler.nonce() > lastCollateralized && basketHandler.fullyCollateralized()) {
+            lastCollateralized = basketHandler.nonce();
         }
     }
 
@@ -351,5 +359,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[38] private __gap;
+    uint256[37] private __gap;
 }

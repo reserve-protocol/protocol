@@ -85,6 +85,9 @@ interface IBackingManager is IComponent, ITrading {
         external
         view
         returns (TradingContext memory ctx, Registry memory reg);
+
+    /// @return {basketNonce} The basket nonce of the last full recollateralization effort
+    function lastCollateralized() external view returns (uint48);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

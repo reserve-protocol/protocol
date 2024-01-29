@@ -476,7 +476,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
-            require(basketNonces[i] <= nonce, "invalid basketNonce");
+            require(
+                basketNonces[i] >= main.backingManager().lastCollateralized() &&
+                    basketNonces[i] <= nonce,
+                "invalid basketNonce"
+            );
             Basket storage b = basketHistory[basketNonces[i]];
 
             // Add-in refAmts contribution from historical basket
