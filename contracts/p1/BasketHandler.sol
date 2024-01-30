@@ -38,7 +38,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     IStRSR private stRSR;
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
-    // event. config is only modified by governance through setPrimeBakset and setBackupConfig
+    // event. config is only modified by governance through setPrimeBasket and setBackupConfig
     BasketConfig private config;
 
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
@@ -197,21 +197,39 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
-    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] memory targetAmts) external {
         requireGovernanceOnly();
         require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
-        // If this isn't initial setup, require targets remain constant
-        if (!reweightable && config.erc20s.length > 0) {
-            BasketLibP1.requireConstantConfigTargets(
-                assetRegistry,
-                config,
-                _targetAmts,
-                erc20s,
-                targetAmts
-            );
+        // If this isn't initial setup...
+        if (config.erc20s.length > 0) {
+            if (!reweightable) {
+                // Require targets remain constant
+                BasketLibP1.requireConstantConfigTargets(
+                    assetRegistry,
+                    config,
+                    _targetAmts,
+                    erc20s,
+                    targetAmts
+                );
+            } else {
+                // Confirm reference basket is SOUND
+                assetRegistry.refresh();
+                require(status() == CollateralStatus.SOUND, "unsound basket");
+                // intentionally do not check isReady()
+
+                // Normalize targetAmts based on UoA value of reference basket
+                (uint192 low, uint192 high) = _price(false);
+                assert(low > 0 && high < FIX_MAX); // implied by SOUND status
+                targetAmts = BasketLibP1.normalizeByPrice(
+                    assetRegistry,
+                    erc20s,
+                    targetAmts,
+                    (low + high) / 2
+                );
+            }
         }
 
         // Clean up previous basket config
