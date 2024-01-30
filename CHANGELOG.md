@@ -6,7 +6,7 @@ This release makes bidding in dutch auctions easier for MEV searchers and gives 
 
 ## Upgrade Steps
 
-Upgrade BasketHandler and Distributor.
+Upgrade BasketHandler, BackingManager, and Distributor.
 
 Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTrade` contract address.
 
@@ -19,10 +19,12 @@ New governance param added: `reweightable`
 - `BasketHandler` [+1 slot]
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
   - Add `reweightable()` view
+- `BackingManager`
+  - Minor gas optimization
 - `Deployer`
   - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
 - `Distributor`
-  - Minor gas-optimization
+  - Minor gas optimization
 
 ## Plugins
 
