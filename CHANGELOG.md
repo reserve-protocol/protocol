@@ -25,11 +25,12 @@ New governance param added: `reweightable`
   - New `LastCollateralizedChanged()` event -- track to determine earliest basket nonce to use for `redeemCustom()`
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
   - Add `reweightable()` view
-  -
+- `BackingManager`
+  - Minor gas optimization
 - `Deployer`
   - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
 - `Distributor`
-  - Minor gas-optimization
+  - Minor gas optimization
 
 ## Plugins
 
