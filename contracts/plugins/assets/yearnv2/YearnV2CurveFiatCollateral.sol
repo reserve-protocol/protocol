@@ -31,6 +31,8 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
 
     IPricePerShareHelper public immutable pricePerShareHelper;
 
+    /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
+    /// @dev config.erc20 should be a RewardableERC20
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
