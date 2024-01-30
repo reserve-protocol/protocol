@@ -42,6 +42,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   CurvePoolType,
 } from '../curve/constants'
+import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 
 // Note: Uses ../curve/collateralTests.ts, not ../collateralTests.ts
 
@@ -207,7 +208,7 @@ tests.forEach((test: CurveFiatTest) => {
 
   /*
   Define helper functions
-*/
+  */
 
   const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> = async (
     ctx: CurveCollateralFixtureContext,
@@ -220,17 +221,37 @@ tests.forEach((test: CurveFiatTest) => {
 
   /*
   Define collateral-specific tests
-*/
+  */
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificConstructorTests = () => {}
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const collateralSpecificStatusTests = () => {}
+  const collateralSpecificStatusTests = () => {
+    it('correctly values tokens', async () => {
+      const [collateral] = await deployCollateral()
+
+      await collateral.refresh()
+      const refPerTokBefore = await collateral.refPerTok()
+
+      const slotValue = await ethers.provider.getStorageAt(await collateral.erc20(), 0x28)
+      await setStorageAt(
+        await collateral.erc20(),
+        0x28,
+        BigNumber.from(slotValue).mul(101).div(100).toHexString() // increase debt by 1%
+      )
+
+      await ethers.provider.getStorageAt(await collateral.erc20(), 0x28).then(console.log)
+
+      await collateral.refresh()
+      const refPerTokAfter = await collateral.refPerTok()
+
+      expect(refPerTokAfter).to.be.gt(refPerTokBefore)
+    })
+  }
 
   /*
   Run the test suite
-*/
+  */
 
   const opts = {
     deployCollateral,
