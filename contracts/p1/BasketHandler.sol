@@ -201,7 +201,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param reweight True iff targetAmts should be scaled to match the reference basket, by UoA
+    /// @param normalize True iff targetAmts should be normalized by UoA to the reference basket
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -217,14 +217,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function _setPrimeBasket(
         IERC20[] calldata erc20s,
         uint192[] memory targetAmts,
-        bool reweight
+        bool normalize
     ) internal {
         requireGovernanceOnly();
         require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
-        if (!reweightable) {
+        if (!reweightable && config.erc20s.length != 0) {
             // Require targets remain constant
             BasketLibP1.requireConstantConfigTargets(
                 assetRegistry,
@@ -233,7 +233,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 erc20s,
                 targetAmts
             );
-        } else if (reweight) {
+        } else if (normalize && config.erc20s.length != 0) {
             // Confirm reference basket is SOUND
             assetRegistry.refresh();
             require(status() == CollateralStatus.SOUND, "unsound basket");
