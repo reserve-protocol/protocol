@@ -182,9 +182,26 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
+    /// Set the prime basket
+    /// @param erc20s The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        _setPrimeBasket(erc20s, targetAmts, true);
+    }
+
+    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
+    /// @param erc20s The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
+    function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        _setPrimeBasket(erc20s, targetAmts, false);
+    }
+
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @param reweight True iff targetAmts should be scaled to match the reference basket, by UoA
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -197,39 +214,39 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
-    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] memory targetAmts) external {
+    function _setPrimeBasket(
+        IERC20[] calldata erc20s,
+        uint192[] memory targetAmts,
+        bool reweight
+    ) internal {
         requireGovernanceOnly();
         require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
-        // If this isn't initial setup...
-        if (config.erc20s.length > 0) {
-            if (!reweightable) {
-                // Require targets remain constant
-                BasketLibP1.requireConstantConfigTargets(
-                    assetRegistry,
-                    config,
-                    _targetAmts,
-                    erc20s,
-                    targetAmts
-                );
-            } else {
-                // Confirm reference basket is SOUND
-                assetRegistry.refresh();
-                require(status() == CollateralStatus.SOUND, "unsound basket");
-                // intentionally do not check isReady()
+        if (!reweightable) {
+            // Require targets remain constant
+            BasketLibP1.requireConstantConfigTargets(
+                assetRegistry,
+                config,
+                _targetAmts,
+                erc20s,
+                targetAmts
+            );
+        } else if (reweight) {
+            // Confirm reference basket is SOUND
+            assetRegistry.refresh();
+            require(status() == CollateralStatus.SOUND, "unsound basket");
 
-                // Normalize targetAmts based on UoA value of reference basket
-                (uint192 low, uint192 high) = _price(false);
-                assert(low > 0 && high < FIX_MAX); // implied by SOUND status
-                targetAmts = BasketLibP1.normalizeByPrice(
-                    assetRegistry,
-                    erc20s,
-                    targetAmts,
-                    (low + high) / 2
-                );
-            }
+            // Normalize targetAmts based on UoA value of reference basket
+            (uint192 low, uint192 high) = _price(false);
+            assert(low > 0 && high < FIX_MAX); // implied by SOUND status
+            targetAmts = BasketLibP1.normalizeByPrice(
+                assetRegistry,
+                erc20s,
+                targetAmts,
+                (low + high) / 2
+            );
         }
 
         // Clean up previous basket config
