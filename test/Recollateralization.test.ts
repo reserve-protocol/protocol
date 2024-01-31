@@ -1093,15 +1093,25 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
           const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-          await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
-            .to.emit(backingManager, 'TradeStarted')
-            .withArgs(
-              anyValue,
-              token0.address,
-              token1.address,
-              sellAmt,
-              toBNDecimals(minBuyAmt, 6).add(1)
-            )
+          await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+            {
+              contract: backingManager,
+              name: 'TradeStarted',
+              args: [
+                anyValue,
+                token0.address,
+                token1.address,
+                sellAmt,
+                toBNDecimals(minBuyAmt, 6).add(1),
+              ],
+              emitted: true,
+            },
+            {
+              contract: basketHandler,
+              name: 'LastCollateralizedChanged',
+              emitted: false,
+            },
+          ])
 
           const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -1155,7 +1165,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           // Advance time till auction ended
           await advanceTime(config.batchAuctionLength.add(100).toString())
 
-          // End current auction, should  not start any new auctions
+          // End current auction, should not start any new auctions
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
               contract: backingManager,
@@ -1170,6 +1180,12 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               emitted: true,
             },
             { contract: backingManager, name: 'TradeStarted', emitted: false },
+            {
+              contract: basketHandler,
+              name: 'LastCollateralizedChanged',
+              args: [anyValue, 3],
+              emitted: true,
+            },
           ])
 
           // Check state - Order restablished
@@ -1182,6 +1198,12 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             toBNDecimals(issueAmount, 6).add(1)
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount) // assets kept in backing buffer
+
+          // Regression test -- Jan 29 2024
+          // After recollateralization: should NOT allow redeemCustom at previous basket
+          await expect(
+            rToken.connect(addr1).redeemCustom(addr1.address, bn('1'), [2], [fp('1')], [], [])
+          ).to.be.revertedWith('invalid basketNonce')
 
           // Check price in USD of the current RToken
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)

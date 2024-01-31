@@ -107,6 +107,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
+
+        basketHandler.trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
@@ -114,7 +116,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
+    function rebalance(TradeKind kind) external nonReentrant {
+        requireNotTradingPausedOrFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -183,11 +187,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function forwardRevenue(IERC20[] calldata erc20s)
-        external
-        nonReentrant
-        notTradingPausedOrFrozen
-    {
+    function forwardRevenue(IERC20[] calldata erc20s) external nonReentrant {
+        requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         assetRegistry.refresh();

@@ -124,6 +124,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     Basket private basket;
 
     uint48 public nonce; // {basketNonce} A unique identifier for this basket instance
+    uint48 public lastCollateralized; // {basketNonce} Nonce of most recent full collateralization
     uint48 public timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
@@ -229,6 +230,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
+    /// Track when last collateralized
+    // effects: lastCollateralized' = nonce if nonce > lastCollateralized && fullyCapitalized
+    /// @custom:refresher
+    function trackCollateralization() external {
+        if (nonce > lastCollateralized && fullyCollateralized()) {
+            emit LastCollateralizedChanged(lastCollateralized, nonce);
+            lastCollateralized = nonce;
+        }
+    }
+
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
@@ -315,7 +326,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// @return Whether this contract owns enough collateral to cover rToken.basketsNeeded() BUs
     /// ie, whether the protocol is currently fully collateralized
-    function fullyCollateralized() external view returns (bool) {
+    function fullyCollateralized() public view returns (bool) {
         BasketRange memory held = basketsHeldBy(address(main.backingManager()));
         return held.bottom >= main.rToken().basketsNeeded();
     }
@@ -476,7 +487,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
-            require(basketNonces[i] <= nonce, "invalid basketNonce");
+            require(
+                basketNonces[i] >= lastCollateralized && basketNonces[i] <= nonce,
+                "invalid basketNonce"
+            );
             Basket storage b = basketHistory[basketNonces[i]];
 
             // Add-in refAmts contribution from historical basket
