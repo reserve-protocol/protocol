@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "../FraxOracleLib.sol";
 import "./vendor/IsfrxEth.sol";
 import "./vendor/CurvePoolEmaPriceOracleWithMinMax.sol";
 
@@ -19,7 +18,6 @@ import "./vendor/CurvePoolEmaPriceOracleWithMinMax.sol";
  */
 contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOracleWithMinMax {
     using OracleLib for AggregatorV3Interface;
-    using FraxOracleLib for FraxAggregatorV3Interface;
     using FixLib for uint192;
 
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms

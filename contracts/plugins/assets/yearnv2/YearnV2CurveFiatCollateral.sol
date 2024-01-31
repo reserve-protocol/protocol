@@ -4,10 +4,11 @@ pragma solidity 0.8.19;
 import "../curve/CurveStableCollateral.sol";
 
 interface IPricePerShareHelper {
+    /// @notice Helper function to convert shares to underlying amount with exact precision
     /// @param vault The yToken address
-    /// @param amount {qTok}
+    /// @param shares {qTok}
     /// @return {qLP Token}
-    function amountToShares(address vault, uint256 amount) external view returns (uint256);
+    function sharesToAmount(address vault, uint256 shares) external view returns (uint256);
 }
 
 /**
@@ -100,12 +101,12 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
     /// @return {LP token/tok}
     function _pricePerShare() internal view returns (uint192) {
         uint256 supply = erc20.totalSupply(); // {qTok}
-        uint256 shares = pricePerShareHelper.amountToShares(address(erc20), supply); // {qLP Token}
+        uint256 amount = pricePerShareHelper.sharesToAmount(address(erc20), supply); // {qLP Token}
 
         // yvCurve tokens always have the same number of decimals as the underlying curve LP token,
         // so we can divide the quanta units without converting to whole units
 
         // {LP token/tok} = {LP token} / {tok}
-        return divuu(shares, supply);
+        return divuu(amount, supply);
     }
 }
