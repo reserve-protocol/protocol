@@ -851,11 +851,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
 
         // Compute current basket price
-        (uint192 low, uint192 high) = _price(false);
+        (uint192 low, uint192 high) = _price(false); // {UoA/BU}
         assert(low > 0 && high < FIX_MAX); // implied by SOUND status
+        uint192 p = low.plus(high).divu(2, CEIL); // {UoA/BU}
 
         // Compute would-be new price
-        uint192 newPrice; // {UoA/BU}
+        uint192 newP; // {UoA/BU}
         for (uint256 i = 0; i < len; ++i) {
             ICollateral coll = main.assetRegistry().toColl(erc20s[i]); // reverts if unregistered
 
@@ -863,18 +864,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             require(low > 0 && high < FIX_MAX, "invalid price");
 
             // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
-            newPrice += targetAmts[i].mulDiv(
-                (low + high + 1) / 2,
-                coll.targetPerRef().mul(coll.refPerTok(), FLOOR),
-                CEIL
-            ); // revert on overflow
+            newP += targetAmts[i].mulDiv(p, coll.targetPerRef().mul(coll.refPerTok(), FLOOR), CEIL); // revert on overflow
         }
 
         // Scale targetAmts by the price ratio
         newTargetAmts = new uint192[](len);
         for (uint256 i = 0; i < len; ++i) {
             // {target/BU} = {target/BU} * {UoA/BU} / {UoA/BU}
-            newTargetAmts[i] = targetAmts[i].mulDiv(low.plus(high).divu(2, CEIL), newPrice, CEIL);
+            newTargetAmts[i] = targetAmts[i].mulDiv(p, newP, CEIL);
         }
     }
 
