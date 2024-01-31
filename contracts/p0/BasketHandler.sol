@@ -864,7 +864,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             require(low > 0 && high < FIX_MAX, "invalid price");
 
             // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
-            newP += targetAmts[i].mulDiv(p, coll.targetPerRef().mul(coll.refPerTok(), FLOOR), CEIL); // revert on overflow
+            newP += targetAmts[i].mulDiv(p, coll.targetPerRef().mul(coll.refPerTok(), FLOOR), CEIL);
         }
 
         // Scale targetAmts by the price ratio
