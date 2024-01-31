@@ -99,8 +99,6 @@ export const deployCollateral = async (
     },
     opts.revenueHiding,
     opts.curvePoolEmaPriceOracleAddress ?? CURVE_POOL_EMA_PRICE_ORACLE_ADDRESS,
-    opts._minimumCurvePoolEma ?? 0,
-    opts._maximumCurvePoolEma ?? fp(1),
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()

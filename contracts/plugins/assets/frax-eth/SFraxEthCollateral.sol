@@ -6,7 +6,11 @@ import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
 import "./vendor/IsfrxEth.sol";
-import "./vendor/CurvePoolEmaPriceOracleWithMinMax.sol";
+
+interface IEmaPriceOracleStableSwap {
+    // solhint-disable-next-line func-name-mixedcase
+    function price_oracle() external view returns (uint256);
+}
 
 /**
  * @title SFraxEthCollateral
@@ -16,27 +20,22 @@ import "./vendor/CurvePoolEmaPriceOracleWithMinMax.sol";
  * tar = ETH
  * UoA = USD
  */
-contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOracleWithMinMax {
+contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
+
+    address public immutable CURVE_POOL_EMA_PRICE_ORACLE;
 
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
     /// @param revenueHiding {1e18} percent amount of revenue to hide
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        address curvePoolEmaPriceOracleAddress,
-        uint256 _minimumCurvePoolEma,
-        uint256 _maximumCurvePoolEma
-    )
-        AppreciatingFiatCollateral(config, revenueHiding)
-        CurvePoolEmaPriceOracleWithMinMax(
-            curvePoolEmaPriceOracleAddress,
-            _minimumCurvePoolEma,
-            _maximumCurvePoolEma
-        )
-    {
+        address curvePoolEmaPriceOracleAddress
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
+
+        CURVE_POOL_EMA_PRICE_ORACLE = curvePoolEmaPriceOracleAddress;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -54,7 +53,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOrac
         )
     {
         // {target/ref} Get current market peg ({eth/frxeth})
-        pegPrice = _safeWrap(_getCurvePoolToken1EmaPrice());
+        pegPrice = _safeWrap(IEmaPriceOracleStableSwap(CURVE_POOL_EMA_PRICE_ORACLE).price_oracle());
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
