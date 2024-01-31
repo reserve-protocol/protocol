@@ -11,7 +11,6 @@ import {
   SfraxEthMock,
   TestICollateral,
   IsfrxEth,
-  SFraxEthCollateral,
   EmaPriceOracleStableSwapMock__factory,
   EmaPriceOracleStableSwapMock,
 } from '../../../../typechain'
@@ -99,8 +98,6 @@ export const deployCollateral = async (
     },
     opts.revenueHiding,
     opts.curvePoolEmaPriceOracleAddress ?? CURVE_POOL_EMA_PRICE_ORACLE_ADDRESS,
-    opts._minimumCurvePoolEma ?? 0,
-    opts._maximumCurvePoolEma ?? fp(1),
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -228,9 +225,8 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const collateral = ctx.collateral as unknown as SFraxEthCollateral
-  const clTpRData = await collateral.getCurvePoolToken1EmaPrice()
-  const clTpRDecimals = await collateral.CURVE_POOL_EMA_PRICE_ORACLE_DECIMALS()
+  const clTpRData = await ctx.curveEmaOracle.price_oracle()
+  const clTpRDecimals = await ctx.curveEmaOracle.decimals()
 
   const refPerTok = await ctx.sfrxEth.pricePerShare()
 
