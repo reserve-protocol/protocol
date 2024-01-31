@@ -41,6 +41,11 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOrac
         require(config.defaultThreshold > 0, "defaultThreshold zero");
     }
 
+    function refresh() public virtual override {
+        IsfrxEth(address(erc20)).syncRewards();
+        super.refresh();
+    }
+
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
