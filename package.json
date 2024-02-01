@@ -91,6 +91,7 @@
     "hardhat": "^2.12.3",
     "hardhat-contract-sizer": "^2.4.0",
     "hardhat-gas-reporter": "^1.0.8",
+    "hardhat-storage-layout": "^0.1.7",
     "husky": "^7.0.0",
     "lodash": "^4.17.21",
     "lodash.get": "^4.4.2",
