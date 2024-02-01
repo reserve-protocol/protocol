@@ -367,9 +367,9 @@ library BasketLibP1 {
 
             // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
             newPrice += targetAmts[i].mulDiv(
-                (low + high + 1) / 2,
-                coll.targetPerRef().mul(coll.refPerTok(), FLOOR),
-                CEIL
+                (low + high) / 2,
+                coll.targetPerRef().mul(coll.refPerTok(), CEIL),
+                FLOOR
             ); // revert on overflow
         }
 
