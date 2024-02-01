@@ -853,7 +853,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         // Compute current basket price
         (uint192 low, uint192 high) = _price(false); // {UoA/BU}
         assert(low > 0 && high < FIX_MAX); // implied by SOUND status
-        uint192 p = low.plus(high).divu(2, CEIL); // {UoA/BU}
+        uint192 p = low.plus(high).divu(2, FLOOR); // {UoA/BU}
 
         // Compute would-be new price
         uint192 newP; // {UoA/BU}

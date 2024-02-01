@@ -245,7 +245,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 assetRegistry,
                 erc20s,
                 targetAmts,
-                (low + high) / 2
+                (low + high + 1) / 2
             );
         }
 
