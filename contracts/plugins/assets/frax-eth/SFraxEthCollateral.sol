@@ -38,6 +38,12 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
         CURVE_POOL_EMA_PRICE_ORACLE = curvePoolEmaPriceOracleAddress;
     }
 
+    function refresh() public virtual override {
+        try IsfrxEth(address(erc20)).syncRewards() {} catch {}
+
+        super.refresh();
+    }
+
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
