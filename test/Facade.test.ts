@@ -966,30 +966,41 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       })
 
       it('Should return pending unstakings', async () => {
-        // Bump draftEra by seizing RSR when the withdrawal queue is empty
-        await rsr.connect(owner).mint(stRSRP1.address, 1)
-        await whileImpersonating(backingManager.address, async (signer) => {
-          await stRSRP1.connect(signer).seizeRSR(1)
-        })
-        const draftEra = await stRSRP1.getDraftEra()
-        expect(draftEra).to.equal(2)
-
         // Stake
         const unstakeAmount = bn('10000e18')
-        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(10))
-        await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(10))
-        await stRSRP1.connect(addr1).stake(unstakeAmount.mul(10))
+        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(20))
+        await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(20))
+        await stRSRP1.connect(addr1).stake(unstakeAmount.mul(20))
 
-        await stRSRP1.connect(addr1).unstake(unstakeAmount)
-        await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
+        // Bump draftEra by seizing half the RSR when the withdrawal queue is empty
+        let draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(1)
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await stRSRP1.connect(signer).seizeRSR(unstakeAmount.mul(10)) // seize half
+        })
+        draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(2) // era bumps because queue is empty
+
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(2)) // 50% StRSR/RSR depreciation
+
+        // Bump draftEra by seizing half the RSR when the queue is empty
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await stRSRP1.connect(signer).seizeRSR(unstakeAmount.mul(5)) // seize half, again
+        })
+        draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(2) // no era bump
+
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(4).add(1)) // 75% depreciation; test rounding
 
         const pendings = await facade.pendingUnstakings(rToken.address, draftEra, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
-        expect(pendings[0][2]).to.eql(unstakeAmount) // amount
+        console.log(pendings[0][2], unstakeAmount)
+        expect(pendings[0][2]).to.eql(unstakeAmount) // RSR amount, not draft amount
 
         expect(pendings[1][0]).to.eql(bn(1)) // index
-        expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
+        console.log(pendings[1][2])
+        expect(pendings[1][2]).to.eql(unstakeAmount) // RSR amount, not draft amount
       })
 
       it('Should return prime basket', async () => {
