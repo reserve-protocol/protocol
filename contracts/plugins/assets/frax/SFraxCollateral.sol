@@ -26,7 +26,8 @@ contract SFraxCollateral is AppreciatingFiatCollateral {
     {}
 
     function refresh() public virtual override {
-        IStakedFrax(address(erc20)).syncRewardsAndDistribution();
+        try IStakedFrax(address(erc20)).syncRewardsAndDistribution() {} catch {}
+
         super.refresh();
     }
 

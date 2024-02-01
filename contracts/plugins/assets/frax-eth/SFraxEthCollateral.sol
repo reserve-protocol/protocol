@@ -42,7 +42,8 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral, CurvePoolEmaPriceOrac
     }
 
     function refresh() public virtual override {
-        IsfrxEth(address(erc20)).syncRewards();
+        try IsfrxEth(address(erc20)).syncRewards() {} catch {}
+
         super.refresh();
     }
 
