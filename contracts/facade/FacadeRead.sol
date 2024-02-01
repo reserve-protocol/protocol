@@ -278,6 +278,7 @@ contract FacadeRead is IFacadeRead {
         StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
         uint256 left = stRSR.firstRemainingDraft(draftEra, account);
         uint256 right = stRSR.draftQueueLen(draftEra, account);
+        uint192 draftRate = stRSR.draftRate();
 
         unstakings = new Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
@@ -289,7 +290,8 @@ contract FacadeRead is IFacadeRead {
                 diff = drafts - prevDrafts;
             }
 
-            unstakings[i] = Pending(i + left, availableAt, diff);
+            // {qRSR} = {qDrafts} / {qDrafts/qRSR}
+            unstakings[i] = Pending(i + left, availableAt, diff.div(draftRate));
         }
     }
 

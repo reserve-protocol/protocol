@@ -981,7 +981,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         draftEra = await stRSRP1.getDraftEra()
         expect(draftEra).to.equal(2) // era bumps because queue is empty
 
-        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(2)) // 50% StRSR/RSR depreciation
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(4)) // eventually 75% StRSR/RSR depreciation
 
         // Bump draftEra by seizing half the RSR when the queue is empty
         await whileImpersonating(backingManager.address, async (signer) => {
@@ -990,16 +990,14 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         draftEra = await stRSRP1.getDraftEra()
         expect(draftEra).to.equal(2) // no era bump
 
-        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(4).add(1)) // 75% depreciation; test rounding
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(4).add(1)) // test rounding
 
         const pendings = await facade.pendingUnstakings(rToken.address, draftEra, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
-        console.log(pendings[0][2], unstakeAmount)
         expect(pendings[0][2]).to.eql(unstakeAmount) // RSR amount, not draft amount
 
         expect(pendings[1][0]).to.eql(bn(1)) // index
-        console.log(pendings[1][2])
         expect(pendings[1][2]).to.eql(unstakeAmount) // RSR amount, not draft amount
       })
 
