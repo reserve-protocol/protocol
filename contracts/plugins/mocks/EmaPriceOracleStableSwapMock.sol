@@ -12,9 +12,7 @@ contract EmaPriceOracleStableSwapMock is IEmaPriceOracleStableSwap {
     uint256 public initPrice;
     uint256 internal _price;
 
-    constructor(
-        uint256 _initPrice
-    ) {
+    constructor(uint256 _initPrice) {
         initPrice = _initPrice;
         _price = _initPrice;
     }
@@ -29,5 +27,9 @@ contract EmaPriceOracleStableSwapMock is IEmaPriceOracleStableSwap {
 
     function price_oracle() external view returns (uint256) {
         return _price;
+    }
+
+    function decimals() external pure returns (uint8) {
+        return 18;
     }
 }
