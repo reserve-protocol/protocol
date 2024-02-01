@@ -269,7 +269,7 @@ contract FacadeRead is IFacadeRead {
     /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
     /// @dev Use stRSR.draftRate() to convert {qDrafts} to {qRSR}
-    /// @return unstakings {qDrafts} All the pending StRSR unstakings for an account, in drafts
+    /// @return unstakings {qRSR} All the pending StRSR unstakings for an account, in RSR
     function pendingUnstakings(
         RTokenP1 rToken,
         uint256 draftEra,
@@ -278,6 +278,7 @@ contract FacadeRead is IFacadeRead {
         StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
         uint256 left = stRSR.firstRemainingDraft(draftEra, account);
         uint256 right = stRSR.draftQueueLen(draftEra, account);
+        uint192 draftRate = stRSR.draftRate();
 
         unstakings = new Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
@@ -289,7 +290,8 @@ contract FacadeRead is IFacadeRead {
                 diff = drafts - prevDrafts;
             }
 
-            unstakings[i] = Pending(i + left, availableAt, diff);
+            // {qRSR} = {qDrafts} / {qDrafts/qRSR}
+            unstakings[i] = Pending(i + left, availableAt, diff.div(draftRate));
         }
     }
 
