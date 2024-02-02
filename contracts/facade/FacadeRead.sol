@@ -268,7 +268,6 @@ contract FacadeRead is IFacadeRead {
 
     /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
-    /// @dev Use stRSR.draftRate() to convert {qDrafts} to {qRSR}
     /// @return unstakings {qRSR} All the pending StRSR unstakings for an account, in RSR
     function pendingUnstakings(
         RTokenP1 rToken,
