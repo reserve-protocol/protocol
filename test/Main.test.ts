@@ -1896,9 +1896,23 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           [token0.address, token1.address, token2.address, token3.address],
           [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
         )
+
+      await indexBH
+        .connect(owner)
+        .forceSetPrimeBasket(
+          [token0.address, token1.address, token2.address, token3.address],
+          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+        )
+      await indexBH
+        .connect(owner)
+        .forceSetPrimeBasket(
+          [token0.address, token1.address, token2.address, token3.address],
+          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+        )
     })
 
     it('Should be able to set prime basket multiple times', async () => {
+      // basketHandler
       await expect(
         basketHandler
           .connect(owner)
@@ -1925,6 +1939,38 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       await expect(basketHandler.connect(owner).forceSetPrimeBasket([token2.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
+        .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+
+      // indexBH
+      await expect(
+        indexBH
+          .connect(owner)
+          .setPrimeBasket([token0.address, token3.address], [fp('0.5'), fp('0.5')])
+      )
+        .to.emit(indexBH, 'PrimeBasketSet')
+        .withArgs(
+          [token0.address, token3.address],
+          [fp('0.5'), fp('0.5')],
+          [ethers.utils.formatBytes32String('USD')]
+        )
+      await indexBH.connect(owner).refreshBasket()
+
+      await expect(indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')]))
+        .to.emit(indexBH, 'PrimeBasketSet')
+        .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+      await indexBH.connect(owner).refreshBasket()
+
+      await expect(indexBH.connect(owner).setPrimeBasket([token2.address], [fp('1')]))
+        .to.emit(indexBH, 'PrimeBasketSet')
+        .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+      await indexBH.connect(owner).refreshBasket()
+
+      await expect(indexBH.connect(owner).forceSetPrimeBasket([token1.address], [fp('1')]))
+        .to.emit(indexBH, 'PrimeBasketSet')
+        .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+
+      await expect(indexBH.connect(owner).forceSetPrimeBasket([token2.address], [fp('1')]))
+        .to.emit(indexBH, 'PrimeBasketSet')
         .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
