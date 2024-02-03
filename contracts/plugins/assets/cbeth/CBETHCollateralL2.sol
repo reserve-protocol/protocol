@@ -72,6 +72,6 @@ contract CBEthCollateralL2 is L2LSDCollateral {
         // assert(low <= high); obviously true just by inspection
 
         // {target/ref} = {target/tok} / {ref/tok}
-        pegPrice = targetPerTok.div(_underlyingRefPerTok());
+        pegPrice = targetPerTok.div(underlyingRefPerTok());
     }
 }

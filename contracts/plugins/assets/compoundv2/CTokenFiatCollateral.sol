@@ -72,7 +72,7 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rate = cToken.exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);

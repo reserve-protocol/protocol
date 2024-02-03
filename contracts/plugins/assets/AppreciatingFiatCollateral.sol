@@ -13,7 +13,7 @@ import "./OracleLib.sol";
  * Collateral that may need revenue hiding to become truly "up only"
  *
  * For: {tok} != {ref}, {ref} != {target}, {target} == {UoA}
- * Inheritors _must_ implement _underlyingRefPerTok()
+ * Inheritors _must_ implement underlyingRefPerTok()
  * Can be easily extended by (optionally) re-implementing:
  *   - tryPrice()
  *   - refPerTok()
@@ -63,7 +63,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
         pegPrice = chainlinkFeed.price(oracleTimeout);
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 p = pegPrice.mul(_underlyingRefPerTok());
+        uint192 p = pegPrice.mul(underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         low = p - err;
@@ -81,45 +81,49 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
         // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
         // revenue hiding: do not DISABLE if drawdown is small
-        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
 
-        // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
-
-        // uint192(<) is equivalent to Fix.lt
-        if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = underlyingRefPerTok;
-            markStatus(CollateralStatus.DISABLED);
-        } else if (hiddenReferencePrice > exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
-        }
-
-        // Check for soft default + save prices
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
-            // {UoA/tok}, {UoA/tok}, {target/ref}
-            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
-
-            // Save prices if priced
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
+            // uint192(<) is equivalent to Fix.lt
+            if (underlyingRefPerTok_ < exposedReferencePrice) {
+                exposedReferencePrice = underlyingRefPerTok_;
+                markStatus(CollateralStatus.DISABLED);
+            } else if (hiddenReferencePrice > exposedReferencePrice) {
+                exposedReferencePrice = hiddenReferencePrice;
             }
 
-            // If the price is below the default-threshold price, default eventually
-            // uint192(+/-) is the same as Fix.plus/minus
-            if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+                // {UoA/tok}, {UoA/tok}, {target/ref}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+
+                // Save prices if priced
+                if (high < FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    lastSave = uint48(block.timestamp);
+                } else {
+                    // must be unpriced
+                    assert(low == 0);
+                }
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
-            } else {
-                markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
+            markStatus(CollateralStatus.DISABLED);
         }
 
         CollateralStatus newStatus = status();
@@ -135,5 +139,5 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
 
     /// Should update in inheritors
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view virtual returns (uint192);
+    function underlyingRefPerTok() public view virtual returns (uint192);
 }
