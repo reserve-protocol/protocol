@@ -49,7 +49,7 @@ To participate, either:
 
 OR
 
-(2) Call `bidWithCallback(bytes memory)` from a calling contract that adheres to the `IDutchTradeCallee` interface. It should contain a function `dutchTradeCallback(address buyToken,uint256 buyAmount,bytes calldata data) external;` that transfers `bidAmount` buy tokens. This method will be called by the `DutchTrade` as a callback after the trade has been resolved. See `DutchTradeRouter.sol` for an example.
+(2) Call `bidWithCallback(bytes memory)` from a calling contract that adheres to the `IDutchTradeCallee` interface. It should contain a function `dutchTradeCallback(address buyToken,uint256 buyAmount,bytes calldata data) external;` that transfers `bidAmount` buy tokens. This method will be called by the `DutchTrade` as a callback after the trade has been resolved. See `plugins/mocks/DutchTradeRouter.sol` for an example.
 
 1. Call `status()` view; the auction is ongoing if return value is 1
 2. Call `lot()` to see the number of tokens being sold
