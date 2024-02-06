@@ -741,19 +741,12 @@ describe('In FixLib,', () => {
     context('correctly exponentiates inside its range', () => {
       // prettier-ignore
       const table = [
-        [fp(1.0), bn(1), fp(1.0)],
-        [fp(1.0), bn(15), fp(1.0)],
-        [fp(2), bn(7), fp(128)],
-        [fp(2), bn(63), fp('9223372036854775808')],
-        [fp(2), bn(64), fp('18446744073709551616')],
-        [fp(1.5), bn(7), fp(17.0859375)],
-        [fp(1.1), bn(4), fp('1.4641')],
-        [fp(1.1), bn(5), fp('1.61051')],
-        [fp(0.23), bn(3), fp('0.012167')],
-        [bn(1), bn(2), bn(0)],
-        [fp('1e-9'), bn(2), fp('1e-18')],
-        [fp(0.1), bn(17), fp('1e-17')],
-        [fp(10), bn(19), fp('1e19')]
+        [fp('1'), bn('1'), fp('1')],
+        [fp('1'), bn('15'), fp('1')],
+        [fp('0.23'), bn('3'), fp('0.012167')],
+        [bn('1'), bn('2'), bn('0')],
+        [fp('1e-9'), bn('2'), fp('1e-18')],
+        [fp('0.1'), bn('17'), fp('1e-17')],
       ]
 
       for (const [a, b, c] of table) {
@@ -763,32 +756,11 @@ describe('In FixLib,', () => {
       }
     })
 
-    context('correctly exponentiates at the extremes of its range', () => {
-      const table = [
-        [MAX_UINT192, bn(1), MAX_UINT192],
-        [MIN_UINT192, bn(1), MIN_UINT192],
-        [MIN_UINT192, bn(0), fp(1)],
-        [fp(0), bn(0), fp(1.0)],
-        [fp(987.0), bn(0), fp(1.0)],
-        [fp(1.0), bn(2).pow(32).sub(1), fp(1.0)],
-        [fp(2), bn(131), fp(bn(2).pow(131))],
-      ]
-
-      for (const [a, b, c] of table) {
-        it(`powu(${shortString(a)}, ${shortString(b)}) == ${shortString(c)}`, async () => {
-          expect(await caller.powu(a, b)).to.equal(c)
-        })
-      }
-    })
     context('fails outside its range', () => {
       const table = [
-        [fp(10), bn(40)],
+        [fp('1.0001'), bn(1)],
+        [fp('2'), bn(1)],
         [MAX_UINT192, bn(2)],
-        [fp('8e19'), bn(2)],
-        [fp('1.9e13'), bn(3)],
-        [fp('9e9'), bn(4)],
-        [fp('9.2e8'), bn(5)],
-        [fp(2), bn(191)],
       ]
 
       for (const [a, b] of table) {
