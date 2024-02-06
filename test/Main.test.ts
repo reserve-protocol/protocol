@@ -1692,23 +1692,26 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     let indexBH: TestIBasketHandler // need to have both this and regular basketHandler around
     let eurToken: ERC20Mock
 
-    beforeEach(async () => {
+    const newBasketHandler = async (): Promise<TestIBasketHandler> => {
       if (IMPLEMENTATION == Implementation.P0) {
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
-        indexBH = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
+        return <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
       } else if (IMPLEMENTATION == Implementation.P1) {
         const basketLib = await (await ethers.getContractFactory('BasketLibP1')).deploy()
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1', {
           libraries: { BasketLibP1: basketLib.address },
         })
-        indexBH = <TestIBasketHandler>await upgrades.deployProxy(BasketHandlerFactory, [], {
+        return <TestIBasketHandler>await upgrades.deployProxy(BasketHandlerFactory, [], {
           kind: 'uups',
           unsafeAllow: ['external-library-linking'], // BasketLibP1
         })
       } else {
         throw new Error('PROTO_IMPL must be set to either `0` or `1`')
       }
+    }
 
+    beforeEach(async () => {
+      indexBH = await newBasketHandler()
       await indexBH.init(main.address, config.warmupPeriod, true)
 
       eurToken = await (await ethers.getContractFactory('ERC20Mock')).deploy('EURO Token', 'EUR')
@@ -1881,6 +1884,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [0])
       ).to.be.revertedWith('missing target weights')
+
+      // for non-reweightable baskets, also try setting a zero amount as the *original* basket
+      const newBH = await newBasketHandler()
+      await newBH.init(main.address, config.warmupPeriod, false)
+      await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
+        'invalid target amount; must be nonzero'
+      )
+      await expect(
+        newBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
+      ).to.be.revertedWith('invalid target amount; must be nonzero')
     })
 
     it('Should be able to set exactly same basket', async () => {
