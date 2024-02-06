@@ -738,7 +738,7 @@ describe('In FixLib,', () => {
     })
   })
   describe('powu', () => {
-    it('correctly exponentiates inside its range', () => {
+    context('correctly exponentiates inside its range', () => {
       // prettier-ignore
       const table = [
         [fp(1.0), bn(1), fp(1.0)],
@@ -763,7 +763,7 @@ describe('In FixLib,', () => {
       }
     })
 
-    it('correctly exponentiates at the extremes of its range', () => {
+    context('correctly exponentiates at the extremes of its range', () => {
       const table = [
         [MAX_UINT192, bn(1), MAX_UINT192],
         [MIN_UINT192, bn(1), MIN_UINT192],
@@ -780,7 +780,7 @@ describe('In FixLib,', () => {
         })
       }
     })
-    it('fails outside its range', () => {
+    context('fails outside its range', () => {
       const table = [
         [fp(10), bn(40)],
         [MAX_UINT192, bn(2)],
@@ -796,6 +796,48 @@ describe('In FixLib,', () => {
           await expect(caller.powu(a, b)).to.be.reverted
         })
       }
+    })
+  })
+
+  describe('sqrt', () => {
+    context('correctly sqrts inside its range', () => {
+      // prettier-ignore
+      const table = [
+        [fp('1'), fp('1')],
+        [fp('4'), fp('2')],
+        [fp('144'), fp('12')],
+        [fp('38416'), fp('196')],
+        [fp('1.21'), fp('1.1')],
+      ]
+
+      for (const [a, b] of table) {
+        it(`sqrt(${shortString(a)}) == ${shortString(b)}`, async () => {
+          expect(await caller.sqrt(a)).to.equal(b)
+        })
+      }
+    })
+
+    context('correctly sqrts at the extremes of its range', () => {
+      const table = [
+        [
+          MAX_UINT192,
+          bn(2)
+            .pow(96)
+            .mul(10 ** 9)
+            .sub(1),
+        ],
+        [0, 0],
+        [fp('1e-18'), fp('1e-9')],
+      ]
+
+      for (const [a, b] of table) {
+        it(`sqrt(${shortString(a)}) == ${shortString(b)}`, async () => {
+          expect(await caller.sqrt(a)).to.equal(b)
+        })
+      }
+    })
+    context('fails outside its range', () => {
+      // nothing is outside its range
     })
   })
 
