@@ -1,5 +1,19 @@
 # Changelog
 
+# 3.3.0
+
+This release improves how collateral plugins price LP tokens.
+
+## Upgrade Steps
+
+Swapout all collateral plugins for LP tokens, such as: Curve, Convex, or Yearn tokens.
+
+## Plugins
+
+### Assets
+
+- crv/cvx/yv: Make `price()` more resistant to manipulation by MEV
+
 # 3.2.0
 
 This release makes bidding in dutch auctions easier for MEV searchers and gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
