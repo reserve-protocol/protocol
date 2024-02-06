@@ -3754,6 +3754,29 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await trade.lot()).to.equal(amt)
           expect(await trade.sellAmount()).to.equal(amt.mul(bn('1e12')))
         })
+
+        it('DutchTrade Reentrance Check', async () => {
+          const exploiter = await (
+            await ethers.getContractFactory('DutchTradeCallbackReentrantTest')
+          ).deploy()
+
+          await rToken.connect(addr1).approve(exploiter.address, constants.MaxUint256)
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, constants.MaxUint256)
+          await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
+
+          // Snipe auction at 0s left
+          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+
+          // Run it down
+          await expect(exploiter.connect(addr1).start(trade.address, rTokenTrader.address)).to.be
+            .reverted
+        })
       })
     })
 
