@@ -80,9 +80,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        uint192 metapool = _safeWrap(metapoolToken.get_virtual_price());
-        uint192 underlying = _safeWrap(curvePool.get_virtual_price());
-        return metapool.mul(underlying.sqrt());
+        return _safeWrap(metapoolToken.get_virtual_price()); // includes inner virtual price
     }
 
     // Check for defaults outside the pool
@@ -109,64 +107,22 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     /// @return low {UoA/ref}
     /// @return high {UoA/ref}
     function refPrice() internal view virtual override returns (uint192 low, uint192 high) {
+        // Approach: Use oracle prices to imply balance ratios to expect in the pool,
+        //           and use these ratios to propagate oracle prices through.
+
         // {UoA/underlyingPool}
         (uint192 lowPool, uint192 highPool) = super.refPrice();
+        require(lowPool != 0, "inner pool has no value");
 
-        // Assumption: Balances should be expected to be interchangeable, modulo decimal shifts
-        // and the virtual price for the underlying pool
-
-        // {ref} -- paired token
-        uint192 bal0 = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
-
-        // {ref} -- underlying pool adjusted for its appreciation
-        uint192 bal1 = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals())).mul(
-            _safeWrap(curvePool.get_virtual_price())
-        );
-
-        // {ref}
-        uint192 balTotal = bal0 + bal1;
-
+        // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
-        require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
+        require(lowPaired != 0, "invalid price");
 
-        // {UoA/ref} = {UoA/ref} * {ref} / {ref} + {UoA/ref} * {ref} / {ref}
-        low = lowPaired.mulDiv(bal0, balTotal, FLOOR) + lowPool.mulDiv(bal1, balTotal, FLOOR);
-        high = highPaired.mulDiv(bal0, balTotal, CEIL) + highPool.mulDiv(bal1, balTotal, CEIL);
-    }
-
-    /// @dev Warning: Can revert
-    /// @param lowPaired {UoA/pairedTok}
-    /// @param highPaired {UoA/pairedTok}
-    /// @return aumLow {UoA}
-    /// @return aumHigh {UoA}
-    function _metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
-        internal
-        view
-        returns (uint192 aumLow, uint192 aumHigh)
-    {
-        // {UoA}
-        (uint192 underlyingAumLow, uint192 underlyingAumHigh) = totalBalancesValue();
-
-        // {tokUnderlying}
-        uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-
-        // {UoA/tokUnderlying} = {UoA} / {tokUnderlying}
-        uint192 underlyingLow = underlyingAumLow.div(underlyingSupply, FLOOR);
-        uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
-
-        // {tokUnderlying}
-        uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()));
-
-        // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
-        aumLow = underlyingLow.mul(balUnderlying, FLOOR);
-        aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
-
-        // {pairedTok}
-        uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
-
-        // Add-in contribution from pairedTok
-        // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
-        aumLow += lowPaired.mul(pairedBal, FLOOR);
-        aumHigh += highPaired.mul(pairedBal, CEIL);
+        // Scale each token's price contribution by its expected % presence in the pool
+        uint192 pool = FIX_ONE.div((lowPool + highPool) / 2); // {underlyingPool/UoA}
+        uint192 paired = FIX_ONE.div((lowPaired + highPaired) / 2); // {pairedTok/UoA}
+        uint192 norm = pool + paired;
+        low += lowPool.mulDiv(pool, norm, FLOOR) + lowPaired.mulDiv(paired, norm, FLOOR);
+        high += highPool.mulDiv(pool, norm, CEIL) + highPaired.mulDiv(paired, norm, CEIL);
     }
 }

@@ -146,19 +146,34 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// @return low {UoA/ref}
     /// @return high {UoA/ref}
     function refPrice() internal view virtual returns (uint192 low, uint192 high) {
-        // Assumption: Balances should be expected to be interchangeable, modulo decimal shifts
-        uint192[] memory balances = getBalances(); // {ref}
-        uint192 balancesTotal; // {ref}
-        for (uint256 i = 0; i < nTokens; i++) {
-            balancesTotal += balances[i];
+        // Approach: Use oracle prices to imply balance ratios to expect in the pool,
+        //           and use these ratios to propagate oracle prices through.
+        //
+        // Example:
+        //   - pool with 2 tokens where 1 half-defaults: $1 and $1 => $1 and $0.5
+        //   - first token becomes 1/3 of the pool, second token becomes 2/3 of the pool
+        //   - 1/3 * $1 + 2/3 * $0.5 = $0.66
+
+        uint192[] memory lows = new uint192[](nTokens); // {UoA/ref}
+        uint192[] memory highs = new uint192[](nTokens); // {UoA/ref}
+        uint192[] memory portions = new uint192[](nTokens); // {ref/UoA}
+        uint192 norm; // {ref/UoA}
+
+        // Compute norm
+        for (uint8 i = 0; i < nTokens; i++) {
+            (lows[i], highs[i]) = tokenPrice(i); // {UoA/ref}
+            require(lows[i] != 0, "pool has no value");
+
+            // {ref/UoA} = {1} / ({UoA/ref} + {UoA/ref})
+            portions[i] = FIX_ONE.div((lows[i] + highs[i]) / 2);
+            norm += portions[i];
         }
 
+        // Scale each token's price contribution by its expected % presence in the pool
         for (uint8 i = 0; i < nTokens; i++) {
-            (uint192 l, uint192 h) = tokenPrice(i); // {UoA/ref}
-
             // {UoA/ref} = {UoA/ref} * {ref} / {ref}
-            low += l.mulDiv(balances[i], balancesTotal, FLOOR);
-            high += h.mulDiv(balances[i], balancesTotal, CEIL);
+            low += lows[i].mulDiv(portions[i], norm, FLOOR);
+            high += highs[i].mulDiv(portions[i], norm, CEIL);
         }
     }
 
