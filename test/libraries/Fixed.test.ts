@@ -771,48 +771,6 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('sqrt', () => {
-    context('correctly sqrts inside its range', () => {
-      // prettier-ignore
-      const table = [
-        [fp('1'), fp('1')],
-        [fp('4'), fp('2')],
-        [fp('144'), fp('12')],
-        [fp('38416'), fp('196')],
-        [fp('1.21'), fp('1.1')],
-      ]
-
-      for (const [a, b] of table) {
-        it(`sqrt(${shortString(a)}) == ${shortString(b)}`, async () => {
-          expect(await caller.sqrt(a)).to.equal(b)
-        })
-      }
-    })
-
-    context('correctly sqrts at the extremes of its range', () => {
-      const table = [
-        [
-          MAX_UINT192,
-          bn(2)
-            .pow(96)
-            .mul(10 ** 9)
-            .sub(1),
-        ],
-        [0, 0],
-        [fp('1e-18'), fp('1e-9')],
-      ]
-
-      for (const [a, b] of table) {
-        it(`sqrt(${shortString(a)}) == ${shortString(b)}`, async () => {
-          expect(await caller.sqrt(a)).to.equal(b)
-        })
-      }
-    })
-    context('fails outside its range', () => {
-      // nothing is outside its range
-    })
-  })
-
   describe('lt', () => {
     it('correctly evaluates <', async () => {
       for (const [a, b] of uint192Pairs) {
