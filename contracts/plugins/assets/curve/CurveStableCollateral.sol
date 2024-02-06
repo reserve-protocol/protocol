@@ -81,47 +81,51 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
         // revenue hiding: do not DISABLE if drawdown is small
-        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
 
-        // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
-
-        // uint192(<) is equivalent to Fix.lt
-        if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = underlyingRefPerTok;
-            markStatus(CollateralStatus.DISABLED);
-        } else if (hiddenReferencePrice > exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
-        }
-
-        // Check for soft default + save prices
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            // {UoA/tok}, {UoA/tok}, {UoA/tok}
-            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
-
-            // Save prices if priced
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                // untested:
-                //      validated in other plugins, cost to test here is high
-                assert(low == 0);
+            // uint192(<) is equivalent to Fix.lt
+            if (underlyingRefPerTok_ < exposedReferencePrice) {
+                exposedReferencePrice = underlyingRefPerTok_;
+                markStatus(CollateralStatus.DISABLED);
+            } else if (hiddenReferencePrice > exposedReferencePrice) {
+                exposedReferencePrice = hiddenReferencePrice;
             }
 
-            // If the price is below the default-threshold price, default eventually
-            // uint192(+/-) is the same as Fix.plus/minus
-            if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+                // {UoA/tok}, {UoA/tok}, {UoA/tok}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+
+                // Save prices if priced
+                if (high < FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    lastSave = uint48(block.timestamp);
+                } else {
+                    // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
+                    assert(low == 0);
+                }
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
-            } else {
-                markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
+            markStatus(CollateralStatus.DISABLED);
         }
 
         CollateralStatus newStatus = status();
@@ -139,7 +143,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // === Internal ===
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view virtual override returns (uint192) {
+    function underlyingRefPerTok() public view virtual override returns (uint192) {
         return _safeWrap(curvePool.get_virtual_price());
     }
 

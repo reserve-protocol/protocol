@@ -62,7 +62,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
         pegPrice = _safeWrap(IEmaPriceOracleStableSwap(CURVE_POOL_EMA_PRICE_ORACLE).price_oracle());
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
@@ -71,7 +71,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return _safeWrap(IsfrxEth(address(erc20)).pricePerShare());
     }
 }

@@ -62,11 +62,11 @@ contract RethCollateral is AppreciatingFiatCollateral {
         // assert(low <= high); obviously true just by inspection
 
         // {target/ref} = {target/tok} / {ref/tok}
-        pegPrice = targetPerTok.div(_underlyingRefPerTok());
+        pegPrice = targetPerTok.div(underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return _safeWrap(IReth(address(erc20)).getExchangeRate());
     }
 }
