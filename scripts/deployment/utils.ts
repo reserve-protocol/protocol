@@ -2,7 +2,7 @@ import hre, { tenderly } from 'hardhat'
 import * as readline from 'readline'
 import axios from 'axios'
 import { exec } from 'child_process'
-import { BigNumber, BigNumberish } from 'ethers'
+import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
 import { IComponents, baseL2Chains } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
@@ -12,13 +12,6 @@ import { useEnv } from '#/utils/env'
 export const priceTimeout = bn('604800') // 1 week
 
 export const revenueHiding = fp('1e-6') // 1 part in a million
-
-export const longOracleTimeout = bn('4294967296')
-
-// Returns the base plus 1 minute
-export const oracleTimeout = (chainId: string, base: BigNumberish) => {
-  return chainId == '1' || chainId == '8453' ? bn('60').add(base) : longOracleTimeout
-}
 
 export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
   return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))

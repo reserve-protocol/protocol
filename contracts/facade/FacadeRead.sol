@@ -34,7 +34,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         // {BU}
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
@@ -75,7 +74,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         reg.refresh();
-        main.furnace().melt();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
@@ -121,7 +119,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         uint256 supply = rTok.totalSupply();
 
@@ -203,7 +200,7 @@ contract FacadeRead is IFacadeRead {
         IBasketHandler basketHandler = rToken.main().basketHandler();
 
         // solhint-disable-next-line no-empty-blocks
-        try rToken.main().furnace().melt() {} catch {}
+        try rToken.main().furnace().melt() {} catch {} // <3.1.0 RTokens may revert while frozen
 
         (erc20s, deposits) = basketHandler.quote(FIX_ONE, CEIL);
 
@@ -242,7 +239,6 @@ contract FacadeRead is IFacadeRead {
     {
         IMain main = rToken.main();
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         erc20s = main.assetRegistry().erc20s();
         balances = new uint256[](erc20s.length);
@@ -270,25 +266,26 @@ contract FacadeRead is IFacadeRead {
 
     // === Views ===
 
+    /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
-    /// @return unstakings All the pending StRSR unstakings for an account
-    function pendingUnstakings(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory unstakings)
-    {
-        StRSRP1Votes stRSR = StRSRP1Votes(address(rToken.main().stRSR()));
-        uint256 era = stRSR.currentEra();
-        uint256 left = stRSR.firstRemainingDraft(era, account);
-        uint256 right = stRSR.draftQueueLen(era, account);
+    /// @dev Use stRSR.draftRate() to convert {qDrafts} to {qRSR}
+    /// @return unstakings {qDrafts} All the pending StRSR unstakings for an account, in drafts
+    function pendingUnstakings(
+        RTokenP1 rToken,
+        uint256 draftEra,
+        address account
+    ) external view returns (Pending[] memory unstakings) {
+        StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
+        uint256 left = stRSR.firstRemainingDraft(draftEra, account);
+        uint256 right = stRSR.draftQueueLen(draftEra, account);
 
         unstakings = new Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
-            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(era, account, i + left);
+            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(draftEra, account, i + left);
 
             uint192 diff = drafts;
             if (i + left > 0) {
-                (uint192 prevDrafts, ) = stRSR.draftQueues(era, account, i + left - 1);
+                (uint192 prevDrafts, ) = stRSR.draftQueues(draftEra, account, i + left - 1);
                 diff = drafts - prevDrafts;
             }
 

@@ -10,8 +10,8 @@ import "../../../interfaces/IRewardable.sol";
 interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
     struct UserBasic {
         uint104 principal;
-        uint64 baseTrackingAccrued;
         uint64 baseTrackingIndex;
+        uint64 baseTrackingAccrued;
         uint256 rewardsClaimed;
     }
 

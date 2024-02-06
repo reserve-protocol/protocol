@@ -13,6 +13,9 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
  *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  DO NOT involve RTokens, such as LUSD-fraxBP or MIM-3CRV.
  *
+ *  Does not support older metapools that have a separate contract for the
+ *  metapool's LP token.
+ *
  * tok = ConvexStakingWrapper(PairedUSDToken/USDBasePool)
  * ref = PairedUSDToken/USDBasePool pool invariant
  * tar = USD

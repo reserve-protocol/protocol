@@ -1,0 +1,29 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting ERC20 transfer 1`] = `109345`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting ERC20 transfer 2`] = `92245`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after full price timeout 1`] = `56094`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after full price timeout 2`] = `51626`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after hard default 1`] = `74579`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after hard default 2`] = `66897`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `56094`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `51626`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after soft default 1`] = `66835`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after soft default 2`] = `66835`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() during SOUND 1`] = `66894`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() during SOUND 2`] = `66894`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() during soft default 1`] = `74444`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() during soft default 2`] = `67176`;

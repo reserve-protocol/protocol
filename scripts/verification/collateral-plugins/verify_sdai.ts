@@ -42,7 +42,7 @@ async function main() {
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
-      fp('1e-6').toString(), // revenueHiding = 0.0001%
+      bn(0),
       POT,
     ],
     'contracts/plugins/assets/dsr/SDaiCollateral.sol:SDaiCollateral'

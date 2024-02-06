@@ -33,10 +33,26 @@ interface ICToken is IERC20Metadata {
     function redeem(uint256 redeemTokens) external returns (uint256);
 }
 
+interface TestICToken is ICToken {
+    /**
+     * @notice Sender borrows assets from the protocol to their own address
+     * @param borrowAmount The amount of the underlying asset to borrow
+     * @return uint 0=success, otherwise a failure
+     */
+    function borrow(uint256 borrowAmount) external returns (uint256);
+}
+
 interface IComptroller {
     /// Claim comp for an account, to an account
-    function claimComp(address account, address[] memory cTokens) external;
+    function claimComp(
+        address[] memory holders,
+        address[] memory cTokens,
+        bool borrowers,
+        bool suppliers
+    ) external;
 
     /// @return The address for COMP token
     function getCompAddress() external view returns (address);
+
+    function enterMarkets(address[] calldata) external returns (uint256[] memory);
 }

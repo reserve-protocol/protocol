@@ -15,6 +15,7 @@ import { noop } from 'lodash'
 import { PRICE_TIMEOUT } from '#/test/fixtures'
 import { resetFork } from './helpers'
 import { whileImpersonating } from '#/test/utils/impersonation'
+import { pushOracleForward } from '../../../utils/oracles'
 import {
   forkNetwork,
   AUSDC_V3,
@@ -71,6 +72,9 @@ export const deployCollateral = async (opts: Partial<CollateralParams> = {}) => 
     }
   )
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(combinedOpts.chainlinkFeed!)
 
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
@@ -211,6 +215,7 @@ export const stableOpts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
+  itChecksNonZeroDefaultThreshold: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,
