@@ -11,7 +11,7 @@ import {
   IDeployments,
 } from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
-import { revenueHiding, oracleTimeout } from '../../deployment/utils'
+import { revenueHiding } from '../../deployment/utils'
 import {
   CurvePoolType,
   DAI_ORACLE_ERROR,
@@ -61,17 +61,7 @@ async function main() {
     chainId,
     await w3PoolCollateral.erc20(),
     [],
-    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper',
-    { CvxMining: coreDeployments.cvxMiningLib }
-  )
-
-  /********  Verify CvxMining Lib  **************************/
-
-  await verifyContract(
-    chainId,
-    coreDeployments.cvxMiningLib,
-    [],
-    'contracts/plugins/assets/curve/cvx/vendor/CvxMining.sol:CvxMining'
+    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
   )
 
   /********  Verify 3Pool plugin  **************************/
@@ -85,7 +75,7 @@ async function main() {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: bn('1'), // unused but cannot be zero
-        oracleTimeout: oracleTimeout(chainId, USDC_ORACLE_TIMEOUT), // max of oracleTimeouts
+        oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
         maxTradeVolume: MAX_TRADE_VOL,
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -96,11 +86,7 @@ async function main() {
         curvePool: THREE_POOL,
         poolType: CurvePoolType.Plain,
         feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
-        oracleTimeouts: [
-          [oracleTimeout(chainId, DAI_ORACLE_TIMEOUT)],
-          [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
-          [oracleTimeout(chainId, USDT_ORACLE_TIMEOUT)],
-        ],
+        oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
         oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
         lpToken: THREE_POOL_TOKEN,
       },

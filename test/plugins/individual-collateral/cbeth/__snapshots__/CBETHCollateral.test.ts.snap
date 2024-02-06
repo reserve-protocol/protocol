@@ -4,26 +4,26 @@ exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting ERC2
 
 exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `48379`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `59824`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `59813`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `55355`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `55344`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `98317`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `98295`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `90634`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `90612`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `59824`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `59813`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `55355`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `55344`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `55014`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `55003`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `55014`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `55003`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `90631`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `90609`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `90631`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `90609`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `98182`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `98160`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `90913`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `90891`;

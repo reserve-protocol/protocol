@@ -108,7 +108,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
 
         assetRegistry.refresh();
-        furnace.melt();
 
         // == Checks-effects block ==
 
@@ -182,8 +181,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     function redeemTo(address recipient, uint256 amount) public notFrozen {
         // == Refresh ==
         assetRegistry.refresh();
-        // solhint-disable-next-line no-empty-blocks
-        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -255,8 +252,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     ) external notFrozen {
         // == Refresh ==
         assetRegistry.refresh();
-        // solhint-disable-next-line no-empty-blocks
-        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 

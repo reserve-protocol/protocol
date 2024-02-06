@@ -19,8 +19,14 @@ contract ComptrollerMock is IComptroller {
         compBalances[recipient] = amount;
     }
 
-    function claimComp(address holder, address[] memory) external {
+    function claimComp(
+        address[] memory holders,
+        address[] memory,
+        bool,
+        bool
+    ) external {
         // Mint amount and update internal balances
+        address holder = holders[0];
         if (address(compToken) != address(0)) {
             uint256 amount = compBalances[holder];
             compBalances[holder] = 0;
@@ -30,5 +36,10 @@ contract ComptrollerMock is IComptroller {
 
     function getCompAddress() external view returns (address) {
         return address(compToken);
+    }
+
+    // mock
+    function enterMarkets(address[] calldata) external returns (uint256[] memory) {
+        return new uint256[](1);
     }
 }

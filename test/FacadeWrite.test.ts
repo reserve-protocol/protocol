@@ -195,8 +195,8 @@ describe('FacadeWrite contract', () => {
 
     // Set governance params
     govParams = {
-      votingDelay: bn(5), // 5 blocks
-      votingPeriod: bn(100), // 100 blocks
+      votingDelay: bn(7200), // 1 day
+      votingPeriod: bn(21600), // 3 days
       proposalThresholdAsMicroPercent: bn(1e6), // 1%
       quorumPercent: bn(4), // 4%
       timelockDelay: bn(60 * 60 * 24), // 1 day

@@ -13,7 +13,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout } from '../../utils'
+import { priceTimeout } from '../../utils'
 import { SDaiCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -54,12 +54,12 @@ async function main() {
       oracleError: fp('0.0025').toString(), // 0.25%
       erc20: networkConfig[chainId].tokens.sDAI,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+      oracleTimeout: '3600', // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    fp('1e-6').toString(), // revenueHiding = 0.0001%
+    bn(0), // does not require revenue hiding
     POT
   )
   await collateral.deployed()

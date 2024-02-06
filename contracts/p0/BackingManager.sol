@@ -32,6 +32,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
+    mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
+
     constructor() {
         ONE_BLOCK = NetworkConfigLib.blocktime();
     }
@@ -69,6 +71,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         returns (ITrade trade)
     {
         trade = super.settleTrade(sell);
+        delete tokensOut[trade.sell()];
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
@@ -86,7 +89,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:interaction
     function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         require(
@@ -135,7 +137,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             // Execute Trade
             ITrade trade = tryTrade(kind, req, prices);
-            tradeEnd[kind] = trade.endTime();
+            tradeEnd[kind] = trade.endTime(); // {s}
+            tokensOut[trade.sell()] = trade.sellAmount(); // {tok}
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);
@@ -149,7 +152,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
@@ -166,15 +168,19 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         uint256 rsrBal = main.rsr().balanceOf(address(this));
         if (rsrBal > 0) {
             main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
+            main.stRSR().payoutRewards();
         }
 
         // Mint revenue RToken
         // Keep backingBuffer worth of collateral before recognizing revenue
-        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
-        if (basketsHeld.bottom.gt(needed)) {
-            main.rToken().mint(basketsHeld.bottom.minus(needed));
-            needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // keep buffer
+        {
+            uint192 baskets = (basketsHeld.bottom.div(FIX_ONE + backingBuffer));
+            if (baskets > main.rToken().basketsNeeded()) {
+                main.rToken().mint(baskets - main.rToken().basketsNeeded());
+            }
         }
+
+        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
 
         // Handout excess assets above what is needed, including any newly minted RToken
         RevenueTotals memory totals = main.distributor().totals();
@@ -200,6 +206,40 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                     }
                 }
             }
+        }
+    }
+
+    // === View ===
+
+    /// Structs for trading
+    /// @param basketsHeld The number of baskets held by the BackingManager
+    /// @return ctx The TradingContext
+    /// @return reg Contents of AssetRegistry.getRegistry()
+    function tradingContext(BasketRange memory basketsHeld)
+        public
+        view
+        returns (TradingContext memory ctx, Registry memory reg)
+    {
+        reg = main.assetRegistry().getRegistry();
+
+        ctx.basketsHeld = basketsHeld;
+        ctx.bh = main.basketHandler();
+        ctx.ar = main.assetRegistry();
+        ctx.stRSR = main.stRSR();
+        ctx.rsr = main.rsr();
+        ctx.rToken = main.rToken();
+        ctx.minTradeVolume = minTradeVolume;
+        ctx.maxTradeSlippage = maxTradeSlippage;
+        ctx.quantities = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            ctx.quantities[i] = ctx.bh.quantity(reg.erc20s[i]);
+        }
+        ctx.bals = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            ctx.bals[i] = reg.assets[i].bal(address(this)) + tokensOut[reg.erc20s[i]];
+
+            // include StRSR's balance for RSR
+            if (reg.erc20s[i] == ctx.rsr) ctx.bals[i] += reg.assets[i].bal(address(ctx.stRSR));
         }
     }
 

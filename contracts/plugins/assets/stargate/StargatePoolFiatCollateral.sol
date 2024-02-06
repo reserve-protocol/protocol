@@ -22,6 +22,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
         pool = StargateRewardableWrapper(address(config.erc20)).pool();
     }
 

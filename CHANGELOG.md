@@ -1,5 +1,93 @@
 # Changelog
 
+# 3.1.0
+
+### Upgrade Steps -- Required
+
+Upgrade all core contracts and _all_ assets. Most ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
+
+ERC20s that _do_ need to be upgraded:
+
+- Morpho
+- Convex
+- CompoundV3
+
+Then, call `Broker.cacheComponents()`.
+
+Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
+
+### Core Protocol Contracts
+
+- `BackingManager` [+2 slots]
+  - Replace use of `lotPrice()` with `price()` everywhere
+  - Track `tokensOut` on trades and account for during collateralization math
+  - Call `StRSR.payoutRewards()` after forwarding RSR
+  - Make `backingBuffer` math precise
+  - Add caching in `RecollateralizationLibP1`
+  - Use `price().low` instead of `price().high` to compute maximum sell amounts
+- `BasketHandler`
+  - Replace use of `lotPrice()` with `price()` everywhere
+  - Minor gas optimizations to status tracking and custom redemption math
+- `Broker` [+1 slot]
+  - Cache `rToken` address and add `cacheComponents()` helper
+  - Allow `reportViolation()` to be called when paused or frozen
+  - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
+- `Distributor`
+  - Call `RevenueTrader.distributeTokenToBuy()` before distribution table changes
+  - Call `StRSR.payoutRewards()` or `Furnace.melt()` after distributions
+  - Minor gas optimizations
+- `Furnace`
+  - Allow melting while frozen
+- `Main`
+  - Remove `furnace.melt()` from `poke()`
+- `RevenueTrader`
+  - Replace use of `lotPrice()` with `price()` everywhere
+  - Ensure `settleTrade` cannot be reverted due to `tokenToBuy` distribution
+  - Ensure during `manageTokens()` that the Distributor is configured for the `tokenToBuy`
+- `StRSR`
+  - Use correct era in `UnstakingStarted` event
+  - Expose `draftEra` via `getDraftEra()` view
+
+### Facades
+
+- `FacadeMonitor`
+  - Add `batchAuctionsDisabled()` view
+  - Add `dutchAuctionsDisabled()` view
+  - Add `issuanceAvailable()` view
+  - Add `redemptionAvailable()` view
+  - Add `backingRedeemable()` view
+- `FacadeRead`
+  - Add `draftEra` argument to `pendingUnstakings()`
+  - Remove `.melt()` calls during pokes
+
+## Plugins
+
+### Assets
+
+- ALL
+  - Deprecate `lotPrice()`
+  - Alter `price().low` to decay downwards to 0 over the price timeout
+  - Alter `price().high` to decay upwards to 3x over the price timeout
+  - Move `ORACLE_TIMEOUT_BUFFER` into code, as opposed to incorporating at the deployment script level
+  - Make`refPerTok()` smoother during event of hard default
+  - Check for `defaultThreshold > 0` in constructors
+  - Add 9 more decimals of precision to reward accounting (some wrappers excluded)
+- compoundv2: make wrapper much more gas efficient during COMP claim
+- compoundv3 bugfix: check permission correctly on underlying comet
+- curve: Also `refresh()` the RToken's AssetRegistry during `refresh()`
+- convex: Update to latest approved wrapper from Convex team
+- morpho-aave: Add ability to track and handout MORPHO rewards
+- yearnv2: Use pricePerShare helper for more precision
+
+### Governance
+
+- Add a minimum voting delay of 1 day
+
+### Trading
+
+- `GnosisTrade`
+  - Add `sellAmount() returns (uint192)` view
+
 # 3.0.1
 
 ### Upgrade steps
@@ -7,6 +95,8 @@
 Update `BackingManager`, both `RevenueTraders` (rTokenTrader/rsrTrader), and call `Broker.setBatchTradeImplementation()` passing in the new `GnosisTrade` address.
 
 # 3.0.0
+
+Bump solidity version to 0.8.19
 
 ### Upgrade Steps
 
@@ -38,9 +128,7 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
 ### Core Protocol Contracts
 
 - `AssetRegistry` [+1 slot]
-  Summary: StRSR contract need to know when refresh() was last called
-  - # Add last refresh timestamp tracking and expose via `lastRefresh()` getter
-    Summary: Other component contracts need to know when refresh() was last called
+  Summary: Other component contracts need to know when refresh() was last called
   - Add `lastRefresh()` timestamp getter
   - Add `size()` getter for number of registered assets
   - Require asset is SOUND on registration
@@ -180,10 +268,10 @@ Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` a
 - `FacadeRead`
   Summary: Add new data summary views frontends may be interested in
 
-  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
-  - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
-  - Remove `traderBalances(..)`
-  - Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
+- Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
+- Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
+- Remove `traderBalances(..)`
+- Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
 
 - `FacadeWrite`
   Summary: More expressive and fine-grained control over the set of pausers and freezers

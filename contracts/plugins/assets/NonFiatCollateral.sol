@@ -27,6 +27,8 @@ contract NonFiatCollateral is FiatCollateral {
     ) FiatCollateral(config) {
         require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
         require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
+
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
     }

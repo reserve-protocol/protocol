@@ -1,6 +1,6 @@
 # Exhaustive Testing
 
-The exhaustive tests include `Furnace.test.ts`, `RToken.test.ts`, `ZTradingExteremes.test.ts` and `ZZStRSR.test.ts`, and are meant to test the protocol when given permutations of input values on the extreme ends of the spectrum of possiblities.
+The exhaustive tests include `Broker.test.ts`, `Furnace.test.ts`, `RToken.test.ts`, `ZTradingExtremes.test.ts` and `ZZStRSR.test.ts`, and are meant to test the protocol when given permutations of input values on the extreme ends of the spectrum of possiblities.
 
 The env vars related to exhaustive testing are `EXTREME` and `SLOW`.
 
@@ -12,7 +12,7 @@ I'm assuming you've already got `gcloud` installed on your dev machine. If not, 
 
 ```bash
 gcloud auth login
-gcloud config set project rtoken-fuzz
+gcloud config set project rtoken-testing
 gcloud config list project
 
 # assumed defaults
@@ -39,7 +39,7 @@ gcloud compute config-ssh
 Jump onto the instance:
 
 ```
-ssh exhaustive.us-central1-a.rtoken-fuzz
+ssh exhaustive.us-central1-a.rtoken-testing
 ```
 
 Add Matt's special seasoning, for tmux and emacs QoL improvements (NOTE: This sets the tmux `ctrl-b` to `ctrl-z`):
@@ -93,7 +93,7 @@ gcloud compute config-ssh
 Jump onto the instance:
 
 ```
-ssh exhaustive.us-central1-a.rtoken-fuzz
+ssh exhaustive.us-central1-a.rtoken-testing
 ```
 
 ## 3) Run the tests
@@ -113,7 +113,7 @@ Tmux and run the tests:
 
 ```
 tmux
-bash ./scripts/run-exhaustive-tests.sh
+bash ./scripts/exhaustive-tests/run-exhaustive-tests.sh
 ```
 
 When the test are complete, you'll find the console output in `tmux-1.log` and `tmux-2.log`.

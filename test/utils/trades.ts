@@ -1,9 +1,11 @@
+import { getStorageAt, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { Decimal } from 'decimal.js'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { TestITrading, GnosisTrade } from '../../typechain'
+import { TestITrading, GnosisTrade, TestIBroker } from '../../typechain'
 import { bn, fp, divCeil, divRound } from '../../common/numbers'
+import { IMPLEMENTATION, Implementation } from '../fixtures'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -81,7 +83,6 @@ export const dutchBuyAmount = async (
   assetInAddr: string,
   assetOutAddr: string,
   outAmount: BigNumber,
-  minTradeVolume: BigNumber,
   maxTradeSlippage: BigNumber
 ): Promise<BigNumber> => {
   const assetIn = await ethers.getContractAt('IAsset', assetInAddr)
@@ -118,4 +119,24 @@ export const dutchBuyAmount = async (
     )
   } else price = worstPrice
   return divCeil(outAmount.mul(price), fp('1'))
+}
+
+export const disableBatchTrade = async (broker: TestIBroker) => {
+  if (IMPLEMENTATION == Implementation.P1) {
+    const slot = await getStorageAt(broker.address, 205)
+    await setStorageAt(broker.address, 205, slot.replace(slot.slice(2, 14), '1'.padStart(12, '0')))
+  } else {
+    const slot = await getStorageAt(broker.address, 56)
+    await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+  }
+  expect(await broker.batchTradeDisabled()).to.equal(true)
+}
+
+export const disableDutchTrade = async (broker: TestIBroker, erc20: string) => {
+  const mappingSlot = IMPLEMENTATION == Implementation.P1 ? bn('208') : bn('57')
+  const p = mappingSlot.toHexString().slice(2).padStart(64, '0')
+  const key = erc20.slice(2).padStart(64, '0')
+  const slot = ethers.utils.keccak256('0x' + key + p)
+  await setStorageAt(broker.address, slot, '0x' + '1'.padStart(64, '0'))
+  expect(await broker.dutchTradeDisabled(erc20)).to.equal(true)
 }
