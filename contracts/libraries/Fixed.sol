@@ -675,5 +675,4 @@ function fullMul(uint256 x, uint256 y) pure returns (uint256 hi, uint256 lo) {
         if (mm < lo) hi -= 1;
     }
 }
-
 // slither-disable-end divide-before-multiply
