@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout } from '../../utils'
+import { priceTimeout, oracleTimeout } from '../../utils'
 import { LidoStakedEthCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -79,14 +79,14 @@ async function main() {
       oracleError: fp('0.01').toString(), // 1%: only for stETHUSD feed
       erc20: networkConfig[chainId].tokens.wstETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr,
+      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethEth feed oracleError
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
     stethEthOracleAddress, // targetPerRefChainlinkFeed
-    '86400' // targetPerRefChainlinkTimeout
+    oracleTimeout(chainId, '86400').toString() // targetPerRefChainlinkTimeout
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()

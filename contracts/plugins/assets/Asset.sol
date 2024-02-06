@@ -7,13 +7,9 @@ import "../../interfaces/IAsset.sol";
 import "./OracleLib.sol";
 import "./VersionedAsset.sol";
 
-uint48 constant ORACLE_TIMEOUT_BUFFER = 300; // {s} 5 minutes
-
 contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
-
-    uint192 public constant MAX_HIGH_PRICE_BUFFER = 2 * FIX_ONE; // {UoA/tok} 200%
 
     AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
 
@@ -42,7 +38,7 @@ contract Asset is IAsset, VersionedAsset {
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @dev oracleTimeout_ is also used as the timeout value in price(), should be highest of
+    /// @dev oracleTimeout_ is also used as the timeout value in lotPrice(), should be highest of
     ///      all assets' oracleTimeout in a collateral if there are multiple oracles
     constructor(
         uint48 priceTimeout_,
@@ -64,7 +60,7 @@ contract Asset is IAsset, VersionedAsset {
         erc20 = erc20_;
         erc20Decimals = erc20.decimals();
         maxTradeVolume = maxTradeVolume_;
-        oracleTimeout = oracleTimeout_ + ORACLE_TIMEOUT_BUFFER; // add 300s as a buffer
+        oracleTimeout = oracleTimeout_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -112,69 +108,54 @@ contract Asset is IAsset, VersionedAsset {
     }
 
     /// Should not revert
-    /// low should be nonzero if the asset could be worth selling
     /// @dev Should be general enough to not need to be overridden
-    /// @return _low {UoA/tok} The lower end of the price estimate
-    /// @return _high {UoA/tok} The upper end of the price estimate
-    /// @notice If the price feed is broken, _low will decay downwards and _high will decay upwards
-    ///     If tryPrice() is broken for more than `oracleTimeout + priceTimeout` seconds,
-    ///     _low will be 0 and _high will be FIX_MAX.
-    ///     Because the price decay begins at `oracleTimeout` seconds and not `updateTime` from the
-    ///     price feed, the price feed can be broken for up to `2 * oracleTimeout` seconds without
-    ///     affecting the price estimate.  This could happen if the Asset is refreshed just before
-    ///     the oracleTimeout is reached, forcing a second period of oracleTimeout to pass before
-    ///     the price begins to decay.
-    function price() public view virtual returns (uint192 _low, uint192 _high) {
+    /// @return {UoA/tok} The lower end of the price estimate
+    /// @return {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            // if the price feed is still functioning, use that
-            _low = low;
-            _high = high;
+            assert(low <= high);
+            return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
-
-            // if the price feed is broken, decay _low downwards and _high upwards
-
-            uint48 delta = uint48(block.timestamp) - lastSave; // {s}
-            if (delta <= oracleTimeout) {
-                // use saved prices for at least the oracleTimeout
-                _low = savedLowPrice;
-                _high = savedHighPrice;
-            } else if (delta >= oracleTimeout + priceTimeout) {
-                // unpriced after a full timeout
-                return (0, FIX_MAX);
-            } else {
-                // oracleTimeout <= delta <= oracleTimeout + priceTimeout
-
-                // Decay _high upwards to 3x savedHighPrice
-                // {UoA/tok} = {UoA/tok} * {1}
-                _high = savedHighPrice.safeMul(
-                    FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - oracleTimeout, priceTimeout),
-                    ROUND
-                ); // during overflow should not revert
-
-                // if _high is FIX_MAX, leave at UNPRICED
-                if (_high != FIX_MAX) {
-                    // Decay _low downwards from savedLowPrice to 0
-                    // {UoA/tok} = {UoA/tok} * {1}
-                    _low = savedLowPrice.muluDivu(
-                        oracleTimeout + priceTimeout - delta,
-                        priceTimeout
-                    );
-                    // during overflow should revert since a FIX_MAX _low breaks everything
-                }
-            }
+            return (0, FIX_MAX);
         }
-        assert(_low <= _high);
     }
 
     /// Should not revert
     /// lotLow should be nonzero when the asset might be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
+    /// @dev Should be general enough to not need to be overridden
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
-        return price();
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            // if the price feed is still functioning, use that
+            lotLow = low;
+            lotHigh = high;
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+
+            // if the price feed is broken, use a decayed historical value
+
+            uint48 delta = uint48(block.timestamp) - lastSave; // {s}
+            if (delta <= oracleTimeout) {
+                lotLow = savedLowPrice;
+                lotHigh = savedHighPrice;
+            } else if (delta >= oracleTimeout + priceTimeout) {
+                return (0, 0); // no price after full timeout
+            } else {
+                // oracleTimeout <= delta <= oracleTimeout + priceTimeout
+
+                // {1} = {s} / {s}
+                uint192 lotMultiplier = divuu(oracleTimeout + priceTimeout - delta, priceTimeout);
+
+                // {UoA/tok} = {UoA/tok} * {1}
+                lotLow = savedLowPrice.mul(lotMultiplier);
+                lotHigh = savedHighPrice.mul(lotMultiplier);
+            }
+        }
+        assert(lotLow <= lotHigh);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

@@ -88,7 +88,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
         // uint192(<) is equivalent to Fix.lt
         if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = underlyingRefPerTok;
+            exposedReferencePrice = hiddenReferencePrice;
             markStatus(CollateralStatus.DISABLED);
         } else if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;

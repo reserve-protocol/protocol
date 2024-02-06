@@ -71,7 +71,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // actions:
     //   rToken.melt(payoutAmount), paying payoutAmount to RToken holders
 
-    function melt() public {
+    function melt() external notFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout
@@ -90,9 +90,15 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     /// Ratio setting
     /// @custom:governance
     function setRatio(uint192 ratio_) public governance {
+        if (lastPayout > 0) {
+            // solhint-disable-next-line no-empty-blocks
+            try this.melt() {} catch {
+                uint48 numPeriods = uint48((block.timestamp) - lastPayout) / PERIOD;
+                lastPayout += numPeriods * PERIOD;
+                lastPayoutBal = rToken.balanceOf(address(this));
+            }
+        }
         require(ratio_ <= MAX_RATIO, "invalid ratio");
-        melt(); // cannot revert
-
         // The ratio can safely be set to 0 to turn off payouts, though it is not recommended
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;

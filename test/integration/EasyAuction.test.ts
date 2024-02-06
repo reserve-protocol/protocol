@@ -551,11 +551,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
-      // Make collateral0 price (0, FIX_MAX)
+      // Make collateral0 lotPrice (0, 0)
       await setOraclePrice(collateral0.address, bn('0'))
       await collateral0.refresh()
       await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
-      await setOraclePrice(collateral0.address, bn('0'))
       await setOraclePrice(await assetRegistry.toAsset(rsr.address), bn('1e8'))
 
       // force a revenue dust auction
@@ -753,7 +752,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         oracleError: ORACLE_ERROR, // shouldn't matter
         erc20: sellTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48.sub(300),
+        oracleTimeout: MAX_UINT48,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter
@@ -765,7 +764,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         oracleError: ORACLE_ERROR, // shouldn't matter
         erc20: buyTok.address,
         maxTradeVolume: MAX_UINT192,
-        oracleTimeout: MAX_UINT48.sub(300),
+        oracleTimeout: MAX_UINT48,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'), // shouldn't matter
         delayUntilDefault: bn('604800'), // shouldn't matter

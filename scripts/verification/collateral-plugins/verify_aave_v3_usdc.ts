@@ -7,7 +7,7 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { fp, bn } from '../../../common/numbers'
-import { priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
+import { priceTimeout, oracleTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -39,7 +39,7 @@ async function main() {
   )
 
   /********  Verify Aave V3 USDC plugin  **************************/
-  const usdcOracleTimeout = '86400' // 24 hr
+  const usdcOracleTimeout = 86400 // 24 hr
   const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   await verifyContract(
@@ -52,7 +52,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
         oracleError: usdcOracleError.toString(),
-        oracleTimeout: usdcOracleTimeout, // 24 hr
+        oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24 hr
         maxTradeVolume: fp('1e6').toString(),
         defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
         delayUntilDefault: bn('86400').toString(),

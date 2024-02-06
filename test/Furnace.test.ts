@@ -204,9 +204,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await furnace.connect(addr1).melt()
     })
 
-    it('Should melt if frozen #fast', async () => {
+    it('Should not melt if frozen #fast', async () => {
       await main.connect(owner).freezeShort()
-      await furnace.connect(addr1).melt()
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('frozen')
     })
 
     it('Should not melt any funds in the initial block #fast', async () => {
@@ -450,57 +450,40 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     it('Regression test -- C4 June 2023 Issue #29', async () => {
       // https://github.com/code-423n4/2023-06-reserve-findings/issues/29
 
-      const firstRatio = fp('1e-6')
-      const secondRatio = fp('1e-4')
-      const mintAmount = fp('100')
-
-      // Set ratio to something cleaner
-      await expect(furnace.connect(owner).setRatio(firstRatio))
-        .to.emit(furnace, 'RatioSet')
-        .withArgs(config.rewardRatio, firstRatio)
-
       // Transfer to Furnace and do first melt
-      await rToken.connect(addr1).transfer(furnace.address, mintAmount)
+      await rToken.connect(addr1).transfer(furnace.address, bn('10e18'))
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
       await furnace.melt()
 
       // Should have updated lastPayout + lastPayoutBal
       expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
       expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
-      expect(await furnace.lastPayoutBal()).to.equal(mintAmount)
+      expect(await furnace.lastPayoutBal()).to.equal(bn('10e18'))
 
-      // Advance 100 periods -- should melt at old ratio
-      await setNextBlockTimestamp(
-        Number(await getLatestBlockTimestamp()) + 100 * Number(ONE_PERIOD)
-      )
+      // Advance 99 periods -- should melt at old ratio
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 99 * Number(ONE_PERIOD))
 
-      // Freeze and change ratio (melting as a pre-step)
+      // Freeze and change ratio
       await main.connect(owner).freezeForever()
-      await expect(furnace.connect(owner).setRatio(secondRatio))
+      const maxRatio = bn('1e14')
+      await expect(furnace.connect(owner).setRatio(maxRatio))
         .to.emit(furnace, 'RatioSet')
-        .withArgs(firstRatio, secondRatio)
+        .withArgs(config.rewardRatio, maxRatio)
 
-      // Should have melted
+      // Should have updated lastPayout + lastPayoutBal
       expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
       expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
-      expect(await furnace.lastPayoutBal()).to.eq(fp('99.990000494983830300'))
+      expect(await furnace.lastPayoutBal()).to.equal(bn('10e18')) // no change
 
-      // Unfreeze and advance 100 periods
+      // Unfreeze and advance 1 period
       await main.connect(owner).unfreeze()
-      await setNextBlockTimestamp(
-        Number(await getLatestBlockTimestamp()) + 100 * Number(ONE_PERIOD)
-      )
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
       await expect(furnace.melt()).to.emit(rToken, 'Melted')
 
-      // Should have updated lastPayout + lastPayoutBal and melted at new ratio
+      // Should have updated lastPayout + lastPayoutBal
       expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
       expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
-      expect(await furnace.lastPayoutBal()).to.equal(fp('98.995033865808581644'))
-      // if the ratio were not increased 100x, this would be more like 99.980001989868666200
-
-      // Total supply should have decreased by the cumulative melted amount
-      expect(await rToken.totalSupply()).to.equal(mintAmount.add(await furnace.lastPayoutBal()))
-      expect(await rToken.basketsNeeded()).to.equal(mintAmount.mul(2))
+      expect(await furnace.lastPayoutBal()).to.equal(bn('9.999e18'))
     })
   })
 

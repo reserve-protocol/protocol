@@ -12,7 +12,6 @@ import {
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from './constants'
-import { pushOracleForward } from '../../../utils/oracles'
 import { BigNumber, BigNumberish, ContractFactory } from 'ethers'
 import { bn, fp } from '#/common/numbers'
 import { TestICollateral } from '@typechain/TestICollateral'
@@ -60,10 +59,6 @@ export const deployCollateral = async (
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
-
-  // Push forward chainlink feeds
-  await pushOracleForward(opts.chainlinkFeed!)
-  await pushOracleForward(opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED)
 
   await expect(collateral.refresh())
 
@@ -246,7 +241,6 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
-  itChecksNonZeroDefaultThreshold: it,
   resetFork,
   collateralName: 'CBEthCollateral',
   chainlinkDefaultAnswer,

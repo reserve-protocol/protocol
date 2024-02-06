@@ -10,7 +10,6 @@ import { ethers } from 'hardhat'
 import collateralTests from '../collateralTests'
 import { getResetFork } from '../helpers'
 import { CollateralOpts } from '../pluginTestTypes'
-import { pushOracleForward } from '../../../utils/oracles'
 import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
@@ -24,7 +23,7 @@ import { MorphoAaveCollateralFixtureContext, mintCollateralTo } from './mintColl
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
 import { whileImpersonating } from '#/utils/impersonation'
 import { whales } from '#/tasks/testing/upgrade-checker-utils/constants'
-import { advanceBlocks, advanceTime } from '#/utils/time'
+import { formatEther } from 'ethers/lib/utils'
 
 interface MAFiatCollateralOpts extends CollateralOpts {
   underlyingToken?: string
@@ -35,8 +34,7 @@ interface MAFiatCollateralOpts extends CollateralOpts {
 
 const makeAaveFiatCollateralTestSuite = (
   collateralName: string,
-  defaultCollateralOpts: MAFiatCollateralOpts,
-  specificTests = false
+  defaultCollateralOpts: MAFiatCollateralOpts
 ) => {
   const networkConfigToUse = networkConfig[31337]
   const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestICollateral> => {
@@ -54,6 +52,7 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
+        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
       opts.erc20 = wrapperMock.address
@@ -75,9 +74,6 @@ const makeAaveFiatCollateralTestSuite = (
       { gasLimit: 2000000000 }
     )
     await collateral.deployed()
-
-    // Push forward chainlink feed
-    await pushOracleForward(opts.chainlinkFeed!)
 
     await expect(collateral.refresh())
 
@@ -103,6 +99,7 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
+        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
 
@@ -196,9 +193,7 @@ const makeAaveFiatCollateralTestSuite = (
   */
   const collateralSpecificConstructorTests = () => {
     it('tokenised deposits can correctly claim rewards', async () => {
-      const alice = hre.ethers.provider.getSigner(1)
-      const aliceAddress = await alice.getAddress()
-
+      const morphoTokenOwner = '0xcBa28b38103307Ec8dA98377ffF9816C164f9AFa'
       const forkBlock = 17574117
       const claimer = '0x05e818959c2Aa4CD05EDAe9A099c38e7Bdc377C6'
       const reset = getResetFork(forkBlock)
@@ -211,41 +206,42 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: defaultCollateralOpts.underlyingToken!,
         poolToken: defaultCollateralOpts.poolToken!,
+        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
-
-      const morphoTokenOwner = '0xcBa28b38103307Ec8dA98377ffF9816C164f9AFa'
       const vaultCode = await ethers.provider.getCode(usdtVault.address)
       await setCode(claimer, vaultCode)
 
       const vaultWithClaimableRewards = usdtVault.attach(claimer)
-      await whileImpersonating(hre, morphoTokenOwner, async (signer) => {
-        const morphoTokenInst = await ethers.getContractAt(
-          'IMorphoToken',
-          networkConfigToUse.tokens.MORPHO!,
-          signer
-        )
-
-        await morphoTokenInst
-          .connect(signer)
-          .setUserRole(vaultWithClaimableRewards.address, 0, true)
-      })
       const erc20Factory = await ethers.getContractFactory('ERC20Mock')
       const underlyingERC20 = erc20Factory.attach(defaultCollateralOpts.underlyingToken!)
       const depositAmount = utils.parseUnits('1000', 6)
+
+      const user = hre.ethers.provider.getSigner(0)
+      const userAddress = await user.getAddress()
+
+      expect(
+        formatEther(await vaultWithClaimableRewards.callStatic.rewardTokenBalance(userAddress))
+      ).to.be.equal('0.0')
 
       await whileImpersonating(
         hre,
         whales[defaultCollateralOpts.underlyingToken!.toLowerCase()],
         async (whaleSigner) => {
-          await underlyingERC20.connect(whaleSigner).transfer(aliceAddress, depositAmount)
+          await underlyingERC20.connect(whaleSigner).approve(vaultWithClaimableRewards.address, 0)
+          await underlyingERC20
+            .connect(whaleSigner)
+            .approve(vaultWithClaimableRewards.address, ethers.constants.MaxUint256)
+          await vaultWithClaimableRewards.connect(whaleSigner).mint(depositAmount, userAddress)
         }
       )
-      await underlyingERC20.connect(alice).approve(vaultWithClaimableRewards.address, 0)
-      await underlyingERC20
-        .connect(alice)
-        .approve(vaultWithClaimableRewards.address, ethers.constants.MaxUint256)
-      await vaultWithClaimableRewards.connect(alice).mint(depositAmount, aliceAddress)
+
+      expect(
+        formatEther(
+          await vaultWithClaimableRewards.callStatic.rewardTokenBalance(userAddress)
+        ).slice(0, '8.60295466891613'.length)
+      ).to.be.equal('8.60295466891613')
+
       const morphoRewards = await ethers.getContractAt(
         'IMorphoRewardsDistributor',
         networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!
@@ -265,79 +261,47 @@ const makeAaveFiatCollateralTestSuite = (
         '0xea8c2ee8d43e37ceb7b0c04d59106eff88afbe3e911b656dec7caebd415ea696',
       ])
 
-      // sync needs to be called after a claim to start a new payout period
-      // new tokens will only be moved into pending after a _claimAssetRewards call
-      // which sync allows you to do without the other stuff that happens in claimRewards
-      await vaultWithClaimableRewards.sync()
-
-      await advanceTime(hre, 86400 * 7)
-      await advanceBlocks(hre, 7200 * 7)
-      expect(await vaultWithClaimableRewards.connect(alice).claimRewards())
       expect(
-        await erc20Factory.attach(networkConfigToUse.tokens.MORPHO!).balanceOf(aliceAddress)
-      ).to.be.eq(bn('14162082619942089266'))
-    })
-    it('Frontrunning claiming rewards is not economical', async () => {
-      const alice = hre.ethers.provider.getSigner(1)
-      const aliceAddress = await alice.getAddress()
-      const bob = hre.ethers.provider.getSigner(2)
-      const bobAddress = await bob.getAddress()
+        formatEther(
+          await vaultWithClaimableRewards.callStatic.rewardTokenBalance(userAddress)
+        ).slice(0, '14.162082619942089'.length)
+      ).to.be.equal('14.162082619942089')
 
-      const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
-        'MorphoAaveV2TokenisedDeposit'
-      )
-      const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
-      const mockRewardsToken = await ERC20Factory.deploy('MockMorphoReward', 'MMrp')
-      const underlyingERC20 = ERC20Factory.attach(defaultCollateralOpts.underlyingToken!)
+      // MORPHO is not a transferable token.
+      // POST Launch we could ask the Morpho team if our TokenVaults could get permission to transfer the MORPHO tokens.
+      // Otherwise owners of the TokenVault shares need to wait until the protocol enables the transfer function on the MORPHO token.
 
-      const vault = await MorphoTokenisedDepositFactory.deploy({
-        morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
-        morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
-        underlyingERC20: defaultCollateralOpts.underlyingToken!,
-        poolToken: defaultCollateralOpts.poolToken!,
-        rewardToken: mockRewardsToken.address,
+      await whileImpersonating(hre, morphoTokenOwner, async (signer) => {
+        const morphoTokenInst = await ethers.getContractAt(
+          'IMorphoToken',
+          networkConfigToUse.tokens.MORPHO!,
+          signer
+        )
+
+        await morphoTokenInst
+          .connect(signer)
+          .setUserRole(vaultWithClaimableRewards.address, 0, true)
       })
 
-      const depositAmount = utils.parseUnits('1000', 6)
-
-      await whileImpersonating(
-        hre,
-        whales[defaultCollateralOpts.underlyingToken!.toLowerCase()],
-        async (whaleSigner) => {
-          await underlyingERC20.connect(whaleSigner).transfer(aliceAddress, depositAmount)
-          await underlyingERC20.connect(whaleSigner).transfer(bobAddress, depositAmount.mul(10))
-        }
+      const morphoTokenInst = await ethers.getContractAt(
+        'IMorphoToken',
+        networkConfigToUse.tokens.MORPHO!,
+        user
       )
+      expect(formatEther(await morphoTokenInst.balanceOf(userAddress))).to.be.equal('0.0')
 
-      await underlyingERC20.connect(alice).approve(vault.address, ethers.constants.MaxUint256)
-      await vault.connect(alice).mint(depositAmount, aliceAddress)
+      await vaultWithClaimableRewards.claimRewards()
 
-      // Simulate inflation attack
-      await underlyingERC20.connect(bob).approve(vault.address, ethers.constants.MaxUint256)
-      await vault.connect(bob).mint(depositAmount.mul(10), bobAddress)
+      expect(
+        formatEther(await vaultWithClaimableRewards.callStatic.rewardTokenBalance(userAddress))
+      ).to.be.equal('0.0')
 
-      await mockRewardsToken.mint(vault.address, bn('1000000000000000000000'))
-      await vault.sync()
-
-      await vault.connect(bob).claimRewards()
-      await vault.connect(bob).redeem(depositAmount.mul(10), bobAddress, bobAddress)
-
-      // After the inflation attack
-      await advanceTime(hre, 86400 * 7)
-      await advanceBlocks(hre, 7200 * 7)
-      await vault.connect(alice).claimRewards()
-
-      // Shown below is that it is no longer economical to inflate own shares
-      // bob only managed to steal approx 1/7200 * 90% of the reward because hardhat increments block by 1
-      // in practise it would be 0 as inflation attacks typically flashloan assets.
-      expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.closeTo(
-        bn('999996993746993746995'),
-        bn('1e15')
-      )
-      expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.closeTo(
-        bn('1503126503126502'),
-        bn('1e12')
-      )
+      expect(
+        formatEther(await morphoTokenInst.balanceOf(userAddress)).slice(
+          0,
+          '14.162082619942089'.length
+        )
+      ).to.be.equal('14.162082619942089')
     })
   }
 
@@ -348,9 +312,7 @@ const makeAaveFiatCollateralTestSuite = (
 
   const opts = {
     deployCollateral,
-    collateralSpecificConstructorTests: specificTests
-      ? collateralSpecificConstructorTests
-      : () => void 0,
+    collateralSpecificConstructorTests: collateralSpecificConstructorTests,
     collateralSpecificStatusTests,
     beforeEachRewardsTest,
     makeCollateralFixtureContext,
@@ -364,7 +326,6 @@ const makeAaveFiatCollateralTestSuite = (
     itChecksTargetPerRefDefault: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
-    itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
     resetFork: getResetFork(FORK_BLOCK),
     collateralName,
@@ -403,8 +364,7 @@ const makeOpts = (
 const { tokens, chainlinkFeeds } = networkConfig[31337]
 makeAaveFiatCollateralTestSuite(
   'MorphoAAVEV2FiatCollateral - USDT',
-  makeOpts(tokens.USDT!, tokens.aUSDT!, chainlinkFeeds.USDT!),
-  true // Only run specific tests once, since they are slow
+  makeOpts(tokens.USDT!, tokens.aUSDT!, chainlinkFeeds.USDT!)
 )
 makeAaveFiatCollateralTestSuite(
   'MorphoAAVEV2FiatCollateral - USDC',

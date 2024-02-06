@@ -76,15 +76,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // === Financial State: Drafts ===
     // Era. If drafts get wiped out due to RSR seizure, increment the era to zero draft values.
     // Only ever directly written by beginDraftEra()
-    uint256 internal draftEra; // {draftEra}
+    uint256 internal draftEra;
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {
         // Avoid re-using uint192 in order to avoid confusion with our type system; 176 is enough
         uint176 drafts; // Total amount of drafts that will become available // {qDrafts}
         uint64 availableAt; // When the last of the drafts will become available
     }
-    // {draftEra} => ({account} => {qDrafts})
-    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {qDrafts}
+    // draftEra => ({account} => {drafts})
+    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 private totalDrafts; // Total of all drafts {qDrafts}
     uint256 private draftRSR; // Amount of RSR backing all drafts {qRSR}
@@ -285,7 +285,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Create draft
         (uint256 index, uint64 availableAt) = pushDraft(account, rsrAmount);
-        emit UnstakingStarted(index, draftEra, account, rsrAmount, stakeAmount, availableAt);
+        emit UnstakingStarted(index, era, account, rsrAmount, stakeAmount, availableAt);
     }
 
     /// Complete an account's unstaking; callable by anyone
@@ -562,11 +562,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @return {qDrafts} The amount of StRSR currently being withdrawn
     function getTotalDrafts() external view returns (uint256) {
         return totalDrafts;
-    }
-
-    /// @return {draftEra} The current era for drafts (withdrawals)
-    function getDraftEra() external view returns (uint256) {
-        return draftEra;
     }
 
     // ==== Internal Functions ====

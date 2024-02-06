@@ -57,17 +57,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
     //   destinations' = destinations.add(dest)
     //   distribution' = distribution.set(dest, share)
     function setDistribution(address dest, RevenueShare memory share) external governance {
-        // solhint-disable-next-line no-empty-blocks
-        try main.rsrTrader().distributeTokenToBuy() {} catch {}
-        // solhint-disable-next-line no-empty-blocks
-        try main.rTokenTrader().distributeTokenToBuy() {} catch {}
-
         _setDistribution(dest, share);
         RevenueTotals memory revTotals = totals();
         _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
 
     struct Transfer {
+        IERC20 erc20;
         address addrTo;
         uint256 amount;
     }
@@ -98,8 +94,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         {
             RevenueTotals memory revTotals = totals();
             uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
-            if (totalShares > 0) tokensPerShare = amount / totalShares;
-            require(tokensPerShare > 0, "nothing to distribute");
+            require(totalShares > 0, "nothing to distribute");
+            tokensPerShare = amount / totalShares;
         }
 
         // Evenly distribute revenue tokens per distribution share.
@@ -110,8 +106,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         address furnaceAddr = furnace; // gas-saver
         address stRSRAddr = stRSR; // gas-saver
-
-        bool accountRewards = false;
 
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
@@ -124,13 +118,15 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = furnaceAddr;
-                if (transferAmt > 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
-                if (transferAmt > 0) accountRewards = true;
             }
 
-            transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });
+            transfers[numTransfers] = Transfer({
+                erc20: erc20,
+                addrTo: addrTo,
+                amount: transferAmt
+            });
             numTransfers++;
         }
         emit RevenueDistributed(erc20, caller, amount);
@@ -138,16 +134,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
-        }
-
-        // Perform reward accounting
-        if (accountRewards) {
-            if (isRSR) {
-                main.stRSR().payoutRewards();
-            } else {
-                main.furnace().melt();
-            }
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
         }
     }
 

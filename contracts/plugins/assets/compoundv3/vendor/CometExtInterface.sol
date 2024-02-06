@@ -95,12 +95,4 @@ abstract contract CometExtInterface {
     function allowance(address owner, address spender) external view virtual returns (uint256);
 
     event Approval(address indexed owner, address indexed spender, uint256 amount);
-
-    /**
-     * @notice Determine if the manager has permission to act on behalf of the owner
-     * @param owner The owner account
-     * @param manager The manager account
-     * @return Whether or not the manager has permission
-     */
-    function hasPermission(address owner, address manager) external view virtual returns (bool);
 }

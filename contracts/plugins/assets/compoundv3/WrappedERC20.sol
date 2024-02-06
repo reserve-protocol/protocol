@@ -76,13 +76,6 @@ abstract contract WrappedERC20 is IWrappedERC20 {
     }
 
     /**
-     * @dev Returns the decimals places of the token.
-     */
-    function decimals() public pure virtual returns (uint8) {
-        return 18;
-    }
-
-    /**
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view virtual override returns (uint256) {

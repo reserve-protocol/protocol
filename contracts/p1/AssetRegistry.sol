@@ -57,8 +57,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     //   tracks basket status on basketHandler
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
-        // Assuming an RTokenAsset is registered, furnace.melt() will also be called
-
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             assets[IERC20(_erc20s.at(i))].refresh();

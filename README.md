@@ -22,7 +22,6 @@ For a much more detailed explanation of the economic design, including an hour-l
   - [Testing with Echidna](https://github.com/reserve-protocol/protocol/blob/master/docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
   - [Deployment](https://github.com/reserve-protocol/protocol/blob/master/docs/deployment.md): How to do test deployments in our environment.
 - [System Design](https://github.com/reserve-protocol/protocol/blob/master/docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
-- [Pause and Freeze States](https://github.com/reserve-protocol/protocol/blob/master/docs/pause-freeze-states.md): An overview of which protocol functions are halted in the paused and frozen states.
 - [Deployment Variables](https://github.com/reserve-protocol/protocol/blob/master/docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
 - [Our Solidity Style](https://github.com/reserve-protocol/protocol/blob/master/docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
 - [Writing Collateral Plugins](https://github.com/reserve-protocol/protocol/blob/master/docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.

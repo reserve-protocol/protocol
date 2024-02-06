@@ -60,7 +60,7 @@ library TradingLibP0 {
         );
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellLow); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -145,7 +145,7 @@ library TradingLibP0 {
     ///   2. Stay under stack limit with fewer vars
     ///   3. Cache information such as component addresses to save on gas
 
-    struct TradingContextP0 {
+    struct TradingContext {
         BasketRange basketsHeld; // {BU}
         // basketsHeld.top is the number of partial baskets units held
         // basketsHeld.bottom is the number of full basket units held
@@ -190,7 +190,7 @@ library TradingLibP0 {
         // === Prepare cached values ===
 
         IMain main = bm.main();
-        TradingContextP0 memory ctx = TradingContextP0({
+        TradingContext memory ctx = TradingContext({
             basketsHeld: basketsHeld,
             bm: bm,
             bh: main.basketHandler(),
@@ -241,9 +241,14 @@ library TradingLibP0 {
     // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
     // the largest amount possible with each trade.
     //
-    // Algorithm Invariant: every increase of basketsHeld.bottom causes basketsRange().low to
-    //  reach a new maximum. Note that basketRange().low may decrease slightly along the way.
-    // Assumptions: constant oracle prices; monotonically increasing refPerTok; no supply changes
+    // How do we know this algorithm converges?
+    // Assumption: constant oracle prices; monotonically increasing refPerTok()
+    // Any volume traded narrows the BU band. Why:
+    //   - We might increase `basketsHeld.bottom` from run-to-run, but will never decrease it
+    //   - We might decrease the UoA amount of excess balances beyond `basketsHeld.bottom` from
+    //       run-to-run, but will never increase it
+    //   - We might decrease the UoA amount of missing balances up-to `basketsHeld.top` from
+    //       run-to-run, but will never increase it
     //
     // Preconditions:
     // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
@@ -264,12 +269,12 @@ library TradingLibP0 {
     // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
     //   where "least baskets purchaseable" involves trading at the worst price,
     //   incurring the full maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
-    function basketRange(TradingContextP0 memory ctx, IERC20[] memory erc20s)
+    function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
         internal
         view
         returns (BasketRange memory range)
     {
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.lotPrice(); // {UoA/BU}
 
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {
@@ -298,15 +303,21 @@ library TradingLibP0 {
                 bal = bal.plus(asset.bal(address(ctx.stRSR)));
             }
 
-            (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
-            // low decays down; high decays up
+            {
+                // Skip over dust-balance assets not in the basket
+                (uint192 lotLow, ) = asset.lotPrice(); // {UoA/tok}
 
-            // Skip over dust-balance assets not in the basket
-            // Intentionally include value of IFFY/DISABLED collateral
-            if (
-                ctx.bh.quantity(erc20s[i]) == 0 &&
-                !isEnoughToSell(asset, bal, low, ctx.minTradeVolume)
-            ) continue;
+                // Intentionally include value of IFFY/DISABLED collateral
+                if (
+                    ctx.bh.quantity(erc20s[i]) == 0 &&
+                    !isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume)
+                ) continue;
+            }
+
+            (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
+            // price() is better than lotPrice() here: it's important to not underestimate how
+            // much value could be in a token that is unpriced by using a decaying high lotPrice.
+            // price() will return [0, FIX_MAX] in this case, which is preferable.
 
             // throughout these sections +/- is same as Fix.plus/Fix.minus and </> is Fix.gt/.lt
 
@@ -343,7 +354,7 @@ library TradingLibP0 {
 
                 // (2) Lose minTradeVolume to dust (why: auctions can return tokens)
                 // Q: Why is this precisely where we should take out minTradeVolume?
-                // A: Our use of isEnoughToSell always uses the low price,
+                // A: Our use of isEnoughToSell always uses the low price (lotLow, technically),
                 //   so min trade volumes are always assesed based on low prices. At this point
                 //   in the calculation we have already calculated the UoA amount corresponding to
                 //   the excess token balance based on its low price, so we are already set up
@@ -423,12 +434,10 @@ library TradingLibP0 {
     // Sell IFFY last because it may recover value in the future.
     // All collateral in the basket have already been guaranteed to be SOUND by upstream checks.
     function nextTradePair(
-        TradingContextP0 memory ctx,
+        TradingContext memory ctx,
         IERC20[] memory erc20s,
         BasketRange memory range
     ) private view returns (TradeInfo memory trade) {
-        // assert(tradesOpen == 0); // guaranteed by BackingManager.rebalance()
-
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
 
@@ -444,19 +453,19 @@ library TradingLibP0 {
             // {tok} = {BU} * {tok/BU}
             uint192 needed = range.top.mul(ctx.bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                (uint192 low, uint192 high) = asset.price(); // {UoA/sellTok}
-                if (high == 0) continue; // Skip worthless assets
+                (uint192 lotLow, uint192 lotHigh) = asset.lotPrice(); // {UoA/sellTok}
+                if (lotHigh == 0) continue; // Skip worthless assets
 
                 // by calculating this early we can duck the stack limit but be less gas-efficient
                 bool enoughToSell = isEnoughToSell(
                     asset,
                     bal.minus(needed),
-                    low,
+                    lotLow,
                     ctx.minTradeVolume
                 );
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(low, FLOOR);
+                uint192 delta = bal.minus(needed).mul(lotLow, FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
@@ -467,8 +476,8 @@ library TradingLibP0 {
                 if (isBetterSurplus(maxes, status, delta) && enoughToSell) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
-                    trade.prices.sellLow = low;
-                    trade.prices.sellHigh = high;
+                    trade.prices.sellLow = lotLow;
+                    trade.prices.sellHigh = lotHigh;
 
                     maxes.surplusStatus = status;
                     maxes.surplus = delta;
@@ -478,17 +487,17 @@ library TradingLibP0 {
                 needed = range.bottom.mul(ctx.bh.quantity(erc20s[i]), CEIL); // {buyTok};
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (uint192 low, uint192 high) = asset.price(); // {UoA/buyTok}
+                    (uint192 lotLow, uint192 lotHigh) = asset.lotPrice(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
-                    uint192 delta = amtShort.mul(high, CEIL);
+                    uint192 delta = amtShort.mul(lotHigh, CEIL);
 
                     // The best asset to buy is whichever asset has the largest deficit
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = ICollateral(address(asset));
                         trade.buyAmount = amtShort;
-                        trade.prices.buyLow = low;
-                        trade.prices.buyHigh = high;
+                        trade.prices.buyLow = lotLow;
+                        trade.prices.buyHigh = lotHigh;
 
                         maxes.deficit = delta;
                     }
@@ -503,13 +512,13 @@ library TradingLibP0 {
             uint192 rsrAvailable = rsrAsset.bal(address(ctx.bm)).plus(
                 rsrAsset.bal(address(ctx.stRSR))
             );
-            (uint192 low, uint192 high) = rsrAsset.price(); // {UoA/RSR}
+            (uint192 lotLow, uint192 lotHigh) = rsrAsset.lotPrice(); // {UoA/RSR}
 
-            if (high > 0 && isEnoughToSell(rsrAsset, rsrAvailable, low, ctx.minTradeVolume)) {
+            if (lotHigh > 0 && isEnoughToSell(rsrAsset, rsrAvailable, lotLow, ctx.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
-                trade.prices.sellLow = low;
-                trade.prices.sellHigh = high;
+                trade.prices.sellLow = lotLow;
+                trade.prices.sellHigh = lotHigh;
             }
         }
     }

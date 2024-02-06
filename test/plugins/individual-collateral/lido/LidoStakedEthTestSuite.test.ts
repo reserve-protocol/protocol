@@ -12,7 +12,6 @@ import {
   TestICollateral,
   IWSTETH,
 } from '../../../../typechain'
-import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -92,11 +91,6 @@ export const deployCollateral = async (
     opts.targetPerRefChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
-
-  // Push forward chainlink feed
-  await pushOracleForward(opts.chainlinkFeed!)
-  await pushOracleForward(opts.targetPerRefChainlinkFeed!)
-
   await collateral.deployed()
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
@@ -267,7 +261,6 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
   resetFork,
   collateralName: 'LidoStakedETH',

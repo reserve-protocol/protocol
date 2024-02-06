@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout } from '../../utils'
+import { priceTimeout, oracleTimeout } from '../../utils'
 import { SFraxCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -53,7 +53,7 @@ async function main() {
       oracleError: fp('0.01').toString(), // 1%
       erc20: networkConfig[chainId].tokens.sFRAX,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr
+      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.02').toString(), // 2% = 1% oracleError + 1% buffer
       delayUntilDefault: bn('86400').toString(), // 24h

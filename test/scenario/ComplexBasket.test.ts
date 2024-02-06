@@ -34,7 +34,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../fixtures'
@@ -172,7 +172,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         ORACLE_ERROR,
         rsr.address,
         MAX_TRADE_VOLUME,
-        ORACLE_TIMEOUT_PRE_BUFFER
+        ORACLE_TIMEOUT
       )
     )
     await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
@@ -203,7 +203,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       oracleError: ORACLE_ERROR.toString(),
       tokenAddress: usdToken.address, // DAI Token
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
@@ -227,8 +227,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       oracleError: ORACLE_ERROR.toString(),
       tokenAddress: eurToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
-      targetUnitOracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
+      targetUnitOracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('EUR'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
@@ -248,7 +248,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       oracleError: ORACLE_ERROR.toString(),
       cToken: cUSDTokenVault.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
@@ -269,7 +269,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       oracleError: ORACLE_ERROR.toString(),
       staticAToken: aUSDToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
@@ -293,8 +293,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       combinedOracleError: ORACLE_ERROR.toString(),
       tokenAddress: wbtc.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
-      targetUnitOracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
+      targetUnitOracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
@@ -323,8 +323,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       combinedOracleError: ORACLE_ERROR.toString(),
       cToken: cWBTCVault.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
-      targetUnitOracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
+      targetUnitOracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
@@ -349,7 +349,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       oracleError: ORACLE_ERROR.toString(),
       tokenAddress: weth.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       noOutput: true,
     })
@@ -380,7 +380,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         oracleError: ORACLE_ERROR.toString(),
         cToken: cETHVault.address,
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
+        oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         revenueHiding: REVENUE_HIDING.toString(),
         referenceERC20Decimals: bn(18).toString(),
@@ -1598,8 +1598,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Running auctions will trigger recollateralization - cETHVault partial sale for weth
     // Will sell about 841K of cETHVault, expect to receive 8167 wETH (minimum)
     // We would still have about 438K to sell of cETHVault
-    let [low] = await cETHVaultCollateral.price()
-    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(low)
+    let [, lotHigh] = await cETHVaultCollateral.lotPrice()
+    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(lotHigh)
     const sellAmt = toBNDecimals(sellAmtUnscaled, 8)
     const sellAmtRemainder = (await cETHVault.balanceOf(backingManager.address)).sub(sellAmt)
     // Price for cETHVault = 1200 / 50 = $24 at rate 50% = $12
@@ -1744,8 +1744,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 13K wETH @ 1200 = 15,600,000 USD of value, in RSR ~= 156,000 RSR (@100 usd)
     // We exceed maxTradeVolume so we need two auctions - Will first sell 10M in value
     // Sells about 101K RSR, for 8167 WETH minimum
-    ;[low] = await rsrAsset.price()
-    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(low)
+    ;[, lotHigh] = await rsrAsset.lotPrice()
+    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(lotHigh)
     const buyAmtBidRSR1 = toMinBuyAmt(
       sellAmtRSR1,
       rsrPrice,

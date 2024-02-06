@@ -9,8 +9,6 @@ export const yvCurveUSDCcrvUSD = networkConfig['31337'].tokens.yvCurveUSDCcrvUSD
 export const USDP_USD_FEED = networkConfig['31337'].chainlinkFeeds.USDP as string
 export const CRV_USD_USD_FEED = networkConfig['31337'].chainlinkFeeds.crvUSD as string
 
-export const PRICE_PER_SHARE_HELPER = '0x444443bae5bB8640677A8cdF94CB8879Fec948Ec'
-
 export const YVUSDC_LP_TOKEN = '0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E'
 export const YVUSDP_LP_TOKEN = '0xCa978A0528116DDA3cbA9ACD3e68bc6191CA53D0'
 

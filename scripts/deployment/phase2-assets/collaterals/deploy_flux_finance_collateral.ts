@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, revenueHiding } from '../../utils'
+import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
 import { ICollateral } from '../../../../typechain'
 
 async function main() {
@@ -49,7 +49,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: fUsdc.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 24 hr
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -74,7 +74,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: fUsdt.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 24 hr
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -99,7 +99,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: fDai.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '3600', // 1 hr
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -124,7 +124,7 @@ async function main() {
     oracleError: fp('0.01').toString(), // 1%
     cToken: fFrax.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '3600', // 1 hr
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h

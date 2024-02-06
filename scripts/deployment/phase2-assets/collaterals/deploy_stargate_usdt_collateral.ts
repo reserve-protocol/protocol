@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { revenueHiding, priceTimeout } from '../../utils'
+import { revenueHiding, priceTimeout, oracleTimeout } from '../../utils'
 import {
   StargatePoolFiatCollateral,
   StargatePoolFiatCollateral__factory,
@@ -77,7 +77,7 @@ async function main() {
       oracleError: fp('0.0025').toString(), // 0.25%,
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24h hr,
+      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h

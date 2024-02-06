@@ -4,26 +4,26 @@ exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting ERC20 
 
 exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting ERC20 transfer 2`] = `34564`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `88033`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `88044`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `83564`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `83575`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after hard default 1`] = `132876`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after hard default 1`] = `132898`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after hard default 2`] = `125193`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after hard default 2`] = `125215`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `88033`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `88044`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `83564`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `83575`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after soft default 1`] = `83223`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after soft default 1`] = `83234`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after soft default 2`] = `83223`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() after soft default 2`] = `83234`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `125190`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `125212`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `125190`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `125212`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during soft default 1`] = `129941`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during soft default 1`] = `129963`;
 
-exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during soft default 2`] = `125472`;
+exports[`Collateral: LidoStakedETH collateral functionality Gas Reporting refresh() during soft default 2`] = `125494`;

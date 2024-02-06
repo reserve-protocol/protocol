@@ -2,8 +2,7 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
-import { CollateralStatus, MAX_UINT192 } from '../../common/constants'
-import { getLatestBlockTimestamp } from '#/utils/time'
+import { CollateralStatus } from '../../common/constants'
 import {
   getDeploymentFile,
   IAssetCollDeployments,
@@ -28,20 +27,18 @@ async function main() {
   const assets = Object.values(assetsColls.assets)
   const collateral = Object.values(assetsColls.collateral)
 
+  // Confirm lotPrice() == price()
   for (const a of assets) {
     console.log(`confirming asset ${a}`)
     const asset = await hre.ethers.getContractAt('Asset', a)
+    const [lotLow, lotHigh] = await asset.lotPrice()
     const [low, high] = await asset.price() // {UoA/tok}
-    const timestamp = await getLatestBlockTimestamp(hre)
-    if (
-      low.eq(0) ||
-      low.eq(MAX_UINT192) ||
-      high.eq(0) ||
-      high.eq(MAX_UINT192) ||
-      await asset.lastSave() !== timestamp ||
-      await asset.lastSave() !== timestamp
-    )
-      throw new Error('misconfigured oracle')
+    if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
+
+    if (!lotLow.eq(low) || !lotHigh.eq(high)) {
+      console.log('lotLow, low, lotHigh, high', lotLow, low, lotHigh, high)
+      throw new Error('lot price off')
+    }
   }
 
   // Collateral
@@ -52,18 +49,14 @@ async function main() {
 
     if ((await coll.status()) != CollateralStatus.SOUND) throw new Error('collateral unsound')
 
+    const [lotLow, lotHigh] = await coll.lotPrice()
     const [low, high] = await coll.price() // {UoA/tok}
-    const timestamp = await getLatestBlockTimestamp(hre)
-    if (
-      low.eq(0) ||
-      low.eq(MAX_UINT192) ||
-      high.eq(0) ||
-      high.eq(MAX_UINT192) ||
-      await coll.lastSave() !== timestamp ||
-      await coll.lastSave() !== timestamp
-    )
-      throw new Error('misconfigured oracle')
-  }
+    if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
+
+    if (!lotLow.eq(low) || !lotHigh.eq(high)) {
+      console.log('lotLow, low, lotHigh, high', lotLow, low, lotHigh, high)
+      throw new Error('lot price off')
+    }
   }
 }
 

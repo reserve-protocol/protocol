@@ -7,7 +7,7 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { fp, bn } from '../../../common/numbers'
-import { priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
+import { priceTimeout, oracleTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -54,7 +54,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
         oracleError: fp('0.003').toString(), // 3%
-        oracleTimeout: '86400', // 24 hr
+        oracleTimeout: oracleTimeout(chainId, bn('86400')).toString(), // 24 hr
         maxTradeVolume: fp('1e6').toString(),
         defaultThreshold: fp('0.013').toString(),
         delayUntilDefault: bn('86400').toString(),

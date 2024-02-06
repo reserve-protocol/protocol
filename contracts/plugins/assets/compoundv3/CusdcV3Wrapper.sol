@@ -43,7 +43,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// @return number of decimals
-    function decimals() public pure override(IERC20Metadata, WrappedERC20) returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 6;
     }
 
@@ -81,7 +81,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address dst,
         uint256 amount
     ) internal {
-        if (!underlyingComet.hasPermission(src, operator)) revert Unauthorized();
+        if (!hasPermission(src, operator)) revert Unauthorized();
         // {Comet}
         uint256 srcBal = underlyingComet.balanceOf(src);
         if (amount > srcBal) amount = srcBal;
@@ -203,10 +203,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
             rewardsClaimed[src] = accrued;
 
             rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
-
-            uint256 bal = rewardERC20.balanceOf(address(this));
-            if (owed > bal) owed = bal;
-            rewardERC20.safeTransfer(dst, owed);
+            IERC20(rewardERC20).safeTransfer(dst, owed);
         }
         emit RewardsClaimed(rewardERC20, owed);
     }

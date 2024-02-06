@@ -3,7 +3,6 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { IImplementations, IGovParams, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { useEnv } from '#/utils/env'
 import { Implementation, IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
 import {
   Asset,
@@ -32,9 +31,7 @@ import {
   RecollateralizationLibP1,
 } from '../../../typechain'
 
-export const ORACLE_TIMEOUT_PRE_BUFFER = bn('500000000') // 5700d - large for tests only
-
-export const ORACLE_TIMEOUT = ORACLE_TIMEOUT_PRE_BUFFER.add(300)
+export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
 export type Fixture<T> = () => Promise<T>
 
@@ -42,7 +39,8 @@ interface RSRFixture {
   rsr: ERC20Mock
 }
 
-async function rsrFixture(chainId: number): Promise<RSRFixture> {
+async function rsrFixture(): Promise<RSRFixture> {
+  const chainId = await getChainId(hre)
   const rsr: ERC20Mock = <ERC20Mock>(
     await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR || '')
   )
@@ -74,10 +72,9 @@ export interface DefaultFixture extends RSRAndModuleFixture {
 
 export const getDefaultFixture = async function (salt: string) {
   const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
-    let chainId = await getChainId(hre)
-    if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
-    const { rsr } = await rsrFixture(chainId)
+    const { rsr } = await rsrFixture()
     const { gnosis } = await gnosisFixture()
+    const chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }

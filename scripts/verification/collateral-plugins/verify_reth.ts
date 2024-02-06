@@ -7,7 +7,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, verifyContract, combinedError } from '../../deployment/utils'
+import { priceTimeout, oracleTimeout, verifyContract, combinedError } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -37,14 +37,14 @@ async function main() {
         oracleError: oracleError.toString(), // 0.5% & 2%,
         erc20: networkConfig[chainId].tokens.rETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: '3600', // 1 hr,
+        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4'), // revenueHiding = 0.01%
       networkConfig[chainId].chainlinkFeeds.rETH, // refPerTokChainlinkFeed
-      '86400', // refPerTokChainlinkTimeout
+      oracleTimeout(chainId, '86400').toString(), // refPerTokChainlinkTimeout
     ],
     'contracts/plugins/assets/rocket-eth/RethCollateral.sol:RethCollateral'
   )

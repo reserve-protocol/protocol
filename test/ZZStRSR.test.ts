@@ -1,6 +1,5 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, ContractFactory } from 'ethers'
@@ -535,24 +534,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should not unstake if frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('frozen or trading paused')
-    })
-
-    it('Should emit UnstakingStarted event with draftEra -- regression test 01/18/2024', async () => {
-      const amount: BigNumber = bn('1000e18')
-
-      // Stake
-      await rsr.connect(addr1).approve(stRSR.address, amount)
-      await stRSR.connect(addr1).stake(amount)
-
-      // Seize half the RSR, bumping the draftEra because the withdrawal queue is empty
-      await whileImpersonating(backingManager.address, async (signer) => {
-        await stRSR.connect(signer).seizeRSR(amount.div(2))
-      })
-
-      // Unstake
-      await expect(stRSR.connect(addr1).unstake(amount))
-        .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 2, addr1.address, amount.div(2), amount, anyValue)
     })
 
     it('Should create Pending withdrawal when unstaking', async () => {
@@ -2028,7 +2009,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await expect(stRSR.connect(addr1).unstake(one))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 2, addr1.address, bn(0), one, availableAt)
+        .withArgs(0, 1, addr1.address, bn(0), one, availableAt)
 
       // Check withdrawal properly registered - Check draft era
       //await expectWithdrawal(addr1.address, 0, { rsrAmount: bn(1) })

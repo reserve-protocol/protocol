@@ -51,7 +51,6 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -644,7 +643,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token1.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('EUR'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral1.delayUntilDefault(),
@@ -657,7 +656,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           oracleError: ORACLE_ERROR,
           erc20: backupToken1.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('EUR'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await backupCollateral1.delayUntilDefault(),
@@ -1016,6 +1015,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
+        // Set price to use lot price
+        await setOraclePrice(collateral0.address, MAX_UINT256.div(2))
+
         // Setup prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -1027,7 +1029,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time post warmup period - temporary IFFY->SOUND
         await advanceTime(Number(config.warmupPeriod) + 1)
 
-        // Set all assets to UNPRICED
+        // Set to sell price = 0
         await advanceTime(Number(ORACLE_TIMEOUT.add(PRICE_TIMEOUT)))
 
         // Check state remains SOUND
@@ -1186,8 +1188,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         })
 
-        it('Should recollateralize correctly when switching basket', async () => {
-          // Set oracle value out-of-range
+        it('Should recollateralize correctly when switching basket - Using lot price', async () => {
+          // Set price to unpriced (will use lotPrice to size trade)
           await setOraclePrice(collateral0.address, MAX_UINT256.div(2))
 
           // Setup prime basket
@@ -1216,7 +1218,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             await toMinBuyAmt(sellAmt, fp('1'), fp('1')),
             6
           ).add(1)
-          // since within oracleTimeout, price() should still be at 100% of original price
+          // since within oracleTimeout lotPrice() should still be at 100% of original price
 
           await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
             .to.emit(backingManager, 'TradeStarted')
@@ -1350,10 +1352,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
           expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-          // Check price in USD of the current RToken -- should track backing out on auction
+          // Check price in USD of the current RToken -- no backing currently
+          const rTokenPrice = remainder.mul(BN_SCALE_FACTOR).div(issueAmount).add(2) // no RSR
           await expectRTokenPrice(
             rTokenAsset.address,
-            fp('1'),
+            rTokenPrice,
             ORACLE_ERROR,
             await backingManager.maxTradeSlippage(),
             config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
@@ -1473,10 +1476,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
           expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-          // Check price in USD of the current RToken -- should track balances out on trade
+          // Check price in USD of the current RToken -- no backing currently
+          const rTokenPrice = remainder.mul(BN_SCALE_FACTOR).div(issueAmount).add(2) // no RSR
           await expectRTokenPrice(
             rTokenAsset.address,
-            fp('1'),
+            rTokenPrice,
             ORACLE_ERROR,
             await backingManager.maxTradeSlippage(),
             config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
@@ -1606,10 +1610,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
           expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-          // Check price in USD of the current RToken -- backing is tracked while out on trade
+          // Check price in USD of the current RToken -- no backing currently
+          const rTokenPrice = remainder.mul(BN_SCALE_FACTOR).div(issueAmount).add(2) // no RSR
           await expectRTokenPrice(
             rTokenAsset.address,
-            fp('1'),
+            rTokenPrice,
             ORACLE_ERROR,
             await backingManager.maxTradeSlippage(),
             config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
@@ -2143,7 +2148,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             oracleError: ORACLE_ERROR,
             erc20: token0.address,
             maxTradeVolume: fp('25'),
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: await backupCollateral1.delayUntilDefault(),
@@ -2207,7 +2212,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           ).div(2)
           const sellAmt = sellAmtBeforeSlippage
             .mul(BN_SCALE_FACTOR)
-            .div(BN_SCALE_FACTOR.sub(ORACLE_ERROR))
+            .div(BN_SCALE_FACTOR.add(ORACLE_ERROR))
           const minBuyAmt = await toMinBuyAmt(sellAmt, fp('0.5'), fp('1'))
 
           await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -2250,7 +2255,64 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await advanceTime(config.batchAuctionLength.add(100).toString())
 
           // Run auctions - will end current, and will open a new auction for the same amount
-          const leftoverSellAmt = issueAmount.sub(sellAmt)
+          await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+            {
+              contract: backingManager,
+              name: 'TradeSettled',
+              args: [anyValue, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+              emitted: true,
+            },
+            {
+              contract: backingManager,
+              name: 'TradeStarted',
+              args: [anyValue, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+              emitted: true,
+            },
+          ])
+          const leftoverSellAmt = issueAmount.sub(sellAmt.mul(2))
+
+          // Check new auction
+          // Token0 -> Backup Token Auction
+          await expectTrade(backingManager, {
+            sell: token0.address,
+            buy: backupToken1.address,
+            endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
+            externalId: bn('1'),
+          })
+
+          // Check state
+          expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+          expect(await basketHandler.fullyCollateralized()).to.equal(false)
+          expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+            minBuyAmt.add(leftoverSellAmt.div(2))
+          )
+          expect(await token0.balanceOf(backingManager.address)).to.equal(leftoverSellAmt)
+          expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
+          expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+          // Check price in USD of the current RToken
+          await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+
+          // Perform Mock Bids (addr1 has balance)
+          // Pay at worst-case price
+          await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+          await gnosis.placeBid(1, {
+            bidder: addr1.address,
+            sellAmount: sellAmt,
+            buyAmount: minBuyAmt,
+          })
+
+          // Advance time till auction ended
+          await advanceTime(config.batchAuctionLength.add(100).toString())
+
+          // Check staking situation remains unchanged
+          expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
+          expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
+
+          // Advance time till auction ended
+          await advanceTime(config.batchAuctionLength.add(100).toString())
+
+          // Run auctions - will end current, and will open a new auction for the same amount
           const leftoverMinBuyAmt = await toMinBuyAmt(leftoverSellAmt, fp('0.5'), fp('1'))
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2279,14 +2341,17 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             sell: token0.address,
             buy: backupToken1.address,
             endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
-            externalId: bn('1'),
+            externalId: bn('2'),
           })
 
           // Check state
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           expect(await basketHandler.fullyCollateralized()).to.equal(false)
+          expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+            minBuyAmt.mul(2)
+          )
           expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-          expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
+          expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt.mul(2))
           expect(await rToken.totalSupply()).to.equal(issueAmount)
 
           // Check price in USD of the current RToken
@@ -2295,7 +2360,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           // Perform Mock Bids (addr1 has balance)
           // Pay at worst-case price
           await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
-          await gnosis.placeBid(1, {
+          await gnosis.placeBid(2, {
             bidder: addr1.address,
             sellAmount: leftoverSellAmt,
             buyAmount: leftoverMinBuyAmt,
@@ -2308,11 +2373,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
           expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
 
-          // Advance time till auction ended
-          await advanceTime(config.batchAuctionLength.add(100).toString())
-
-          // Run auctions - will end current, and will open a new auction for the same amount
-          const buyAmtBidRSR: BigNumber = issueAmount.sub(minBuyAmt.add(leftoverMinBuyAmt)).add(1)
+          // End current auction, should start a new one to sell RSR for collateral
+          // ~51e18 Tokens left to buy - Sets Buy amount as independent value
+          const buyAmtBidRSR: BigNumber = issueAmount
+            .sub(minBuyAmt.mul(2).add(leftoverMinBuyAmt))
+            .add(1)
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
               contract: backingManager,
@@ -2342,7 +2407,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             sell: rsr.address,
             buy: backupToken1.address,
             endTime: auctionTimestamp + Number(config.batchAuctionLength),
-            externalId: bn('2'),
+            externalId: bn('3'),
           })
 
           const t = await getTrade(backingManager, rsr.address)
@@ -2353,11 +2418,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           expect(await basketHandler.fullyCollateralized()).to.equal(false)
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
-            minBuyAmt.add(leftoverMinBuyAmt)
+            minBuyAmt.mul(2).add(leftoverMinBuyAmt)
           )
           expect(await token0.balanceOf(backingManager.address)).to.equal(0)
           expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
-            minBuyAmt.add(leftoverMinBuyAmt)
+            minBuyAmt.mul(2).add(leftoverMinBuyAmt)
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2370,7 +2435,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           // Perform Mock Bids for RSR (addr1 has balance)
           // Pay at worst-case price
           await backupToken1.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
-          await gnosis.placeBid(2, {
+          await gnosis.placeBid(3, {
             bidder: addr1.address,
             sellAmount: sellAmtRSR,
             buyAmount: buyAmtBidRSR,
@@ -3246,6 +3311,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
                 collateral1.address,
                 collateral0.address,
                 issueAmount,
+                config.minTradeVolume,
                 config.maxTradeSlippage
               ),
               bn('1e12')
@@ -3309,6 +3375,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
                 collateral0.address,
                 collateral1.address,
                 issueAmount,
+                config.minTradeVolume,
                 config.maxTradeSlippage
               ),
               bn('1e12') // decimals
@@ -4461,10 +4528,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        // Check price in USD of the current RToken - should track the capital out on auction
+        // Check price in USD of the current RToken - capital out on auction
         await expectRTokenPrice(
           rTokenAsset.address,
-          fp('0.625'),
+          fp('0.5'),
           ORACLE_ERROR,
           await backingManager.maxTradeSlippage(),
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)

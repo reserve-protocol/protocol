@@ -9,6 +9,7 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
+  IERC20,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
@@ -42,6 +43,7 @@ import {
   CRV,
   THREE_POOL_HOLDER,
 } from '../constants'
+import { whileImpersonating } from '#/test/utils/impersonation'
 
 type Fixture<T> = () => Promise<T>
 
@@ -410,6 +412,53 @@ const collateralSpecificStatusTests = () => {
     // Check refPerTok remains the same (because we have not refreshed)
     const finalRefPerTok = await multiFeedCollateral.refPerTok()
     expect(finalRefPerTok).to.equal(initialRefPerTok)
+  })
+
+  it('handles shutdown correctly', async () => {
+    const fix = await makeW3PoolStable()
+    const [, alice, bob] = await ethers.getSigners()
+    const amount = fp('100')
+    const rewardPerBlock = bn('83197823300')
+
+    const lpToken = <IERC20>(
+      await ethers.getContractAt(
+        '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+        await fix.wrapper.curveToken()
+      )
+    )
+    const CRV = <IERC20>(
+      await ethers.getContractAt(
+        '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+        '0xD533a949740bb3306d119CC777fa900bA034cd52'
+      )
+    )
+    await whileImpersonating(THREE_POOL_HOLDER, async (signer) => {
+      await lpToken.connect(signer).transfer(alice.address, amount.mul(2))
+    })
+
+    await lpToken.connect(alice).approve(fix.wrapper.address, ethers.constants.MaxUint256)
+    await fix.wrapper.connect(alice).deposit(amount, alice.address)
+
+    // let's shutdown!
+    await fix.wrapper.shutdown()
+
+    const prevBalance = await CRV.balanceOf(alice.address)
+    await fix.wrapper.connect(alice).claimRewards()
+    expect(await CRV.balanceOf(alice.address)).to.be.eq(prevBalance.add(rewardPerBlock))
+
+    const prevBalanceBob = await CRV.balanceOf(bob.address)
+
+    // transfer to bob
+    await fix.wrapper
+      .connect(alice)
+      .transfer(bob.address, await fix.wrapper.balanceOf(alice.address))
+
+    await fix.wrapper.connect(bob).claimRewards()
+    expect(await CRV.balanceOf(bob.address)).to.be.eq(prevBalanceBob.add(rewardPerBlock))
+
+    await expect(fix.wrapper.connect(alice).deposit(amount, alice.address)).to.be.reverted
+    await expect(fix.wrapper.connect(bob).withdraw(await fix.wrapper.balanceOf(bob.address))).to.not
+      .be.reverted
   })
 }
 

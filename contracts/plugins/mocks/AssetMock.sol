@@ -4,8 +4,6 @@ pragma solidity 0.8.19;
 import "../assets/Asset.sol";
 
 contract AssetMock is Asset {
-    bool public stale;
-
     uint192 private lowPrice;
     uint192 private highPrice;
 
@@ -14,7 +12,7 @@ contract AssetMock is Asset {
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @dev oracleTimeout_ is also used as the timeout value in price(), should be highest of
+    /// @dev oracleTimeout_ is also used as the timeout value in lotPrice(), should be highest of
     ///      all assets' oracleTimeout in a collateral if there are multiple oracles
     constructor(
         uint48 priceTimeout_,
@@ -42,18 +40,13 @@ contract AssetMock is Asset {
             uint192
         )
     {
-        require(!stale, "stale price");
         return (lowPrice, highPrice, 0);
     }
 
     /// Should not revert
     /// Refresh saved prices
     function refresh() public virtual override {
-        stale = false;
-    }
-
-    function setStale(bool _stale) external {
-        stale = _stale;
+        // pass
     }
 
     function setPrice(uint192 low, uint192 high) external {

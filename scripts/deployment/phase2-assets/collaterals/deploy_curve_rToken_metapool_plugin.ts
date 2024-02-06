@@ -13,7 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { CurveStableRTokenMetapoolCollateral } from '../../../../typechain'
-import { revenueHiding } from '../../utils'
+import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CRV,
   CurvePoolType,
@@ -88,7 +88,7 @@ async function main() {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: bn('1'), // unused but cannot be zero
-        oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+        oracleTimeout: oracleTimeout(chainId, USDC_ORACLE_TIMEOUT), // max of oracleTimeouts
         maxTradeVolume: MAX_TRADE_VOL,
         defaultThreshold: DEFAULT_THRESHOLD, // 2%: 1% error on FRAX oracle + 1% base defaultThreshold
         delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
@@ -99,7 +99,10 @@ async function main() {
         curvePool: FRAX_BP,
         poolType: CurvePoolType.Plain,
         feeds: [[FRAX_USD_FEED], [USDC_USD_FEED]],
-        oracleTimeouts: [[FRAX_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
+        oracleTimeouts: [
+          [oracleTimeout(chainId, FRAX_ORACLE_TIMEOUT)],
+          [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
+        ],
         oracleErrors: [[FRAX_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
         lpToken: FRAX_BP_TOKEN,
       },
