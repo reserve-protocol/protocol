@@ -43,44 +43,6 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
         pricePerShareHelper = pricePerShareHelper_;
     }
 
-    /// Can revert, used by other contract functions in order to catch errors
-    /// Should not return FIX_MAX for low
-    /// Should only return FIX_MAX for high if low is 0
-    /// @return low {UoA/tok} The low price estimate
-    /// @return high {UoA/tok} The high price estimate
-    /// @return {target/ref} Unused. Always 0
-    function tryPrice()
-        external
-        view
-        virtual
-        override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192
-        )
-    {
-        // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
-
-        // {LP token}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-        // We can always assume that the total supply is non-zero
-
-        // {UoA/LP token} = {UoA} / {LP token}
-        uint192 lpLow = aumLow.div(supply, FLOOR);
-        uint192 lpHigh = aumHigh.div(supply, CEIL);
-
-        // {LP token/tok}
-        uint192 pricePerShare = _pricePerShare();
-
-        // {UoA/tok} = {UoA/LP token} * {LP token/tok}
-        low = lpLow.mul(pricePerShare, FLOOR);
-        high = lpHigh.mul(pricePerShare, CEIL);
-
-        return (low, high, 0);
-    }
-
     // solhint-disable no-empty-blocks
 
     /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins

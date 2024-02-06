@@ -56,16 +56,15 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             uint192
         )
     {
-        // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
+        // {UoA/ref} -- units will change
+        (low, high) = refPrice();
 
-        // {tok}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-        // We can always assume that the total supply is non-zero
+        // {ref/tok}
+        uint192 underlyingRefPerTok_ = underlyingRefPerTok();
 
-        // {UoA/tok} = {UoA} / {tok}
-        low = aumLow.div(supply, FLOOR);
-        high = aumHigh.div(supply, CEIL);
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        low = low.mul(underlyingRefPerTok_, FLOOR);
+        high = high.mul(underlyingRefPerTok_, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
@@ -141,6 +140,27 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     // === Internal ===
+
+    /// Return the UoA price of the reference unit using oracle prices and pool balances
+    /// @dev Warning: Can revert
+    /// @return low {UoA/ref}
+    /// @return high {UoA/ref}
+    function refPrice() internal view virtual returns (uint192 low, uint192 high) {
+        // Assumption: Balances should be expected to be interchangeable, modulo decimal shifts
+        uint192[] memory balances = getBalances(); // {ref}
+        uint192 balancesTotal; // {ref}
+        for (uint256 i = 0; i < nTokens; i++) {
+            balancesTotal += balances[i];
+        }
+
+        for (uint8 i = 0; i < nTokens; i++) {
+            (uint192 l, uint192 h) = tokenPrice(i); // {UoA/ref}
+
+            // {UoA/ref} = {UoA/ref} * {ref} / {ref}
+            low += l.mulDiv(balances[i], balancesTotal, FLOOR);
+            high += h.mulDiv(balances[i], balancesTotal, CEIL);
+        }
+    }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {

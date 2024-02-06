@@ -65,43 +65,6 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         assert(metapoolToken.coins(1) == address(lpToken));
     }
 
-    /// Can revert, used by other contract functions in order to catch errors
-    /// Should not return FIX_MAX for low
-    /// Should only return FIX_MAX for high if low is 0
-    /// @dev Override this when pricing is more complicated than just a single oracle
-    /// @return low {UoA/tok} The low price estimate
-    /// @return high {UoA/tok} The high price estimate
-    /// @return pegPrice {target/ref} The actual price observed in the peg
-    function tryPrice()
-        external
-        view
-        virtual
-        override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
-    {
-        // {UoA/pairedTok}
-        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
-        require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
-
-        // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
-
-        // {tok}
-        uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
-        // We can always assume that the total supply is non-zero
-
-        // {UoA/tok} = {UoA} / {tok}
-        low = aumLow.div(supply, FLOOR);
-        high = aumHigh.div(supply, CEIL);
-        assert(low <= high); // not obviously true just by inspection
-
-        return (low, high, 0);
-    }
-
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
@@ -117,7 +80,9 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return _safeWrap(metapoolToken.get_virtual_price());
+        uint192 metapool = _safeWrap(metapoolToken.get_virtual_price());
+        uint192 underlying = _safeWrap(curvePool.get_virtual_price());
+        return metapool.mul(underlying.sqrt());
     }
 
     // Check for defaults outside the pool
@@ -137,6 +102,36 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
             return true;
         }
         return false;
+    }
+
+    /// Return the UoA price of the reference unit using oracle prices and pool balances
+    /// @dev Warning: Can revert
+    /// @return low {UoA/ref}
+    /// @return high {UoA/ref}
+    function refPrice() internal view virtual override returns (uint192 low, uint192 high) {
+        // {UoA/underlyingPool}
+        (uint192 lowPool, uint192 highPool) = super.refPrice();
+
+        // Assumption: Balances should be expected to be interchangeable, modulo decimal shifts
+        // and the virtual price for the underlying pool
+
+        // {ref} -- paired token
+        uint192 bal0 = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
+
+        // {ref} -- underlying pool adjusted for its appreciation
+        uint192 bal1 = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals())).mul(
+            _safeWrap(curvePool.get_virtual_price())
+        );
+
+        // {ref}
+        uint192 balTotal = bal0 + bal1;
+
+        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
+        require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
+
+        // {UoA/ref} = {UoA/ref} * {ref} / {ref} + {UoA/ref} * {ref} / {ref}
+        low = lowPaired.mulDiv(bal0, balTotal, FLOOR) + lowPool.mulDiv(bal1, balTotal, FLOOR);
+        high = highPaired.mulDiv(bal0, balTotal, CEIL) + highPool.mulDiv(bal1, balTotal, CEIL);
     }
 
     /// @dev Warning: Can revert
