@@ -30,8 +30,8 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
     AggregatorV3Interface public immutable refPerTokenChainlinkFeed; // {ref/tok}
     uint48 public immutable refPerTokenChainlinkTimeout; // {s}
 
-    /// @param config.chainlinkFeed {UoA/ref} - ignored
-    /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/tok}
+    /// @param config.chainlinkFeed - ignored
+    /// @param config.oracleError {1} Should be the oracle error for UoA/tok
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
