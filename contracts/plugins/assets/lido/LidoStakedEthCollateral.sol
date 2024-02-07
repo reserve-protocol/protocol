@@ -33,9 +33,10 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         AggregatorV3Interface _targetPerRefChainlinkFeed,
         uint48 _targetPerRefChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
+
         require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
-        require(_targetPerRefChainlinkTimeout > 0, "targetPerRefChainlinkTimeout zero");
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(_targetPerRefChainlinkTimeout != 0, "targetPerRefChainlinkTimeout zero");
 
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
         targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
@@ -70,6 +71,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rate = IWSTETH(address(erc20)).stEthPerToken();
+
         return _safeWrap(rate);
     }
 }
