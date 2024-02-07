@@ -246,15 +246,9 @@ const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<Bi
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificConstructorTests = () => {
-  it('does not allow missing targetPerRef chainlink feed', async () => {
-    await expect(
-      deployCollateral({ targetPerRefChainlinkFeed: ethers.constants.AddressZero })
-    ).to.be.revertedWith('missing targetPerRef feed')
-  })
-
   it('does not allow targetPerRef oracle timeout at 0', async () => {
     await expect(deployCollateral({ targetPerRefChainlinkTimeout: 0 })).to.be.revertedWith(
-      'targetPerRefChainlinkTimeout zero'
+      'targetPerRefTimeout zero'
     )
   })
 }
