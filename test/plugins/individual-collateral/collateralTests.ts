@@ -368,6 +368,7 @@ export default function fn<X extends CollateralFixtureContext>(
           ctx.collateral = await deployCollateral({
             erc20: ctx.tok.address,
             revenueHiding: fp('0.01'),
+            chainlinkFeed: ctx.chainlinkFeed.address,
           })
 
           // Should remain SOUND after a 1% decrease

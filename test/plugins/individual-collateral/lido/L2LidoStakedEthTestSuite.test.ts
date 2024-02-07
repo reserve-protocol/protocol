@@ -57,8 +57,8 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
-  oracleTimeout: BASE_FEEDS_TIMEOUT.ETH_USD, // ignored
+  chainlinkFeed: BASE_PRICE_FEEDS.wstETH_stETH, // ignored
+  oracleTimeout: BASE_FEEDS_TIMEOUT.wstETH_stETH, // ignored
   oracleError: BASE_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
@@ -97,9 +97,9 @@ export const deployCollateral = async (
     opts.revenueHiding,
     opts.targetPerRefChainlinkFeed,
     opts.targetPerRefChainlinkTimeout,
-    opts.chainlinkFeed ?? opts.uoaPerTargetChainlinkFeed,
+    opts.uoaPerTargetChainlinkFeed,
     opts.uoaPerTargetChainlinkTimeout,
-    opts.refPerTokenChainlinkFeed,
+    opts.chainlinkFeed ?? opts.refPerTokenChainlinkFeed,
     opts.refPerTokenChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
@@ -107,7 +107,7 @@ export const deployCollateral = async (
   // Push forward chainlink feed
   await pushOracleForward(opts.targetPerRefChainlinkFeed!)
   await pushOracleForward(opts.uoaPerTargetChainlinkFeed!)
-  await pushOracleForward(opts.refPerTokenChainlinkFeed!)
+  await pushOracleForward(opts.chainlinkFeed ?? opts.refPerTokenChainlinkFeed!)
 
   await collateral.deployed()
   // sometimes we are trying to test a negative test case and we want this to fail silently
@@ -163,7 +163,7 @@ const makeCollateralFixtureContext = (
       wsteth,
       tok: wsteth,
       rewardToken,
-      chainlinkFeed: uoaPerTargetChainlinkFeed,
+      chainlinkFeed: refPerTokenChainlinkFeed,
       targetPerRefChainlinkFeed,
       uoaPerTargetChainlinkFeed,
       refPerTokenChainlinkFeed,
@@ -227,15 +227,18 @@ const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<Bi
   const targetPerRefChainlinkFeedAnswer = await ctx.targetPerRefChainlinkFeed.latestAnswer()
   const targetPerRefChainlinkFeedDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const refPerTokChainlinkFeedAnswer = await ctx.refPerTokenChainlinkFeed.latestAnswer()
+  const refPerTokChainlinkFeedDecimals = await ctx.refPerTokenChainlinkFeed.decimals()
 
   const result = uoaPerTargetChainlinkFeedAnswer
     .mul(bn(10).pow(18 - uoaPerTargetChainlinkFeedDecimals))
     .mul(targetPerRefChainlinkFeedAnswer)
     .mul(bn(10).pow(18 - targetPerRefChainlinkFeedDecimals))
-    .div(fp('1'))
+    .mul(refPerTokChainlinkFeedAnswer)
+    .mul(bn(10).pow(18 - refPerTokChainlinkFeedDecimals))
+    .div(fp('1e18'))
 
-  return result.mul(refPerTok).div(fp('1'))
+  return result
 }
 
 /*
