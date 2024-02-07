@@ -35,6 +35,8 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
         require(_targetPerRefChainlinkTimeout > 0, "targetPerRefChainlinkTimeout zero");
+        require(config.defaultThreshold > 0, "defaultThreshold zero");
+
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
         targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
     }

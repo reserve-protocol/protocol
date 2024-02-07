@@ -1,8 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral contracts Gas Reporting refresh() after hard default 1`] = `71881`;
+exports[`Collateral contracts Gas Reporting refresh() after full price timeout 1`] = `46228`;
 
-exports[`Collateral contracts Gas Reporting refresh() after hard default 2`] = `75163`;
+exports[`Collateral contracts Gas Reporting refresh() after hard default 1`] = `71859`;
+
+exports[`Collateral contracts Gas Reporting refresh() after hard default 2`] = `75141`;
+
+exports[`Collateral contracts Gas Reporting refresh() after oracle timeout 1`] = `46228`;
 
 exports[`Collateral contracts Gas Reporting refresh() during + after soft default 1`] = `61571`;
 

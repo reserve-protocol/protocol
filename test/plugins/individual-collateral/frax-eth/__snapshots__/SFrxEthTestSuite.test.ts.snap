@@ -4,14 +4,14 @@ exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting E
 
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting ERC20 transfer 2`] = `34204`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `58995`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `58984`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `54258`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `54247`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `59695`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `59684`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `58026`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `58015`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `73831`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `73809`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `73831`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `73809`;

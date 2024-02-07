@@ -193,6 +193,7 @@ const opts = {
   getExpectedPrice,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it,
+  itChecksNonZeroDefaultThreshold: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it.skip,

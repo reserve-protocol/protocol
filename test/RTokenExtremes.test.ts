@@ -21,7 +21,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   SLOW,
-  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   defaultFixtureNoBasket,
 } from './fixtures'
@@ -66,7 +66,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: fp('1e36'),
-        oracleTimeout: ORACLE_TIMEOUT,
+        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'),
         delayUntilDefault: bn(86400),
@@ -155,7 +155,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Recharge throttle
       await advanceTime(3600)
-
       await advanceTime(await basketHandler.warmupPeriod())
 
       // ==== Issue the "initial" rtoken supply to owner

@@ -8,6 +8,9 @@ import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.so
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "../../interfaces/IStRSRVotes.sol";
+import "../../libraries/NetworkConfigLib.sol";
+
+uint256 constant ONE_DAY = 86400; // {s}
 
 /*
  * @title Governance
@@ -30,7 +33,9 @@ contract Governance is
     // 100%
     uint256 public constant ONE_HUNDRED_PERCENT = 1e8; // {micro %}
 
-    // solhint-disable no-empty-blocks
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 public immutable MIN_VOTING_DELAY; // {block} equal to ONE_DAY
+
     constructor(
         IStRSRVotes token_,
         TimelockController timelock_,
@@ -44,7 +49,12 @@ contract Governance is
         GovernorVotes(IVotes(address(token_)))
         GovernorVotesQuorumFraction(quorumPercent)
         GovernorTimelockControl(timelock_)
-    {}
+    {
+        MIN_VOTING_DELAY =
+            (ONE_DAY + NetworkConfigLib.blocktime() - 1) /
+            NetworkConfigLib.blocktime(); // ONE_DAY, in blocks
+        requireValidVotingDelay(votingDelay_);
+    }
 
     // solhint-enable no-empty-blocks
 
@@ -54,6 +64,11 @@ contract Governance is
 
     function votingPeriod() public view override(IGovernor, GovernorSettings) returns (uint256) {
         return super.votingPeriod();
+    }
+
+    function setVotingDelay(uint256 newVotingDelay) public override {
+        requireValidVotingDelay(newVotingDelay);
+        super.setVotingDelay(newVotingDelay); // has onlyGovernance modifier
     }
 
     /// @return {qStRSR} The number of votes required in order for a voter to become a proposer
@@ -174,5 +189,9 @@ contract Governance is
         uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startBlock);
         uint256 currentEra = IStRSRVotes(address(token)).currentEra();
         return currentEra == pastEra;
+    }
+
+    function requireValidVotingDelay(uint256 newVotingDelay) private view {
+        require(newVotingDelay >= MIN_VOTING_DELAY, "invalid votingDelay");
     }
 }

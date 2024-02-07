@@ -1,3 +1,4 @@
+import hre from 'hardhat'
 import { ITokens, networkConfig } from '#/common/configuration'
 import { ethers } from 'hardhat'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -7,6 +8,9 @@ import { formatUnits, parseUnits } from 'ethers/lib/utils'
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { bn } from '#/common/numbers'
+import { getResetFork } from '../helpers'
+import { FORK_BLOCK } from './constants'
+import { advanceTime } from '#/utils/time'
 
 type ITokenSymbol = keyof ITokens
 const networkConfigToUse = networkConfig[31337]
@@ -61,7 +65,6 @@ const execTestForToken = ({
           poolToken: poolToken.address,
           morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
           morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
-          rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
           rewardToken: networkConfigToUse.tokens.MORPHO!,
         }),
       }
@@ -81,6 +84,7 @@ const execTestForToken = ({
         await instances.underlying.connect(whaleSigner).transfer(users.bob.address, amountBN)
         await instances.underlying.connect(whaleSigner).transfer(users.charlie.address, amountBN)
       })
+
       return {
         factories,
         instances,
@@ -161,14 +165,6 @@ const execTestForToken = ({
               .connect(from)
               .transfer(await to.getAddress(), parseUnits(amount, shareDecimals))
           },
-          unclaimedRewards: async (owner: Signer) => {
-            return formatUnits(
-              await instances.tokenVault
-                .connect(owner)
-                .callStatic.rewardTokenBalance(await owner.getAddress()),
-              18
-            )
-          },
           claimRewards: async (owner: Signer) => {
             await instances.tokenVault.connect(owner).claimRewards()
           },
@@ -179,7 +175,8 @@ const execTestForToken = ({
     type ITestContext = ReturnType<typeof beforeEachFn> extends Promise<infer U> ? U : never
     let context: ITestContext
 
-    // const resetFork = getResetFork(17591000)
+    before(getResetFork(FORK_BLOCK))
+
     beforeEach(async () => {
       context = await loadFixture(beforeEachFn)
     })
@@ -297,9 +294,162 @@ const execTestForToken = ({
       expect(postWithdrawalBalance).lt(parseFloat(orignalBalance))
     })
 
-    /**
-     * There is a test for claiming rewards in the MorphoAAVEFiatCollateral.test.ts
-     */
+    it('linearly distributes rewards', async () => {
+      const {
+        users: { alice, bob, charlie },
+        methods,
+        instances,
+        amountBN,
+      } = context
+
+      await methods.deposit(bob, '1')
+
+      // Enable transfers on Morpho
+      // ugh
+      await whileImpersonating(
+        '0xcBa28b38103307Ec8dA98377ffF9816C164f9AFa',
+        async (whaleSigner) => {
+          await whaleSigner.sendTransaction({
+            to: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+            data: '0x4b5159daa9059cbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001',
+          })
+          await whaleSigner.sendTransaction({
+            to: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+            data: '0x4b5159da23b872dd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001',
+          })
+        }
+      )
+
+      // Let's drop 700 MORPHO to the tokenVault
+      await whileImpersonating(
+        '0x6c27114E34173F8E4E7F4060a51EEb1f0120E241',
+        async (whaleSigner) => {
+          await instances.morpho
+            .connect(whaleSigner)
+            .transfer(
+              instances.tokenVault.address,
+              parseUnits('700', await instances.morpho.decimals())
+            )
+        }
+      )
+
+      // Account for rewards
+      await instances.tokenVault.sync()
+
+      // Simulate 8 days..
+      for (let i = 0; i < 8; i++) {
+        await advanceTime(hre, 24 * 60 * 60 - 1)
+        await methods.claimRewards(bob)
+
+        if (i < 7) {
+          expect(await instances.morpho.balanceOf(await bob.getAddress())).to.be.closeTo(
+            BigNumber.from(i + 1)
+              .mul(100)
+              .mul(BigNumber.from(10).pow(await instances.morpho.decimals())),
+            bn('1e18')
+          )
+        } else {
+          expect(await instances.morpho.balanceOf(await bob.getAddress())).to.be.closeTo(
+            BigNumber.from(7)
+              .mul(100)
+              .mul(BigNumber.from(10).pow(await instances.morpho.decimals())),
+            bn('1e18')
+          )
+        }
+      }
+    })
+
+    it('linearly distributes rewards, even with multiple claims', async () => {
+      const {
+        users: { alice, bob, charlie },
+        methods,
+        instances,
+        amountBN,
+      } = context
+
+      await methods.deposit(bob, '1')
+
+      // Enable transfers on Morpho
+      // ugh
+      await whileImpersonating(
+        '0xcBa28b38103307Ec8dA98377ffF9816C164f9AFa',
+        async (whaleSigner) => {
+          await whaleSigner.sendTransaction({
+            to: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+            data: '0x4b5159daa9059cbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001',
+          })
+          await whaleSigner.sendTransaction({
+            to: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+            data: '0x4b5159da23b872dd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001',
+          })
+        }
+      )
+
+      // Let's drop 700 MORPHO to the tokenVault
+      await whileImpersonating(
+        '0x6c27114E34173F8E4E7F4060a51EEb1f0120E241',
+        async (whaleSigner) => {
+          await instances.morpho
+            .connect(whaleSigner)
+            .transfer(
+              instances.tokenVault.address,
+              parseUnits('700', await instances.morpho.decimals())
+            )
+        }
+      )
+
+      // Account for rewards
+      await instances.tokenVault.sync()
+
+      // Simulate 3 days..
+      for (let i = 0; i < 3; i++) {
+        await advanceTime(hre, 24 * 60 * 60 - 1)
+        await methods.claimRewards(bob)
+
+        expect(await instances.morpho.balanceOf(await bob.getAddress())).to.be.closeTo(
+          BigNumber.from(i + 1)
+            .mul(100)
+            .mul(BigNumber.from(10).pow(await instances.morpho.decimals())),
+          bn('1e18')
+        )
+      }
+
+      // Let's drop another 300 MORPHO to the tokenVault
+      await whileImpersonating(
+        '0x6c27114E34173F8E4E7F4060a51EEb1f0120E241',
+        async (whaleSigner) => {
+          await instances.morpho
+            .connect(whaleSigner)
+            .transfer(
+              instances.tokenVault.address,
+              parseUnits('300', await instances.morpho.decimals())
+            )
+        }
+      )
+
+      // Account for rewards
+      await instances.tokenVault.sync()
+
+      for (let i = 3; i < 10; i++) {
+        await advanceTime(hre, 24 * 60 * 60 - 1)
+        await methods.claimRewards(bob)
+
+        // console.log(
+        //   'MORPHO:',
+        //   formatUnits(
+        //     await instances.morpho.balanceOf(await bob.getAddress()),
+        //     await instances.morpho.decimals()
+        //   )
+        // )
+
+        expect(await instances.morpho.balanceOf(await bob.getAddress())).to.be.closeTo(
+          BigNumber.from(i + 1)
+            .mul(100)
+            .mul(BigNumber.from(10).pow(await instances.morpho.decimals())),
+          bn('1e18')
+        )
+      }
+    })
   })
 }
 

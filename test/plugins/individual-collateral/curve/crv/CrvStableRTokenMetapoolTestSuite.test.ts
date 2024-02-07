@@ -7,13 +7,14 @@ import {
 import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
-import { expectUnpriced } from '../../../../utils/oracles'
+import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
 import {
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../../typechain'
+import { advanceTime } from '../../../../utils/time'
 import { bn } from '../../../../../common/numbers'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../../../../common/constants'
 import { expect } from 'chai'
@@ -227,17 +228,53 @@ const collateralSpecificStatusTests = () => {
     // Set RTokenAsset to unpriced
     // Would be the price under a stale oracle timeout for a poorly-coded RTokenAsset
     await mockRTokenAsset.setPrice(0, MAX_UINT192)
+    await expectExactPrice(collateral.address, initialPrice)
+
+    // Should decay after oracle timeout
+    await advanceTime(await collateral.oracleTimeout())
+    await expectDecayedPrice(collateral.address)
+
+    // Should be unpriced after price timeout
+    await advanceTime(await collateral.priceTimeout())
+    await expectUnpriced(collateral.address)
 
     // refresh() should not revert
     await collateral.refresh()
+  })
 
-    // Should be unpriced
-    await expectUnpriced(collateral.address)
+  it('Regression test -- refreshes inner RTokenAsset on refresh()', async () => {
+    const [collateral] = await deployCollateral({})
+    const initialPrice = await collateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
 
-    // Lot price should be initial price
-    const lotP = await collateral.lotPrice()
-    expect(lotP[0]).to.eq(initialPrice[0])
-    expect(lotP[1]).to.eq(initialPrice[1])
+    // Swap out eUSD's RTokenAsset with a mock one
+    const AssetMockFactory = await ethers.getContractFactory('AssetMock')
+    const mockRTokenAsset = await AssetMockFactory.deploy(
+      bn('1'), // unused
+      ONE_ADDRESS, // unused
+      bn('1'), // unused
+      eUSD,
+      bn('1'), // unused
+      bn('1') // unused
+    )
+    const eUSDAssetRegistry = await ethers.getContractAt(
+      'IAssetRegistry',
+      '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+    )
+    await whileImpersonating('0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c', async (signer) => {
+      await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+    })
+
+    // Set RTokenAsset price to stale
+    await mockRTokenAsset.setStale(true)
+    expect(await mockRTokenAsset.stale()).to.be.true
+
+    // Refresh CurveStableRTokenMetapoolCollateral
+    await collateral.refresh()
+
+    // Stale should be false again
+    expect(await mockRTokenAsset.stale()).to.be.false
   })
 }
 
