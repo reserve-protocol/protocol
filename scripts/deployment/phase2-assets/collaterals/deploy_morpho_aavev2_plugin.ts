@@ -11,7 +11,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, combinedError } from '../../utils'
+import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
 
 async function main() {
   // ==== Read Configuration ====
@@ -46,9 +46,11 @@ async function main() {
   const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
     'MorphoAaveV2TokenisedDeposit'
   )
+
   const maUSDT = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.USDT!,
     poolToken: networkConfig[chainId].tokens.aUSDT!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -57,6 +59,7 @@ async function main() {
   const maUSDC = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.USDC!,
     poolToken: networkConfig[chainId].tokens.aUSDC!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -65,6 +68,7 @@ async function main() {
   const maDAI = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.DAI!,
     poolToken: networkConfig[chainId].tokens.aDAI!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -73,6 +77,7 @@ async function main() {
   const maWBTC = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.WBTC!,
     poolToken: networkConfig[chainId].tokens.aWBTC!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -81,6 +86,7 @@ async function main() {
   const maWETH = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.WETH!,
     poolToken: networkConfig[chainId].tokens.aWETH!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -89,6 +95,7 @@ async function main() {
   const maStETH = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
     underlyingERC20: networkConfig[chainId].tokens.stETH!,
     poolToken: networkConfig[chainId].tokens.astETH!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
@@ -120,7 +127,7 @@ async function main() {
     priceTimeout: priceTimeout.toString(),
     oracleError: stablesOracleError.toString(),
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 24h
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
     targetName: ethers.utils.formatBytes32String('USD'),
     defaultThreshold: stablesOracleError.add(fp('0.01')), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -158,7 +165,6 @@ async function main() {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
       {
         ...baseStableConfig,
-        oracleTimeout: '3600', // 1 hr
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI!,
         erc20: maDAI.address,
       },
@@ -179,16 +185,16 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: combinedBTCWBTCError,
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '86400', // 24 hr
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
         erc20: maWBTC.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
-      '3600' // 1 hr
+      networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
+      oracleTimeout(chainId, '86400').toString() // 1 hr
     )
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
@@ -202,7 +208,7 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: fp('0.005'),
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '3600', // 1 hr
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0'), // 0% -- no soft default for self-referential collateral
         delayUntilDefault: bn('86400'), // 24h
@@ -231,16 +237,16 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: combinedOracleErrors,
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '86400', // 24 hr
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
         erc20: maStETH.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
-      '3600' // 1 hr
+      networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
+      oracleTimeout(chainId, '86400').toString() // 1 hr
     )
     assetCollDeployments.collateral.maStETH = collateral.address
     deployedCollateral.push(collateral.address.toString())

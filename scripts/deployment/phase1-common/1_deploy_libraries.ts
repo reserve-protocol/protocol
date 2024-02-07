@@ -8,6 +8,7 @@ import { BasketLibP1, CvxMining, RecollateralizationLibP1 } from '../../../typec
 
 let tradingLib: RecollateralizationLibP1
 let basketLib: BasketLibP1
+let cvxMiningLib: CvxMining
 
 async function main() {
   // ==== Read Configuration ====
@@ -15,7 +16,7 @@ async function main() {
   const chainId = await getChainId(hre)
 
   console.log(
-    `Deploying TradingLib, BasketLib to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`
+    `Deploying TradingLib, BasketLib, and CvxMining to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`
   )
 
   if (!networkConfig[chainId]) {
@@ -45,9 +46,20 @@ async function main() {
 
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
+  // Deploy CvxMining external library
+  if (!baseL2Chains.includes(hre.network.name)) {
+    const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
+    cvxMiningLib = <CvxMining>await CvxMiningFactory.connect(burner).deploy()
+    await cvxMiningLib.deployed()
+    deployments.cvxMiningLib = cvxMiningLib.address
+
+    fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
+  }
+
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     BasketLib: ${basketLib.address}
+    CvxMiningLib: ${cvxMiningLib ? cvxMiningLib.address : 'N/A'}
     Deployment file: ${deploymentFilename}`)
 }
 

@@ -92,7 +92,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    function reportViolation() external {
+    function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         ITrade trade = ITrade(_msgSender());
         TradeKind kind = trade.KIND();
@@ -239,11 +239,6 @@ contract BrokerP0 is ComponentP0, IBroker {
             "dutch auctions disabled for token pair"
         );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
-        require(
-            priceNotDecayed(req.sell) && priceNotDecayed(req.buy),
-            "dutch auctions require live prices"
-        );
-
         DutchTrade trade = DutchTrade(Clones.clone(address(dutchTradeImplementation)));
         trades[address(trade)] = true;
 
@@ -255,11 +250,5 @@ contract BrokerP0 is ComponentP0, IBroker {
 
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         return trade;
-    }
-
-    /// @return true iff the price is not decayed, or it's the RTokenAsset
-    function priceNotDecayed(IAsset asset) private view returns (bool) {
-        return
-            asset.lastSave() == block.timestamp || address(asset.erc20()) == address(main.rToken());
     }
 }

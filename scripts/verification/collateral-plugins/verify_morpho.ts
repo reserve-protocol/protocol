@@ -7,7 +7,13 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { combinedError, priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
+import {
+  combinedError,
+  priceTimeout,
+  oracleTimeout,
+  verifyContract,
+  revenueHiding,
+} from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -58,7 +64,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         oracleError: fp('0.0025').toString(), // 0.25%
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: '86400', // 1 hr
+        oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.0025').add(fp('0.01')).toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -86,7 +92,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         oracleError: combinedBTCWBTCError.toString(), // 0.25%
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '3600', // 1 hr
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
@@ -95,7 +101,7 @@ async function main() {
       },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.WBTC!,
-      '86400', // 1 hr
+      oracleTimeout(chainId, '86400').toString(), // 1 hr
     ],
     'contracts/plugins/assets/morpho-aave/MorphoNonFiatCollateral.sol:MorphoNonFiatCollateral'
   )
@@ -115,7 +121,7 @@ async function main() {
         priceTimeout: priceTimeout,
         oracleError: fp('0.005'),
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '3600', // 1 hr
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0'), // 0% -- no soft default for self-referential collateral
         delayUntilDefault: bn('86400'), // 24h

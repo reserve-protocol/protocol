@@ -277,7 +277,6 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
-  itChecksNonZeroDefaultThreshold: it,
   resetFork,
   collateralName: 'CBEthCollateralL2',
   chainlinkDefaultAnswer,

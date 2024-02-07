@@ -75,10 +75,6 @@ contract FiatCollateral is ICollateral, Asset {
         }
         require(config.delayUntilDefault <= 1209600, "delayUntilDefault too long");
 
-        // Note: This contract is designed to allow setting defaultThreshold = 0 to disable
-        // default checks. You can apply the check below to child contracts when required
-        // require(config.defaultThreshold > 0, "defaultThreshold zero");
-
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;
 
@@ -126,7 +122,7 @@ contract FiatCollateral is ICollateral, Asset {
     function refresh() public virtual override(Asset, IAsset) {
         CollateralStatus oldStatus = status();
 
-        // Check for soft default + save price
+        // Check for soft default + save lotPrice
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced

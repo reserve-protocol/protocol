@@ -14,10 +14,8 @@ contract RevenueTraderCompatibleV2 is RevenueTraderP1, IRevenueTraderComp {
         erc20s[0] = sell;
         TradeKind[] memory kinds = new TradeKind[](1);
         kinds[0] = TradeKind.DUTCH_AUCTION;
-
         // Mirror V3 logic (only the section relevant to tests)
-        // solhint-disable-next-line no-empty-blocks
-        try this.manageTokens(erc20s, kinds) {} catch {}
+        this.manageTokens(erc20s, kinds);
     }
 
     function version() public pure virtual override(Versioned, IVersioned) returns (string memory) {

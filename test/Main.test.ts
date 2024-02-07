@@ -70,8 +70,6 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from './fixtures'
@@ -1182,7 +1180,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: newToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: await collateral0.oracleTimeout(),
           targetName: await ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -1204,7 +1202,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: newToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: await collateral0.oracleTimeout(),
         targetName: await ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -1230,7 +1228,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: await gasGuzzlingColl.erc20(),
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: await collateral0.oracleTimeout(),
         targetName: await ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -1629,7 +1627,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
               oracleError: ORACLE_ERROR,
               erc20: erc20s[5].address,
               maxTradeVolume: config.rTokenMaxTradeVolume,
-              oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+              oracleTimeout: await collateral2.oracleTimeout(),
               targetName: ethers.utils.formatBytes32String('USD'),
               defaultThreshold: DEFAULT_THRESHOLD,
               delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -1725,7 +1723,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: eurToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: await collateral0.oracleTimeout(),
         targetName: ethers.utils.formatBytes32String('EUR'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral1.delayUntilDefault(),
@@ -1948,7 +1946,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: await collateral0.erc20(),
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: await collateral0.oracleTimeout(),
         targetName: ethers.utils.formatBytes32String('NEW_TARGET'),
         defaultThreshold: fp('0.01'),
         delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -2758,10 +2756,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check BU price -- 1/4 of the basket has lost half its value
       await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
 
-      // Set collateral1 price to [0, FIX_MAX]
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
-      await setOraclePrice(collateral0.address, bn('1e8'))
-      await assetRegistry.refresh()
+      // Set collateral1 price to invalid value that should produce [0, FIX_MAX]
+      await setOraclePrice(collateral1.address, MAX_UINT192)
 
       // Check BU price -- 1/4 of the basket has lost all its value
       const asset = await ethers.getContractAt('Asset', basketHandler.address)
@@ -2803,7 +2799,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: await collateral2.maxTradeVolume(),
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: await collateral2.oracleTimeout(),
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -2816,8 +2812,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set price = 0, which hits 3 of our 4 collateral in the basket
       await setOraclePrice(newColl2.address, bn('0'))
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
-      await setOraclePrice(collateral1.address, bn('1e8'))
 
       // Check status and price again
       const p = await basketHandler.price()
@@ -2838,7 +2832,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: await collateral2.maxTradeVolume(),
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: await collateral2.oracleTimeout(),
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -2846,9 +2840,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         REVENUE_HIDING
       )
       await assetRegistry.connect(owner).swapRegistered(newColl.address)
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(newColl.address, MAX_UINT192) // overflow
+      await expectUnpriced(newColl.address)
       await newColl.setTargetPerRef(1)
-      await expectUnpriced(basketHandler.address)
+      await freshBasketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
+      await freshBasketHandler.refreshBasket()
+
+      // Expect [something > 0, FIX_MAX]
+      const bh = await ethers.getContractAt('Asset', basketHandler.address)
+      const [lowPrice, highPrice] = await bh.price()
+      expect(lowPrice).to.be.gt(0)
+      expect(highPrice).to.equal(MAX_UINT192)
     })
 
     it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 1', async () => {
@@ -2863,7 +2865,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: await collateral2.oracleTimeout(),
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -2903,6 +2905,35 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [lowPrice, highPrice] = await freshBasketHandler.price()
       expect(lowPrice).to.equal(MAX_UINT192)
       expect(highPrice).to.equal(MAX_UINT192)
+    })
+
+    it('Should distinguish between price/lotPrice', async () => {
+      // Set basket with single collateral
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.refreshBasket()
+
+      await collateral0.refresh()
+      const [low, high] = await collateral0.price()
+      await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // oracle error
+
+      // lotPrice() should begin at 100%
+      let [lowPrice, highPrice] = await basketHandler.price()
+      let [lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      expect(lowPrice).to.equal(0)
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(lotLowPrice).to.be.eq(low)
+      expect(lotHighPrice).to.be.eq(high)
+
+      // Advance time past 100% period -- lotPrice() should begin to fall
+      await advanceTime(await collateral0.oracleTimeout())
+      ;[lowPrice, highPrice] = await basketHandler.price()
+      ;[lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      expect(lowPrice).to.equal(0)
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(lotLowPrice).to.be.closeTo(low, low.div(bn('1e5'))) // small decay expected
+      expect(lotLowPrice).to.be.lt(low)
+      expect(lotHighPrice).to.be.closeTo(high, high.div(bn('1e5'))) // small decay expected
+      expect(lotHighPrice).to.be.lt(high)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
@@ -3085,7 +3116,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: await collateral2.oracleTimeout(),
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3129,7 +3160,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: await collateral2.oracleTimeout(),
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3150,15 +3181,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR, true)
     })
 
-    it('lotPrice (deprecated) is equal to price()', async () => {
-      const lotPrice = await basketHandler.lotPrice()
-      const price = await basketHandler.price()
-      expect(price.length).to.equal(2)
-      expect(lotPrice.length).to.equal(price.length)
-      expect(lotPrice[0]).to.equal(price[0])
-      expect(lotPrice[1]).to.equal(price[1])
-    })
-
     it('Should not put backup tokens with different targetName in the basket', async () => {
       // Swap out collateral for bad target name
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
@@ -3168,7 +3190,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: token0.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: await collateral0.oracleTimeout(),
         targetName: await ethers.utils.formatBytes32String('NEW TARGET'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),

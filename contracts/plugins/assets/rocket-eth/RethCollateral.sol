@@ -31,7 +31,6 @@ contract RethCollateral is AppreciatingFiatCollateral {
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
         require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;

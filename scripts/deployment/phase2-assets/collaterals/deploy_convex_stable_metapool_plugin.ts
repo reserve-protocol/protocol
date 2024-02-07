@@ -13,7 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { CurveStableMetapoolCollateral } from '../../../../typechain'
-import { revenueHiding } from '../../utils'
+import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
   DELAY_UNTIL_DEFAULT,
@@ -69,10 +69,13 @@ async function main() {
 
   /********  Deploy Convex Stable Metapool for MIM/3Pool  **************************/
 
+  const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
     'CurveStableMetapoolCollateral'
   )
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
+    libraries: { CvxMining: CvxMining.address },
+  })
 
   const wPool = await ConvexStakingWrapperFactory.deploy()
   await wPool.deployed()
@@ -102,7 +105,11 @@ async function main() {
       curvePool: THREE_POOL,
       poolType: CurvePoolType.Plain,
       feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
-      oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
+      oracleTimeouts: [
+        [oracleTimeout(chainId, DAI_ORACLE_TIMEOUT)],
+        [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
+        [oracleTimeout(chainId, USDT_ORACLE_TIMEOUT)],
+      ],
       oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
       lpToken: THREE_POOL_TOKEN,
     },

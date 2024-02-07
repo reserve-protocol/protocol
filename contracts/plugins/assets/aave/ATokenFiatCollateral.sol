@@ -41,9 +41,7 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
-    {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
-    }
+    {}
 
     // solhint-enable no-empty-blocks
 

@@ -30,10 +30,6 @@ abstract contract RewardableERC20Wrapper is RewardableERC20 {
         string memory _symbol,
         IERC20 _rewardToken
     ) ERC20(_name, _symbol) RewardableERC20(_rewardToken, _underlying.decimals()) {
-        require(
-            address(_rewardToken) != address(_underlying),
-            "reward and underlying cannot match"
-        );
         underlying = _underlying;
         underlyingDecimals = _underlying.decimals();
     }

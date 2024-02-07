@@ -13,7 +13,7 @@ import {
 } from '../../common'
 import { bn, fp } from '#/common/numbers'
 import { AaveV3FiatCollateral } from '../../../../typechain'
-import { priceTimeout, revenueHiding } from '../../utils'
+import { priceTimeout, revenueHiding, oracleTimeout } from '../../utils'
 
 // This file specifically deploys Aave V3 USDC collateral
 
@@ -77,7 +77,7 @@ async function main() {
       oracleError: fp('0.003'), // 3%
       erc20: erc20.address,
       maxTradeVolume: fp('1e6'),
-      oracleTimeout: '86400', // 24 hr
+      oracleTimeout: oracleTimeout(chainId, bn('86400')), // 24 hr
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.013'),
       delayUntilDefault: bn('86400'),

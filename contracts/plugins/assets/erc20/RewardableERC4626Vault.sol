@@ -27,9 +27,7 @@ abstract contract RewardableERC4626Vault is ERC4626, RewardableERC20 {
     )
         ERC4626(_asset, _name, _symbol)
         RewardableERC20(_rewardToken, _asset.decimals() + _decimalsOffset())
-    {
-        require(address(_rewardToken) != address(_asset), "reward and asset cannot match");
-    }
+    {}
 
     // solhint-enable no-empty-blocks
 

@@ -63,10 +63,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     // Whether Dutch Auctions are currently disabled, per ERC20
     mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
-    // === 3.1.0 ===
-
-    IRToken private rToken;
-
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
 
@@ -85,21 +81,16 @@ contract BrokerP1 is ComponentP1, IBroker {
         uint48 dutchAuctionLength_
     ) external initializer {
         __Component_init(main_);
-        cacheComponents();
+
+        backingManager = main_.backingManager();
+        rsrTrader = main_.rsrTrader();
+        rTokenTrader = main_.rTokenTrader();
 
         setGnosis(gnosis_);
         setBatchTradeImplementation(batchTradeImplementation_);
         setBatchAuctionLength(batchAuctionLength_);
         setDutchTradeImplementation(dutchTradeImplementation_);
         setDutchAuctionLength(dutchAuctionLength_);
-    }
-
-    /// Call after upgrade to >= 3.1.0
-    function cacheComponents() public {
-        backingManager = main.backingManager();
-        rsrTrader = main.rsrTrader();
-        rTokenTrader = main.rTokenTrader();
-        rToken = main.rToken();
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -136,9 +127,9 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    // checks: caller is a Trade this contract cloned
+    // checks: not paused (trading), not frozen, caller is a Trade this contract cloned
     // effects: disabled' = true
-    function reportViolation() external {
+    function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         ITrade trade = ITrade(_msgSender());
         TradeKind kind = trade.KIND();
@@ -265,11 +256,6 @@ contract BrokerP1 is ComponentP1, IBroker {
             "dutch auctions disabled for token pair"
         );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
-        require(
-            priceNotDecayed(req.sell) && priceNotDecayed(req.buy),
-            "dutch auctions require live prices"
-        );
-
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
 
@@ -284,15 +270,10 @@ contract BrokerP1 is ComponentP1, IBroker {
         return trade;
     }
 
-    /// @return true iff the price is not decayed, or it's the RTokenAsset
-    function priceNotDecayed(IAsset asset) private view returns (bool) {
-        return asset.lastSave() == block.timestamp || address(asset.erc20()) == address(rToken);
-    }
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[41] private __gap;
+    uint256[42] private __gap;
 }

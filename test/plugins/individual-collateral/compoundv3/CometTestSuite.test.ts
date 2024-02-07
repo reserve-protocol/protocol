@@ -22,7 +22,6 @@ import {
   CometMock__factory,
   TestICollateral,
 } from '../../../../typechain'
-import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
@@ -119,9 +118,6 @@ export const deployCollateral = async (
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
-
-  // Push forward chainlink feed
-  await pushOracleForward(opts.chainlinkFeed!)
 
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
@@ -357,7 +353,6 @@ const collateralSpecificStatusTests = () => {
     })
 
     // Should remain SOUND after a 1% decrease
-    let refPerTok = await collateral.refPerTok()
     let currentExchangeRate = await wcusdcV3Mock.exchangeRate()
     await wcusdcV3Mock.setMockExchangeRate(
       true,
@@ -366,11 +361,7 @@ const collateralSpecificStatusTests = () => {
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-    // refPerTok should be unchanged
-    expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
-
     // Should become DISABLED if drops more than that
-    refPerTok = await collateral.refPerTok()
     currentExchangeRate = await wcusdcV3Mock.exchangeRate()
     await wcusdcV3Mock.setMockExchangeRate(
       true,
@@ -378,10 +369,6 @@ const collateralSpecificStatusTests = () => {
     )
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-
-    // refPerTok should have fallen 1%
-    refPerTok = refPerTok.sub(refPerTok.div(100))
-    expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
   })
 }
 
@@ -409,7 +396,6 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it.skip, // implemented in this file
   itIsPricedByPeg: true,
   resetFork,
