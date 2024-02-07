@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { networkConfig } from '../../../../common/configuration'
+import { baseL2Chains, networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
@@ -13,8 +13,13 @@ import {
   fileExists,
 } from '../../common'
 import { priceTimeout } from '../../utils'
-import { LidoStakedEthCollateral } from '../../../../typechain'
+import { LidoStakedEthCollateral, L2LidoStakedEthCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
+import {
+  BASE_PRICE_FEEDS,
+  BASE_FEEDS_TIMEOUT,
+  BASE_ORACLE_ERROR,
+} from '../../../../test/plugins/individual-collateral/lido/constants'
 
 async function main() {
   // ==== Read Configuration ====
@@ -65,33 +70,67 @@ async function main() {
   }
 
   /********  Deploy Lido Staked ETH Collateral - wstETH  **************************/
+  let collateral: LidoStakedEthCollateral | L2LidoStakedEthCollateral
 
-  const LidoStakedEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'LidoStakedEthCollateral'
-  )
+  if (!baseL2Chains.includes(hre.network.name)) {
+    const LidoStakedEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+      'LidoStakedEthCollateral'
+    )
 
-  const collateral = <LidoStakedEthCollateral>await LidoStakedEthCollateralFactory.connect(
-    deployer
-  ).deploy(
-    {
-      priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: stethUsdOracleAddress,
-      oracleError: fp('0.01').toString(), // 1%: only for stETHUSD feed
-      erc20: networkConfig[chainId].tokens.wstETH,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr,
-      targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethEth feed oracleError
-      delayUntilDefault: bn('86400').toString(), // 24h
-    },
-    fp('1e-4').toString(), // revenueHiding = 0.01%
-    stethEthOracleAddress, // targetPerRefChainlinkFeed
-    '86400' // targetPerRefChainlinkTimeout
-  )
-  await collateral.deployed()
-  await (await collateral.refresh()).wait()
-  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    collateral = <LidoStakedEthCollateral>await LidoStakedEthCollateralFactory.connect(
+      deployer
+    ).deploy(
+      {
+        priceTimeout: priceTimeout.toString(),
+        chainlinkFeed: stethUsdOracleAddress,
+        oracleError: fp('0.01').toString(), // 1%: only for stETHUSD feed
+        erc20: networkConfig[chainId].tokens.wstETH,
+        maxTradeVolume: fp('1e6').toString(), // $1m,
+        oracleTimeout: '3600', // 1 hr,
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethEth feed oracleError
+        delayUntilDefault: bn('86400').toString(), // 24h
+      },
+      fp('1e-4').toString(), // revenueHiding = 0.01%
+      stethEthOracleAddress, // targetPerRefChainlinkFeed
+      '86400' // targetPerRefChainlinkTimeout
+    )
+    await collateral.deployed()
+    await (await collateral.refresh()).wait()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+  } else if (chainId == '8453' || chainId == '84531') {
+    const L2LidoStakedEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+      'L2LidoStakedEthCollateral'
+    )
 
+    collateral = <L2LidoStakedEthCollateral>await L2LidoStakedEthCollateralFactory.connect(
+      deployer
+    ).deploy(
+      {
+        priceTimeout: priceTimeout.toString(),
+        chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD,
+        oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% & 0.5% & 0.15%
+        erc20: networkConfig[chainId].tokens.wstETH,
+        maxTradeVolume: fp('1e6').toString(), // $1m TODO confirm
+        oracleTimeout: BASE_FEEDS_TIMEOUT.ETH_USD, // 1200s,
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethEth feed oracleError
+        delayUntilDefault: bn('86400').toString(), // 24h
+      },
+      fp('1e-4').toString(), // revenueHiding = 0.01%
+      BASE_PRICE_FEEDS.stETH_ETH,
+      BASE_FEEDS_TIMEOUT.stETH_ETH,
+      BASE_PRICE_FEEDS.ETH_USD,
+      BASE_FEEDS_TIMEOUT.ETH_USD,
+      BASE_PRICE_FEEDS.wstETH_stETH,
+      BASE_FEEDS_TIMEOUT.wstETH_stETH
+    )
+    await collateral.deployed()
+    await (await collateral.refresh()).wait()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+  } else {
+    throw new Error(`Unsupported chainId: ${chainId}`)
+  }
   console.log(`Deployed Lido wStETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.wstETH = collateral.address

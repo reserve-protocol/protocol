@@ -69,7 +69,7 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   uoaPerTargetChainlinkTimeout: BASE_FEEDS_TIMEOUT.ETH_USD,
   refPerTokenChainlinkFeed: BASE_PRICE_FEEDS.wstETH_stETH,
   refPerTokenChainlinkTimeout: BASE_FEEDS_TIMEOUT.wstETH_stETH,
-  revenueHiding: fp('0'), // TODO: how much?
+  revenueHiding: fp('1e-4'),
 }
 
 export const deployCollateral = async (
@@ -279,7 +279,7 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itHasRevenueHiding: it.skip,
+  itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK_BASE),
   collateralName: 'L2LidoStakedETH',
   chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
