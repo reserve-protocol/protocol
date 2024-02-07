@@ -24,13 +24,13 @@ export const BASE_WSTETH = '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452' // confi
 export const BASE_WSTETH_WHALE = '0xa6385c73961dd9c58db2ef0c4eb98ce4b60651e8'
 export const FORK_BLOCK_BASE = 10264000
 export const BASE_PRICE_FEEDS = {
-  wstETH_stETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061',
   stETH_ETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0',
   ETH_USD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70',
+  wstETH_stETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061',
 }
 export const BASE_FEEDS_TIMEOUT = {
-  wstETH_stETH: bn(86400),
   stETH_ETH: bn(86400),
   ETH_USD: bn(1200), // yep, that's correct
+  wstETH_stETH: bn(86400),
 }
 export const BASE_ORACLE_ERROR = fp('0.0115') // 0.5% + 0.5% + 0.15%

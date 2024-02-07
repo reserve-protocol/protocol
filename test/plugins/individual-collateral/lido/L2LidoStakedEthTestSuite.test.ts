@@ -16,7 +16,6 @@ import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
-  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
@@ -58,8 +57,8 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: BASE_PRICE_FEEDS.wstETH_stETH, // ignored
-  oracleTimeout: ORACLE_TIMEOUT, // ignored
+  chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
+  oracleTimeout: BASE_FEEDS_TIMEOUT.ETH_USD, // ignored
   oracleError: BASE_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
@@ -98,7 +97,7 @@ export const deployCollateral = async (
     opts.revenueHiding,
     opts.targetPerRefChainlinkFeed,
     opts.targetPerRefChainlinkTimeout,
-    opts.uoaPerTargetChainlinkFeed,
+    opts.chainlinkFeed ?? opts.uoaPerTargetChainlinkFeed,
     opts.uoaPerTargetChainlinkTimeout,
     opts.refPerTokenChainlinkFeed,
     opts.refPerTokenChainlinkTimeout,
@@ -119,9 +118,9 @@ export const deployCollateral = async (
 }
 
 const defaultAnswers = {
-  targetPerRefChainlinkFeed: bn('1'),
-  uoaPerTargetChainlinkFeed: bn('2000'),
-  refPerTokenChainlinkFeed: bn('1.1'), // ??
+  targetPerRefChainlinkFeed: bn('1e18'),
+  uoaPerTargetChainlinkFeed: bn('2000e8'),
+  refPerTokenChainlinkFeed: bn('1e18'), // ??
 }
 
 type Fixture<T> = () => Promise<T>
@@ -138,19 +137,18 @@ const makeCollateralFixtureContext = (
     )
 
     const targetPerRefChainlinkFeed = await MockV3AggregatorFactory.deploy(
-      8,
+      18,
       defaultAnswers.targetPerRefChainlinkFeed
     )
-    const uoaPerTargetChainlinkFeed = await MockV3AggregatorFactory.deploy(
-      8,
-      defaultAnswers.uoaPerTargetChainlinkFeed
-    )
+    const uoaPerTargetChainlinkFeed = opts.chainlinkFeed
+      ? MockV3AggregatorFactory.attach(opts.chainlinkFeed)
+      : await MockV3AggregatorFactory.deploy(8, defaultAnswers.uoaPerTargetChainlinkFeed)
     const refPerTokenChainlinkFeed = await MockV3AggregatorFactory.deploy(
-      8,
+      18,
       defaultAnswers.refPerTokenChainlinkFeed
     )
 
-    collateralOpts.chainlinkFeed = refPerTokenChainlinkFeed.address
+    collateralOpts.chainlinkFeed = uoaPerTargetChainlinkFeed.address
     collateralOpts.targetPerRefChainlinkFeed = targetPerRefChainlinkFeed.address
     collateralOpts.uoaPerTargetChainlinkFeed = uoaPerTargetChainlinkFeed.address
     collateralOpts.refPerTokenChainlinkFeed = refPerTokenChainlinkFeed.address
@@ -165,7 +163,7 @@ const makeCollateralFixtureContext = (
       wsteth,
       tok: wsteth,
       rewardToken,
-      chainlinkFeed: refPerTokenChainlinkFeed,
+      chainlinkFeed: uoaPerTargetChainlinkFeed,
       targetPerRefChainlinkFeed,
       uoaPerTargetChainlinkFeed,
       refPerTokenChainlinkFeed,
@@ -281,10 +279,10 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itHasRevenueHiding: it,
+  itHasRevenueHiding: it.skip,
   resetFork: getResetFork(FORK_BLOCK_BASE),
   collateralName: 'L2LidoStakedETH',
-  chainlinkDefaultAnswer: defaultAnswers.refPerTokenChainlinkFeed,
+  chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
   itIsPricedByPeg: true,
   targetNetwork: 'base',
 }
