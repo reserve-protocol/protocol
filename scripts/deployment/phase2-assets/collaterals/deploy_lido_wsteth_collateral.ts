@@ -111,7 +111,7 @@ async function main() {
         chainlinkFeed: BASE_PRICE_FEEDS.wstETH_stETH, // ignored
         oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% & 0.5% & 0.15%
         erc20: networkConfig[chainId].tokens.wstETH,
-        maxTradeVolume: fp('1e6').toString(), // $1m TODO confirm
+        maxTradeVolume: fp('5e5').toString(), // $500k
         oracleTimeout: BASE_FEEDS_TIMEOUT.wstETH_stETH, // 86400, ignored
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethEth feed oracleError
