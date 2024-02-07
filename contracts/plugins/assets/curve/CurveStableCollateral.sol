@@ -134,7 +134,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
         IRewardable(address(erc20)).claimRewards();
     }

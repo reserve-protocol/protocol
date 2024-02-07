@@ -40,7 +40,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         cometDecimals = comet.decimals();
     }
 
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external override(Asset, IRewardable) {
         IRewardable(address(erc20)).claimRewards();
     }

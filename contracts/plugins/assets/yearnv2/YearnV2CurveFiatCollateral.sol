@@ -45,7 +45,7 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
 
     // solhint-disable no-empty-blocks
 
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external virtual override {
         // No rewards to claim, everything is part of the pricePerShare
     }

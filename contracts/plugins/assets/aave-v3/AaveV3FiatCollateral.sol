@@ -34,8 +34,7 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// delegatecall
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
         StaticATokenV3LM(address(erc20)).claimRewards();
     }
