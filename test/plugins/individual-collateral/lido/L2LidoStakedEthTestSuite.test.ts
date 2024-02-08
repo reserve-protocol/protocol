@@ -226,7 +226,7 @@ const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<Bi
   const targetPerRefChainlinkFeedAnswer = await ctx.targetPerRefChainlinkFeed.latestAnswer()
   const targetPerRefChainlinkFeedDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const refPerTok = await ctx.collateral.underlyingRefPerTok()
 
   const result = uoaPerTargetChainlinkFeedAnswer
     .mul(bn(10).pow(18 - uoaPerTargetChainlinkFeedDecimals))
@@ -284,7 +284,7 @@ const opts = {
   chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
   itIsPricedByPeg: true,
   targetNetwork: 'base',
-  toleranceDivisor: bn('1'),
+  toleranceDivisor: bn('1e2'),
 }
 
 collateralTests(opts)
