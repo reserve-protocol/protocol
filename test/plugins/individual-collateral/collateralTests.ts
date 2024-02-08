@@ -365,32 +365,33 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itHasRevenueHiding('does revenue hiding correctly', async () => {
-          ctx.collateral = await deployCollateral({
+          const tempCtx = await makeCollateralFixtureContext(alice, {
             erc20: ctx.tok.address,
             revenueHiding: fp('0.01'),
-          })
+          })()
+          // ctx.collateral = await deployCollateral()
 
           // Should remain SOUND after a 1% decrease
-          let refPerTok = await ctx.collateral.refPerTok()
-          await reduceRefPerTok(ctx, 1) // 1% decrease
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          let refPerTok = await tempCtx.collateral.refPerTok()
+          await reduceRefPerTok(tempCtx, 1) // 1% decrease
+          await tempCtx.collateral.refresh()
+          expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.SOUND)
 
           // refPerTok should be unchanged
-          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+          expect(await tempCtx.collateral.refPerTok()).to.be.closeTo(
             refPerTok,
             refPerTok.div(bn('1e3'))
           ) // within 1-part-in-1-thousand
 
           // Should become DISABLED if drops more than that
-          refPerTok = await ctx.collateral.refPerTok()
-          await reduceRefPerTok(ctx, 1) // another 1% decrease
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+          refPerTok = await tempCtx.collateral.refPerTok()
+          await reduceRefPerTok(tempCtx, 1) // another 1% decrease
+          await tempCtx.collateral.refresh()
+          expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.DISABLED)
 
           // refPerTok should have fallen 1%
           refPerTok = refPerTok.sub(refPerTok.div(100))
-          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+          expect(await tempCtx.collateral.refPerTok()).to.be.closeTo(
             refPerTok,
             refPerTok.div(bn('1e3'))
           ) // within 1-part-in-1-thousand
@@ -695,6 +696,7 @@ export default function fn<X extends CollateralFixtureContext>(
           amtRate: fp('1e6'), // 1M RToken
           pctRate: fp('0.05'), // 5%
         },
+        reweightable: false,
       }
 
       interface IntegrationFixture {
