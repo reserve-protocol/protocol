@@ -24,7 +24,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // solhint-disable-next-line variable-name-mixedcase
+    // solhint-disable-next-line var-name-mixedcase
     address public immutable CURVE_POOL_EMA_PRICE_ORACLE;
 
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
