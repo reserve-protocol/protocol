@@ -92,6 +92,6 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return _safeWrap(refPerTokenChainlinkFeed.price(refPerTokenChainlinkTimeout));
+        return refPerTokenChainlinkFeed.price(refPerTokenChainlinkTimeout);
     }
 }

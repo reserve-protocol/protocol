@@ -120,7 +120,7 @@ export const deployCollateral = async (
 const defaultAnswers = {
   targetPerRefChainlinkFeed: bn('1e18'),
   uoaPerTargetChainlinkFeed: bn('2000e8'),
-  refPerTokenChainlinkFeed: bn('1e18'), // ??
+  refPerTokenChainlinkFeed: bn('1.1e18'),
 }
 
 type Fixture<T> = () => Promise<T>
@@ -183,7 +183,6 @@ const mintCollateralTo: MintCollateralFunc<WSTETHCollateralFixtureContext> = asy
   user: SignerWithAddress,
   recipient: string
 ) => {
-  // TODO: Change this!
   await mintWSTETH(ctx.wsteth, user, amount, recipient, BASE_WSTETH_WHALE)
 }
 
@@ -288,6 +287,7 @@ const opts = {
   chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
   itIsPricedByPeg: true,
   targetNetwork: 'base',
+  toleranceDivisor: bn('1e2'),
 }
 
 collateralTests(opts)

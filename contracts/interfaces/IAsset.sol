@@ -136,4 +136,7 @@ interface TestICollateral is TestIAsset, ICollateral {
 
     /// @return The amount of time a collateral must be in IFFY status until being DISABLED
     function delayUntilDefault() external view returns (uint48);
+
+    /// @return The underlying refPerTok, likely not included in all collaterals however.
+    function underlyingRefPerTok() external view returns (uint192);
 }
