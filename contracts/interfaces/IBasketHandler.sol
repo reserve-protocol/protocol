@@ -61,11 +61,20 @@ interface IBasketHandler is IComponent {
     ) external;
 
     /// Set the prime basket
+    /// For an index RToken (reweightable = true), use forceSetPrimeBasket to skip normalization
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     ///                   required range: 1e9 values; absolute range irrelevant.
     /// @custom:governance
-    function setPrimeBasket(IERC20[] memory erc20s, uint192[] memory targetAmts) external;
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external;
+
+    /// Set the prime basket without normalizing targetAmts by the UoA of the current basket
+    /// Works the same as setPrimeBasket for non-index RTokens (reweightable = false)
+    /// @param erc20s The collateral tokens for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    ///                   required range: 1e9 values; absolute range irrelevant.
+    /// @custom:governance
+    function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32

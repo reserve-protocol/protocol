@@ -25,6 +25,8 @@ New governance param added: `reweightable`
   - New `LastCollateralizedChanged()` event -- track to determine earliest basket nonce to use for `redeemCustom()`
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
   - Add `reweightable()` view
+  - Add `forceSetPrimeBasket()` to allow setting a new prime basket without normalizing by USD value
+  - Alter `setPrimeBasket()` to enforce basket normalization for reweightable RTokens
 - `BackingManager`
   - Minor gas optimization
 - `Deployer`
