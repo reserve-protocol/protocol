@@ -1475,13 +1475,13 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
           emitted: true,
         },
         {
-          contract: aToken,
+          contract: backingManager,
           name: 'RewardsClaimed',
           args: [aaveToken.address, rewardAmountAAVE],
           emitted: true,
         },
         {
-          contract: cTokenVault,
+          contract: backingManager,
           name: 'RewardsClaimed',
           args: [compToken.address, rewardAmountCOMP],
           emitted: true,

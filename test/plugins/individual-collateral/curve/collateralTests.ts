@@ -839,6 +839,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           amtRate: fp('1e6'), // 1M RToken
           pctRate: fp('0.05'), // 5%
         },
+        reweightable: false,
       }
 
       interface IntegrationFixture {

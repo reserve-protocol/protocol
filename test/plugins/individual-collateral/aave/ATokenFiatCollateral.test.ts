@@ -373,7 +373,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         .withArgs(stkAave.address, anyValue)
 
       await expect(aDaiCollateral.claimRewards())
-        .to.emit(staticAToken, 'RewardsClaimed')
+        .to.emit(aDaiCollateral, 'RewardsClaimed')
         .withArgs(stkAave.address, anyValue)
       expect(await aDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -630,7 +630,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await expectEvents(backingManager.claimRewards(), [
         {
-          contract: staticAToken,
+          contract: backingManager,
           name: 'RewardsClaimed',
           args: [stkAave.address, anyValue],
           emitted: true,
@@ -660,7 +660,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceBlocks(1000)
 
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(staticAToken, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Check rewards both in stkAAVE and stkAAVE
       const rewardsstkAAVE1: BigNumber = await stkAave.balanceOf(backingManager.address)
@@ -671,7 +671,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(3600)
 
       // Get additional rewards
-      await expect(backingManager.claimRewards()).to.emit(staticAToken, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       const rewardsstkAAVE2: BigNumber = await stkAave.balanceOf(backingManager.address)
 

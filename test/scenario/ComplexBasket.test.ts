@@ -577,13 +577,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     await expectEvents(backingManager.claimRewards(), [
       {
-        contract: cUSDTokenVault,
+        contract: backingManager,
         name: 'RewardsClaimed',
         args: [compToken.address, rewardAmount],
         emitted: true,
       },
       {
-        contract: aUSDToken,
+        contract: backingManager,
         name: 'RewardsClaimed',
         args: [aaveToken.address, bn(0)],
         emitted: true,

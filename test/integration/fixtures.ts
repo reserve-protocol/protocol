@@ -163,8 +163,6 @@ export async function collateralFixture(
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  const CTokenWrapperFactory = await ethers.getContractFactory('CTokenWrapper')
-
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
@@ -213,18 +211,12 @@ export async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenWrapperFactory.deploy(
-      erc20.address,
-      `${await erc20.name()} Vault`,
-      `${await erc20.symbol()}-VAULT`,
-      comptroller.address
-    )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkAddr,
         oracleError: ORACLE_ERROR,
-        erc20: vault.address,
+        erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -234,7 +226,7 @@ export async function collateralFixture(
       REVENUE_HIDING
     )
     await coll.refresh()
-    return [vault, coll]
+    return [erc20, coll]
   }
 
   const makeATokenCollateral = async (
@@ -309,18 +301,12 @@ export async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenWrapperFactory.deploy(
-      erc20.address,
-      `${await erc20.name()} Vault`,
-      `${await erc20.symbol()}-VAULT`,
-      comptroller.address
-    )
     const coll = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: referenceUnitOracleAddr,
         oracleError: ORACLE_ERROR,
-        erc20: vault.address,
+        erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
         targetName: ethers.utils.formatBytes32String(targetName),
@@ -332,7 +318,7 @@ export async function collateralFixture(
       REVENUE_HIDING
     )
     await coll.refresh()
-    return [vault, coll]
+    return [erc20, coll]
   }
 
   const makeSelfReferentialCollateral = async (
@@ -365,19 +351,13 @@ export async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenWrapperFactory.deploy(
-      erc20.address,
-      `${await erc20.name()} Vault`,
-      `${await erc20.symbol()}-VAULT`,
-      comptroller.address
-    )
     const coll = <CTokenSelfReferentialCollateral>(
       await CTokenSelfReferentialCollateralFactory.deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: chainlinkAddr,
           oracleError: ORACLE_ERROR,
-          erc20: vault.address,
+          erc20: erc20.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
           targetName: ethers.utils.formatBytes32String(targetName),
@@ -389,7 +369,7 @@ export async function collateralFixture(
       )
     )
     await coll.refresh()
-    return [vault, coll]
+    return [erc20, coll]
   }
 
   const makeEURFiatCollateral = async (
