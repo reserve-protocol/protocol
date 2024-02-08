@@ -23,7 +23,7 @@ import {
   ATokenFiatCollateral,
   Asset,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ComptrollerMock,
   ERC20Mock,
   FacadeTest,
@@ -97,7 +97,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenWrapperMock
+  let token3: CTokenMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -206,9 +206,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
-    )
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     // Mint initial balances
     initialBal = bn('1000000e18')

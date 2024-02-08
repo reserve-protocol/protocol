@@ -11,7 +11,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   FacadeTest,
   FiatCollateral,
@@ -110,7 +110,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    CTokenWrapperMockFactory = await ethers.getContractFactory('CTokenWrapperMock')
+    CTokenWrapperMockFactory = await ethers.getContractFactory('CTokenMock')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -157,11 +157,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     return erc20
   }
 
-  const prepCToken = async (index: number): Promise<CTokenWrapperMock> => {
+  const prepCToken = async (index: number): Promise<CTokenMock> => {
     const underlying: ERC20Mock = <ERC20Mock>(
       await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
     )
-    const erc20: CTokenWrapperMock = <CTokenWrapperMock>(
+    const erc20: CTokenMock = <CTokenMock>(
       await CTokenWrapperMockFactory.deploy(
         `CToken_NAME:${index}`,
         `CToken_SYM:${index}`,

@@ -56,7 +56,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   CTokenWrapper,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -432,9 +432,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await token0decimals.setDecimals(0)
 
       const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-        'CTokenWrapperMock'
+        'CTokenMock'
       )
-      const vault: CTokenWrapperMock = <CTokenWrapperMock>(
+      const vault: CTokenMock = <CTokenMock>(
         await CTokenWrapperMockFactory.deploy(
           '0 Decimal Token',
           '0 Decimal Token',

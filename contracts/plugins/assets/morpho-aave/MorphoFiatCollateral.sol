@@ -18,7 +18,7 @@ import { shiftl_toFix, FIX_ONE } from "../../../libraries/Fixed.sol";
 contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
-    IERC20Metadata private immutable MORPHO;
+    IERC20Metadata private immutable morpho;
     uint256 private immutable oneShare;
     int8 private immutable refDecimals;
 
@@ -31,7 +31,7 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
         require(address(config.erc20) != address(0), "missing erc20");
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         MorphoTokenisedDeposit vault = MorphoTokenisedDeposit(address(config.erc20));
-        MORPHO = IERC20Metadata(address(vault.rewardToken()));
+        morpho = IERC20Metadata(address(vault.rewardToken()));
         oneShare = 10**vault.decimals();
         refDecimals = int8(uint8(IERC20Metadata(vault.asset()).decimals()));
     }
@@ -48,8 +48,8 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        uint256 bal = MORPHO.balanceOf(address(this));
+        uint256 bal = morpho.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(MORPHO, MORPHO.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - bal);
     }
 }

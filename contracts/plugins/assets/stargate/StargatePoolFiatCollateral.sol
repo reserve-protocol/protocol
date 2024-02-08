@@ -17,7 +17,7 @@ import "./StargateRewardableWrapper.sol";
 contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     IStargatePool private immutable pool;
 
-    IERC20 private immutable STG;
+    IERC20 private immutable stg;
 
     /// @param config.erc20 StargateRewardableWrapper
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
@@ -27,7 +27,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         pool = StargateRewardableWrapper(address(config.erc20)).pool();
-        STG = StargateRewardableWrapper(address(config.erc20)).rewardToken();
+        stg = StargateRewardableWrapper(address(config.erc20)).rewardToken();
     }
 
     /// @return _rate {ref/tok} Quantity of whole reference units per whole collateral tokens
@@ -42,8 +42,8 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     }
 
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 bal = STG.balanceOf(address(this));
+        uint256 bal = stg.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(STG, STG.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(stg, stg.balanceOf(address(this)) - bal);
     }
 }

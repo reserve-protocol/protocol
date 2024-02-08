@@ -33,8 +33,8 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // I don't love hard-coding these, but I prefer it to dynamically reading from either
     // a CurveGaugeWrapper or ConvexStakingWrapper. If we ever use this contract
     // on something other than mainnet we'll have to change this.
-    IERC20 public constant crv = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    IERC20 public constant cvx = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    IERC20 public constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    IERC20 public constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
@@ -146,11 +146,11 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     function claimRewards() external virtual override(Asset, IRewardable) {
         // Plugin can be used with either Curve or Convex wrappers
         // Here I prefer omitting any wrapper-specific logic at the cost of an additional event
-        uint256 crvBal = crv.balanceOf(address(this));
-        uint256 cvxBal = cvx.balanceOf(address(this));
+        uint256 crvBal = CRV.balanceOf(address(this));
+        uint256 cvxBal = CVX.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(crv, crv.balanceOf(address(this)) - crvBal);
-        emit RewardsClaimed(cvx, cvx.balanceOf(address(this)) - cvxBal);
+        emit RewardsClaimed(CRV, CRV.balanceOf(address(this)) - crvBal);
+        emit RewardsClaimed(CVX, CVX.balanceOf(address(this)) - cvxBal);
     }
 
     // === Internal ===

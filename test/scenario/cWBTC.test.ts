@@ -8,7 +8,7 @@ import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenWrapperMock,
+  CTokenMock,
   CTokenNonFiatCollateral,
   ComptrollerMock,
   ERC20Mock,
@@ -52,9 +52,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   // Tokens and Assets
   let wbtc: ERC20Mock
   let wBTCCollateral: SelfReferentialCollateral
-  let cWBTC: CTokenWrapperMock
+  let cWBTC: CTokenMock
   let cWBTCCollateral: CTokenNonFiatCollateral
-  let token0: CTokenWrapperMock
+  let token0: CTokenMock
   let collateral0: Collateral
   let backupToken: ERC20Mock
   let backupCollateral: Collateral
@@ -101,7 +101,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
-    token0 = <CTokenWrapperMock>erc20s[4] // cDai
+    token0 = <CTokenMock>erc20s[4] // cDai
     collateral0 = collateral[4]
 
     wbtc = await (await ethers.getContractFactory('ERC20Mock')).deploy('WBTC Token', 'WBTC')
@@ -131,7 +131,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     // cWBTC
     cWBTC = await (
-      await ethers.getContractFactory('CTokenWrapperMock')
+      await ethers.getContractFactory('CTokenMock')
     ).deploy('cWBTC Token', 'cWBTC', wbtc.address, compToken.address, compoundMock.address)
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')

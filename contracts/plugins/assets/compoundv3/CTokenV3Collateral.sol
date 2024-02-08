@@ -25,7 +25,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     IComet public immutable comet;
     uint256 public immutable reservesThresholdIffy; // {qUSDC}
     uint8 public immutable cometDecimals;
-    IERC20 private immutable COMP;
+    IERC20 private immutable comp;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
@@ -34,7 +34,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         uint256 reservesThresholdIffy_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
-        COMP = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
+        comp = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;
         cometDecimals = comet.decimals();
@@ -42,9 +42,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
 
     /// @custom:delegate-call
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 bal = COMP.balanceOf(address(this));
+        uint256 bal = comp.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(COMP, COMP.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
     }
 
     function underlyingRefPerTok() public view virtual override returns (uint192) {

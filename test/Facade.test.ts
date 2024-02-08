@@ -17,7 +17,7 @@ import {
   BackingMgrCompatibleV2,
   BackingMgrInvalidVersion,
   ComptrollerMock,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   FacadeAct,
   FacadeMonitor,
@@ -78,7 +78,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cTokenVault: CTokenWrapperMock
+  let cToken: CTokenMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
@@ -157,9 +157,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cTokenVault = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await cTokenAsset.erc20())
-    )
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
 
     // Factories used in tests
     RevenueTraderV2ImplFactory = await ethers.getContractFactory('RevenueTraderCompatibleV2')
@@ -204,7 +202,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(erc20s[0]).to.equal(token.address)
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
-      expect(erc20s[3]).to.equal(cTokenVault.address)
+      expect(erc20s[3]).to.equal(cToken.address)
       expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
@@ -227,7 +225,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(addr1).approve(rToken.address, initialBal)
       await usdc.connect(addr1).approve(rToken.address, initialBal)
       await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
+      await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -269,7 +267,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
-      expect(toks[3]).to.equal(cTokenVault.address)
+      expect(toks[3]).to.equal(cToken.address)
       expect(quantities.length).to.equal(4)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
@@ -290,7 +288,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
-      expect(toks[3]).to.equal(cTokenVault.address)
+      expect(toks[3]).to.equal(cToken.address)
       expect(quantities.length).to.equal(4)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
@@ -320,7 +318,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
-      expect(toks[3]).to.equal(cTokenVault.address)
+      expect(toks[3]).to.equal(cToken.address)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(quantities[2]).to.equal(issueAmount.div(4))
@@ -341,7 +339,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(toksCustom[0]).to.equal(token.address)
       expect(toksCustom[1]).to.equal(usdc.address)
       expect(toksCustom[2]).to.equal(aToken.address)
-      expect(toksCustom[3]).to.equal(cTokenVault.address)
+      expect(toksCustom[3]).to.equal(cToken.address)
       expect(quantitiesCustom[0]).to.equal(issueAmount.div(4))
       expect(quantitiesCustom[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(quantitiesCustom[2]).to.equal(issueAmount.div(4))
@@ -368,7 +366,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(newToksCustom[0]).to.equal(token.address)
       expect(newToksCustom[1]).to.equal(usdc.address)
       expect(newToksCustom[2]).to.equal(aToken.address)
-      expect(newToksCustom[3]).to.equal(cTokenVault.address)
+      expect(newToksCustom[3]).to.equal(cToken.address)
       expect(newQuantitiesCustom[0]).to.equal(issueAmount.div(4).div(2))
       expect(newQuantitiesCustom[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(newQuantitiesCustom[2]).to.equal(issueAmount.div(4))
@@ -387,7 +385,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(prevBasketTokens[0]).to.equal(token.address)
       expect(prevBasketTokens[1]).to.equal(usdc.address)
       expect(prevBasketTokens[2]).to.equal(aToken.address)
-      expect(prevBasketTokens[3]).to.equal(cTokenVault.address)
+      expect(prevBasketTokens[3]).to.equal(cToken.address)
       expect(prevBasketQuantities[0]).to.equal(issueAmount.div(4).div(2))
       expect(prevBasketQuantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(prevBasketQuantities[2]).to.equal(issueAmount.div(4))
@@ -542,8 +540,8 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await usdc.connect(addr1).transfer(rsrTrader.address, 2)
       await aToken.connect(addr1).transfer(rTokenTrader.address, 1)
       await aToken.connect(addr1).transfer(rsrTrader.address, 2)
-      await cTokenVault.connect(addr1).transfer(rTokenTrader.address, 1)
-      await cTokenVault.connect(addr1).transfer(rsrTrader.address, 2)
+      await cToken.connect(addr1).transfer(rTokenTrader.address, 1)
+      await cToken.connect(addr1).transfer(rsrTrader.address, 2)
 
       // Balances
       const [erc20s, balances, balancesNeededByBackingManager] =
@@ -557,11 +555,9 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         if (erc20s[i] == token.address) bal = issueAmount.div(4)
         if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
         if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
-        if (erc20s[i] == cTokenVault.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
+        if (erc20s[i] == cToken.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
 
-        if (
-          [token.address, usdc.address, aToken.address, cTokenVault.address].indexOf(erc20s[i]) >= 0
-        ) {
+        if ([token.address, usdc.address, aToken.address, cToken.address].indexOf(erc20s[i]) >= 0) {
           expect(balances[i]).to.equal(bal.add(3)) // expect 3 more
           expect(balancesNeededByBackingManager[i]).to.equal(bal)
         } else {
@@ -925,7 +921,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(erc20s[0]).to.equal(token.address)
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
-      expect(erc20s[3]).to.equal(cTokenVault.address)
+      expect(erc20s[3]).to.equal(cToken.address)
       expect(breakdown[0]).to.equal(fp('0')) // dai
       expect(breakdown[1]).to.equal(fp('1')) // usdc
       expect(breakdown[2]).to.equal(fp('0')) // adai
@@ -1006,7 +1002,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
         expect(targetAmts.length).to.equal(4)
-        const expectedERC20s = [token.address, usdc.address, aToken.address, cTokenVault.address]
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
         for (let i = 0; i < 4; i++) {
           expect(erc20s[i]).to.equal(expectedERC20s[i])
           expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -1038,7 +1034,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
         expect(targetAmts.length).to.equal(4)
-        const expectedERC20s = [token.address, usdc.address, aToken.address, cTokenVault.address]
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
         for (let i = 0; i < 4; i++) {
           expect(erc20s[i]).to.equal(expectedERC20s[i])
           expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -1087,13 +1083,13 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(owner).mint(addr1.address, initialBal)
       await usdc.connect(owner).mint(addr1.address, initialBal)
       await aToken.connect(owner).mint(addr1.address, initialBal)
-      await cTokenVault.connect(owner).mint(addr1.address, initialBal)
+      await cToken.connect(owner).mint(addr1.address, initialBal)
 
       // Provide approvals
       await token.connect(addr1).approve(rToken.address, initialBal)
       await usdc.connect(addr1).approve(rToken.address, initialBal)
       await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
+      await cToken.connect(addr1).approve(rToken.address, initialBal)
     })
 
     it('should return batch auctions disabled correctly', async () => {
@@ -1419,12 +1415,12 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(owner).mint(addr1.address, initialBal)
       await usdc.connect(owner).mint(addr1.address, initialBal)
       await aToken.connect(owner).mint(addr1.address, initialBal)
-      await cTokenVault.connect(owner).mint(addr1.address, initialBal)
+      await cToken.connect(owner).mint(addr1.address, initialBal)
 
       await token.connect(owner).mint(addr2.address, initialBal)
       await usdc.connect(owner).mint(addr2.address, initialBal)
       await aToken.connect(owner).mint(addr2.address, initialBal)
-      await cTokenVault.connect(owner).mint(addr2.address, initialBal)
+      await cToken.connect(owner).mint(addr2.address, initialBal)
 
       // Mint RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -1436,7 +1432,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(addr1).approve(rToken.address, initialBal)
       await usdc.connect(addr1).approve(rToken.address, initialBal)
       await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
+      await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)

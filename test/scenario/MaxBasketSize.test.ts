@@ -10,7 +10,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -211,11 +211,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     return atoken
   }
 
-  const makeCToken = async (tokenName: string): Promise<CTokenWrapperMock> => {
+  const makeCToken = async (tokenName: string): Promise<CTokenMock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenWrapperMock'
-    )
+    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     )
@@ -224,7 +222,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
     )
 
-    const ctoken: CTokenWrapperMock = <CTokenWrapperMock>(
+    const ctoken: CTokenMock = <CTokenMock>(
       await CTokenWrapperMockFactory.deploy(
         'c' + tokenName,
         `${'c' + tokenName} symbol`,
@@ -491,7 +489,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await assetRegistry.toColl(backing[0])
       )
       for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {
-        const erc20 = await ethers.getContractAt('CTokenWrapperMock', backing[i])
+        const erc20 = await ethers.getContractAt('CTokenMock', backing[i])
         // Decrease rate to cause default in Ctoken
         await erc20.setExchangeRate(fp('0.8'))
 
