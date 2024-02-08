@@ -8,6 +8,8 @@ This release improves how collateral plugins price LP tokens.
 
 Swapout all collateral plugins for LP tokens, such as: Curve, Convex, or Yearn tokens.
 
+All collateral plugins should be upgraded. Only compound-v2 ERC20 should be rotated, and it is purely optional to provide gas savings.
+
 ## Plugins
 
 ### Assets
