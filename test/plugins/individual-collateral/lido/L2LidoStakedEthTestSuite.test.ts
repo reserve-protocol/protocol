@@ -69,7 +69,7 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   uoaPerTargetChainlinkTimeout: BASE_FEEDS_TIMEOUT.ETH_USD,
   refPerTokenChainlinkFeed: BASE_PRICE_FEEDS.wstETH_stETH,
   refPerTokenChainlinkTimeout: BASE_FEEDS_TIMEOUT.wstETH_stETH,
-  revenueHiding: fp('0'), // TODO: how much?
+  revenueHiding: fp('1e-4'),
 }
 
 export const deployCollateral = async (
@@ -120,7 +120,7 @@ export const deployCollateral = async (
 const defaultAnswers = {
   targetPerRefChainlinkFeed: bn('1e18'),
   uoaPerTargetChainlinkFeed: bn('2000e8'),
-  refPerTokenChainlinkFeed: bn('1e18'), // ??
+  refPerTokenChainlinkFeed: bn('1.1e18'),
 }
 
 type Fixture<T> = () => Promise<T>
@@ -183,7 +183,6 @@ const mintCollateralTo: MintCollateralFunc<WSTETHCollateralFixtureContext> = asy
   user: SignerWithAddress,
   recipient: string
 ) => {
-  // TODO: Change this!
   await mintWSTETH(ctx.wsteth, user, amount, recipient, BASE_WSTETH_WHALE)
 }
 
@@ -279,12 +278,13 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itHasRevenueHiding: it.skip,
+  itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK_BASE),
   collateralName: 'L2LidoStakedETH',
   chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
   itIsPricedByPeg: true,
   targetNetwork: 'base',
+  toleranceDivisor: bn('1'),
 }
 
 collateralTests(opts)

@@ -372,10 +372,18 @@ export default function fn<X extends CollateralFixtureContext>(
 
           // Should remain SOUND after a 1% decrease
           let refPerTok = await ctx.collateral.refPerTok()
+          console.log({
+            refPerTok: await ctx.collateral.refPerTok(),
+            roundData: await ctx.refPerTokenChainlinkFeed.latestRoundData().then((e) => e.answer),
+          })
           await reduceRefPerTok(ctx, 1) // 1% decrease
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
 
+          console.log({
+            refPerTok: await ctx.collateral.refPerTok(),
+            roundData: await ctx.refPerTokenChainlinkFeed.latestRoundData().then((e) => e.answer),
+          })
           // refPerTok should be unchanged
           expect(await ctx.collateral.refPerTok()).to.be.closeTo(
             refPerTok,
@@ -386,6 +394,10 @@ export default function fn<X extends CollateralFixtureContext>(
           refPerTok = await ctx.collateral.refPerTok()
           await reduceRefPerTok(ctx, 1) // another 1% decrease
           await ctx.collateral.refresh()
+          console.log({
+            refPerTok: await ctx.collateral.refPerTok(),
+            roundData: await ctx.refPerTokenChainlinkFeed.latestRoundData().then((e) => e.answer),
+          })
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
 
           // refPerTok should have fallen 1%
