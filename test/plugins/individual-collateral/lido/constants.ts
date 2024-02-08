@@ -25,9 +25,9 @@ export const BASE_WSTETH_WHALE = '0xa6385c73961dd9c58db2ef0c4eb98ce4b60651e8'
 export const FORK_BLOCK_BASE = 10264000
 export const BASE_PRICE_FEEDS = {
   // traditional finance notation, opposite of our unit system
-  stETH_ETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // {ETH/stETH}
-  ETH_USD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // {USD/ETH}
-  wstETH_stETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // {stETH/wstETH}
+  stETH_ETH: networkConfig['8453'].chainlinkFeeds.stETHETH, // {ETH/stETH}
+  ETH_USD: networkConfig['8453'].chainlinkFeeds.ETHUSD, // {USD/ETH}
+  wstETH_stETH: networkConfig['8453'].chainlinkFeeds.wstETHstETH, // {stETH/wstETH}
 }
 export const BASE_FEEDS_TIMEOUT = {
   stETH_ETH: bn(86400),
