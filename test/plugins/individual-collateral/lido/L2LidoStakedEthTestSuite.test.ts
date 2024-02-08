@@ -97,17 +97,17 @@ export const deployCollateral = async (
     opts.revenueHiding,
     opts.targetPerRefChainlinkFeed,
     opts.targetPerRefChainlinkTimeout,
-    opts.uoaPerTargetChainlinkFeed,
+    opts.chainlinkFeed ?? opts.uoaPerTargetChainlinkFeed,
     opts.uoaPerTargetChainlinkTimeout,
-    opts.chainlinkFeed ?? opts.refPerTokenChainlinkFeed,
+    opts.refPerTokenChainlinkFeed,
     opts.refPerTokenChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
 
   // Push forward chainlink feed
   await pushOracleForward(opts.targetPerRefChainlinkFeed!)
-  await pushOracleForward(opts.uoaPerTargetChainlinkFeed!)
-  await pushOracleForward(opts.chainlinkFeed ?? opts.refPerTokenChainlinkFeed!)
+  await pushOracleForward(opts.chainlinkFeed ?? opts.uoaPerTargetChainlinkFeed!)
+  await pushOracleForward(opts.refPerTokenChainlinkFeed!)
 
   await collateral.deployed()
   // sometimes we are trying to test a negative test case and we want this to fail silently
