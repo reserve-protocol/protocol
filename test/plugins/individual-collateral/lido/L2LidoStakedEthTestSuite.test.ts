@@ -57,8 +57,8 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: BASE_PRICE_FEEDS.wstETH_stETH, // ignored
-  oracleTimeout: BASE_FEEDS_TIMEOUT.wstETH_stETH, // ignored
+  chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
+  oracleTimeout: BASE_FEEDS_TIMEOUT.ETH_USD, // ignored
   oracleError: BASE_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
@@ -106,7 +106,7 @@ export const deployCollateral = async (
 
   // Push forward chainlink feed
   await pushOracleForward(opts.targetPerRefChainlinkFeed!)
-  await pushOracleForward(opts.chainlinkFeed ?? opts.uoaPerTargetChainlinkFeed!)
+  await pushOracleForward(opts.uoaPerTargetChainlinkFeed!)
   await pushOracleForward(opts.refPerTokenChainlinkFeed!)
 
   await collateral.deployed()
@@ -163,7 +163,7 @@ const makeCollateralFixtureContext = (
       wsteth,
       tok: wsteth,
       rewardToken,
-      chainlinkFeed: refPerTokenChainlinkFeed,
+      chainlinkFeed: uoaPerTargetChainlinkFeed,
       targetPerRefChainlinkFeed,
       uoaPerTargetChainlinkFeed,
       refPerTokenChainlinkFeed,
@@ -226,18 +226,15 @@ const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<Bi
   const targetPerRefChainlinkFeedAnswer = await ctx.targetPerRefChainlinkFeed.latestAnswer()
   const targetPerRefChainlinkFeedDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
 
-  const refPerTokChainlinkFeedAnswer = await ctx.refPerTokenChainlinkFeed.latestAnswer()
-  const refPerTokChainlinkFeedDecimals = await ctx.refPerTokenChainlinkFeed.decimals()
+  const refPerTok = await ctx.collateral.underlyingRefPerTok()
 
   const result = uoaPerTargetChainlinkFeedAnswer
     .mul(bn(10).pow(18 - uoaPerTargetChainlinkFeedDecimals))
     .mul(targetPerRefChainlinkFeedAnswer)
     .mul(bn(10).pow(18 - targetPerRefChainlinkFeedDecimals))
-    .mul(refPerTokChainlinkFeedAnswer)
-    .mul(bn(10).pow(18 - refPerTokChainlinkFeedDecimals))
-    .div(fp('1e18'))
+    .div(fp('1'))
 
-  return result
+  return result.mul(refPerTok).div(fp('1'))
 }
 
 /*
