@@ -22,10 +22,10 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    IERC20 public immutable rewardERC20;
     IComet public immutable comet;
     uint256 public immutable reservesThresholdIffy; // {qUSDC}
     uint8 public immutable cometDecimals;
+    IERC20 private immutable COMP;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
@@ -34,7 +34,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         uint256 reservesThresholdIffy_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
-        rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
+        COMP = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;
         cometDecimals = comet.decimals();
@@ -42,7 +42,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
 
     /// @custom:delegate-call
     function claimRewards() external override(Asset, IRewardable) {
+        uint256 bal = COMP.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(COMP, COMP.balanceOf(address(this)) - bal);
     }
 
     function underlyingRefPerTok() public view virtual override returns (uint192) {

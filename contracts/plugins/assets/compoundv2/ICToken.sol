@@ -31,6 +31,8 @@ interface ICToken is IERC20Metadata {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeem(uint256 redeemTokens) external returns (uint256);
+
+    function comptroller() external view returns (IComptroller);
 }
 
 interface TestICToken is ICToken {

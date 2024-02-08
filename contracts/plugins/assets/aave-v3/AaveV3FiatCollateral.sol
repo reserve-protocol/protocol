@@ -36,6 +36,22 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        StaticATokenV3LM(address(erc20)).claimRewards();
+        StaticATokenV3LM erc20_ = StaticATokenV3LM(address(erc20));
+        address[] memory rewardsList = erc20_.INCENTIVES_CONTROLLER().getRewardsList();
+        uint256[] memory bals = new uint256[](rewardsList.length);
+
+        uint256 len = rewardsList.length;
+        for (uint256 i = 0; i < len; i++) {
+            bals[i] = IERC20(rewardsList[i]).balanceOf(address(this));
+        }
+
+        IRewardable(address(erc20)).claimRewards();
+
+        for (uint256 i = 0; i < len; i++) {
+            emit RewardsClaimed(
+                IERC20(rewardsList[i]),
+                IERC20(rewardsList[i]).balanceOf(address(this)) - bals[i]
+            );
+        }
     }
 }

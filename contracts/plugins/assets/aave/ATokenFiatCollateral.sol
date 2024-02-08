@@ -35,6 +35,8 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    IERC20 private immutable stkAAVE;
+
     // solhint-disable no-empty-blocks
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
@@ -43,6 +45,7 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
+        stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
     }
 
     // solhint-enable no-empty-blocks
@@ -56,6 +59,8 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
+        uint256 bal = stkAAVE.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(stkAAVE, stkAAVE.balanceOf(address(this)) - bal);
     }
 }

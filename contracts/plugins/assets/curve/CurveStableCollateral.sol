@@ -7,6 +7,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import "contracts/plugins/assets/erc20/RewardableERC20.sol";
 import "../curve/PoolTokens.sol";
 
 /**
@@ -15,6 +16,7 @@ import "../curve/PoolTokens.sol";
  *  whether this LP token ends up staked in Curve, Convex, Frax, or somewhere else.
  *  Each token in the pool can have between 1 and 2 oracles per each token.
  *  Stable means only like-kind pools.
+ *  Works for both CurveGaugeWrapper and ConvexStakingWrapper.
  *
  * tok = ConvexStakingWrapper(stablePlainPool)
  * ref = stablePlainPool pool invariant
@@ -28,8 +30,14 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    // I don't love hard-coding these, but I prefer it to dynamically reading from either
+    // a CurveGaugeWrapper or ConvexStakingWrapper. If we ever use this contract
+    // on something other than mainnet we'll have to change this.
+    IERC20 public constant crv = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    IERC20 public constant cvx = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
-    /// @dev config.erc20 should be a RewardableERC20
+    /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
@@ -136,7 +144,13 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
+        // Plugin can be used with either Curve or Convex wrappers
+        // Here I prefer omitting any wrapper-specific logic at the cost of an additional event
+        uint256 crvBal = crv.balanceOf(address(this));
+        uint256 cvxBal = cvx.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(crv, crv.balanceOf(address(this)) - crvBal);
+        emit RewardsClaimed(cvx, cvx.balanceOf(address(this)) - cvxBal);
     }
 
     // === Internal ===

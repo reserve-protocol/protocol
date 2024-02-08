@@ -9,7 +9,7 @@ import "../interfaces/IFacadeMonitor.sol";
 import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
-import "../plugins/assets/compoundv2/CTokenWrapper.sol";
+import "../plugins/assets/compoundv2/ICToken.sol";
 import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
 import "../plugins/assets/stargate/StargateRewardableWrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";

@@ -24,6 +24,10 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
 
+    IComptroller private immutable comptroller;
+
+    IERC20 private immutable comp; // COMP token
+
     /// @param config.erc20 May be a CTokenWrapper or the cToken itself
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
@@ -45,6 +49,8 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
         cToken = _cToken;
         referenceERC20Decimals = _referenceERC20Decimals;
+        comptroller = cToken.comptroller();
+        comp = IERC20(comptroller.getCompAddress());
         require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
     }
 
@@ -81,8 +87,16 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        // solhint-ignore-next-line no-empty-blocks
-        try IRewardable(address(erc20)).claimRewards() {} catch {}
-        // erc20 may not be a CTokenWrapper
+        uint256 bal = comp.balanceOf(address(this));
+        // try claiming on the wrapper first
+        try IRewardable(address(erc20)).claimRewards() {} catch {
+            // else: claim directly
+            address[] memory holders = new address[](1);
+            address[] memory cTokens = new address[](1);
+            holders[0] = address(this);
+            cTokens[0] = address(cToken);
+            comptroller.claimComp(holders, cTokens, false, true);
+        }
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
     }
 }
