@@ -812,7 +812,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
       const symbol = await cDai.symbol()
       const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address, comptroller.address)
       )
       // Set initial exchange rate to the new cDai Mock
       await cDaiMock.setExchangeRate(fp('0.02'))
@@ -868,7 +868,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
       const symbol = await cDai.symbol()
       const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address, comptroller.address)
       )
 
       const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
@@ -1085,7 +1085,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
         const symbol = await cDai.symbol()
         const cDaiMock: CTokenMock = <CTokenMock>(
-          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+          await CTokenMockFactory.deploy(
+            symbol + ' Token',
+            symbol,
+            dai.address,
+            comptroller.address
+          )
         )
         // Set initial exchange rate to the new cDai Mock
         await cDaiMock.setExchangeRate(fp('0.02'))
