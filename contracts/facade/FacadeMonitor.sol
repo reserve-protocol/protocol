@@ -9,7 +9,7 @@ import "../interfaces/IFacadeMonitor.sol";
 import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
-import "../plugins/assets/compoundv2/ICToken.sol";
+import "../plugins/assets/compoundv2/DEPRECATED_CTokenWrapper.sol";
 import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
 import "../plugins/assets/stargate/StargateRewardableWrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
@@ -157,20 +157,22 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
             );
             availableLiquidity = underlying.balanceOf(address(aToken));
         } else if (collType == CollPluginType.COMPOUND_V2 || collType == CollPluginType.FLUX) {
+            // OLD compound-v2 uses a wrapper
+            // NEW compound-v2 does not use a wrapper
+            // FLUX does not use a wrapper
             ICToken cToken;
             uint256 cTokenBal;
-            if (collType == CollPluginType.COMPOUND_V2) {
-                // CompoundV2 uses a vault to wrap the CToken
-                CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
-                cToken = ICToken(address(cTokenVault.underlying()));
-                cTokenBal = cTokenVault.balanceOf(address(rToken.main().backingManager()));
-            } else {
-                // FLUX - Uses FToken directly (fork of CToken)
+            try CTokenWrapper(address(erc20)).underlying() returns (IERC20 underlying_) {
+                cToken = ICToken(address(underlying_));
+                cTokenBal = CTokenWrapper(address(erc20)).balanceOf(
+                    address(rToken.main().backingManager())
+                );
+            } catch {
                 cToken = ICToken(address(erc20));
                 cTokenBal = cToken.balanceOf(address(rToken.main().backingManager()));
             }
-            IERC20 underlying = IERC20(cToken.underlying());
 
+            IERC20 underlying = IERC20(cToken.underlying());
             uint256 exchangeRate = cToken.exchangeRateStored();
 
             backingBalance = (cTokenBal * exchangeRate) / 1e18;
