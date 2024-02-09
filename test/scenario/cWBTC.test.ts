@@ -46,7 +46,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   let collateral: Collateral[]
 
   // Non-backing assets
-  let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
 
   // Tokens and Assets
@@ -86,7 +85,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     ;({
       rsr,
       stRSR,
-      compToken,
       compoundMock,
       erc20s,
       collateral,
@@ -132,7 +130,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     // cWBTC
     cWBTC = await (
       await ethers.getContractFactory('CTokenMock')
-    ).deploy('cWBTC Token', 'cWBTC', wbtc.address, compToken.address, compoundMock.address)
+    ).deploy('cWBTC Token', 'cWBTC', wbtc.address, compoundMock.address)
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
