@@ -20,6 +20,10 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
 
+    IComptroller private immutable comptroller;
+
+    IERC20 private immutable comp; // COMP token
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
@@ -32,6 +36,8 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20)).underlying()));
         referenceERC20Decimals = referenceERC20Decimals_;
+        comptroller = cToken.comptroller();
+        comp = IERC20(comptroller.getCompAddress());
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -92,6 +98,16 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        IRewardable(address(erc20)).claimRewards();
+        uint256 bal = comp.balanceOf(address(this));
+        // try claiming on the wrapper first
+        try IRewardable(address(erc20)).claimRewards() {} catch {
+            // else: claim directly
+            address[] memory holders = new address[](1);
+            address[] memory cTokens = new address[](1);
+            holders[0] = address(this);
+            cTokens[0] = address(cToken);
+            comptroller.claimComp(holders, cTokens, false, true);
+        }
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
     }
 }
