@@ -27,7 +27,9 @@ Bidding instructions from the `DutchTrade` contract:
 `DutchTrade` (relevant) interface:
 
 ```solidity
-function bid(bytes memory data) external; // execute a bid at the current block number
+function bid() external; // execute a bid at the current block number via transferFrom
+
+function bidWithCallback(bytes memory data) external; // execute a bid at the current block number with post-hook callback for transfer of tokens
 
 function sell() external view returns (IERC20);
 
@@ -41,7 +43,13 @@ function bidAmount(uint256 blockNumber) external view returns (uint256); // {qBu
 
 ```
 
-To participate:
+To participate, either:
+
+(1) Call `bid()` with a prior approval for the `bidAmount`
+
+OR
+
+(2) Call `bidWithCallback(bytes memory)` from a calling contract that adheres to the `IDutchTradeCallee` interface. It should contain a function `dutchTradeCallback(address buyToken,uint256 buyAmount,bytes calldata data) external;` that transfers `bidAmount` buy tokens. This method will be called by the `DutchTrade` as a callback after the trade has been resolved. See `plugins/mocks/DutchTradeRouter.sol` for an example.
 
 Make sure calling contract implements the `IDutchTradeCallee` interface. It contains a single method function `dutchTradeCallbac(address buyToken,uint256 buyAmount,bytes calldata data) external;`. This method will be called by the `DutchTrade` as a callback after calling `bidWithCallback` and before the trade has been resolved. The trader is expected to pay for the trade during the callback. See `DutchTradeRouter.sol` for an example.
 

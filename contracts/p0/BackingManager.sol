@@ -82,6 +82,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
+
+        main.basketHandler().trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable

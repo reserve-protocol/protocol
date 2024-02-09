@@ -291,6 +291,7 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
   itClaimsRewards: it,

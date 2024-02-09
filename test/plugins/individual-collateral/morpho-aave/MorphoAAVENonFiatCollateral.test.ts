@@ -54,7 +54,6 @@ const makeAaveNonFiatCollateralTestSuite = (
         morphoLens: configToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: configToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: configToUse.tokens.MORPHO!,
       })
       opts.erc20 = wrapperMock.address
@@ -105,7 +104,6 @@ const makeAaveNonFiatCollateralTestSuite = (
         morphoLens: configToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: configToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: configToUse.tokens.MORPHO!,
       })
 
@@ -151,18 +149,18 @@ const makeAaveNonFiatCollateralTestSuite = (
     ctx: MorphoAaveCollateralFixtureContext,
     pctDecrease: BigNumberish
   ) => {
-    const lastRound = await ctx.targetPrRefFeed!.latestRoundData()
+    const lastRound = await ctx.chainlinkFeed!.latestRoundData()
     const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-    await ctx.targetPrRefFeed!.updateAnswer(nextAnswer)
+    await ctx.chainlinkFeed!.updateAnswer(nextAnswer)
   }
 
   const increaseTargetPerRef = async (
     ctx: MorphoAaveCollateralFixtureContext,
     pctIncrease: BigNumberish
   ) => {
-    const lastRound = await ctx.targetPrRefFeed!.latestRoundData()
+    const lastRound = await ctx.chainlinkFeed!.latestRoundData()
     const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-    await ctx.targetPrRefFeed!.updateAnswer(nextAnswer)
+    await ctx.chainlinkFeed!.updateAnswer(nextAnswer)
   }
 
   const changeRefPerTok = async (
@@ -173,25 +171,17 @@ const makeAaveNonFiatCollateralTestSuite = (
     await ctx.morphoWrapper.setExchangeRate(rate.add(rate.mul(percentChange).div(bn('100'))))
   }
 
-  // prettier-ignore
   const reduceRefPerTok = async (
     ctx: MorphoAaveCollateralFixtureContext,
     pctDecrease: BigNumberish
   ) => {
-    await changeRefPerTok(
-      ctx,
-      bn(pctDecrease).mul(-1)
-    )
+    await changeRefPerTok(ctx, bn(pctDecrease).mul(-1))
   }
-  // prettier-ignore
   const increaseRefPerTok = async (
     ctx: MorphoAaveCollateralFixtureContext,
     pctIncrease: BigNumberish
   ) => {
-    await changeRefPerTok(
-      ctx,
-      bn(pctIncrease)
-    )
+    await changeRefPerTok(ctx, bn(pctIncrease))
   }
 
   const getExpectedPrice = async (ctx: MorphoAaveCollateralFixtureContext): Promise<BigNumber> => {
@@ -201,11 +191,12 @@ const makeAaveNonFiatCollateralTestSuite = (
     const clRptData = await ctx.targetPrRefFeed!.latestRoundData()
     const clRptDecimals = await ctx.targetPrRefFeed!.decimals()
 
-    const expctPrice = clData.answer
-      .mul(bn(10).pow(18 - clDecimals))
-      .mul(clRptData.answer.mul(bn(10).pow(18 - clRptDecimals)))
+    const expectedPrice = clRptData.answer
+      .mul(bn(10).pow(18 - clRptDecimals))
+      .mul(clData.answer.mul(bn(10).pow(18 - clDecimals)))
       .div(fp('1'))
-    return expctPrice
+
+    return expectedPrice
   }
 
   /*
@@ -217,6 +208,7 @@ const makeAaveNonFiatCollateralTestSuite = (
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificStatusTests = () => {}
+
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const beforeEachRewardsTest = async () => {}
   const opts = {
@@ -233,6 +225,7 @@ const makeAaveNonFiatCollateralTestSuite = (
     getExpectedPrice,
     itClaimsRewards: it.skip,
     itChecksTargetPerRefDefault: it,
+    itChecksTargetPerRefDefaultUp: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
     itChecksNonZeroDefaultThreshold: it,
@@ -254,17 +247,17 @@ makeAaveNonFiatCollateralTestSuite('MorphoAAVEV2NonFiatCollateral - WBTC', {
   underlyingToken: configToUse.tokens.WBTC!,
   poolToken: configToUse.tokens.aWBTC!,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: configToUse.chainlinkFeeds.BTC!,
-  targetPrRefFeed: configToUse.chainlinkFeeds.WBTC!,
+  chainlinkFeed: configToUse.chainlinkFeeds.WBTC!,
+  targetPrRefFeed: configToUse.chainlinkFeeds.BTC!,
   oracleTimeout: ORACLE_TIMEOUT,
+  refPerTokChainlinkTimeout: ORACLE_TIMEOUT.div(24),
   oracleError: ORACLE_ERROR,
   maxTradeVolume: fp('1e6'),
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
-  defaultPrice: parseUnits('30000', 8),
-  defaultRefPerTok: parseUnits('1', 8),
-  refPerTokChainlinkTimeout: PRICE_TIMEOUT,
+  defaultPrice: parseUnits('1', 8),
+  defaultRefPerTok: parseUnits('30000', 8),
 })
 
 makeAaveNonFiatCollateralTestSuite('MorphoAAVEV2NonFiatCollateral - stETH', {
@@ -272,15 +265,15 @@ makeAaveNonFiatCollateralTestSuite('MorphoAAVEV2NonFiatCollateral - stETH', {
   underlyingToken: configToUse.tokens.stETH!,
   poolToken: configToUse.tokens.astETH!,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: configToUse.chainlinkFeeds.ETH!,
-  targetPrRefFeed: configToUse.chainlinkFeeds.stETHETH!,
+  chainlinkFeed: configToUse.chainlinkFeeds.stETHETH!,
+  targetPrRefFeed: configToUse.chainlinkFeeds.ETH!,
   oracleTimeout: ORACLE_TIMEOUT,
+  refPerTokChainlinkTimeout: ORACLE_TIMEOUT.div(24),
   oracleError: ORACLE_ERROR,
   maxTradeVolume: fp('1e6'),
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
-  defaultPrice: parseUnits('1800', 8),
-  defaultRefPerTok: parseUnits('1', 8),
-  refPerTokChainlinkTimeout: PRICE_TIMEOUT,
+  defaultPrice: parseUnits('1', 8),
+  defaultRefPerTok: parseUnits('1800', 8),
 })

@@ -247,6 +247,7 @@ abstract contract ERC4626 is ERC20, IERC4626 {
         // Conclusion: we need to do the transfer before we mint so that any reentrancy would happen before the
         // assets are transferred and before the shares are minted, which is a valid state.
         // slither-disable-next-line reentrancy-no-eth
+        // slither-disable-next-line arbitrary-send-erc20
         SafeERC20.safeTransferFrom(_asset, caller, address(this), assets);
         _mint(receiver, shares);
 

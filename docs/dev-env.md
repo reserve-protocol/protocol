@@ -106,3 +106,8 @@ We _have_ some tooling for testing with Echidna, but it is specically in `fuzz` 
 ## Test Deployment
 
 See our [deployment documentation](deployment.md).
+
+## Slither Analysis
+
+The ToB Sliter tool is run on any pull request, and is expected to be checked by devs for any unexpected high or medium issues raised.
+

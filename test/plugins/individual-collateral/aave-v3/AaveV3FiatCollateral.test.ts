@@ -213,6 +213,7 @@ export const stableOpts = {
   itClaimsRewards: it.skip, // untested: very complicated to get Aave to handout rewards, and none are live currently.
   // The StaticATokenV3LM contract is formally verified and the function we added for claimRewards() is pretty obviously correct.
   itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
   itChecksNonZeroDefaultThreshold: it,

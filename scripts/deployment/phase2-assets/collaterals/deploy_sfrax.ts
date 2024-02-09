@@ -60,7 +60,6 @@ async function main() {
     },
     '0' // revenueHiding = 0
   )
-
   await collateral.deployed()
 
   console.log(`Deployed sFRAX to ${hre.network.name} (${chainId}): ${collateral.address}`)

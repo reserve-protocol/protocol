@@ -76,15 +76,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // === Financial State: Drafts ===
     // Era. If drafts get wiped out due to RSR seizure, increment the era to zero draft values.
     // Only ever directly written by beginDraftEra()
-    uint256 internal draftEra;
+    uint256 internal draftEra; // {draftEra}
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {
         // Avoid re-using uint192 in order to avoid confusion with our type system; 176 is enough
         uint176 drafts; // Total amount of drafts that will become available // {qDrafts}
         uint64 availableAt; // When the last of the drafts will become available
     }
-    // draftEra => ({account} => {drafts})
-    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
+    // {draftEra} => ({account} => {qDrafts})
+    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {qDrafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
@@ -285,7 +285,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Create draft
         (uint256 index, uint64 availableAt) = pushDraft(account, rsrAmount);
-        emit UnstakingStarted(index, era, account, rsrAmount, stakeAmount, availableAt);
+        emit UnstakingStarted(index, draftEra, account, rsrAmount, stakeAmount, availableAt);
     }
 
     /// Complete an account's unstaking; callable by anyone
@@ -564,6 +564,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return totalDrafts;
     }
 
+    /// @return {draftEra} The current era for drafts (withdrawals)
     function getDraftEra() external view returns (uint256) {
         return draftEra;
     }
@@ -1001,6 +1002,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * StRSRP1 uses 53 total slots, not 50.
      */
     uint256[28] private __gap;
 }

@@ -85,12 +85,14 @@ interface IFacadeRead {
         uint256 amount;
     }
 
+    /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
-    /// @return All the pending StRSR unstakings for an account
-    function pendingUnstakings(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory);
+    /// @return {qRSR} All the pending StRSR unstakings for an account, in RSR
+    function pendingUnstakings(
+        RTokenP1 rToken,
+        uint256 draftEra,
+        address account
+    ) external view returns (Pending[] memory);
 
     /// Returns the prime basket
     /// @dev Indices are shared across return values

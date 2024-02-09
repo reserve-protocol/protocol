@@ -54,7 +54,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
       opts.erc20 = wrapperMock.address
@@ -104,7 +103,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
 
@@ -213,7 +211,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: defaultCollateralOpts.underlyingToken!,
         poolToken: defaultCollateralOpts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: networkConfigToUse.tokens.MORPHO!,
       })
 
@@ -298,7 +295,6 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: defaultCollateralOpts.underlyingToken!,
         poolToken: defaultCollateralOpts.poolToken!,
-        rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
         rewardToken: mockRewardsToken.address,
       })
 
@@ -334,8 +330,14 @@ const makeAaveFiatCollateralTestSuite = (
       // Shown below is that it is no longer economical to inflate own shares
       // bob only managed to steal approx 1/7200 * 90% of the reward because hardhat increments block by 1
       // in practise it would be 0 as inflation attacks typically flashloan assets.
-      expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.eq(bn('999996993749479075487'))
-      expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.eq(bn('1503126503126363'))
+      expect(await mockRewardsToken.balanceOf(aliceAddress)).to.be.closeTo(
+        bn('999996993746993746995'),
+        bn('1e15')
+      )
+      expect(await mockRewardsToken.balanceOf(bobAddress)).to.be.closeTo(
+        bn('1503126503126502'),
+        bn('1e12')
+      )
     })
   }
 
@@ -360,6 +362,7 @@ const makeAaveFiatCollateralTestSuite = (
     getExpectedPrice,
     itClaimsRewards: it.skip,
     itChecksTargetPerRefDefault: it,
+    itChecksTargetPerRefDefaultUp: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
     itChecksNonZeroDefaultThreshold: it,

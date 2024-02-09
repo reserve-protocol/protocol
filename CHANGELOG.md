@@ -2,29 +2,60 @@
 
 # 3.2.0
 
-This release gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
+This release makes bidding in dutch auctions easier for MEV searchers and gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
 
-### Upgrade Steps -- Required
+## Upgrade Steps
 
-Upgrade BasketHandler and Distributor
+Upgrade BasketHandler, BackingManager, and Distributor.
 
-Call `Distributor.cacheComponents()` if this is the first upgrade to a >=3.0.0 token.
+Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTrade` contract address.
 
-### Core Protocol Contracts
+If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
 
-New governance param added to `DeploymentParams`: `reweightable`
+For plugins, upgrade all plugins that contain an appreciating asset (not FiatCollateral. AppreciatingFiatCollateral etc).
 
+## Core Protocol Contracts
+
+New governance param added: `reweightable`
+
+- `BackingManager`
+  - Track basket nonce last collateralized at end of `settleTrade()`
 - `BasketHandler` [+1 slot]
+  - Restrict `redeemCustom()` to nonces after `lastCollateralized`
+  - New `LastCollateralizedChanged()` event -- track to determine earliest basket nonce to use for `redeemCustom()`
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
-  - Add immutable-after-init `reweightable` bool
+  - Add `reweightable()` view
+  - Add `forceSetPrimeBasket()` to allow setting a new prime basket without normalizing by USD value
+  - Alter `setPrimeBasket()` to enforce basket normalization for reweightable RTokens
+- `BackingManager`
+  - Minor gas optimization
 - `Deployer`
   - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
 - `Distributor`
-  - Minor gas-optimization
+  - Minor gas optimization
 
-# 3.1.0 - Unreleased
+## Plugins
 
-### Upgrade Steps -- Required
+### Assets
+
+- frax-eth: Add new `sFrxETH` plugin that leverages a curve EMA
+- stargate: Continue transfers of wrapper tokens if stargate rewards break
+- All plugins with variable refPerTok(): do no revert refresh() when underlying protocol reverts
+
+### Trading
+
+- `DutchTrade`
+
+  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans
+
+- `DutchTradeRouter`
+- New contract to avoid needing to approve each new `DutchTrade` contract
+- `bid(DutchTrade trade, address recipient) retruns (Bid memory)`
+- `dutchTradeCallback(address buyToken, uint256 buyAmount, bytes calldata) external`
+
+# 3.1.0
+
+## Upgrade Steps
 
 Upgrade all core contracts and _all_ assets. Most ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
 
@@ -38,12 +69,77 @@ Then, call `Broker.cacheComponents()`.
 
 Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
 
+## Core Protocol Contracts
+
+- `BackingManager` [+2 slots]
+  - Replace use of `lotPrice()` with `price()` everywhere
+  - Track `tokensOut` on trades and account for during collateralization math
+  - Call `StRSR.payoutRewards()` after forwarding RSR
+  - Make `backingBuffer` math precise
+  - Add caching in `RecollateralizationLibP1`
+  - Use `price().low` instead of `price().high` to compute maximum sell amounts
+- `BasketHandler`
+  - Replace use of `lotPrice()` with `price()` everywhere
+  - Minor gas optimizations to status tracking and custom redemption math
+- `Broker` [+1 slot]
+  - Cache `rToken` address and add `cacheComponents()` helper
+  - Allow `reportViolation()` to be called when paused or frozen
+  - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
+- `Distributor`
+  - Call `RevenueTrader.distributeTokenToBuy()` before distribution table changes
+  - Call `StRSR.payoutRewards()` or `Furnace.melt()` after distributions
+  - Minor gas optimizations
+- `Furnace`
+  - Allow melting while frozen
+- `Main`
+  - Remove `furnace.melt()` from `poke()`
+- `RevenueTrader`
+  - Replace use of `lotPrice()` with `price()` everywhere
+  - Ensure `settleTrade` cannot be reverted due to `tokenToBuy` distribution
+  - Ensure during `manageTokens()` that the Distributor is configured for the `tokenToBuy`
+- `StRSR`
+  - Use correct era in `UnstakingStarted` event
+  - Expose `draftEra` via `getDraftEra()` view
+
+## Facades
+
+- `FacadeMonitor`
+  - Add `batchAuctionsDisabled()` view
+  - Add `dutchAuctionsDisabled()` view
+  - Add `issuanceAvailable()` view
+  - Add `redemptionAvailable()` view
+  - Add `backingRedeemable()` view
+- `FacadeRead`
+  - Add `draftEra` argument to `pendingUnstakings()`
+  - Remove `.melt()` calls during pokes
+
 ## Plugins
 
 ### Assets
 
-- Remove `lotPrice()`
-- Alter `price().high` to decay upwards to 3x over the price timeout
+- ALL
+  - Deprecate `lotPrice()`
+  - Alter `price().low` to decay downwards to 0 over the price timeout
+  - Alter `price().high` to decay upwards to 3x over the price timeout
+  - Move `ORACLE_TIMEOUT_BUFFER` into code, as opposed to incorporating at the deployment script level
+  - Make`refPerTok()` smoother during event of hard default
+  - Check for `defaultThreshold > 0` in constructors
+  - Add 9 more decimals of precision to reward accounting (some wrappers excluded)
+- compoundv2: make wrapper much more gas efficient during COMP claim
+- compoundv3 bugfix: check permission correctly on underlying comet
+- curve: Also `refresh()` the RToken's AssetRegistry during `refresh()`
+- convex: Update to latest approved wrapper from Convex team
+- morpho-aave: Add ability to track and handout MORPHO rewards
+- yearnv2: Use pricePerShare helper for more precision
+
+### Governance
+
+- Add a minimum voting delay of 1 day
+
+### Trading
+
+- `GnosisTrade`
+  - Add `sellAmount() returns (uint192)` view
 
 # 3.0.1
 

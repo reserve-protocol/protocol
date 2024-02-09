@@ -3689,6 +3689,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"console-table-printer@npm:^2.9.0":
+  version: 2.12.0
+  resolution: "console-table-printer@npm:2.12.0"
+  dependencies:
+    simple-wcswidth: ^1.0.1
+  checksum: 2cd826da503186e939f760d4f821a967944c2d111d73aec36d252e99af0f0b17c1e2722782278508deff83b77207ab872b9400fa5c524ed273586ac32762b318
+  languageName: node
+  linkType: hard
+
 "content-disposition@npm:0.5.4":
   version: 0.5.4
   resolution: "content-disposition@npm:0.5.4"
@@ -5927,6 +5936,17 @@ __metadata:
   peerDependencies:
     hardhat: ^2.0.2
   checksum: 77f8f8d085ff3d9d7787f0227e5355e1800f7d6707bc70171e0567bf69706703ae7f6f53dce1be1d409e7e71e3629a434c94b546bdbbc1e4c1af47cd5d0c6776
+  languageName: node
+  linkType: hard
+
+"hardhat-storage-layout@npm:^0.1.7":
+  version: 0.1.7
+  resolution: "hardhat-storage-layout@npm:0.1.7"
+  dependencies:
+    console-table-printer: ^2.9.0
+  peerDependencies:
+    hardhat: ^2.0.3
+  checksum: 8d27d6b16c1ebdffa032ba6b99c61996df4601dcbaf7d770c474806b492a56de9d21b4190086ab40f50a3a1f2e9851cc81034a9cfd2e21368941977324f96fd4
   languageName: node
   linkType: hard
 
@@ -8879,6 +8899,7 @@ __metadata:
     hardhat: ^2.12.3
     hardhat-contract-sizer: ^2.4.0
     hardhat-gas-reporter: ^1.0.8
+    hardhat-storage-layout: ^0.1.7
     husky: ^7.0.0
     isomorphic-fetch: ^3.0.0
     lodash: ^4.17.21
@@ -9384,6 +9405,13 @@ __metadata:
   version: 4.0.2
   resolution: "signal-exit@npm:4.0.2"
   checksum: 41f5928431cc6e91087bf0343db786a6313dd7c6fd7e551dbc141c95bb5fb26663444fd9df8ea47c5d7fc202f60aa7468c3162a9365cbb0615fc5e1b1328fe31
+  languageName: node
+  linkType: hard
+
+"simple-wcswidth@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "simple-wcswidth@npm:1.0.1"
+  checksum: dc5bf4cb131d9c386825d1355add2b1ecc408b37dc2c2334edd7a1a4c9f527e6b594dedcdbf6d949bce2740c3a332e39af1183072a2d068e40d9e9146067a37f
   languageName: node
   linkType: hard
 

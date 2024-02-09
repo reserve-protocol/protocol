@@ -78,8 +78,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function grantRTokenAllowance(IERC20 erc20) external notFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        IERC20(address(erc20)).safeApprove(address(main.rToken()), 0);
-        IERC20(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
+        IERC20(address(erc20)).safeApprove(address(rToken), 0);
+        IERC20(address(erc20)).safeApprove(address(rToken), type(uint256).max);
     }
 
     /// Settle a single trade. If the caller is the trade, try chaining into rebalance()
@@ -106,6 +106,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
+
+        basketHandler.trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
@@ -113,7 +115,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
+    function rebalance(TradeKind kind) external nonReentrant {
+        requireNotTradingPausedOrFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -133,8 +137,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // First dissolve any held RToken balance (above Distributor-dust)
         // gas-optimization: 1 whole RToken must be worth 100 trillion dollars for this to skip $1
-        uint256 balance = main.rToken().balanceOf(address(this));
-        if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) main.rToken().dissolve(balance);
+        uint256 balance = rToken.balanceOf(address(this));
+        if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) rToken.dissolve(balance);
         if (basketsHeld.bottom >= rToken.basketsNeeded()) return; // return if now capitalized
 
         /*
@@ -182,11 +186,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function forwardRevenue(IERC20[] calldata erc20s)
-        external
-        nonReentrant
-        notTradingPausedOrFrozen
-    {
+    function forwardRevenue(IERC20[] calldata erc20s) external nonReentrant {
+        requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         assetRegistry.refresh();
@@ -350,5 +351,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[37] private __gap;
+    uint256[38] private __gap;
 }

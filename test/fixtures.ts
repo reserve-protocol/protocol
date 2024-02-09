@@ -1,11 +1,23 @@
 import { ContractFactory } from 'ethers'
 import { expect } from 'chai'
-import hre, { ethers } from 'hardhat'
+import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
+import {
+  IConfig,
+  IImplementations,
+  IMonitorParams,
+  IRevenueShare,
+  networkConfig,
+} from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
+import {
+  CollateralStatus,
+  PAUSER,
+  LONG_FREEZER,
+  SHORT_FREEZER,
+  ZERO_ADDRESS,
+} from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -24,6 +36,7 @@ import {
   DutchTrade,
   FacadeRead,
   FacadeAct,
+  FacadeMonitor,
   FacadeTest,
   DistributorP1,
   FiatCollateral,
@@ -412,6 +425,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
+  facadeMonitor: FacadeMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -469,6 +483,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     },
   }
 
+  // Setup Monitor Params (mock addrs for local deployment)
+  const monitorParams: IMonitorParams = {
+    AAVE_V2_DATA_PROVIDER_ADDR: ZERO_ADDRESS,
+  }
+
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
@@ -484,6 +503,19 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
+
+  // Deploy FacadeMonitor
+  const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
+
+  const facadeMonitor = <FacadeMonitor>await upgrades.deployProxy(
+    FacadeMonitorFactory,
+    [owner.address],
+    {
+      kind: 'uups',
+      initializer: 'init',
+      constructorArgs: [monitorParams],
+    }
+  )
 
   // Deploy RSR chainlink feed
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
@@ -752,6 +784,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     facadeAct,
     facadeTest,
+    facadeMonitor,
     rsrTrader,
     rTokenTrader,
     bySymbol,

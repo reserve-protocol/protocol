@@ -16,13 +16,13 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {target/ref}
+    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
     uint48 public immutable targetUnitOracleTimeout; // {s}
 
     /// @dev config.erc20 must be a MorphoTokenisedDeposit
-    /// @param config.chainlinkFeed Feed units: {UoA/target}
+    /// @param config.chainlinkFeed Feed units: {target/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param targetUnitChainlinkFeed_ Feed units: {target/ref}
+    /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
     /// @param targetUnitOracleTimeout_ {s} oracle timeout to use for targetUnitChainlinkFeed
     constructor(
         CollateralConfig memory config,
@@ -48,11 +48,12 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {tar/ref} Get current market peg
-        pegPrice = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
+        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
+        uint192 p = targetUnitChainlinkFeed.price(targetUnitOracleTimeout).mul(pegPrice).mul(
+            underlyingRefPerTok()
+        );
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;

@@ -3,12 +3,11 @@ pragma solidity 0.8.19;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import { IMorpho, IMorphoRewardsDistributor, IMorphoUsersLens } from "./IMorpho.sol";
+import { IMorpho, IMorphoUsersLens } from "./IMorpho.sol";
 import { RewardableERC4626Vault } from "../erc20/RewardableERC4626Vault.sol";
 
 struct MorphoTokenisedDepositConfig {
     IMorpho morphoController;
-    IMorphoRewardsDistributor rewardsDistributor;
     IERC20Metadata underlyingERC20;
     IERC20Metadata poolToken;
     ERC20 rewardToken;
@@ -20,12 +19,12 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         uint256 totalPaidOutBalance;
         uint256 pendingBalance;
         uint256 availableBalance;
+        uint256 remainingPeriod;
         uint256 lastSync;
     }
 
     uint256 private constant PAYOUT_PERIOD = 7 days;
 
-    IMorphoRewardsDistributor public immutable rewardsDistributor;
     IMorpho public immutable morphoController;
     address public immutable poolToken;
     address public immutable underlying;
@@ -43,7 +42,6 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
         underlying = address(config.underlyingERC20);
         morphoController = config.morphoController;
         poolToken = address(config.poolToken);
-        rewardsDistributor = config.rewardsDistributor;
         state.lastSync = uint48(block.timestamp);
     }
 
@@ -52,23 +50,31 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     }
 
     function _claimAssetRewards() internal override {
-        // First pay out any pendingBalances, over a 7200 block period
-        uint256 timeDelta = block.timestamp - state.lastSync;
-        if (timeDelta == 0) {
-            return;
-        }
-        if (timeDelta > PAYOUT_PERIOD) {
-            timeDelta = PAYOUT_PERIOD;
-        }
-        uint256 amtToPayOut = (state.pendingBalance * ((timeDelta * 1e18) / PAYOUT_PERIOD)) / 1e18;
-        state.pendingBalance -= amtToPayOut;
-        state.availableBalance += amtToPayOut;
-
         // If we detect any new balances add it to pending and reset payout period
         uint256 totalAccumulated = state.totalPaidOutBalance + rewardToken.balanceOf(address(this));
         uint256 newlyAccumulated = totalAccumulated - state.totalAccumulatedBalance;
-        state.totalAccumulatedBalance = totalAccumulated;
-        state.pendingBalance += newlyAccumulated;
+
+        uint256 timeDelta = block.timestamp - state.lastSync;
+        if (timeDelta != 0 && state.remainingPeriod != 0) {
+            if (timeDelta > state.remainingPeriod) {
+                timeDelta = state.remainingPeriod;
+            }
+
+            uint256 amtToPayOut = (state.pendingBalance * timeDelta) / state.remainingPeriod;
+            state.pendingBalance -= amtToPayOut;
+            state.availableBalance += amtToPayOut;
+        }
+
+        if (newlyAccumulated != 0) {
+            state.totalAccumulatedBalance = totalAccumulated;
+            state.pendingBalance += newlyAccumulated;
+
+            state.remainingPeriod = PAYOUT_PERIOD;
+        } else {
+            state.remainingPeriod = state.remainingPeriod < timeDelta
+                ? 0
+                : state.remainingPeriod - timeDelta;
+        }
 
         state.lastSync = block.timestamp;
     }
@@ -78,8 +84,9 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     }
 
     function _distributeReward(address account, uint256 amt) internal override {
-        state.totalPaidOutBalance += uint256(amt);
-        state.availableBalance -= uint256(amt);
+        state.totalPaidOutBalance += amt;
+        state.availableBalance -= amt;
+
         SafeERC20.safeTransfer(rewardToken, account, amt);
     }
 
