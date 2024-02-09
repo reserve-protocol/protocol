@@ -2135,7 +2135,7 @@ describe('Collateral contracts', () => {
 
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenSelfReferentialCollateral.claimRewards())
-        .to.emit(cSelfRefToken, 'RewardsClaimed')
+        .to.emit(cTokenSelfReferentialCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
 
@@ -2191,10 +2191,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
@@ -2223,10 +2220,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
@@ -2255,10 +2249,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
