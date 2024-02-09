@@ -238,7 +238,7 @@ describe('Collateral contracts', () => {
       )
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenCollateral.claimRewards())
-        .to.emit(cToken, 'RewardsClaimed')
+        .to.emit(cTokenCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
   })
@@ -1018,10 +1018,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenCollateral.refresh())
@@ -1460,7 +1457,7 @@ describe('Collateral contracts', () => {
       // cToken
       cNonFiatToken = await (
         await ethers.getContractFactory('CTokenMock')
-      ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
+      ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address, compoundMock.address)
 
       CTokenNonFiatFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 
@@ -1645,7 +1642,7 @@ describe('Collateral contracts', () => {
 
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true) // 0.02 of 20k
       await expect(cTokenNonFiatCollateral.claimRewards())
-        .to.emit(cNonFiatToken, 'RewardsClaimed')
+        .to.emit(cTokenNonFiatCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
 
@@ -1718,10 +1715,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cNonFiatToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -1750,10 +1744,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cNonFiatToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -1782,10 +1773,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cNonFiatToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRate(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -2031,7 +2019,7 @@ describe('Collateral contracts', () => {
       // cToken Self Ref
       cSelfRefToken = await (
         await ethers.getContractFactory('CTokenMock')
-      ).deploy('cETH Token', 'cETH', selfRefToken.address)
+      ).deploy('cETH Token', 'cETH', selfRefToken.address, compoundMock.address)
 
       CTokenSelfReferentialFactory = await ethers.getContractFactory(
         'CTokenSelfReferentialCollateral'

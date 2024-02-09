@@ -56,7 +56,6 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   CTokenWrapper,
-  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -407,7 +406,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
-      // Comptroller
       await expect(
         CTokenCollateralFactory.deploy(
           {
@@ -431,15 +429,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).deploy('Bad ERC20', 'BERC20')
       await token0decimals.setDecimals(0)
 
-      const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-        'CTokenMock'
-      )
+      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
       const vault: CTokenMock = <CTokenMock>(
-        await CTokenWrapperMockFactory.deploy(
+        await CTokenMockFactory.deploy(
           '0 Decimal Token',
           '0 Decimal Token',
           token0decimals.address,
-          compToken.address,
           comptroller.address
         )
       )
@@ -817,16 +812,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Set initial exchange rate to the new cDai Mock
       await cDaiMock.setExchangeRate(fp('0.02'))
 
-      const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-      const cDaiMockVault = <CTokenWrapper>(
-        await cDaiVaultFactory.deploy(
-          cDaiMock.address,
-          'cDAI Mock RToken Vault',
-          'rv_mock_cDAI',
-          comptroller.address
-        )
-      )
-
       // Redeploy plugin using the new cDai mock
       const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
         await ethers.getContractFactory('CTokenFiatCollateral')
@@ -835,7 +820,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
-          erc20: cDaiMockVault.address,
+          erc20: cDaiMock.address,
           maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
           oracleTimeout: await cDaiCollateral.oracleTimeout(),
           targetName: await cDaiCollateral.targetName(),
@@ -871,16 +856,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address, comptroller.address)
       )
 
-      const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-      const cDaiMockVault = <CTokenWrapper>(
-        await cDaiVaultFactory.deploy(
-          cDaiMock.address,
-          'cDAI Mock RToken Vault',
-          'rv_mock_cDAI',
-          comptroller.address
-        )
-      )
-
       // Redeploy plugin using the new cDai mock
       const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
         await ethers.getContractFactory('CTokenFiatCollateral')
@@ -889,7 +864,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
-          erc20: cDaiMockVault.address,
+          erc20: cDaiMock.address,
           maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
           oracleTimeout: await cDaiCollateral.oracleTimeout(),
           targetName: await cDaiCollateral.targetName(),

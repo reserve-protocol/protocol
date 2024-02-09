@@ -3296,13 +3296,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(rsrTrader.claimRewards(), [
           {
-            contract: backingManager,
+            contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3362,14 +3362,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should not revert on invalid claim logic', async () => {
-        // Here the aToken is going to have an invalid claimRewards on its asset,
-        // while the cToken will have it on the ERC20
+      it('Should be able to claimRewardsSingle to escape reverting claimRewards()', async () => {
+        // Here the aToken is going to have an invalid claimRewards on its asset
 
         // cToken
         rewardAmountCOMP = bn('0.5e18')
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-        await token3.setRevertClaimRewards(true)
 
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
@@ -3410,8 +3408,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Claim and sweep rewards -- should succeed
-        await expect(backingManager.claimRewards()).not.to.be.reverted
+        // Claim and sweep rewards -- fails
+        await expect(backingManager.claimRewards()).to.be.reverted
+
+        // But can claimRewardsSingle
+        await expect(backingManager.claimRewardsSingle(token3.address)).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
       })
 
       context('DutchTrade', () => {

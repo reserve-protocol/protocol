@@ -213,7 +213,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   const makeCToken = async (tokenName: string): Promise<CTokenMock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+    const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     )
@@ -223,11 +223,10 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
 
     const ctoken: CTokenMock = <CTokenMock>(
-      await CTokenWrapperMockFactory.deploy(
+      await CTokenMockFactory.deploy(
         'c' + tokenName,
         `${'c' + tokenName} symbol`,
         erc20.address,
-        compToken.address,
         compoundMock.address
       )
     )
