@@ -34,7 +34,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold == 0, "default threshold not supported");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20)).underlying()));
+        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20))));
         referenceERC20Decimals = referenceERC20Decimals_;
         comptroller = cToken.comptroller();
         comp = IERC20(comptroller.getCompAddress());
