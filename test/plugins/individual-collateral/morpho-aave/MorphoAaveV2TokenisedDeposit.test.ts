@@ -296,10 +296,9 @@ const execTestForToken = ({
 
     it('linearly distributes rewards', async () => {
       const {
-        users: { alice, bob, charlie },
+        users: { bob },
         methods,
         instances,
-        amountBN,
       } = context
 
       await methods.deposit(bob, '1')
@@ -361,10 +360,9 @@ const execTestForToken = ({
 
     it('linearly distributes rewards, even with multiple claims', async () => {
       const {
-        users: { alice, bob, charlie },
+        users: { bob },
         methods,
         instances,
-        amountBN,
       } = context
 
       await methods.deposit(bob, '1')

@@ -42,7 +42,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   CurvePoolType,
 } from '../curve/constants'
-import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
+import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 
 // Note: Uses ../curve/collateralTests.ts, not ../collateralTests.ts
 
