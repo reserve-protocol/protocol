@@ -341,7 +341,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       priceTimeout: PRICE_TIMEOUT.toString(),
       priceFeed: ethFeed.address,
       oracleError: ORACLE_ERROR.toString(),
-      cToken: weth.address,
+      tokenAddress: weth.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
