@@ -1477,7 +1477,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
           emitted: true,
         },
         {
-          contract: backingManager,
+          contract: rsrTrader,
           name: 'RewardsClaimed',
           args: [compToken.address, rewardAmountCOMP],
           emitted: true,
