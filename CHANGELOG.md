@@ -46,12 +46,7 @@ New governance param added: `reweightable`
 
 - `DutchTrade`
 
-  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans
-
-- `DutchTradeRouter`
-- New contract to avoid needing to approve each new `DutchTrade` contract
-- `bid(DutchTrade trade, address recipient) retruns (Bid memory)`
-- `dutchTradeCallback(address buyToken, uint256 buyAmount, bytes calldata) external`
+  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans. Example of how-to-use in `contracts/plugins/mocks/DutchTradeRouter.sol`
 
 # 3.1.0
 
