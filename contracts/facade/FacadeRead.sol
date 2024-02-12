@@ -210,13 +210,17 @@ contract FacadeRead is IFacadeRead {
         targets = new bytes32[](erc20s.length);
         for (uint256 i = 0; i < erc20s.length; ++i) {
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
+            targets[i] = coll.targetName();
+
             int8 decimals = int8(IERC20Metadata(erc20s[i]).decimals());
-            (uint192 lowPrice, ) = coll.price();
+            (uint192 low, uint192 high) = coll.price();
+            if (low == 0 || high == FIX_MAX) continue;
+
+            uint192 avg = (low + high) / 2; // {UoA/tok}
 
             // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
-            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(lowPrice);
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(avg);
             uoaSum += uoaAmts[i];
-            targets[i] = coll.targetName();
         }
 
         uoaShares = new uint192[](erc20s.length);
@@ -359,17 +363,19 @@ contract FacadeRead is IFacadeRead {
             for (uint256 i = 0; i < basketERC20s.length; i++) {
                 IAsset asset = reg.toAsset(IERC20(basketERC20s[i]));
 
-                // {UoA/tok}
-                (uint192 low, ) = asset.price();
-
                 // {tok}
                 uint192 needed = shiftl_toFix(quantities[i], -int8(asset.erc20Decimals()));
 
+                // {UoA/tok}
+                (uint192 low, uint192 high) = asset.price();
+                if (low == 0 || high == FIX_MAX) continue;
+                uint192 avg = (low + high) / 2;
+
                 // {UoA} = {UoA} + {tok}
-                uoaNeeded += needed.mul(low);
+                uoaNeeded += needed.mul(avg);
 
                 // {UoA} = {UoA} + {tok} * {UoA/tok}
-                uoaHeldInBaskets += fixMin(needed, asset.bal(address(bm))).mul(low);
+                uoaHeldInBaskets += fixMin(needed, asset.bal(address(bm))).mul(avg);
             }
 
             backing = uoaHeldInBaskets.div(uoaNeeded);
@@ -383,13 +389,14 @@ contract FacadeRead is IFacadeRead {
             rsrAsset.bal(address(rToken.main().stRSR()))
         );
 
-        (uint192 lowPrice, ) = rsrAsset.price();
+        (uint192 lowPrice, uint192 highPrice) = rsrAsset.price();
+        if (lowPrice > 0 && highPrice < FIX_MAX) {
+            // {UoA} = {tok} * {UoA/tok}
+            uint192 rsrUoA = rsrBal.mul((lowPrice + highPrice) / 2);
 
-        // {UoA} = {tok} * {UoA/tok}
-        uint192 rsrUoA = rsrBal.mul(lowPrice);
-
-        // {1} = {UoA} / {UoA}
-        overCollateralization = rsrUoA.div(uoaNeeded);
+            // {1} = {UoA} / {UoA}
+            overCollateralization = rsrUoA.div(uoaNeeded);
+        }
     }
 
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
