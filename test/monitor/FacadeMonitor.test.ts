@@ -151,7 +151,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
-      cDai = <TestICToken>erc20s[6] // cDAI
       stataDai = <StaticATokenLM>erc20s[10] // static aDAI
 
       // Get plain aTokens
@@ -193,6 +192,10 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       cusdcV3 = <CometInterface>(
         await ethers.getContractAt('CometInterface', networkConfig[chainId].tokens.cUSDCv3 || '')
+      )
+
+      cDai = <TestICToken>(
+        await ethers.getContractAt('TestICToken', networkConfig[chainId].tokens.cDAI || '')
       )
 
       sUsdc = <IStargatePool>(

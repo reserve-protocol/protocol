@@ -154,7 +154,6 @@ interface CollateralFixture {
 }
 
 export async function collateralFixture(
-  comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   config: IConfig
 ): Promise<CollateralFixture> {
@@ -856,7 +855,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    compoundMock,
     aaveMock,
     config
   )

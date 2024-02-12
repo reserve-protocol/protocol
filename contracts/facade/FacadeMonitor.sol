@@ -157,20 +157,16 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
             );
             availableLiquidity = underlying.balanceOf(address(aToken));
         } else if (collType == CollPluginType.COMPOUND_V2 || collType == CollPluginType.FLUX) {
-            // OLD compound-v2 uses a wrapper
-            // NEW compound-v2 does not use a wrapper
-            // FLUX does not use a wrapper
-            ICToken cToken;
-            uint256 cTokenBal;
-            try CTokenWrapper(address(erc20)).underlying() returns (IERC20 underlying_) {
-                cToken = ICToken(address(underlying_));
-                cTokenBal = CTokenWrapper(address(erc20)).balanceOf(
-                    address(rToken.main().backingManager())
-                );
-            } catch {
-                cToken = ICToken(address(erc20));
-                cTokenBal = cToken.balanceOf(address(rToken.main().backingManager()));
+            // (1) OLD compound-v2 uses a wrapper
+            // (2) NEW compound-v2 does not use a wrapper
+            // (3) FLUX does not use a wrapper
+            ICToken cToken = ICToken(ICToken(address(erc20)).underlying()); // case (1)
+
+            // solhint-disable-next-line no-empty-blocks
+            try cToken.underlying() returns (address) {} catch {
+                cToken = ICToken(address(erc20)); // case (2) or (3)
             }
+            uint256 cTokenBal = cToken.balanceOf(address(rToken.main().backingManager()));
 
             IERC20 underlying = IERC20(cToken.underlying());
             uint256 exchangeRate = cToken.exchangeRateStored();
