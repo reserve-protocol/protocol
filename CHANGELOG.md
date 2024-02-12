@@ -2,19 +2,49 @@
 
 # 3.3.0
 
-This release improves how collateral plugins price LP tokens.
+This release improves how collateral plugins price LP tokens and moves reward claiming out to the asset plugin level.
 
 ## Upgrade Steps
 
-Swapout all collateral plugins for LP tokens, such as: Curve, Convex, or Yearn tokens.
+Swapout all collateral plugins with appreciation.
 
-All collateral plugins should be upgraded. Only compound-v2 ERC20 should be rotated, and it is purely optional to provide gas savings.
+All collateral plugins should be upgraded. Only compound-v2 ERC20 needs to be rotated, and it is purely optional to provide gas savings.
+
+### Core Protocol Contracts
+
+- `BackingManager` + `RevenueTrader`
+  - Change `claimRewards()` to delegatecall to the list of registered plugins
 
 ## Plugins
 
 ### Assets
 
-- crv/cvx/yv: Make `price()` more resistant to manipulation by MEV
+- compound-v2
+  - Remove `CTokenWrapper`
+  - Add reward claiming logic to `claimRewards()`
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- compound-v3
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- curve
+  - Make `price()` more resistant to manipulation by MEV
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- convex
+  - Make `price()` more resistant to manipulation by MEV
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- frax-eth
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- morpho-aave
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- stargate
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- yearnv2
+  - Make `price()` more resistant to manipulation by MEV
+  - Emit `RewardsClaimed` event during `claimRewards()`
+
+### Facades
+
+- `FacadeMonitor.sol`
+  - Update compound-v2 implemention to deal with with-wrappper and without-wrapper cases
 
 # 3.2.0
 
