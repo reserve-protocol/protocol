@@ -205,10 +205,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
       expect(erc20s[3]).to.equal(cTokenVault.address)
-      expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[0]).to.equal(fp('0.25'))
+      expect(breakdown[1]).to.equal(fp('0.25'))
+      expect(breakdown[2]).to.equal(fp('0.25'))
+      expect(breakdown[3]).to.equal(fp('0.25'))
       expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -934,6 +934,24 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
+    it('Should return basketBreakdown correctly for tokens with different oracleErrors', async () => {
+      const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+      const largeErrDai = await FiatCollateralFactory.deploy({
+        priceTimeout: await tokenAsset.priceTimeout(),
+        chainlinkFeed: await tokenAsset.chainlinkFeed(),
+        oracleError: ORACLE_ERROR.mul(4),
+        erc20: await tokenAsset.erc20(),
+        maxTradeVolume: await tokenAsset.maxTradeVolume(),
+        oracleTimeout: await tokenAsset.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'),
+        delayUntilDefault: await tokenAsset.delayUntilDefault(),
+      })
+      await assetRegistry.swapRegistered(largeErrDai.address)
+      await basketHandler.connect(owner).refreshBasket()
+      await expectValidBasketBreakdown(rToken) // should still be 25/25/25/25 split
     })
 
     it('Should return totalAssetValue correctly - FacadeTest', async () => {
