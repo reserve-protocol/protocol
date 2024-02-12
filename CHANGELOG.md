@@ -42,6 +42,11 @@ New governance param added: `reweightable`
 - stargate: Continue transfers of wrapper tokens if stargate rewards break
 - All plugins with variable refPerTok(): do no revert refresh() when underlying protocol reverts
 
+### Facades
+
+- `FacadeRead`
+  - Use avg prices instead of low prices in `backingOverview()` and `basketBreakdown()`
+
 ### Trading
 
 - `DutchTrade`
