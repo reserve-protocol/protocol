@@ -5,6 +5,10 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../../libraries/Fixed.sol";
 import "./OracleErrors.sol";
 
+interface EACAggregatorProxy {
+    function aggregator() external view returns (address);
+}
+
 /// Used by asset plugins to price their collateral
 library OracleLib {
     /// @dev Use for nested calls that should revert when there is a problem
