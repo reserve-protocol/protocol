@@ -55,7 +55,6 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  CTokenWrapper,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -880,7 +879,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
       await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       const [currLow, currHigh] = await newCDaiCollateral.price()
-      const currRate = await cDaiMockVault.exchangeRateStored()
+      const currRate = await cDaiMock.exchangeRateStored()
 
       // Make exchangeRateCurrent() revert
       await cDaiMock.setRevertExchangeRate(true)
@@ -895,7 +894,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Exchange rate stored is still accessible
-      expect(await cDaiMockVault.exchangeRateStored()).to.equal(currRate)
+      expect(await cDaiMock.exchangeRateStored()).to.equal(currRate)
 
       // Price remains the same
       await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
