@@ -317,9 +317,9 @@ library BasketLibP1 {
         IAssetRegistry assetRegistry,
         BasketConfig storage config,
         EnumerableMap.Bytes32ToUintMap storage _targetAmts,
-        IERC20[] calldata erc20s,
-        uint192[] calldata targetAmts
-    ) external {
+        IERC20[] memory erc20s,
+        uint192[] memory targetAmts
+    ) internal {
         // Populate _targetAmts mapping with old basket config
         uint256 len = config.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
@@ -349,10 +349,10 @@ library BasketLibP1 {
     /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
     function normalizeByPrice(
         IAssetRegistry assetRegistry,
-        IERC20[] calldata erc20s,
-        uint192[] calldata targetAmts,
+        IERC20[] memory erc20s,
+        uint192[] memory targetAmts,
         uint192 price
-    ) external view returns (uint192[] memory newTargetAmts) {
+    ) internal view returns (uint192[] memory newTargetAmts) {
         uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
 
         // Rounding in this function should always be in favor of RToken holders

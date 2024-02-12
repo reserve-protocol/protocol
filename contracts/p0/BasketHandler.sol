@@ -7,19 +7,104 @@ import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
-import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IMain.sol";
 import "./mixins/Component.sol";
 import "../libraries/Array.sol";
-import "../libraries/Basket.sol";
 import "../libraries/Fixed.sol";
+
+// A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
+
+// A BackupConfig value is valid if erc20s is a valid collateral array
+struct BackupConfig {
+    uint256 max; // Maximum number of backup collateral erc20s to use in a basket
+    IERC20[] erc20s; // Ordered list of backup collateral ERC20s
+}
+
+// What does a BasketConfig value mean?
+//
+// erc20s, targetAmts, and targetNames should be interpreted together.
+// targetAmts[erc20] is the quantity of target units of erc20 that one BU should hold
+// targetNames[erc20] is the name of erc20's target unit
+// and then backups[tgt] is the BackupConfig to use for the target unit named tgt
+//
+// For any valid BasketConfig value:
+//     erc20s == keys(targetAmts) == keys(targetNames)
+//     if name is in values(targetNames), then backups[name] is a valid BackupConfig
+//     erc20s is a valid collateral array
+//
+// In the meantime, treat erc20s as the canonical set of keys for the target* maps
+struct BasketConfig {
+    // The collateral erc20s in the prime (explicitly governance-set) basket
+    IERC20[] erc20s;
+    // Amount of target units per basket for each prime collateral token. {target/BU}
+    mapping(IERC20 => uint192) targetAmts;
+    // Cached view of the target unit for each erc20 upon setup
+    mapping(IERC20 => bytes32) targetNames;
+    // Backup configurations, per target name.
+    mapping(bytes32 => BackupConfig) backups;
+}
+
+/// The type of BasketHandler.basket.
+/// Defines a basket unit (BU) in terms of reference amounts of underlying tokens
+// Logically, basket is just a mapping of erc20 addresses to ref-unit amounts.
+// In the analytical comments I'll just refer to it that way.
+//
+// A Basket is valid if erc20s is a valid collateral array and erc20s == keys(refAmts)
+struct Basket {
+    IERC20[] erc20s; // enumerated keys for refAmts
+    mapping(IERC20 => uint192) refAmts; // {ref/BU}
+}
+
+/*
+ * @title BasketLibP0
+ */
+library BasketLibP0 {
+    using BasketLibP0 for Basket;
+    using FixLib for uint192;
+
+    /// Set self to a fresh, empty basket
+    // self'.erc20s = [] (empty list)
+    // self'.refAmts = {} (empty map)
+    function empty(Basket storage self) internal {
+        uint256 length = self.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) self.refAmts[self.erc20s[i]] = FIX_ZERO;
+        delete self.erc20s;
+    }
+
+    /// Set `self` equal to `other`
+    function setFrom(Basket storage self, Basket storage other) internal {
+        empty(self);
+        uint256 length = other.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
+            self.erc20s.push(other.erc20s[i]);
+            self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
+        }
+    }
+
+    /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
+    // self'.refAmts[tok] = self.refAmts[tok] + weight
+    // self'.erc20s is keys(self'.refAmts)
+    function add(
+        Basket storage self,
+        IERC20 tok,
+        uint192 weight
+    ) internal {
+        if (weight == FIX_ZERO) return;
+        if (self.refAmts[tok].eq(FIX_ZERO)) {
+            self.erc20s.push(tok);
+            self.refAmts[tok] = weight;
+        } else {
+            self.refAmts[tok] = self.refAmts[tok].plus(weight);
+        }
+    }
+}
 
 /**
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
 contract BasketHandlerP0 is ComponentP0, IBasketHandler {
-    using BasketLib for Basket;
+    using BasketLibP0 for Basket;
     using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
