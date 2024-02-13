@@ -20,7 +20,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './constants'
 import { MorphoAaveCollateralFixtureContext, mintCollateralTo } from './mintCollateralTo'
@@ -197,7 +197,7 @@ const defaultCollateralOpts: MAFiatCollateralOpts = {
   poolToken: networkConfig[1].tokens.astETH!,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: networkConfig[1].chainlinkFeeds.stETHUSD!,
-  oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
+  oracleTimeout: DECAY_DELAY,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: parseEther('1000'),
   defaultThreshold: bn(0), // 0.05

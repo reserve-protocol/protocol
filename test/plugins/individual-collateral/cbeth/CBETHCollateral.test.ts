@@ -9,7 +9,7 @@ import {
   ETH_USD_PRICE_FEED,
   MAX_TRADE_VOL,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './constants'
 import { pushOracleForward } from '../../../utils/oracles'
@@ -56,7 +56,7 @@ export const deployCollateral = async (
     },
     opts.revenueHiding,
     opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED,
-    opts.targetPerTokChainlinkTimeout ?? ORACLE_TIMEOUT_WITH_BUFFER,
+    opts.targetPerTokChainlinkTimeout ?? DECAY_DELAY,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -95,7 +95,7 @@ const makeCollateralFixtureContext = (
     )
 
     collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
-    collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT_WITH_BUFFER
+    collateralOpts.targetPerTokChainlinkTimeout = DECAY_DELAY
 
     const cbETH = (await ethers.getContractAt('ICBEth', CB_ETH)) as unknown as ICBEth
     const collateral = await deployCollateral(collateralOpts)
@@ -217,7 +217,7 @@ export const defaultCBEthCollateralOpts: CollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
-  oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
+  oracleTimeout: DECAY_DELAY,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,

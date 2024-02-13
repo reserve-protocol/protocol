@@ -70,7 +70,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
@@ -2988,7 +2988,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
 
       // Set collateral1 price to [0, FIX_MAX]
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(collateral0.address, bn('1e8'))
       await assetRegistry.refresh()
 
@@ -3045,7 +3045,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set price = 0, which hits 3 of our 4 collateral in the basket
       await setOraclePrice(newColl2.address, bn('0'))
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(collateral1.address, bn('1e8'))
 
       // Check status and price again
@@ -3075,7 +3075,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         REVENUE_HIDING
       )
       await assetRegistry.connect(owner).swapRegistered(newColl.address)
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await newColl.setTargetPerRef(1)
       await expectUnpriced(basketHandler.address)
     })

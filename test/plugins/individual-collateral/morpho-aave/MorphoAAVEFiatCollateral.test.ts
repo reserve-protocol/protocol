@@ -16,7 +16,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './constants'
 import hre from 'hardhat'
@@ -384,7 +384,7 @@ const makeOpts = (
   return {
     targetName: ethers.utils.formatBytes32String('USD'),
     priceTimeout: PRICE_TIMEOUT,
-    oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
+    oracleTimeout: DECAY_DELAY,
     oracleError: ORACLE_ERROR,
     defaultThreshold: DEFAULT_THRESHOLD,
     delayUntilDefault: DELAY_UNTIL_DEFAULT,

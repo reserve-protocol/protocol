@@ -51,7 +51,7 @@ import {
 import {
   Collateral,
   defaultFixture,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
@@ -643,7 +643,7 @@ describe('Collateral contracts', () => {
       expect(lotHigh).to.eq(aaveInitPrice[1])
 
       // Advance past timeouts
-      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT_WITH_BUFFER).toString())
+      await advanceTime(PRICE_TIMEOUT.add(DECAY_DELAY).toString())
 
       // Should be unpriced
       await expectUnpriced(cTokenCollateral.address)
@@ -982,7 +982,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should remain at saved price if oracle is stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.sub(12).toString())
+      await advanceTime(DECAY_DELAY.sub(12).toString())
 
       // lastSave should not be block timestamp after refresh
       await tokenCollateral.refresh()
@@ -1002,7 +1002,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Enters IFFY state when price becomes stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.toString())
+      await advanceTime(DECAY_DELAY.toString())
       await usdcCollateral.refresh()
       await tokenCollateral.refresh()
       await cTokenCollateral.refresh()
@@ -1351,8 +1351,8 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       await expectExactPrice(nonFiatCollateral.address, initialPrice)
 
-      // Should become disabled after just ORACLE_TIMEOUT_WITH_BUFFER
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      // Should become disabled after just DECAY_DELAY
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await targetUnitOracle.updateAnswer(bn('0'))
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
       await expectDecayedPrice(nonFiatCollateral.address)
@@ -1368,7 +1368,7 @@ describe('Collateral contracts', () => {
       await expectExactPrice(nonFiatCollateral.address, initialPrice)
 
       // Advance past oracle timeout
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectDecayedPrice(nonFiatCollateral.address)
 
@@ -1691,8 +1691,8 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
 
-      // Should become disabled after just ORACLE_TIMEOUT_WITH_BUFFER
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      // Should become disabled after just DECAY_DELAY
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await targetUnitOracle.updateAnswer(bn('0'))
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
       await cTokenNonFiatCollateral.refresh()
@@ -1709,7 +1709,7 @@ describe('Collateral contracts', () => {
       await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
 
       // Advance past oracle timeout
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectDecayedPrice(cTokenNonFiatCollateral.address)
 
@@ -1834,7 +1834,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_WITH_BUFFER,
+          DECAY_DELAY,
           REVENUE_HIDING
         )
       )
@@ -1863,7 +1863,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         invalidChainlinkFeed.address,
-        ORACLE_TIMEOUT_WITH_BUFFER,
+        DECAY_DELAY,
         REVENUE_HIDING
       )
 
@@ -1965,7 +1965,7 @@ describe('Collateral contracts', () => {
       await expectExactPrice(selfReferentialCollateral.address, initialPrice)
 
       // Decay starts after oracle timeout
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
       await expectDecayedPrice(selfReferentialCollateral.address)
 
@@ -2190,7 +2190,7 @@ describe('Collateral contracts', () => {
       // Decays if price is zero
       await cTokenSelfReferentialCollateral.refresh()
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
       await expectDecayedPrice(cTokenSelfReferentialCollateral.address)
 
@@ -2369,7 +2369,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         targetUnitOracle.address,
-        ORACLE_TIMEOUT_WITH_BUFFER
+        DECAY_DELAY
       )
       await eurFiatCollateral.refresh()
 
@@ -2392,7 +2392,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: bn(0),
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_WITH_BUFFER
+          DECAY_DELAY
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
@@ -2412,7 +2412,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           ZERO_ADDRESS,
-          ORACLE_TIMEOUT_WITH_BUFFER
+          DECAY_DELAY
         )
       ).to.be.revertedWith('missing targetUnit feed')
     })
@@ -2432,7 +2432,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_WITH_BUFFER
+          DECAY_DELAY
         )
       ).to.be.revertedWith('missing chainlink feed')
     })
@@ -2472,7 +2472,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_WITH_BUFFER
+          DECAY_DELAY
         )
       ).to.be.revertedWith('defaultThreshold zero')
     })
@@ -2546,7 +2546,7 @@ describe('Collateral contracts', () => {
       // Decays if price is zero
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectExactPrice(eurFiatCollateral.address, initialPrice)
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectDecayedPrice(eurFiatCollateral.address)
 
@@ -2575,7 +2575,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_WITH_BUFFER
+          DECAY_DELAY
         )
       )
 
@@ -2603,7 +2603,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         invalidChainlinkFeed.address,
-        ORACLE_TIMEOUT_WITH_BUFFER
+        DECAY_DELAY
       )
 
       // Reverting with no reason

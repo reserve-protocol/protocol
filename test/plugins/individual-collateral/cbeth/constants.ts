@@ -18,7 +18,7 @@ export const CBETH_ETH_EXCHANGE_RATE_FEED_BASE = networkConfig['8453'].chainlink
 export const CB_ETH_MINTER_BASE = '0x4200000000000000000000000000000000000010'
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week
-export const ORACLE_TIMEOUT_WITH_BUFFER = bn(86400) // 24 hours in seconds
+export const DECAY_DELAY = bn(86400) // 24 hours in seconds
 export const ORACLE_ERROR = fp('0.005')
 export const DEFAULT_THRESHOLD = bn(5).mul(bn(10).pow(16)) // 0.05
 export const DELAY_UNTIL_DEFAULT = bn(86400)

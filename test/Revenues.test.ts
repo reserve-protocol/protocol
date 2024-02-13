@@ -50,7 +50,7 @@ import {
   IMPLEMENTATION,
   Implementation,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
@@ -590,7 +590,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should launch revenue auction if UNPRICED', async () => {
         // After oracleTimeout it should still launch auction for RToken
-        await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.toString())
+        await advanceTime(DECAY_DELAY.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
 
@@ -1170,7 +1170,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await setOraclePrice(collateral0.address, bn(0))
         await collateral0.refresh()
-        await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT_WITH_BUFFER).toString())
+        await advanceTime(PRICE_TIMEOUT.add(DECAY_DELAY).toString())
         await setOraclePrice(rsrAsset.address, bn('1e8'))
 
         const p = await collateral0.price()

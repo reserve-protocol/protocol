@@ -47,7 +47,7 @@ import {
   defaultFixture,
   IMPLEMENTATION,
   Implementation,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
@@ -286,7 +286,7 @@ describe('Assets contracts #fast', () => {
       await expectExactPrice(rTokenAsset.address, rTokenInitPrice)
 
       // Advance past oracle timeout
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
@@ -377,7 +377,7 @@ describe('Assets contracts #fast', () => {
     })
 
     it('Should remain at saved price if oracle is stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.sub(12).toString())
+      await advanceTime(DECAY_DELAY.sub(12).toString())
 
       // lastSave should not be block timestamp after refresh
       await rsrAsset.refresh()
@@ -788,7 +788,7 @@ describe('Assets contracts #fast', () => {
       expect(highPrice2).to.eq(highPrice)
 
       // Advance past oracleTimeout
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.toString())
+      await advanceTime(DECAY_DELAY.toString())
 
       // Now price widens
       const [lowPrice3, highPrice3] = await rsrAsset.price()

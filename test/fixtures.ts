@@ -86,7 +86,7 @@ export const PRICE_TIMEOUT = bn('604800') // 1 week
 
 export const ORACLE_TIMEOUT = bn('281474976710655').div(100) // type(uint48).max / 100
 
-export const ORACLE_TIMEOUT_WITH_BUFFER = ORACLE_TIMEOUT.add(300)
+export const DECAY_DELAY = ORACLE_TIMEOUT.add(300)
 
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 

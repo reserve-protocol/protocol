@@ -46,7 +46,7 @@ export const SUSDbC = networkConfig[chainId].tokens['sUSDbC']!
 export const USDbC_HOLDER = '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca'
 // export const USDbC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds['USDbC']!
 
-export const ORACLE_TIMEOUT_WITH_BUFFER = bn(86400) // 24 hours in seconds
+export const DECAY_DELAY = bn(86400) // 24 hours in seconds
 export const ORACLE_ERROR = fp('0.005')
 export const DEFAULT_THRESHOLD = bn(5).mul(bn(10).pow(16)) // 0.05
 export const DELAY_UNTIL_DEFAULT = bn(86400)

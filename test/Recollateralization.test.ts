@@ -51,7 +51,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from './fixtures'
@@ -856,7 +856,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if UNPRICED', async () => {
-        await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.toString())
+        await advanceTime(DECAY_DELAY.toString())
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'basket not ready'
         )
@@ -1029,7 +1029,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Set all assets to UNPRICED
-        await advanceTime(Number(ORACLE_TIMEOUT_WITH_BUFFER.add(PRICE_TIMEOUT)))
+        await advanceTime(Number(DECAY_DELAY.add(PRICE_TIMEOUT)))
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)

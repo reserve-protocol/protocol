@@ -14,7 +14,7 @@ import {
   DefaultFixture,
   Fixture,
   getDefaultFixture,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
 } from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
@@ -695,7 +695,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT_WITH_BUFFER.sub(12).toString())
+      await advanceTime(DECAY_DELAY.sub(12).toString())
 
       // Price is at saved prices
       const savedLowPrice = await cDaiCollateral.savedLowPrice()

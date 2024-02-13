@@ -18,7 +18,7 @@ import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_WITH_BUFFER,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
@@ -55,13 +55,13 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: STETH_USD_PRICE_FEED,
-  oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
+  oracleTimeout: DECAY_DELAY,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   targetPerRefChainlinkFeed: STETH_ETH_PRICE_FEED,
-  targetPerRefChainlinkTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
+  targetPerRefChainlinkTimeout: DECAY_DELAY,
   revenueHiding: fp('0'),
 }
 
