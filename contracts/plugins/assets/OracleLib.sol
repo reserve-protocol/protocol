@@ -11,7 +11,7 @@ interface EACAggregatorProxy {
 
 /// Used by asset plugins to price their collateral
 library OracleLib {
-    uint48 constant ORACLE_TIMEOUT_BUFFER = 300; // {s} 5 minutes
+    uint48 internal constant ORACLE_TIMEOUT_BUFFER = 300; // {s} 5 minutes
 
     /// @dev Use for nested calls that should revert when there is a problem
     /// @param timeout The number of seconds after which oracle values should be considered stale

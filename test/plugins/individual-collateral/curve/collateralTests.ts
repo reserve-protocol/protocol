@@ -10,7 +10,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber, ContractFactory } from 'ethers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
-import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT_WITH_BUFFER } from '../fixtures'
 import { expectInIndirectReceipt } from '../../../../common/events'
 import { whileImpersonating } from '../../../utils/impersonation'
 import {
@@ -1079,7 +1079,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             oracleError: ORACLE_ERROR,
             erc20: erc20.address,
             maxTradeVolume: MAX_UINT192,
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: fp('0.01'), // 1%
             delayUntilDefault: bn('86400'), // 24h,
@@ -1104,7 +1104,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             oracleError: ORACLE_ERROR,
             erc20: erc20.address,
             maxTradeVolume: MAX_UINT192,
-            oracleTimeout: ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: fp('0'), // 0%
             delayUntilDefault: bn('0'), // 0,
@@ -1133,13 +1133,13 @@ export default function fn<X extends CurveCollateralFixtureContext>(
               oracleError: ORACLE_ERROR,
               erc20: erc20.address,
               maxTradeVolume: MAX_UINT192,
-              oracleTimeout: ORACLE_TIMEOUT,
+              oracleTimeout: ORACLE_TIMEOUT_WITH_BUFFER,
               targetName: ethers.utils.formatBytes32String('BTC'),
               defaultThreshold: fp('0.01'), // 1%
               delayUntilDefault: bn('86400'), // 24h,
             },
             targetUnitOracle.address,
-            ORACLE_TIMEOUT
+            ORACLE_TIMEOUT_WITH_BUFFER
           )
         } else {
           throw new Error(`Unknown target: ${target}`)
