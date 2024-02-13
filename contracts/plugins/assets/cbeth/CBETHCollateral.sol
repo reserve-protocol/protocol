@@ -6,6 +6,7 @@ import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
 import { ICBEth } from "./vendor/ICBEth.sol";
+import { ORACLE_TIMEOUT_BUFFER } from "../Asset.sol";
 
 /**
  * @title CBEthCollateral
@@ -35,7 +36,7 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
-        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

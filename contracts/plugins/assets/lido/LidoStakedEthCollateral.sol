@@ -39,7 +39,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         require(_targetPerRefChainlinkTimeout != 0, "targetPerRefChainlinkTimeout zero");
 
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
-        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
+        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

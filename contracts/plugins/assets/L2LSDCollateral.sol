@@ -5,6 +5,7 @@ import { CEIL, FIX_MAX, FixLib, _safeWrap } from "../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "./OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "./AppreciatingFiatCollateral.sol";
 import { CollateralStatus } from "../../interfaces/IAsset.sol";
+import { ORACLE_TIMEOUT_BUFFER } from "./Asset.sol";
 
 /**
  * @title L2LSDCollateral
@@ -33,7 +34,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
 
         exchangeRateChainlinkFeed = _exchangeRateChainlinkFeed;
-        exchangeRateChainlinkTimeout = _exchangeRateChainlinkTimeout;
+        exchangeRateChainlinkTimeout = _exchangeRateChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
     }
 
     /// Should not revert

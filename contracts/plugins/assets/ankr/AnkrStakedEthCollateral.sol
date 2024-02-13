@@ -36,7 +36,7 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
-        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

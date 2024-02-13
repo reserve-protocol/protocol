@@ -32,7 +32,7 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
-        targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        targetUnitOracleTimeout = targetUnitOracleTimeout_ + ORACLE_TIMEOUT_BUFFER;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

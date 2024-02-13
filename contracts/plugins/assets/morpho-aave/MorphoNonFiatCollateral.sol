@@ -6,6 +6,7 @@ import { FixLib, CEIL } from "../../../libraries/Fixed.sol";
 import { OracleLib } from "../OracleLib.sol";
 // solhint-disable-next-line max-line-length
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import { ORACLE_TIMEOUT_BUFFER } from "../Asset.sol";
 
 /**
  * @title MorphoNonFiatCollateral
@@ -31,7 +32,7 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
         uint48 targetUnitOracleTimeout_
     ) MorphoFiatCollateral(config, revenueHiding) {
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
-        targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        targetUnitOracleTimeout = targetUnitOracleTimeout_ + ORACLE_TIMEOUT_BUFFER;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
