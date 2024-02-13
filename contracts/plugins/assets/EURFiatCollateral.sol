@@ -30,7 +30,7 @@ contract EURFiatCollateral is FiatCollateral {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
 
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
-        targetUnitOracleTimeout = targetUnitOracleTimeout_ + ORACLE_TIMEOUT_BUFFER;
+        targetUnitOracleTimeout = targetUnitOracleTimeout_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

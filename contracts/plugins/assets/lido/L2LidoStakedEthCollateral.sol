@@ -52,13 +52,13 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
         require(_refPerTokenChainlinkTimeout != 0, "refPerTokenTimeout zero");
 
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
-        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
+        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
 
         uoaPerTargetChainlinkFeed = _uoaPerTargetChainlinkFeed;
-        uoaPerTargetChainlinkTimeout = _uoaPerTargetChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
+        uoaPerTargetChainlinkTimeout = _uoaPerTargetChainlinkTimeout;
 
         refPerTokenChainlinkFeed = _refPerTokenChainlinkFeed;
-        refPerTokenChainlinkTimeout = _refPerTokenChainlinkTimeout + ORACLE_TIMEOUT_BUFFER;
+        refPerTokenChainlinkTimeout = _refPerTokenChainlinkTimeout;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
