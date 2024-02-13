@@ -28,7 +28,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../fixtures'
@@ -120,13 +120,13 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         oracleError: ORACLE_ERROR,
         erc20: wbtc.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: DECAY_DELAY,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
-      DECAY_DELAY
+      ORACLE_TIMEOUT
     )
 
     // cWBTC
@@ -142,13 +142,13 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         oracleError: ORACLE_ERROR,
         erc20: cWBTC.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: DECAY_DELAY,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
-      DECAY_DELAY,
+      ORACLE_TIMEOUT,
       REVENUE_HIDING
     )
 

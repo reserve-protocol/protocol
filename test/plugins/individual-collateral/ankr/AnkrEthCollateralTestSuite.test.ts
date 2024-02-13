@@ -17,7 +17,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   PRICE_TIMEOUT,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
@@ -51,7 +51,7 @@ export const defaultAnkrETHCollateralOpts: AnkrETHCollateralOpts = {
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
-  oracleTimeout: DECAY_DELAY,
+  oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
@@ -75,7 +75,7 @@ export const deployCollateral = async (
     opts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
   }
   if (opts.targetPerTokChainlinkTimeout === undefined) {
-    opts.targetPerTokChainlinkTimeout = DECAY_DELAY
+    opts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
   }
 
   const AnkrETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -137,7 +137,7 @@ const makeCollateralFixtureContext = (
       await MockV3AggregatorFactory.deploy(18, targetPerTokChainlinkDefaultAnswer)
     )
     collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
-    collateralOpts.targetPerTokChainlinkTimeout = DECAY_DELAY
+    collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
 
     const ankreth = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
     const collateral = await deployCollateral(collateralOpts)

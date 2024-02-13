@@ -28,7 +28,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 
@@ -123,7 +123,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       oracleError: ORACLE_ERROR,
       erc20: token0.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: DECAY_DELAY,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,

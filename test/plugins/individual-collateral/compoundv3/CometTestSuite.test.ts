@@ -36,7 +36,7 @@ import {
 import {
   forkNetwork,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   COMP,
   CUSDC_V3,
@@ -84,7 +84,7 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   rewardERC20: COMP,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: USDC_USD_PRICE_FEED,
-  oracleTimeout: DECAY_DELAY,
+  oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,

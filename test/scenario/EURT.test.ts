@@ -26,7 +26,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
@@ -108,13 +108,13 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
         oracleError: ORACLE_ERROR,
         erc20: eurt.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: DECAY_DELAY,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('EUR'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
-      DECAY_DELAY
+      ORACLE_TIMEOUT
     )
 
     // Basket configuration

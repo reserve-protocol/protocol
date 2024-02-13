@@ -6,7 +6,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   MAX_TRADE_VOL,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   CBETH_ETH_EXCHANGE_RATE_FEED_BASE,
   FORK_BLOCK_BASE,
@@ -61,9 +61,9 @@ export const deployCollateral = async (
     },
     opts.revenueHiding,
     opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED_BASE,
-    opts.targetPerTokChainlinkTimeout ?? DECAY_DELAY,
+    opts.targetPerTokChainlinkTimeout ?? ORACLE_TIMEOUT,
     opts.exchangeRateChainlinkFeed ?? CBETH_ETH_EXCHANGE_RATE_FEED_BASE,
-    opts.exchangeRateChainlinkTimeout ?? DECAY_DELAY,
+    opts.exchangeRateChainlinkTimeout ?? ORACLE_TIMEOUT,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -103,13 +103,13 @@ const makeCollateralFixtureContext = (
       await MockV3AggregatorFactory.deploy(18, targetPerTokChainlinkDefaultAnswer)
     )
     collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
-    collateralOpts.targetPerTokChainlinkTimeout = DECAY_DELAY
+    collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
 
     const exchangeRateChainlinkFeed = <MockV3Aggregator>(
       await MockV3AggregatorFactory.deploy(18, exchangeRateChainlinkFeedDefaultAnswer)
     )
     collateralOpts.exchangeRateChainlinkFeed = exchangeRateChainlinkFeed.address
-    collateralOpts.exchangeRateChainlinkTimeout = DECAY_DELAY
+    collateralOpts.exchangeRateChainlinkTimeout = ORACLE_TIMEOUT
 
     const cbETH = (await ethers.getContractAt('ICBEth', CB_ETH_BASE)) as unknown as ICBEth
     const collateral = await deployCollateral(collateralOpts)
@@ -246,7 +246,7 @@ export const defaultCBEthCollateralL2Opts: CollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED_BASE,
-  oracleTimeout: DECAY_DELAY,
+  oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,

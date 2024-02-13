@@ -34,7 +34,9 @@ import {
 
 export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
-export const DECAY_DELAY = ORACLE_TIMEOUT.add(300)
+export const ORACLE_TIMEOUT_BUFFER = 300
+
+export const DECAY_DELAY = ORACLE_TIMEOUT.add(ORACLE_TIMEOUT_BUFFER)
 
 export type Fixture<T> = () => Promise<T>
 
@@ -117,7 +119,7 @@ export const getDefaultFixture = async function (salt: string) {
       ORACLE_ERROR,
       rsr.address,
       fp('1e6'), // max trade volume
-      DECAY_DELAY
+      ORACLE_TIMEOUT
     )
 
     // Create Deployer

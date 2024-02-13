@@ -28,7 +28,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 
@@ -103,7 +103,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       oracleError: ORACLE_ERROR,
       erc20: weth.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: DECAY_DELAY,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: bn(0),
       delayUntilDefault: DELAY_UNTIL_DEFAULT,

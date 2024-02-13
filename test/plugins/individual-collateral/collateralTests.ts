@@ -7,7 +7,13 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
-import { DefaultFixture, Fixture, getDefaultFixture, DECAY_DELAY } from './fixtures'
+import {
+  DefaultFixture,
+  Fixture,
+  getDefaultFixture,
+  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_BUFFER,
+} from './fixtures'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { whileImpersonating } from '../../utils/impersonation'
 import { IGovParams, IGovRoles, IRTokenSetup, networkConfig } from '../../../common/configuration'
@@ -225,9 +231,9 @@ export default function fn<X extends CollateralFixtureContext>(
         before(resetFork) // important for getting prices/refPerToks to behave predictably
 
         it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(oracleTimeout / 12)
+          const decayDelay = (await ctx.collateral.oracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceBlocks(decayDelay / 12)
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
@@ -339,9 +345,9 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
           // After oracle timeout decay begins
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(1 + oracleTimeout / 12)
+          const decayDelay = (await ctx.collateral.oracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceBlocks(1 + decayDelay / 12)
           await collateral.refresh()
           await expectDecayedPrice(collateral.address)
 
@@ -430,7 +436,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(p[0]).to.equal(savedLow)
           expect(p[1]).to.equal(savedHigh)
 
-          await advanceTime(DECAY_DELAY.toString())
+          await advanceTime((await collateral.oracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await collateral.priceTimeout()
@@ -939,9 +945,9 @@ export default function fn<X extends CollateralFixtureContext>(
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: chainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: erc20.address,
+            oracleTimeout: ORACLE_TIMEOUT,
             maxTradeVolume: MAX_UINT192,
-            oracleTimeout: DECAY_DELAY,
+            erc20: erc20.address,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: fp('0.01'), // 1%
             delayUntilDefault: bn('86400'), // 24h,
@@ -969,7 +975,7 @@ export default function fn<X extends CollateralFixtureContext>(
             oracleError: ORACLE_ERROR,
             erc20: erc20.address,
             maxTradeVolume: MAX_UINT192,
-            oracleTimeout: DECAY_DELAY,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: fp('0'), // 0%
             delayUntilDefault: bn('0'), // 0,
@@ -1000,13 +1006,13 @@ export default function fn<X extends CollateralFixtureContext>(
               oracleError: ORACLE_ERROR,
               erc20: erc20.address,
               maxTradeVolume: MAX_UINT192,
-              oracleTimeout: DECAY_DELAY,
+              oracleTimeout: ORACLE_TIMEOUT,
               targetName: ethers.utils.formatBytes32String('BTC'),
               defaultThreshold: fp('0.01'), // 1%
               delayUntilDefault: bn('86400'), // 24h,
             },
             targetUnitOracle.address,
-            DECAY_DELAY
+            ORACLE_TIMEOUT
           )
         } else {
           throw new Error(`Unknown target: ${target}`)

@@ -26,7 +26,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  DECAY_DELAY,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
@@ -110,13 +110,13 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
         oracleError: ORACLE_ERROR,
         erc20: wbtc.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: DECAY_DELAY,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
-      DECAY_DELAY
+      ORACLE_TIMEOUT
     )
 
     // Backup
