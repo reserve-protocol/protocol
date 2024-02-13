@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CollateralConfig, MorphoFiatCollateral } from "./MorphoFiatCollateral.sol";
 import { FixLib, CEIL } from "../../../libraries/Fixed.sol";
 import { OracleLib } from "../OracleLib.sol";
@@ -59,5 +60,12 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
+    }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return uint48(Math.max(oracleTimeout, targetUnitOracleTimeout));
     }
 }

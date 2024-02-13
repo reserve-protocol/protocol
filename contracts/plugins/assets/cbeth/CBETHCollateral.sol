@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
@@ -69,5 +70,12 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return _safeWrap(ICBEth(address(erc20)).exchangeRate());
+    }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return uint48(Math.max(oracleTimeout, targetPerTokChainlinkTimeout));
     }
 }

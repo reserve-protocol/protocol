@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FIX_MAX, FixLib, _safeWrap } from "../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "./OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "./AppreciatingFiatCollateral.sol";
@@ -101,5 +102,12 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return exchangeRateChainlinkFeed.price(exchangeRateChainlinkTimeout);
+    }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return uint48(Math.max(oracleTimeout, exchangeRateChainlinkTimeout));
     }
 }

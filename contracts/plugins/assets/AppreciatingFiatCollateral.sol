@@ -19,6 +19,7 @@ import "./OracleLib.sol";
  *   - refPerTok()
  *   - targetPerRef()
  *   - claimRewards()
+ *   - _decayDelay()
  * Should not have to re-implement any other methods.
  *
  * Can intentionally disable default checks by setting config.defaultThreshold to 0

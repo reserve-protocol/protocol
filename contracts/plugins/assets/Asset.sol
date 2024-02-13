@@ -41,9 +41,7 @@ contract Asset is IAsset, VersionedAsset {
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @dev oracleTimeout_ is also used as the timeout value in price(), should be highest of
-    ///      all assets' oracleTimeout in a collateral if there are multiple oracles
+    /// @param oracleTimeout_ {s} The number of seconds until the chainlinkFeed becomes invalid
     constructor(
         uint48 priceTimeout_,
         AggregatorV3Interface chainlinkFeed_,
@@ -117,12 +115,12 @@ contract Asset is IAsset, VersionedAsset {
     /// @return _low {UoA/tok} The lower end of the price estimate
     /// @return _high {UoA/tok} The upper end of the price estimate
     /// @notice If the price feed is broken, _low will decay downwards and _high will decay upwards
-    ///     If tryPrice() is broken for more than `oracleTimeout + priceTimeout` seconds,
+    ///     If tryPrice() is broken for more than `decayDelay + priceTimeout` seconds,
     ///     _low will be 0 and _high will be FIX_MAX.
-    ///     Because the price decay begins at `oracleTimeout` seconds and not `updateTime` from the
-    ///     price feed, the price feed can be broken for up to `2 * oracleTimeout` seconds without
+    ///     Because the price decay begins at `decayDelay` seconds and not `updateTime` from the
+    ///     price feed, the price feed can be broken for up to `2 * decayDelay` seconds without
     ///     affecting the price estimate.  This could happen if the Asset is refreshed just before
-    ///     the oracleTimeout is reached, forcing a second period of oracleTimeout to pass before
+    ///     the decayDelay is reached, forcing a second period of decayDelay to pass before
     ///     the price begins to decay.
     function price() public view virtual returns (uint192 _low, uint192 _high) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
@@ -136,20 +134,21 @@ contract Asset is IAsset, VersionedAsset {
             // if the price feed is broken, decay _low downwards and _high upwards
 
             uint48 delta = uint48(block.timestamp) - lastSave; // {s}
-            if (delta <= oracleTimeout) {
-                // use saved prices for at least the oracleTimeout
+            uint48 decayDelay = _decayDelay(); // {s}
+            if (delta <= decayDelay) {
+                // use saved prices for at least the decayDelay
                 _low = savedLowPrice;
                 _high = savedHighPrice;
-            } else if (delta >= oracleTimeout + priceTimeout) {
+            } else if (delta >= decayDelay + priceTimeout) {
                 // unpriced after a full timeout
                 return (0, FIX_MAX);
             } else {
-                // oracleTimeout <= delta <= oracleTimeout + priceTimeout
+                // decayDelay <= delta <= decayDelay + priceTimeout
 
                 // Decay _high upwards to 3x savedHighPrice
                 // {UoA/tok} = {UoA/tok} * {1}
                 _high = savedHighPrice.safeMul(
-                    FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - oracleTimeout, priceTimeout),
+                    FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay, priceTimeout),
                     ROUND
                 ); // during overflow should not revert
 
@@ -157,10 +156,7 @@ contract Asset is IAsset, VersionedAsset {
                 if (_high != FIX_MAX) {
                     // Decay _low downwards from savedLowPrice to 0
                     // {UoA/tok} = {UoA/tok} * {1}
-                    _low = savedLowPrice.muluDivu(
-                        oracleTimeout + priceTimeout - delta,
-                        priceTimeout
-                    );
+                    _low = savedLowPrice.muluDivu(decayDelay + priceTimeout - delta, priceTimeout);
                     // during overflow should revert since a FIX_MAX _low breaks everything
                 }
             }
@@ -194,4 +190,11 @@ contract Asset is IAsset, VersionedAsset {
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual returns (uint48) {
+        return oracleTimeout;
+    }
 }

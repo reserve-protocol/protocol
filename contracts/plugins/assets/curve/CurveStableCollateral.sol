@@ -174,4 +174,11 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     function _anyDepeggedOutsidePool() internal view virtual returns (bool) {
         return false;
     }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return maxOracleTimeout();
+    }
 }

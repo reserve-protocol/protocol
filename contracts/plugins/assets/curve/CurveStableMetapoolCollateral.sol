@@ -174,4 +174,9 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         aumLow += lowPaired.mul(pairedBal, FLOOR);
         aumHigh += highPaired.mul(pairedBal, CEIL);
     }
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return uint48(Math.max(oracleTimeout, maxOracleTimeout()));
+    }
 }

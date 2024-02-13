@@ -71,4 +71,11 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
     function underlyingRefPerTok() public view override returns (uint192) {
         return FIX_ONE.div(_safeWrap(IAnkrETH(address(erc20)).ratio()), FLOOR);
     }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return uint48(Math.max(oracleTimeout, targetPerTokChainlinkTimeout));
+    }
 }

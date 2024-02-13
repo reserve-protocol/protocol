@@ -31,6 +31,7 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
     uint48 public immutable refPerTokenChainlinkTimeout; // {s}
 
     /// @param config.chainlinkFeed - ignored
+    /// @param config.oracleTimeout - ignored
     /// @param config.oracleError {1} Should be the oracle error for UoA/tok
     constructor(
         CollateralConfig memory config,
@@ -93,5 +94,18 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return refPerTokenChainlinkFeed.price(refPerTokenChainlinkTimeout);
+    }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return
+            uint48(
+                Math.max(
+                    Math.max(targetPerRefChainlinkTimeout, uoaPerTargetChainlinkTimeout),
+                    refPerTokenChainlinkTimeout
+                )
+            );
     }
 }

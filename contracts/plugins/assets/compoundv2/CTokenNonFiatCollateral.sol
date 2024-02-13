@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../OracleLib.sol";
 import "./CTokenFiatCollateral.sol";
@@ -60,5 +61,12 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         low = p - err;
         high = p + err;
         // assert(low <= high); obviously true just by inspection
+    }
+
+    // === Internal ===
+
+    /// @dev Override to return the maximum of ALL oracle timeouts
+    function _decayDelay() internal view virtual override returns (uint48) {
+        return uint48(Math.max(oracleTimeout, targetUnitOracleTimeout));
     }
 }
