@@ -12,7 +12,7 @@ Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTra
 
 If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
 
-For plugins, upgrade all plugins that contain an appreciating asset (not FiatCollateral. AppreciatingFiatCollateral etc).
+For plugins, upgrade all plugins that contain an appreciating asset (not FiatCollateral. AppreciatingFiatCollateral etc) OR contain multiple oracle feeds.
 
 ## Core Protocol Contracts
 
@@ -41,6 +41,7 @@ New governance param added: `reweightable`
 - frax-eth: Add new `sFrxETH` plugin that leverages a curve EMA
 - stargate: Continue transfers of wrapper tokens if stargate rewards break
 - All plugins with variable refPerTok(): do no revert refresh() when underlying protocol reverts
+- Add ORACLE_TIMEOUT_BUFFER to all usages of chainlink feeds
 
 ### Trading
 
