@@ -7,8 +7,6 @@ import "../../interfaces/IAsset.sol";
 import "./OracleLib.sol";
 import "./VersionedAsset.sol";
 
-uint48 constant ORACLE_TIMEOUT_BUFFER = 300; // {s} 5 minutes
-
 contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
@@ -64,7 +62,7 @@ contract Asset is IAsset, VersionedAsset {
         erc20 = erc20_;
         erc20Decimals = erc20.decimals();
         maxTradeVolume = maxTradeVolume_;
-        oracleTimeout = oracleTimeout_ + ORACLE_TIMEOUT_BUFFER; // add 300s as a buffer
+        oracleTimeout = oracleTimeout_;
         decayDelay = oracleTimeout_; // should be set to max over all oracle timeouts
     }
 
@@ -118,10 +116,10 @@ contract Asset is IAsset, VersionedAsset {
     /// @return _low {UoA/tok} The lower end of the price estimate
     /// @return _high {UoA/tok} The upper end of the price estimate
     /// @notice If the price feed is broken, _low will decay downwards and _high will decay upwards
-    ///     If tryPrice() is broken for more than `decayDelay + priceTimeout` seconds,
+    ///     If tryPrice() is broken for `oracleTimeout + priceTimeout + ORACLE_TIMEOUT_BUFFER` ,
     ///     _low will be 0 and _high will be FIX_MAX.
-    ///     Because the price decay begins at `decayDelay` seconds and not `updateTime` from the
-    ///     price feed, the price feed can be broken for up to `2 * decayDelay` seconds without
+    ///     Because the price decay begins at `oracleTimeout + ORACLE_TIMEOUT_BUFFER` seconds,
+    ///     the price feed can be broken for up to `2 * oracleTimeout` seconds without
     ///     affecting the price estimate.  This could happen if the Asset is refreshed just before
     ///     the decayDelay is reached, forcing a second period of decayDelay to pass before
     ///     the price begins to decay.
@@ -137,20 +135,21 @@ contract Asset is IAsset, VersionedAsset {
             // if the price feed is broken, decay _low downwards and _high upwards
 
             uint48 delta = uint48(block.timestamp) - lastSave; // {s}
-            if (delta <= decayDelay) {
-                // use saved prices for at least the decayDelay
+            uint48 decayDelay_ = decayDelay + OracleLib.ORACLE_TIMEOUT_BUFFER;
+            if (delta <= decayDelay_) {
+                // use saved prices for at least the decayDelay_
                 _low = savedLowPrice;
                 _high = savedHighPrice;
-            } else if (delta >= decayDelay + priceTimeout) {
+            } else if (delta >= decayDelay_ + priceTimeout) {
                 // unpriced after a full timeout
                 return (0, FIX_MAX);
             } else {
-                // decayDelay <= delta <= decayDelay + priceTimeout
+                // decayDelay_ <= delta <= decayDelay_ + priceTimeout
 
                 // Decay _high upwards to 3x savedHighPrice
                 // {UoA/tok} = {UoA/tok} * {1}
                 _high = savedHighPrice.safeMul(
-                    FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay, priceTimeout),
+                    FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay_, priceTimeout),
                     ROUND
                 ); // during overflow should not revert
 
@@ -158,7 +157,7 @@ contract Asset is IAsset, VersionedAsset {
                 if (_high != FIX_MAX) {
                     // Decay _low downwards from savedLowPrice to 0
                     // {UoA/tok} = {UoA/tok} * {1}
-                    _low = savedLowPrice.muluDivu(decayDelay + priceTimeout - delta, priceTimeout);
+                    _low = savedLowPrice.muluDivu(decayDelay_ + priceTimeout - delta, priceTimeout);
                     // during overflow should revert since a FIX_MAX _low breaks everything
                 }
             }
