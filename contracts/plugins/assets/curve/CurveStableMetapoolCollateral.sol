@@ -83,6 +83,24 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
             uint192 pegPrice
         )
     {
+        // Assumption: the pool is balanced
+        //
+        // This pricing method returns a MINIMUM when the pool is balanced.
+        // It IS possible to interact with the protocol within a sandwich to manipulate
+        // LP token price upwards.
+        //
+        // However:
+        //    - Lots of manipulation is required;
+        //        (StableSwap pools are not price sensitive until the edge of the curve)
+        //    - The DutchTrade pricing curve accounts for small/medium amounts of manipulation
+        //    - The manipulator is under competition in auctions, so cannot guarantee they
+        //        are the beneficiary of the manipulation.
+        //
+        // To be more MEV-resistant requires not using spot balances at all, which means one-of:
+        //   1. A moving average metric (unavailable in the cases we care about)
+        //   2. Mapping oracle prices to expected pool balances using precise knowledge about
+        //      the shape of the trading curve. (maybe we can do this in the future)
+
         // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
         require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
