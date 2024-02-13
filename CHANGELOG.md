@@ -40,7 +40,8 @@ New governance param added: `reweightable`
 
 - frax-eth: Add new `sFrxETH` plugin that leverages a curve EMA
 - stargate: Continue transfers of wrapper tokens if stargate rewards break
-- All plugins with variable refPerTok(): do no revert refresh() when underlying protocol reverts
+- All plugins with variable refPerTok(): do not revert refresh() when underlying protocol reverts
+- All plugins with multiple chainlink feeds will now timeout over the maximum of the feeds' timeouts
 
 ### Trading
 
