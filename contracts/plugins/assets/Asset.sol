@@ -33,9 +33,11 @@ contract Asset is IAsset, VersionedAsset {
 
     uint192 public savedLowPrice; // {UoA/tok} The low price of the token during the last update
 
+    uint48 public lastSave; // {s} The timestamp when prices were last saved
+
     uint192 public savedHighPrice; // {UoA/tok} The high price of the token during the last update
 
-    uint48 public lastSave; // {s} The timestamp when prices were last saved
+    uint48 internal decayDelay; // {s} how long to use the lastSavedPrice before starting decay
 
     /// @param priceTimeout_ {s} The number of seconds over which savedHighPrice decays to 0
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
@@ -63,6 +65,7 @@ contract Asset is IAsset, VersionedAsset {
         erc20Decimals = erc20.decimals();
         maxTradeVolume = maxTradeVolume_;
         oracleTimeout = oracleTimeout_ + ORACLE_TIMEOUT_BUFFER; // add 300s as a buffer
+        decayDelay = oracleTimeout_; // should be set to max over all oracle timeouts
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -134,7 +137,6 @@ contract Asset is IAsset, VersionedAsset {
             // if the price feed is broken, decay _low downwards and _high upwards
 
             uint48 delta = uint48(block.timestamp) - lastSave; // {s}
-            uint48 decayDelay = _decayDelay(); // {s}
             if (delta <= decayDelay) {
                 // use saved prices for at least the decayDelay
                 _low = savedLowPrice;
@@ -190,11 +192,4 @@ contract Asset is IAsset, VersionedAsset {
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual returns (uint48) {
-        return oracleTimeout;
-    }
 }

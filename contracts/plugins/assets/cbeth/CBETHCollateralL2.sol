@@ -46,6 +46,7 @@ contract CBEthCollateralL2 is L2LSDCollateral {
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        decayDelay = uint48(Math.max(decayDelay, _targetPerTokChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -74,12 +75,5 @@ contract CBEthCollateralL2 is L2LSDCollateral {
 
         // {target/ref} = {target/tok} / {ref/tok}
         pegPrice = targetPerTok.div(underlyingRefPerTok());
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return uint48(Math.max(oracleTimeout, targetPerTokChainlinkTimeout));
     }
 }

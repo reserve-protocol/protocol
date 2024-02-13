@@ -36,6 +36,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        decayDelay = uint48(Math.max(decayDelay, _targetPerTokChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -69,12 +70,5 @@ contract RethCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return _safeWrap(IReth(address(erc20)).getExchangeRate());
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return uint48(Math.max(oracleTimeout, targetPerTokChainlinkTimeout));
     }
 }

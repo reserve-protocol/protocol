@@ -36,6 +36,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         PTConfiguration memory ptConfig
     ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
+        decayDelay = uint48(Math.max(decayDelay, maxOracleTimeout()));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -173,12 +174,5 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // Override this in child classes to implement metapools
     function _anyDepeggedOutsidePool() internal view virtual returns (bool) {
         return false;
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return maxOracleTimeout();
     }
 }

@@ -34,6 +34,7 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        decayDelay = uint48(Math.max(decayDelay, targetUnitOracleTimeout_));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -61,12 +62,5 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         low = p - err;
         high = p + err;
         // assert(low <= high); obviously true just by inspection
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return uint48(Math.max(oracleTimeout, targetUnitOracleTimeout));
     }
 }

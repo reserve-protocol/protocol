@@ -26,7 +26,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     uint48 public immutable targetPerRefChainlinkTimeout; // {s}
 
     /// @param config.chainlinkFeed {UoA/ref}
-    /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/tok} feede
+    /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/tok} feed
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
@@ -40,6 +40,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
         targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
+        decayDelay = uint48(Math.max(decayDelay, targetPerRefChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -73,12 +74,5 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         uint256 rate = IWSTETH(address(erc20)).stEthPerToken();
 
         return _safeWrap(rate);
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return uint48(Math.max(oracleTimeout, targetPerRefChainlinkTimeout));
     }
 }

@@ -35,6 +35,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
 
         exchangeRateChainlinkFeed = _exchangeRateChainlinkFeed;
         exchangeRateChainlinkTimeout = _exchangeRateChainlinkTimeout;
+        decayDelay = uint48(Math.max(decayDelay, _exchangeRateChainlinkTimeout));
     }
 
     /// Should not revert
@@ -102,12 +103,5 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return exchangeRateChainlinkFeed.price(exchangeRateChainlinkTimeout);
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return uint48(Math.max(oracleTimeout, exchangeRateChainlinkTimeout));
     }
 }

@@ -32,6 +32,7 @@ contract EURFiatCollateral is FiatCollateral {
 
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        decayDelay = uint48(Math.max(decayDelay, targetUnitOracleTimeout_));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -66,12 +67,5 @@ contract EURFiatCollateral is FiatCollateral {
 
         // {target/ref} = {UoA/ref} / {UoA/target}
         pegPrice = pricePerRef.div(pricePerTarget);
-    }
-
-    // === Internal ===
-
-    /// @dev Override to return the maximum of ALL oracle timeouts
-    function _decayDelay() internal view virtual override returns (uint48) {
-        return uint48(Math.max(oracleTimeout, targetUnitOracleTimeout));
     }
 }
