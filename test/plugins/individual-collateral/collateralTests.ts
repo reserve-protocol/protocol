@@ -90,6 +90,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksNonZeroDefaultThreshold,
     itHasRevenueHiding,
     itIsPricedByPeg,
+    itHasOracleRefPerTok,
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
@@ -235,7 +236,11 @@ export default function fn<X extends CollateralFixtureContext>(
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
           await advanceBlocks(decayDelay / 12)
           await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          expect(await collateral.status()).to.not.equal(CollateralStatus.SOUND)
+          if (!itHasOracleRefPerTok) {
+            // if an oracle isn't involved in refPerTok, then it should disable slowly
+            expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          }
         })
 
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
