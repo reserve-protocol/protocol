@@ -283,6 +283,7 @@ const opts = {
   collateralName: 'L2LidoStakedETH',
   chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
   itIsPricedByPeg: true,
+  itHasOracleRefPerTok: true,
   targetNetwork: 'base',
   toleranceDivisor: bn('1e2'),
 }

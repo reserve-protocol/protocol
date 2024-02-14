@@ -573,7 +573,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
       STG: '0x63Af8341b62E683B87bB540896bF283D96B4D385',
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
-      ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 10min
+      ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock

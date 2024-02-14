@@ -31,6 +31,7 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
     uint48 public immutable refPerTokenChainlinkTimeout; // {s}
 
     /// @param config.chainlinkFeed - ignored
+    /// @param config.oracleTimeout - ignored
     /// @param config.oracleError {1} Should be the oracle error for UoA/tok
     constructor(
         CollateralConfig memory config,
@@ -59,6 +60,12 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
         refPerTokenChainlinkFeed = _refPerTokenChainlinkFeed;
         refPerTokenChainlinkTimeout = _refPerTokenChainlinkTimeout;
+        maxOracleTimeout = uint48(
+            Math.max(
+                Math.max(maxOracleTimeout, _targetPerRefChainlinkTimeout),
+                Math.max(_uoaPerTargetChainlinkTimeout, _refPerTokenChainlinkTimeout)
+            )
+        );
     }
 
     /// Can revert, used by other contract functions in order to catch errors

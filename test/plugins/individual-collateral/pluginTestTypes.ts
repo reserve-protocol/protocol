@@ -109,6 +109,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   // does the peg price matter for the results of tryPrice()?
   itIsPricedByPeg?: boolean
 
+  // is an oracle that could go stale involved in refPerTok?
+  itHasOracleRefPerTok?: boolean
+
   // a function to reset the fork to a desired block
   resetFork: () => void
 

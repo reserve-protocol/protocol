@@ -32,9 +32,11 @@ import {
   RecollateralizationLibP1,
 } from '../../../typechain'
 
-export const ORACLE_TIMEOUT_PRE_BUFFER = bn('500000000') // 5700d - large for tests only
+export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
-export const ORACLE_TIMEOUT = ORACLE_TIMEOUT_PRE_BUFFER.add(300)
+export const ORACLE_TIMEOUT_BUFFER = 300
+
+export const DECAY_DELAY = ORACLE_TIMEOUT.add(ORACLE_TIMEOUT_BUFFER)
 
 export type Fixture<T> = () => Promise<T>
 

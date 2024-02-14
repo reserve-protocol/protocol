@@ -49,7 +49,7 @@ import {
   IMPLEMENTATION,
   defaultFixture,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './fixtures'
 import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
@@ -284,7 +284,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
     it('Should handle UNPRICED when returning issuable quantities', async () => {
       // Set unpriced assets, should return UoA = 0
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
@@ -495,7 +495,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(tokenAsset.address, bn('1e8'))
       await setOraclePrice(usdcAsset.address, bn('1e8'))
       await assetRegistry.refresh()
@@ -523,7 +523,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(tokenAsset.address, bn('1e8'))
       await setOraclePrice(usdcAsset.address, bn('1e8'))
       await assetRegistry.refresh()
@@ -579,7 +579,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
 
       await setOraclePrice(usdcAsset.address, bn('0'))
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(tokenAsset.address, bn('1e8'))
       await setOraclePrice(rsrAsset.address, bn('1e8'))
       await assetRegistry.refresh()
@@ -913,7 +913,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       )
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(usdcAsset.address, bn('1e8'))
       await assetRegistry.refresh()
       await main.connect(owner).pauseTrading()
