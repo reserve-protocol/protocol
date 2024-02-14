@@ -309,37 +309,75 @@ library BasketLibP1 {
         }
     }
 
-    // === Contract-size saver ===
+    // === Contract-size savers ===
 
-    /// Require that newERC20s and newTargetAmts preserve the current config targets
+    /// Require that erc20s and targetAmts preserve the current config targets
+    /// @param _targetAmts Scratch space for computation; assumed to be empty
     function requireConstantConfigTargets(
         IAssetRegistry assetRegistry,
         BasketConfig storage config,
-        EnumerableMap.Bytes32ToUintMap storage targetAmts,
-        IERC20[] calldata newERC20s,
-        uint192[] calldata newTargetAmts
+        EnumerableMap.Bytes32ToUintMap storage _targetAmts,
+        IERC20[] calldata erc20s,
+        uint192[] calldata targetAmts
     ) external {
-        // Populate targetAmts mapping with old basket config
+        // Populate _targetAmts mapping with old basket config
         uint256 len = config.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
             IERC20 erc20 = config.erc20s[i];
             bytes32 targetName = config.targetNames[erc20];
-            (bool contains, uint256 amt) = targetAmts.tryGet(targetName);
-            targetAmts.set(
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            _targetAmts.set(
                 targetName,
                 contains ? amt + config.targetAmts[erc20] : config.targetAmts[erc20]
             );
         }
 
-        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
-        len = newERC20s.length;
+        // Require new basket is exactly equal to old basket, in terms of target amounts
+        len = erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
-            bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
-            (bool contains, uint256 amt) = targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new target weights");
-            if (amt > newTargetAmts[i]) targetAmts.set(targetName, amt - newTargetAmts[i]);
-            else targetAmts.remove(targetName);
+            bytes32 targetName = assetRegistry.toColl(erc20s[i]).targetName();
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            require(contains && amt >= targetAmts[i], "new target weights");
+            if (amt > targetAmts[i]) _targetAmts.set(targetName, amt - targetAmts[i]);
+            else _targetAmts.remove(targetName);
         }
-        require(targetAmts.length() == 0, "missing target weights");
+        require(_targetAmts.length() == 0, "missing target weights");
+    }
+
+    /// Normalize the target amounts to maintain constant UoA value with the current config
+    /// @param price {UoA/BU} Price of the reference basket (point estimate)
+    /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
+    function normalizeByPrice(
+        IAssetRegistry assetRegistry,
+        IERC20[] calldata erc20s,
+        uint192[] calldata targetAmts,
+        uint192 price
+    ) external view returns (uint192[] memory newTargetAmts) {
+        uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
+
+        // Rounding in this function should always be in favor of RToken holders
+
+        // Compute would-be new price
+        uint192 newPrice; // {UoA/BU}
+        for (uint256 i = 0; i < len; ++i) {
+            ICollateral coll = assetRegistry.toColl(erc20s[i]); // reverts if unregistered
+
+            (uint192 low, uint192 high) = coll.price(); // {UoA/tok}
+            require(low > 0 && high < FIX_MAX, "invalid price");
+
+            // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
+            newPrice += targetAmts[i].mulDiv(
+                (low + high) / 2,
+                coll.targetPerRef().mul(coll.refPerTok(), CEIL),
+                FLOOR
+            ); // revert on overflow
+        }
+
+        // Scale targetAmts by the price ratio
+        newTargetAmts = new uint192[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            // {target/BU} = {target/BU} * {UoA/BU} / {UoA/BU}
+            newTargetAmts[i] = targetAmts[i].mulDiv(price, newPrice, CEIL);
+        }
     }
 }

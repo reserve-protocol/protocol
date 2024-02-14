@@ -12,7 +12,7 @@ Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTra
 
 If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
 
-For plugins, upgrade all plugins that contain an appreciating asset (not FiatCollateral. AppreciatingFiatCollateral etc).
+For plugins, upgrade all plugins that contain an appreciating asset (not FiatCollateral. AppreciatingFiatCollateral etc) OR contain multiple oracle feeds.
 
 ## Core Protocol Contracts
 
@@ -25,6 +25,8 @@ New governance param added: `reweightable`
   - New `LastCollateralizedChanged()` event -- track to determine earliest basket nonce to use for `redeemCustom()`
   - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
   - Add `reweightable()` view
+  - Add `forceSetPrimeBasket()` to allow setting a new prime basket without normalizing by USD value
+  - Alter `setPrimeBasket()` to enforce basket normalization for reweightable RTokens
 - `BackingManager`
   - Minor gas optimization
 - `Deployer`
@@ -38,18 +40,15 @@ New governance param added: `reweightable`
 
 - frax-eth: Add new `sFrxETH` plugin that leverages a curve EMA
 - stargate: Continue transfers of wrapper tokens if stargate rewards break
-- All plugins with variable refPerTok(): do no revert refresh() when underlying protocol reverts
+- All plugins with variable refPerTok(): do not revert refresh() when underlying protocol reverts
+- All plugins with multiple chainlink feeds will now timeout over the maximum of the feeds' timeouts
+- Add ORACLE_TIMEOUT_BUFFER to all usages of chainlink feeds
 
 ### Trading
 
 - `DutchTrade`
 
-  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans
-
-- `DutchTradeRouter`
-- New contract to avoid needing to approve each new `DutchTrade` contract
-- `bid(DutchTrade trade, address recipient) retruns (Bid memory)`
-- `dutchTradeCallback(address buyToken, uint256 buyAmount, bytes calldata) external`
+  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans. Example of how-to-use in `contracts/plugins/mocks/DutchTradeRouter.sol`
 
 # 3.1.0
 

@@ -37,6 +37,7 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, _targetPerTokChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors

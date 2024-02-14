@@ -9,9 +9,10 @@ export const mintWSTETH = async (
   wsteth: IWSTETH,
   account: SignerWithAddress,
   amount: BigNumberish,
-  recipient: string
+  recipient: string,
+  whale: string = WSTETH_WHALE
 ) => {
-  await whileImpersonating(WSTETH_WHALE, async (wstethWhale) => {
+  await whileImpersonating(whale, async (wstethWhale) => {
     await wsteth.connect(wstethWhale).transfer(recipient, amount)
   })
 }
