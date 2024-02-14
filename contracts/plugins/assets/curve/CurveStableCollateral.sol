@@ -36,7 +36,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         PTConfiguration memory ptConfig
     ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
-        decayDelay = uint48(Math.max(decayDelay, maxOracleTimeout()));
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
 
     /// Can revert, used by other contract functions in order to catch errors

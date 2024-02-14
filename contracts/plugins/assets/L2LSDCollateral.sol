@@ -35,7 +35,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
 
         exchangeRateChainlinkFeed = _exchangeRateChainlinkFeed;
         exchangeRateChainlinkTimeout = _exchangeRateChainlinkTimeout;
-        decayDelay = uint48(Math.max(decayDelay, _exchangeRateChainlinkTimeout));
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, _exchangeRateChainlinkTimeout));
     }
 
     /// Should not revert

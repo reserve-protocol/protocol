@@ -33,7 +33,7 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
     ) MorphoFiatCollateral(config, revenueHiding) {
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
-        decayDelay = uint48(Math.max(decayDelay, targetUnitOracleTimeout_));
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetUnitOracleTimeout_));
     }
 
     /// Can revert, used by other contract functions in order to catch errors

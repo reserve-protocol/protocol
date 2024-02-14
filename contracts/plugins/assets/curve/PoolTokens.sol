@@ -299,7 +299,7 @@ contract PoolTokens {
         return balances;
     }
 
-    function maxOracleTimeout() internal view virtual returns (uint48) {
+    function maxPoolOracleTimeout() internal view virtual returns (uint48) {
         return
             uint48(
                 Math.max(Math.max(_t0timeout1, _t1timeout1), Math.max(_t2timeout1, _t3timeout1))

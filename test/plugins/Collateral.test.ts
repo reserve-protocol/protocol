@@ -1834,7 +1834,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          DECAY_DELAY,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING
         )
       )
@@ -1863,7 +1863,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         invalidChainlinkFeed.address,
-        DECAY_DELAY,
+        ORACLE_TIMEOUT,
         REVENUE_HIDING
       )
 
@@ -2369,7 +2369,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         targetUnitOracle.address,
-        DECAY_DELAY
+        ORACLE_TIMEOUT
       )
       await eurFiatCollateral.refresh()
 
@@ -2392,7 +2392,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: bn(0),
           },
           targetUnitOracle.address,
-          DECAY_DELAY
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
@@ -2412,7 +2412,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           ZERO_ADDRESS,
-          DECAY_DELAY
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('missing targetUnit feed')
     })
@@ -2432,7 +2432,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          DECAY_DELAY
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('missing chainlink feed')
     })
@@ -2472,7 +2472,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          DECAY_DELAY
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('defaultThreshold zero')
     })

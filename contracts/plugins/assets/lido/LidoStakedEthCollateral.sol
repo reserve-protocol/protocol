@@ -40,7 +40,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
         targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
-        decayDelay = uint48(Math.max(decayDelay, targetPerRefChainlinkTimeout));
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetPerRefChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors

@@ -60,9 +60,9 @@ contract L2LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
         refPerTokenChainlinkFeed = _refPerTokenChainlinkFeed;
         refPerTokenChainlinkTimeout = _refPerTokenChainlinkTimeout;
-        decayDelay = uint48(
+        maxOracleTimeout = uint48(
             Math.max(
-                Math.max(decayDelay, targetPerRefChainlinkTimeout),
+                Math.max(maxOracleTimeout, targetPerRefChainlinkTimeout),
                 Math.max(uoaPerTargetChainlinkTimeout, refPerTokenChainlinkTimeout)
             )
         );

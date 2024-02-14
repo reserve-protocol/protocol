@@ -231,7 +231,7 @@ export default function fn<X extends CollateralFixtureContext>(
         before(resetFork) // important for getting prices/refPerToks to behave predictably
 
         it('enters IFFY state when price becomes stale', async () => {
-          const decayDelay = (await ctx.collateral.oracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          const decayDelay = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
           await advanceBlocks(decayDelay / 12)
           await collateral.refresh()
@@ -345,7 +345,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
           // After oracle timeout decay begins
-          const decayDelay = (await ctx.collateral.oracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          const decayDelay = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
           await advanceBlocks(1 + decayDelay / 12)
           await collateral.refresh()
@@ -436,7 +436,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(p[0]).to.equal(savedLow)
           expect(p[1]).to.equal(savedHigh)
 
-          await advanceTime((await collateral.oracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
+          await advanceTime((await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await collateral.priceTimeout()
@@ -613,14 +613,16 @@ export default function fn<X extends CollateralFixtureContext>(
           })
 
           it('after oracle timeout', async () => {
-            const oracleTimeout = await collateral.oracleTimeout()
+            const oracleTimeout = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
             await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
             await advanceBlocks(oracleTimeout / 12)
           })
 
           it('after full price timeout', async () => {
             await advanceTime(
-              (await collateral.priceTimeout()) + (await collateral.oracleTimeout())
+              ORACLE_TIMEOUT_BUFFER +
+                (await collateral.priceTimeout()) +
+                (await collateral.maxOracleTimeout())
             )
             const p = await collateral.price()
             expect(p[0]).to.equal(0)
