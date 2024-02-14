@@ -28,6 +28,21 @@ contract FacadeRead is IFacadeRead {
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256) {
+        (address[] memory erc20s, ) = rToken.main().basketHandler().quote(FIX_ONE, FLOOR);
+        uint256[] memory balances = new uint256[](erc20s.length);
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            balances[i] = IERC20(erc20s[i]).balanceOf(account);
+        }
+        return maxIssuableByAmounts(rToken, balances);
+    }
+
+    /// @param amounts {qTok} The balances of each basket ERC20 to assume
+    /// @return {qRTok} How many RToken `account` can issue given current holdings
+    /// @custom:static-call
+    function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
+        public
+        returns (uint256)
+    {
         IMain main = rToken.main();
 
         require(!main.frozen(), "frozen");
@@ -35,19 +50,24 @@ contract FacadeRead is IFacadeRead {
         // Poke Main
         main.assetRegistry().refresh();
 
-        // {BU}
-        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
-        uint192 needed = rToken.basketsNeeded();
+        // Get basket ERC20s
+        IBasketHandler bh = main.basketHandler();
+        if (!bh.isReady()) return 0;
+        (address[] memory erc20s, uint256[] memory quantities) = bh.quote(FIX_ONE, CEIL);
 
-        int8 decimals = int8(rToken.decimals());
+        // Compute how many baskets we can mint with the collateral amounts
+        uint192 baskets = type(uint192).max;
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            // {BU} = {tok} / {tok/BU}
+            uint192 inBUs = divuu(amounts[i], quantities[i]); // FLOOR
+            baskets = fixMin(baskets, inBUs);
+        }
 
-        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (needed.eq(FIX_ZERO)) return basketsHeld.bottom.shiftl_toUint(decimals);
-
-        uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
-
-        // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
-        return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
+        // Convert baskets to RToken
+        // {qRTok} = {qRTok/BU} * {qRTok} / {BU}
+        uint256 totalSupply = rToken.totalSupply();
+        if (totalSupply == 0) return baskets;
+        return baskets.muluDivu(rToken.basketsNeeded(), rToken.totalSupply(), FLOOR);
     }
 
     /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
@@ -419,5 +439,7 @@ contract FacadeRead is IFacadeRead {
             erc20s[i] = unfiltered[i];
         }
     }
+
+    // === Internal ===
 }
 // slither-disable-end
