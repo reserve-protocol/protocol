@@ -121,7 +121,7 @@ contract Asset is IAsset, VersionedAsset {
     ///     Because the price decay begins at `oracleTimeout + ORACLE_TIMEOUT_BUFFER` seconds,
     ///     the price feed can be broken for up to `2 * oracleTimeout` seconds without
     ///     affecting the price estimate.  This could happen if the Asset is refreshed just before
-    ///     the maxOracleTimeout is reached, forcing a second period of maxOracleTimeout to pass before
+    ///     the maxOracleTimeout is reached, forcing a second period to pass before
     ///     the price begins to decay.
     function price() public view virtual returns (uint192 _low, uint192 _high) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
