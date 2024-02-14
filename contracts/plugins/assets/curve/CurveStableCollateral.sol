@@ -86,12 +86,13 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
-        // {ref/tok}
-        uint192 underlyingRefPerTok_ = underlyingRefPerTok();
+        // {tok}
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        // We can always assume that the total supply is non-zero
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        low = low.mul(underlyingRefPerTok_, FLOOR);
-        high = high.mul(underlyingRefPerTok_, CEIL);
+        // {UoA/tok} = {UoA} / {tok}
+        low = aumLow.div(supply, FLOOR);
+        high = aumHigh.div(supply, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
@@ -173,42 +174,6 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     // === Internal ===
-
-    /// Return the UoA price of the reference unit using oracle prices and pool balances
-    /// @dev Warning: Can revert
-    /// @return low {UoA/ref}
-    /// @return high {UoA/ref}
-    function refPrice() internal view virtual returns (uint192 low, uint192 high) {
-        // Approach: Use oracle prices to imply balance ratios to expect in the pool,
-        //           and use these ratios to propagate oracle prices through.
-        //
-        // Example:
-        //   - pool with 2 tokens where 1 half-defaults: $1 and $1 => $1 and $0.5
-        //   - first token becomes 1/3 of the pool, second token becomes 2/3 of the pool
-        //   - 1/3 * $1 + 2/3 * $0.5 = $0.66
-
-        uint192[] memory lows = new uint192[](nTokens); // {UoA/ref}
-        uint192[] memory highs = new uint192[](nTokens); // {UoA/ref}
-        uint192[] memory portions = new uint192[](nTokens); // {ref/UoA}
-        uint192 norm; // {ref/UoA}
-
-        // Compute norm
-        for (uint8 i = 0; i < nTokens; i++) {
-            (lows[i], highs[i]) = tokenPrice(i); // {UoA/ref}
-            require(lows[i] != 0, "pool has no value");
-
-            // {ref/UoA} = {1} / ({UoA/ref} + {UoA/ref})
-            portions[i] = FIX_ONE.div((lows[i] + highs[i]) / 2);
-            norm += portions[i];
-        }
-
-        // Scale each token's price contribution by its expected % presence in the pool
-        for (uint8 i = 0; i < nTokens; i++) {
-            // {UoA/ref} = {UoA/ref} * {ref} / {ref}
-            low += lows[i].mulDiv(portions[i], norm, FLOOR);
-            high += highs[i].mulDiv(portions[i], norm, CEIL);
-        }
-    }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {

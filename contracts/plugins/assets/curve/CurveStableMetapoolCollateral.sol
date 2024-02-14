@@ -156,27 +156,39 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         return false;
     }
 
-    /// Return the UoA price of the reference unit using oracle prices and pool balances
     /// @dev Warning: Can revert
-    /// @return low {UoA/ref}
-    /// @return high {UoA/ref}
-    function refPrice() internal view virtual override returns (uint192 low, uint192 high) {
-        // Approach: Use oracle prices to imply balance ratios to expect in the pool,
-        //           and use these ratios to propagate oracle prices through.
+    /// @param lowPaired {UoA/pairedTok}
+    /// @param highPaired {UoA/pairedTok}
+    /// @return aumLow {UoA}
+    /// @return aumHigh {UoA}
+    function _metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
+        internal
+        view
+        returns (uint192 aumLow, uint192 aumHigh)
+    {
+        // {UoA}
+        (uint192 underlyingAumLow, uint192 underlyingAumHigh) = totalBalancesValue();
 
-        // {UoA/underlyingPool}
-        (uint192 lowPool, uint192 highPool) = super.refPrice();
-        require(lowPool != 0, "inner pool has no value");
+        // {tokUnderlying}
+        uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
 
-        // {UoA/pairedTok}
-        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
-        require(lowPaired != 0, "invalid price");
+        // {UoA/tokUnderlying} = {UoA} / {tokUnderlying}
+        uint192 underlyingLow = underlyingAumLow.div(underlyingSupply, FLOOR);
+        uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
 
-        // Scale each token's price contribution by its expected % presence in the pool
-        uint192 pool = FIX_ONE.div((lowPool + highPool) / 2); // {underlyingPool/UoA}
-        uint192 paired = FIX_ONE.div((lowPaired + highPaired) / 2); // {pairedTok/UoA}
-        uint192 norm = pool + paired;
-        low += lowPool.mulDiv(pool, norm, FLOOR) + lowPaired.mulDiv(paired, norm, FLOOR);
-        high += highPool.mulDiv(pool, norm, CEIL) + highPaired.mulDiv(paired, norm, CEIL);
+        // {tokUnderlying}
+        uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()));
+
+        // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
+        aumLow = underlyingLow.mul(balUnderlying, FLOOR);
+        aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
+
+        // {pairedTok}
+        uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
+
+        // Add-in contribution from pairedTok
+        // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
+        aumLow += lowPaired.mul(pairedBal, FLOOR);
+        aumHigh += highPaired.mul(pairedBal, CEIL);
     }
 }
