@@ -50,8 +50,8 @@ import {
 import {
   Collateral,
   defaultFixture,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
@@ -252,7 +252,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: token.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.constants.HashZero,
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -270,7 +270,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: aToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -288,7 +288,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -306,7 +306,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: token.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: bn(0),
@@ -322,7 +322,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: aToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
@@ -340,7 +340,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
@@ -358,7 +358,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: token.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
@@ -374,7 +374,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: aToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
@@ -392,7 +392,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
@@ -411,7 +411,7 @@ describe('Collateral contracts', () => {
           oracleError: bn('0'),
           erc20: token.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -427,7 +427,7 @@ describe('Collateral contracts', () => {
             oracleError: bn('0'),
             erc20: aToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -445,7 +445,7 @@ describe('Collateral contracts', () => {
             oracleError: bn('0'),
             erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
@@ -464,7 +464,7 @@ describe('Collateral contracts', () => {
           oracleError: fp('1'),
           erc20: token.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -480,7 +480,7 @@ describe('Collateral contracts', () => {
             oracleError: fp('1'),
             erc20: aToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -498,7 +498,7 @@ describe('Collateral contracts', () => {
             oracleError: fp('1'),
             erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -519,7 +519,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: aToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -537,7 +537,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -640,7 +640,7 @@ describe('Collateral contracts', () => {
       expect(lotHigh).to.eq(aaveInitPrice[1])
 
       // Advance past timeouts
-      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+      await advanceTime(PRICE_TIMEOUT.add(DECAY_DELAY).toString())
 
       // Should be unpriced
       await expectUnpriced(cTokenCollateral.address)
@@ -773,7 +773,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: aToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -979,7 +979,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should remain at saved price if oracle is stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
+      await advanceTime(DECAY_DELAY.sub(12).toString())
 
       // lastSave should not be block timestamp after refresh
       await tokenCollateral.refresh()
@@ -999,7 +999,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Enters IFFY state when price becomes stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      await advanceTime(DECAY_DELAY.toString())
       await usdcCollateral.refresh()
       await tokenCollateral.refresh()
       await cTokenCollateral.refresh()
@@ -1186,13 +1186,13 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: nonFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         targetUnitOracle.address,
-        ORACLE_TIMEOUT_PRE_BUFFER
+        ORACLE_TIMEOUT
       )
       await nonFiatCollateral.refresh()
 
@@ -1209,13 +1209,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
@@ -1229,13 +1229,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           ZERO_ADDRESS,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('missing targetUnit feed')
     })
@@ -1249,13 +1249,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('missing chainlink feed')
     })
@@ -1269,7 +1269,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1289,13 +1289,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('defaultThreshold zero')
     })
@@ -1345,8 +1345,8 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       await expectExactPrice(nonFiatCollateral.address, initialPrice)
 
-      // Should become disabled after just ORACLE_TIMEOUT
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      // Should become disabled after just DECAY_DELAY
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await targetUnitOracle.updateAnswer(bn('0'))
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
       await expectDecayedPrice(nonFiatCollateral.address)
@@ -1362,7 +1362,7 @@ describe('Collateral contracts', () => {
       await expectExactPrice(nonFiatCollateral.address, initialPrice)
 
       // Advance past oracle timeout
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectDecayedPrice(nonFiatCollateral.address)
 
@@ -1385,13 +1385,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       )
 
@@ -1413,13 +1413,13 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: nonFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         invalidChainlinkFeed.address,
-        ORACLE_TIMEOUT_PRE_BUFFER
+        ORACLE_TIMEOUT
       )
 
       // Reverting with no reason
@@ -1468,13 +1468,13 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: cNonFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         targetUnitOracle.address,
-        ORACLE_TIMEOUT_PRE_BUFFER,
+        ORACLE_TIMEOUT,
         REVENUE_HIDING
       )
       await cTokenNonFiatCollateral.refresh()
@@ -1492,13 +1492,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING
         )
       ).to.be.revertedWith('delayUntilDefault zero')
@@ -1513,13 +1513,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER,
+          ORACLE_TIMEOUT,
           fp('1')
         )
       ).to.be.revertedWith('revenueHiding out of range')
@@ -1534,13 +1534,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING
         )
       ).to.be.revertedWith('missing chainlink feed')
@@ -1555,13 +1555,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           ZERO_ADDRESS,
-          ORACLE_TIMEOUT_PRE_BUFFER,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING
         )
       ).to.be.revertedWith('missing targetUnit feed')
@@ -1576,7 +1576,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1597,13 +1597,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT_PRE_BUFFER,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING
         )
       ).to.be.revertedWith('defaultThreshold zero')
@@ -1679,8 +1679,8 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
 
-      // Should become disabled after just ORACLE_TIMEOUT
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      // Should become disabled after just DECAY_DELAY
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await targetUnitOracle.updateAnswer(bn('0'))
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
       await cTokenNonFiatCollateral.refresh()
@@ -1697,7 +1697,7 @@ describe('Collateral contracts', () => {
       await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
 
       // Advance past oracle timeout
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectDecayedPrice(cTokenNonFiatCollateral.address)
 
@@ -1807,7 +1807,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1836,7 +1836,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: cNonFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1878,7 +1878,7 @@ describe('Collateral contracts', () => {
         oracleError: ORACLE_ERROR,
         erc20: selfRefToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: 0,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1918,7 +1918,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: selfRefToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('ETH'),
           defaultThreshold: bn(100),
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1944,7 +1944,7 @@ describe('Collateral contracts', () => {
       await expectExactPrice(selfReferentialCollateral.address, initialPrice)
 
       // Decay starts after oracle timeout
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
       await expectDecayedPrice(selfReferentialCollateral.address)
 
@@ -1983,7 +1983,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: selfRefToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('ETH'),
           defaultThreshold: 0,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2033,7 +2033,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: 0,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2057,7 +2057,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2077,7 +2077,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2097,7 +2097,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: bn(200),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2169,7 +2169,7 @@ describe('Collateral contracts', () => {
       // Decays if price is zero
       await cTokenSelfReferentialCollateral.refresh()
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
       await expectDecayedPrice(cTokenSelfReferentialCollateral.address)
 
@@ -2283,7 +2283,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: 0,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2333,7 +2333,7 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: eurFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('EUR'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2356,7 +2356,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('EUR'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
@@ -2376,7 +2376,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('EUR'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2396,7 +2396,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('EUR'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2416,7 +2416,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2436,7 +2436,7 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -2516,7 +2516,7 @@ describe('Collateral contracts', () => {
       // Decays if price is zero
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectExactPrice(eurFiatCollateral.address, initialPrice)
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectDecayedPrice(eurFiatCollateral.address)
 
@@ -2539,13 +2539,13 @@ describe('Collateral contracts', () => {
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('EUR'),
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
-          ORACLE_TIMEOUT
+          DECAY_DELAY
         )
       )
 
@@ -2567,13 +2567,13 @@ describe('Collateral contracts', () => {
           oracleError: ORACLE_ERROR,
           erc20: eurFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('EUR'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         invalidChainlinkFeed.address,
-        ORACLE_TIMEOUT
+        DECAY_DELAY
       )
 
       // Reverting with no reason

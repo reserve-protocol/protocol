@@ -25,7 +25,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 
@@ -116,7 +116,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
         oracleError: ORACLE_ERROR,
         erc20: cDAI.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,

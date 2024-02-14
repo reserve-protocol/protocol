@@ -14,8 +14,8 @@ import {
   DefaultFixture,
   Fixture,
   getDefaultFixture,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
 } from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
@@ -216,7 +216,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         ORACLE_ERROR,
         compToken.address,
         config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT_PRE_BUFFER
+        ORACLE_TIMEOUT
       )
     )
 
@@ -229,7 +229,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         oracleError: ORACLE_ERROR,
         erc20: cDai.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -413,7 +413,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: ZERO_ADDRESS,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -446,7 +446,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: vault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -464,7 +464,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             oracleError: ORACLE_ERROR,
             erc20: cDai.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: bn(0),
             delayUntilDefault,
@@ -666,7 +666,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
+      await advanceTime(DECAY_DELAY.sub(12).toString())
 
       // Price is at saved prices
       const savedLowPrice = await cDaiCollateral.savedLowPrice()
@@ -689,7 +689,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           oracleError: ORACLE_ERROR,
           erc20: cDai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -714,7 +714,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           oracleError: ORACLE_ERROR,
           erc20: cDai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,

@@ -65,6 +65,60 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         assert(metapoolToken.coins(1) == address(lpToken));
     }
 
+    /// Can revert, used by other contract functions in order to catch errors
+    /// Should not return FIX_MAX for low
+    /// Should only return FIX_MAX for high if low is 0
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref} The actual price observed in the peg
+    function tryPrice()
+        external
+        view
+        virtual
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
+        // Assumption: the pool is balanced
+        //
+        // This pricing method returns a MINIMUM when the pool is balanced.
+        // It IS possible to interact with the protocol within a sandwich to manipulate
+        // LP token price upwards.
+        //
+        // However:
+        //    - Lots of manipulation is required;
+        //        (StableSwap pools are not price sensitive until the edge of the curve)
+        //    - The DutchTrade pricing curve accounts for small/medium amounts of manipulation
+        //    - The manipulator is under competition in auctions, so cannot guarantee they
+        //        are the beneficiary of the manipulation.
+        //
+        // To be more MEV-resistant requires not using spot balances at all, which means one-of:
+        //   1. A moving average metric (unavailable in the cases we care about)
+        //   2. Mapping oracle prices to expected pool balances using precise knowledge about
+        //      the shape of the trading curve. (maybe we can do this in the future)
+
+        // {UoA/pairedTok}
+        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
+        require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
+
+        // {UoA}
+        (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
+
+        // {tok}
+        uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
+        // We can always assume that the total supply is non-zero
+
+        // {UoA/tok} = {UoA} / {tok}
+        low = aumLow.div(supply, FLOOR);
+        high = aumHigh.div(supply, CEIL);
+        assert(low <= high); // not obviously true just by inspection
+
+        return (low, high, 0);
+    }
+
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0

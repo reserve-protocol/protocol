@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
@@ -36,6 +37,7 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, _targetPerTokChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors

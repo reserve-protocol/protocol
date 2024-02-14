@@ -10,7 +10,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber, ContractFactory } from 'ethers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
-import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  DefaultFixture,
+  Fixture,
+  getDefaultFixture,
+  ORACLE_TIMEOUT_BUFFER,
+  ORACLE_TIMEOUT,
+} from '../fixtures'
 import { expectInIndirectReceipt } from '../../../../common/events'
 import { whileImpersonating } from '../../../utils/impersonation'
 import {
@@ -444,9 +450,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 
           // After oracle timeout decay begins
-          const oracleTimeout = await ctx.collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(1 + oracleTimeout / 12)
+          const decayDelay = (await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceBlocks(1 + decayDelay / 12)
           await ctx.collateral.refresh()
           await expectDecayedPrice(ctx.collateral.address)
 
@@ -471,7 +477,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
         it('handles stale price', async () => {
           await advanceTime(
-            (await ctx.collateral.oracleTimeout()) + (await ctx.collateral.priceTimeout())
+            ORACLE_TIMEOUT_BUFFER +
+              (await ctx.collateral.maxOracleTimeout()) +
+              (await ctx.collateral.priceTimeout())
           )
 
           // (0, FIX_MAX) is returned
@@ -491,7 +499,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(p[0]).to.equal(savedLow)
           expect(p[1]).to.equal(savedHigh)
 
-          await advanceTime(await ctx.collateral.oracleTimeout())
+          await advanceTime((await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await ctx.collateral.priceTimeout()
@@ -659,8 +667,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = bn(defaultOpts.oracleTimeouts![0][0])
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout.toNumber())
+          const decayDelay = (await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
@@ -745,14 +753,16 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           })
 
           it('after oracle timeout', async () => {
-            const oracleTimeout = await ctx.collateral.oracleTimeout()
+            const oracleTimeout = (await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
             await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
             await advanceBlocks(oracleTimeout / 12)
           })
 
           it('after full price timeout', async () => {
             await advanceTime(
-              (await ctx.collateral.priceTimeout()) + (await ctx.collateral.oracleTimeout())
+              ORACLE_TIMEOUT_BUFFER +
+                (await ctx.collateral.priceTimeout()) +
+                (await ctx.collateral.maxOracleTimeout())
             )
             const p = await ctx.collateral.price()
             expect(p[0]).to.equal(0)

@@ -44,12 +44,13 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         PTConfiguration memory ptConfig
     ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
-    /// @dev Override this when pricing is more complicated than just a single oracle
+    /// @dev Override this when pricing is more complicated than just a single pool
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return {target/ref} Unused. Always 0
@@ -64,8 +65,26 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             uint192
         )
     {
-        // {UoA/ref} -- units will change
-        (low, high) = refPrice();
+        // Assumption: the pool is balanced
+        //
+        // This pricing method returns a MINIMUM when the pool is balanced.
+        // It IS possible to interact with the protocol within a sandwich to manipulate
+        // LP token price upwards.
+        //
+        // However:
+        //    - Lots of manipulation is required;
+        //        (StableSwap pools are not price sensitive until the edge of the curve)
+        //    - The DutchTrade pricing curve accounts for small/medium amounts of manipulation
+        //    - The manipulator is under competition in auctions, so cannot guarantee they
+        //        are the beneficiary of the manipulation.
+        //
+        // To be more MEV-resistant requires not using spot balances at all, which means one-of:
+        //   1. A moving average metric (unavailable in the cases we care about)
+        //   2. Mapping oracle prices to expected pool balances using precise knowledge about
+        //      the shape of the trading curve. (maybe we can do this in the future)
+
+        // {UoA}
+        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // {ref/tok}
         uint192 underlyingRefPerTok_ = underlyingRefPerTok();

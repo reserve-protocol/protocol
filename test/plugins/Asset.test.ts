@@ -47,8 +47,8 @@ import {
   defaultFixture,
   IMPLEMENTATION,
   Implementation,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
   VERSION,
@@ -284,7 +284,7 @@ describe('Assets contracts #fast', () => {
       await expectExactPrice(rTokenAsset.address, rTokenInitPrice)
 
       // Advance past oracle timeout
-      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await advanceTime(DECAY_DELAY.add(1).toString())
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
@@ -375,7 +375,7 @@ describe('Assets contracts #fast', () => {
     })
 
     it('Should remain at saved price if oracle is stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
+      await advanceTime(DECAY_DELAY.sub(12).toString())
 
       // lastSave should not be block timestamp after refresh
       await rsrAsset.refresh()
@@ -439,7 +439,7 @@ describe('Assets contracts #fast', () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral0.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -476,7 +476,7 @@ describe('Assets contracts #fast', () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral0.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -658,7 +658,7 @@ describe('Assets contracts #fast', () => {
           ORACLE_ERROR,
           rsr.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       )
 
@@ -743,7 +743,7 @@ describe('Assets contracts #fast', () => {
           ORACLE_ERROR,
           rsr.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       )
 
@@ -786,7 +786,7 @@ describe('Assets contracts #fast', () => {
       expect(highPrice2).to.eq(highPrice)
 
       // Advance past oracleTimeout
-      await advanceTime(await rsrAsset.oracleTimeout())
+      await advanceTime(DECAY_DELAY.toString())
 
       // Now price widens
       const [lowPrice3, highPrice3] = await rsrAsset.price()

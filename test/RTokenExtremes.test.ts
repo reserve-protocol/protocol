@@ -21,7 +21,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   SLOW,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   defaultFixtureNoBasket,
 } from './fixtures'
@@ -66,7 +66,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: fp('1e36'),
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.01'),
         delayUntilDefault: bn(86400),

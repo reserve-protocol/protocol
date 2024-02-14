@@ -39,7 +39,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  DECAY_DELAY,
   VERSION,
 } from './fixtures'
 import { useEnv } from '#/utils/env'
@@ -367,7 +367,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should not issue RTokens if UNPRICED collateral', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      await advanceTime(DECAY_DELAY.toString())
 
       // Start issuance pre-pause
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
@@ -1094,7 +1094,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem if basket is UNPRICED #fast', async function () {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(DECAY_DELAY.toString())
 
         await rToken.connect(addr1).redeem(issueAmount)
         expect(await rToken.totalSupply()).to.equal(0)
@@ -1716,7 +1716,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem if basket is UNPRICED #fast', async function () {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(DECAY_DELAY.toString())
 
         const basketNonces = [1]
         const portions = [fp('1')]
