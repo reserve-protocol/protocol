@@ -50,6 +50,11 @@ New governance param added: `reweightable`
 
   - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans. Example of how-to-use in `contracts/plugins/mocks/DutchTradeRouter.sol`
 
+  ### Facades
+
+  - `FacadeRead`
+    - Add `maxIssuableByAmounts()` function to provide an estimation independent of account balances
+
 # 3.1.0
 
 ## Upgrade Steps
