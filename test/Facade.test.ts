@@ -256,6 +256,32 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       )
     })
 
+    it('Should return maxIssuableByAmounts correctly', async () => {
+      const [erc20Addrs] = await basketHandler.quote(fp('1'), 0)
+      const erc20s = await Promise.all(erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a)))
+      const addr1Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr1.address)))
+      const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
+      const otherAmounts = await Promise.all(erc20s.map((e) => e.balanceOf(other.address)))
+
+      // Check values
+      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr1Amounts)).to.equal(
+        bn('39999999900e18')
+      )
+      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr2Amounts)).to.equal(
+        bn('40000000000e18')
+      )
+      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, otherAmounts)).to.equal(0)
+
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount)
+      const newAddr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
+
+      // With 0 baskets needed - Returns correct value
+      expect(
+        await facade.callStatic.maxIssuableByAmounts(rToken.address, newAddr2Amounts)
+      ).to.equal(bn('40000000000e18'))
+    })
+
     it('Should revert maxIssuable when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.be.revertedWith(
