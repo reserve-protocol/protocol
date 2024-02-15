@@ -9,6 +9,7 @@ import "./ICToken.sol";
  * @title CTokenSelfReferentialCollateral
  * @notice Collateral plugin for a cToken of unpegged collateral, such as cETH.
  * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
+ * Should NOT use with an ERC20 wrapper.
  */
 contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -18,12 +19,11 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     uint8 public immutable referenceERC20Decimals;
 
-    ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
-
     IComptroller private immutable comptroller;
 
     IERC20 private immutable comp; // COMP token
 
+    /// @param config.erc20 The CToken itself
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
@@ -34,9 +34,8 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold == 0, "default threshold not supported");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20))));
         referenceERC20Decimals = referenceERC20Decimals_;
-        comptroller = cToken.comptroller();
+        comptroller = ICToken(address(config.erc20)).comptroller();
         comp = IERC20(comptroller.getCompAddress());
     }
 
@@ -71,7 +70,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
         // == Refresh ==
         // Update the Compound Protocol -- access cToken directly
         // solhint-disable no-empty-blocks
-        try cToken.exchangeRateCurrent() {} catch (bytes memory errData) {
+        try ICToken(address(erc20)).exchangeRateCurrent() {} catch (bytes memory errData) {
             CollateralStatus oldStatus = status();
 
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -90,7 +89,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        uint256 rate = cToken.exchangeRateStored();
+        uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
@@ -99,15 +98,11 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
         uint256 bal = comp.balanceOf(address(this));
-        // try claiming on the wrapper first
-        try IRewardable(address(erc20)).claimRewards() {} catch {
-            // else: claim directly
-            address[] memory holders = new address[](1);
-            address[] memory cTokens = new address[](1);
-            holders[0] = address(this);
-            cTokens[0] = address(cToken);
-            comptroller.claimComp(holders, cTokens, false, true);
-        }
+        address[] memory holders = new address[](1);
+        address[] memory cTokens = new address[](1);
+        holders[0] = address(this);
+        cTokens[0] = address(erc20);
+        comptroller.claimComp(holders, cTokens, false, true);
         emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
     }
 }
