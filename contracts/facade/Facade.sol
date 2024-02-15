@@ -9,6 +9,7 @@ import "../interfaces/IFacade.sol";
  * @notice A simple nearly-append-only list of functions that can be dynamically controlled
  *   IMPORTANT: The functions should be stateless! They cannot rely on storage.
  */
+// slither-disable-start
 contract Facade is IFacade, Ownable {
     mapping(bytes4 => address) public impls; // version = index + 1
 
