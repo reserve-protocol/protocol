@@ -11,6 +11,7 @@ import { setOraclePrice } from './utils/oracles'
 import { disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { whileImpersonating } from './utils/impersonation'
 import {
+  ActFacet,
   Asset,
   BackingManagerP1,
   BackingMgrCompatibleV1,
@@ -23,7 +24,9 @@ import {
   FacadeMonitorV2,
   FacadeTest,
   MockV3Aggregator,
+  ReadFacet,
   RecollateralizationLibP1,
+  RevertingFacetMock,
   RevenueTraderCompatibleV1,
   RevenueTraderCompatibleV2,
   RevenueTraderInvalidVersion,
@@ -94,6 +97,7 @@ describe('Facade + FacadeMonitor contracts', () => {
   let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeMonitor: FacadeMonitor
+  let readFacet: ReadFacet
 
   // Main
   let rToken: TestIRToken
@@ -134,6 +138,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       basket,
       config,
       facade,
+      readFacet,
       facadeTest,
       facadeMonitor,
       rToken,
@@ -190,7 +195,27 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
   })
 
-  describe('ReadFacet + interactions with ActFacet', () => {
+  describe('Facade', () => {
+    let revertingFacet: RevertingFacetMock
+
+    beforeEach(async () => {
+      const factory = await ethers.getContractFactory('RevertingFacetMock')
+      revertingFacet = await factory.deploy()
+    })
+
+    it('Cannot save zero addr facets', async () => {
+      await expect(facade.save(ZERO_ADDRESS, ['0x01'])).to.be.revertedWith('zero address')
+    })
+    it('Can overwrite an entry', async () => {
+      const selector = readFacet.interface.getSighash('backingOverview(address)')
+      await expect(facade.save(revertingFacet.address, [selector]))
+        .to.emit(facade, 'SelectorSaved')
+        .withArgs(revertingFacet.address, selector)
+      await expect(facade.backingOverview(rToken.address)).to.be.revertedWith('RevertingFacetMock')
+    })
+  })
+
+  describe('ReadFacet + ActFacet', () => {
     let issueAmount: BigNumber
 
     const expectValidBasketBreakdown = async (rToken: TestIRToken) => {
@@ -1403,7 +1428,7 @@ describe('Facade + FacadeMonitor contracts', () => {
   })
 
   // P1 only
-  describeP1('ActFacet', () => {
+  describeP1('ActFacet on P1', () => {
     let issueAmount: BigNumber
 
     beforeEach(async () => {

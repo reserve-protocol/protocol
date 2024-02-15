@@ -21,7 +21,7 @@ contract Facade is IFacade, Ownable {
         require(facet != address(0), "zero address");
         for (uint256 i = 0; i < selectors.length; i++) {
             facets[selectors[i]] = facet;
-            emit SelectorFacetSaved(selectors[i], facet);
+            emit SelectorSaved(facet, selectors[i]);
         }
     }
 

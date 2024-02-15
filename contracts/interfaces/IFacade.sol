@@ -5,10 +5,12 @@ import "./IActFacet.sol";
 import "./IReadFacet.sol";
 
 interface IFacade {
-    event SelectorFacetSaved(bytes4 indexed selector, address indexed facet);
+    event SelectorSaved(address indexed facet, bytes4 indexed selector);
 
-    // Save new implementations to the Facade, forcefully
-    function save(address impl, bytes4[] memory selectors) external;
+    // Save new facet to the Facade, forcefully
+    function save(address facet, bytes4[] memory selectors) external;
+
+    function facets(bytes4 selector) external view returns (address);
 }
 
 // solhint-disable-next-line no-empty-blocks

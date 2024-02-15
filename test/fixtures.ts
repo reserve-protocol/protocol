@@ -96,34 +96,6 @@ export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test indi
 // This will have to be updated on each release
 export const VERSION = '3.2.0'
 
-interface FacadeFixture {
-  facade: TestIFacade
-}
-
-async function facadeFixture(): Promise<FacadeFixture> {
-  // Deploy Facade
-  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
-
-  // Save ReadFacet to Facade
-  const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
-  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
-  await facade.save(
-    readFacet.address,
-    Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
-  )
-
-  // Save ActFacet to Facade
-  const ActFacetFactory: ContractFactory = await ethers.getContractFactory('ActFacet')
-  const actFacet = <ActFacet>await ActFacetFactory.deploy()
-  await facade.save(
-    actFacet.address,
-    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
-  )
-
-  return { facade }
-}
-
 export type Collateral =
   | FiatCollateral
   | CTokenFiatCollateral
@@ -452,6 +424,8 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   furnace: TestIFurnace
   stRSR: TestIStRSR
   facade: TestIFacade
+  readFacet: ReadFacet
+  actFacet: ActFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -774,7 +748,24 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
   // Deploy Facade
-  const { facade } = await facadeFixture()
+  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+
+  // Save ReadFacet to Facade
+  const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
+  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+  await facade.save(
+    readFacet.address,
+    Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
+  )
+
+  // Save ActFacet to Facade
+  const ActFacetFactory: ContractFactory = await ethers.getContractFactory('ActFacet')
+  const actFacet = <ActFacet>await ActFacetFactory.deploy()
+  await facade.save(
+    actFacet.address,
+    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+  )
 
   return {
     rsr,
@@ -805,6 +796,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     gnosis,
     easyAuction,
     facade,
+    readFacet,
+    actFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,
