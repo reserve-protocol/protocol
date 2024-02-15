@@ -700,30 +700,30 @@ contract ChaosOpsScenario {
         }
     }
 
-    function _validateWeights() internal view {
-        uint256 totalWeight = 0;
-        uint256 weightA = 0;
-        uint256 weightB = 0;
-        uint256 weightC = 0;
+    // function _validateWeights() internal view {
+    //     uint256 totalWeight = 0;
+    //     uint256 weightA = 0;
+    //     uint256 weightB = 0;
+    //     uint256 weightC = 0;
 
-        for (uint256 i = 0; i < targetAmtsForPrimeBasket.length; i++) {
-            bytes32 nameGroup = targetNameByToken[address(backingForPrimeBasket[i])];
-            if (nameGroup == bytes32("A")) {
-                weightA += targetAmtsForPrimeBasket[i];
-            } else if (nameGroup == bytes32("B")) {
-                weightB += targetAmtsForPrimeBasket[i];
-            } else if (nameGroup == bytes32("C")) {
-                weightC += targetAmtsForPrimeBasket[i];
-            }
-            totalWeight += targetAmtsForPrimeBasket[i];
-        }
-        require(
-            (weightA * 1e18) / totalWeight == targetWeightsByName[bytes32("A")] &&
-                (weightB * 1e18) / totalWeight == targetWeightsByName[bytes32("B")] &&
-                (weightC * 1e18) / totalWeight == targetWeightsByName[bytes32("C")],
-            "can't rebalance bad weights"
-        );
-    }
+    //     for (uint256 i = 0; i < targetAmtsForPrimeBasket.length; i++) {
+    //         bytes32 nameGroup = targetNameByToken[address(backingForPrimeBasket[i])];
+    //         if (nameGroup == bytes32("A")) {
+    //             weightA += targetAmtsForPrimeBasket[i];
+    //         } else if (nameGroup == bytes32("B")) {
+    //             weightB += targetAmtsForPrimeBasket[i];
+    //         } else if (nameGroup == bytes32("C")) {
+    //             weightC += targetAmtsForPrimeBasket[i];
+    //         }
+    //         totalWeight += targetAmtsForPrimeBasket[i];
+    //     }
+    //     require(
+    //         (weightA * 1e18) / totalWeight == targetWeightsByName[bytes32("A")] &&
+    //             (weightB * 1e18) / totalWeight == targetWeightsByName[bytes32("B")] &&
+    //             (weightC * 1e18) / totalWeight == targetWeightsByName[bytes32("C")],
+    //         "can't rebalance bad weights"
+    //     );
+    // }
 
     function setPrimeBasket() public {
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
