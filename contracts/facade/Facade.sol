@@ -6,37 +6,37 @@ import "../interfaces/IFacade.sol";
 
 /*
  * @title Facade
- * @notice A simple nearly-append-only list of functions that can be dynamically controlled
+ * @notice A Facade delegates execution to facets (implementions) as a function of selector.
  *   IMPORTANT: The functions should be stateless! They cannot rely on storage.
  */
 // slither-disable-start
 contract Facade is IFacade, Ownable {
-    mapping(bytes4 => address) public impls; // version = index + 1
+    mapping(bytes4 => address) public facets;
 
     // solhint-disable-next-line no-empty-blocks
     constructor() Ownable() {}
 
-    // Save new implementations to the Facade, forcefully
-    function save(address impl, bytes4[] memory selectors) external onlyOwner {
-        require(impl != address(0), "zero address");
+    // Save new facets to the Facade, forcefully
+    function save(address facet, bytes4[] memory selectors) external onlyOwner {
+        require(facet != address(0), "zero address");
         for (uint256 i = 0; i < selectors.length; i++) {
-            impls[selectors[i]] = impl;
-            emit FunctionSaved(impl, selectors[i]);
+            facets[selectors[i]] = facet;
+            emit SelectorFacetSaved(selectors[i], facet);
         }
     }
 
-    // Find impl for function that is called and execute the
-    // function if a impl is found and return any value.
+    // Find the facet for function that is called and execute the
+    // function if a facet is found and return any value.
     fallback() external {
-        address impl = impls[msg.sig];
-        require(impl != address(0), "impl does not exist");
+        address facet = facets[msg.sig];
+        require(facet != address(0), "facet does not exist");
 
-        // Execute external function from impl using delegatecall and return any value.
+        // Execute external function from facet using delegatecall and return any value.
         assembly {
             // copy function selector and any arguments
             calldatacopy(0, 0, calldatasize())
-            // execute function call using the impl
-            let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
+            // execute function call using the facet
+            let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
             // get any return value
             returndatacopy(0, 0, returndatasize())
             // return any return value or error back to the caller

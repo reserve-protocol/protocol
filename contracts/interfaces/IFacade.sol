@@ -5,7 +5,7 @@ import "./IActFacet.sol";
 import "./IReadFacet.sol";
 
 interface IFacade {
-    event FunctionSaved(address indexed impl, bytes4 indexed selector);
+    event SelectorFacetSaved(bytes4 indexed selector, address indexed facet);
 
     // Save new implementations to the Facade, forcefully
     function save(address impl, bytes4[] memory selectors) external;
