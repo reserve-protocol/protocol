@@ -30,7 +30,7 @@ npm install -g yarn
 # Clone this repo
 git clone git@github.com:reserve-protocol/protocol.git
 
-# Install pacakges from npm (including Solidity dependencies)
+# Install packages from npm (including Solidity dependencies)
 cd protocol
 yarn
 
@@ -101,7 +101,7 @@ However, ensure that you do not change the value of `.husky/pre-push` in our sha
 
 ## Echidna
 
-We _have_ some tooling for testing with Echidna, but it is specically in `fuzz` branch of the repo. See that branch and our [echidna usage docs](using-echidna.md)
+We _have_ some tooling for testing with Echidna, but it is specifically in `fuzz` branch of the repo. See that branch and our [echidna usage docs](using-echidna.md)
 
 ## Test Deployment
 

@@ -97,7 +97,7 @@ interface ICollateral is IAsset {
 
   /// @dev refresh()
   /// Refresh exchange rates and update default status.
-  /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+  /// VERY IMPORTANT: In any valid implementation, status() MUST become DISABLED in refresh() if
   /// refPerTok() has ever decreased since last call.
 
   /// @return The canonical name of this collateral's target unit.
@@ -122,7 +122,7 @@ interface ICollateral is IAsset {
 Broadly speaking there are two ways a collateral can default:
 
 1.  Fast: `refresh()` detects a clear problem with its defi protocol, and triggers in an immediate default. For instance, anytime the `refPerTok()` exchange rate falls between calls to `refresh()`, the collateral should immediately default.
-2.  Slow: `refresh()` detects a error condition that will _probably_ recover, but which should cause a default eventually. For instance, if the Collateral relies on USDT, and our price feed says that USDT trades at less than \$0.95 for (say) 24 hours, the Collateral should default. If a needed price feed is out-of-date or reverting for a similar period, the Collateral should default.
+2.  Slow: `refresh()` detects an error condition that will _probably_ recover, but which should cause a default eventually. For instance, if the Collateral relies on USDT, and our price feed says that USDT trades at less than \$0.95 for (say) 24 hours, the Collateral should default. If a needed price feed is out-of-date or reverting for a similar period, the Collateral should default.
 
     In either of these cases, the collateral should first become `IFFY` and only move to `DISABLED` after the problem becomes sustained. In general, any pathway for default that cannot be assessed immediately should go through this delayed flow.
 
