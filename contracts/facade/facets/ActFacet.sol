@@ -6,22 +6,24 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../../plugins/trading/DutchTrade.sol";
 import "../../plugins/trading/GnosisTrade.sol";
+import "../../interfaces/IActFacet.sol";
 import "../../interfaces/IBackingManager.sol";
+import "./Facet.sol";
 
 /**
- * @title Facet1
- * @notice The old FacadeAct
+ * @title ActFacet
+ * @notice
  *   Facet to help batch compound actions that cannot be done from an EOA, solely.
  *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract FacadeAct is Multicall {
+contract ActFacet is IActFacet, Facet {
     using Address for address;
     using SafeERC20 for IERC20;
     using FixLib for uint192;
 
-    function claimRewards(IRToken rToken) public {
+    function claimRewards(IRToken rToken) external {
         IMain main = rToken.main();
         main.backingManager().claimRewards();
         main.rTokenTrader().claimRewards();
@@ -80,6 +82,7 @@ contract FacadeAct is Multicall {
     /// @custom:static-call
     function revenueOverview(IRevenueTrader revenueTrader)
         external
+        staticCall
         returns (
             IERC20[] memory erc20s,
             bool[] memory canStart,
@@ -162,6 +165,7 @@ contract FacadeAct is Multicall {
     /// @custom:static-call
     function nextRecollateralizationAuction(IBackingManager bm, TradeKind kind)
         external
+        staticCall
         returns (
             bool canStart,
             IERC20 sell,

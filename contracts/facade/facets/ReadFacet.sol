@@ -5,29 +5,31 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../plugins/trading/DutchTrade.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IAssetRegistry.sol";
+import "../../interfaces/IReadFacet.sol";
 import "../../interfaces/IRToken.sol";
 import "../../interfaces/IStRSR.sol";
 import "../../libraries/Fixed.sol";
 import "../../p1/BasketHandler.sol";
 import "../../p1/RToken.sol";
 import "../../p1/StRSRVotes.sol";
+import "./Facet.sol";
 
 /**
- * @title Facet0
- * @notice The old FacadeRead
+ * @title ReadFacet
+ * @notice
  *   Facet for reading out the state of a ^3.0.0 RToken in summary views.
  *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract Facet0 {
+contract ReadFacet is IReadFacet, Facet {
     using FixLib for uint192;
 
     // === Static Calls ===
 
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
-    function maxIssuable(IRToken rToken, address account) external returns (uint256) {
+    function maxIssuable(IRToken rToken, address account) external staticCall returns (uint256) {
         IMain main = rToken.main();
 
         require(!main.frozen(), "frozen");
@@ -58,6 +60,7 @@ contract Facet0 {
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
         external
+        staticCall
         returns (
             address[] memory tokens,
             uint256[] memory deposits,
@@ -104,6 +107,7 @@ contract Facet0 {
     /// @custom:static-call
     function redeem(IRToken rToken, uint256 amount)
         external
+        staticCall
         returns (
             address[] memory tokens,
             uint256[] memory withdrawals,
@@ -146,7 +150,7 @@ contract Facet0 {
         uint256 amount,
         uint48[] memory basketNonces,
         uint192[] memory portions
-    ) external returns (address[] memory tokens, uint256[] memory withdrawals) {
+    ) external staticCall returns (address[] memory tokens, uint256[] memory withdrawals) {
         IMain main = rToken.main();
         require(!main.frozen(), "frozen");
 
@@ -189,6 +193,7 @@ contract Facet0 {
     /// @custom:static-call
     function basketBreakdown(IRToken rToken)
         external
+        staticCall
         returns (
             address[] memory erc20s,
             uint192[] memory uoaShares,
@@ -231,6 +236,7 @@ contract Facet0 {
     /// @custom:static-call
     function balancesAcrossAllTraders(IRToken rToken)
         external
+        staticCall
         returns (
             IERC20[] memory erc20s,
             uint256[] memory balances,
@@ -265,12 +271,6 @@ contract Facet0 {
     }
 
     // === Views ===
-
-    struct Pending {
-        uint256 index;
-        uint256 availableAt;
-        uint256 amount;
-    }
 
     /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
