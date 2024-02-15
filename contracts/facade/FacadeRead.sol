@@ -446,7 +446,5 @@ contract FacadeRead is IFacadeRead {
             erc20s[i] = unfiltered[i];
         }
     }
-
-    // === Internal ===
 }
 // slither-disable-end
