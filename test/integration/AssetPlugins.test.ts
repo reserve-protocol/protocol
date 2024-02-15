@@ -38,7 +38,6 @@ import {
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAToken,
@@ -51,6 +50,7 @@ import {
   StaticATokenLM,
   TestIBackingManager,
   TestIBasketHandler,
+  TestIFacade,
   TestIMain,
   TestIRToken,
   USDCMock,
@@ -163,7 +163,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
   let main: TestIMain
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager

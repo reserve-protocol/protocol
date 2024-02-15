@@ -15,8 +15,8 @@ interface IActFacet {
     function claimRewards(IRToken rToken) external;
 
     /// To use this, first call:
-    ///   - FacadeRead.auctionsSettleable(revenueTrader)
-    ///   - FacadeRead.revenueOverview(revenueTrader)
+    ///   - IReadFacet.auctionsSettleable(revenueTrader)
+    ///   - IReadFacet.revenueOverview(revenueTrader)
     /// If either arrays returned are non-empty, then can execute this function productively.
     /// Logic:
     ///   For each ERC20 in `toSettle`:

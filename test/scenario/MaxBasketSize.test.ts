@@ -12,10 +12,10 @@ import {
   CTokenFiatCollateral,
   CTokenWrapperMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
+  TestIFacade,
   TestIStRSR,
   MockV3Aggregator,
   StaticATokenMock,
@@ -65,7 +65,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: TestIBasketHandler
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 

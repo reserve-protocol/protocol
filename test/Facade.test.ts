@@ -19,10 +19,8 @@ import {
   ComptrollerMock,
   CTokenWrapperMock,
   ERC20Mock,
-  FacadeAct,
   FacadeMonitor,
   FacadeMonitorV2,
-  FacadeRead,
   FacadeTest,
   MockV3Aggregator,
   RecollateralizationLibP1,
@@ -36,6 +34,7 @@ import {
   IBasketHandler,
   TestIBackingManager,
   TestIBroker,
+  TestIFacade,
   TestIRevenueTrader,
   TestIMain,
   TestIStRSR,
@@ -67,7 +66,7 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 
 const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
-describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
+describe('Facade + FacadeMonitor contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -92,9 +91,8 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
   let cTokenAsset: Collateral
 
   // Facade
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
-  let facadeAct: FacadeAct
   let facadeMonitor: FacadeMonitor
 
   // Main
@@ -136,7 +134,6 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       basket,
       config,
       facade,
-      facadeAct,
       facadeTest,
       facadeMonitor,
       rToken,
@@ -193,7 +190,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
     })
   })
 
-  describe('FacadeRead + interactions with FacadeAct', () => {
+  describe('ReadFacet + interactions with ActFacet', () => {
     let issueAmount: BigNumber
 
     const expectValidBasketBreakdown = async (rToken: TestIRToken) => {
@@ -571,7 +568,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       }
     })
 
-    it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
+    it('Should return revenue + chain into ActFacet.runRevenueAuctions', async () => {
       // Set low to 0 == revenueOverview() should not revert
       const minTradeVolume = await rsrTrader.minTradeVolume()
       const auctionLength = await broker.dutchAuctionLength()
@@ -588,8 +585,9 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(low).to.equal(0)
 
       // revenue
-      let [erc20s, canStart, surpluses, minTradeAmounts] =
-        await facadeAct.callStatic.revenueOverview(rsrTrader.address)
+      let [erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenueOverview(
+        rsrTrader.address
+      )
       expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
       const erc20sToStart = []
@@ -616,10 +614,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         [rsrTrader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
       )
       const data = funcSig.substring(0, 10) + args.slice(2)
-      await expect(facadeAct.multicall([data])).to.emit(rsrTrader, 'TradeStarted')
+      await expect(facade.multicall([data])).to.emit(rsrTrader, 'TradeStarted')
 
       // Another call to revenueOverview should not propose any auction
-      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenueOverview(
         rsrTrader.address
       )
       expect(canStart).to.eql(Array(8).fill(false))
@@ -636,7 +634,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(settleable[0]).to.equal(token.address)
 
       // Another call to revenueOverview should settle and propose new auction
-      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenueOverview(
         rsrTrader.address
       )
 
@@ -652,7 +650,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       }
 
       // Settle and start new auction
-      await facadeAct.runRevenueAuctions(rsrTrader.address, erc20sToStart, erc20sToStart, [
+      await facade.runRevenueAuctions(rsrTrader.address, erc20sToStart, erc20sToStart, [
         TradeKind.DUTCH_AUCTION,
       ])
 
@@ -660,7 +658,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
 
       // Call revenueOverview, cannot open new auctions
-      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenueOverview(
         rsrTrader.address
       )
       expect(canStart).to.eql(Array(8).fill(false))
@@ -677,11 +675,11 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         await BackingMgrInvalidVerImplFactory.deploy()
       )
 
-      await expect(facadeAct.callStatic.revenueOverview(rsrTrader.address)).not.to.be.reverted
+      await expect(facade.callStatic.revenueOverview(rsrTrader.address)).not.to.be.reverted
       await backingManager.connect(owner).upgradeTo(bckMgrInvalidVer.address)
 
       // Reverts due to invalid version when forwarding revenue
-      await expect(facadeAct.callStatic.revenueOverview(rsrTrader.address)).to.be.revertedWith(
+      await expect(facade.callStatic.revenueOverview(rsrTrader.address)).to.be.revertedWith(
         'unrecognized version'
       )
     })
@@ -689,7 +687,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
     it('Should return nextRecollateralizationAuction', async () => {
       // Confirm no auction to run yet - should not revert
       let [canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
+        await facade.callStatic.nextRecollateralizationAuction(
           backingManager.address,
           TradeKind.DUTCH_AUCTION
         )
@@ -707,11 +705,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
 
       // Confirm nextRecollateralizationAuction is true
-      ;[canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
-          backingManager.address,
-          TradeKind.DUTCH_AUCTION
-        )
+      ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
+        backingManager.address,
+        TradeKind.DUTCH_AUCTION
+      )
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
       expect(buy).to.equal(usdc.address)
@@ -732,11 +729,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       })
 
       // nextRecollateralizationAuction should return false (trade open)
-      ;[canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
-          backingManager.address,
-          TradeKind.DUTCH_AUCTION
-        )
+      ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
+        backingManager.address,
+        TradeKind.DUTCH_AUCTION
+      )
       expect(canStart).to.equal(false)
       expect(sell).to.equal(ZERO_ADDRESS)
       expect(buy).to.equal(ZERO_ADDRESS)
@@ -747,11 +743,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // nextRecollateralizationAuction should return the next trade
       // In this case it will retry the same auction
-      ;[canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
-          backingManager.address,
-          TradeKind.DUTCH_AUCTION
-        )
+      ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
+        backingManager.address,
+        TradeKind.DUTCH_AUCTION
+      )
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
       expect(buy).to.equal(usdc.address)
@@ -781,7 +776,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Confirm no auction to run yet - should not revert
       let [canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
+        await facade.callStatic.nextRecollateralizationAuction(
           backingManager.address,
           TradeKind.BATCH_AUCTION
         )
@@ -799,11 +794,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
 
       // Confirm nextRecollateralizationAuction is true
-      ;[canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
-          backingManager.address,
-          TradeKind.BATCH_AUCTION
-        )
+      ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
+        backingManager.address,
+        TradeKind.BATCH_AUCTION
+      )
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
       expect(buy).to.equal(usdc.address)
@@ -827,11 +821,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
 
       // nextRecollateralizationAuction should return false (trade open)
-      ;[canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
-          backingManager.address,
-          TradeKind.BATCH_AUCTION
-        )
+      ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
+        backingManager.address,
+        TradeKind.BATCH_AUCTION
+      )
       expect(canStart).to.equal(false)
       expect(sell).to.equal(ZERO_ADDRESS)
       expect(buy).to.equal(ZERO_ADDRESS)
@@ -842,11 +835,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // nextRecollateralizationAuction should return the next trade
       // In this case it will retry the same auction
-      ;[canStart, sell, buy, sellAmount] =
-        await facadeAct.callStatic.nextRecollateralizationAuction(
-          backingManager.address,
-          TradeKind.BATCH_AUCTION
-        )
+      ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
+        backingManager.address,
+        TradeKind.BATCH_AUCTION
+      )
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
       expect(buy).to.equal(usdc.address)
@@ -856,7 +848,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
 
       await expect(
-        facadeAct.callStatic.nextRecollateralizationAuction(
+        facade.callStatic.nextRecollateralizationAuction(
           backingManager.address,
           TradeKind.BATCH_AUCTION
         )
@@ -886,7 +878,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Attempt to trigger recollateralization
       await expect(
-        facadeAct.callStatic.nextRecollateralizationAuction(
+        facade.callStatic.nextRecollateralizationAuction(
           backingManager.address,
           TradeKind.BATCH_AUCTION
         )
@@ -1410,7 +1402,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
   })
 
   // P1 only
-  describeP1('FacadeAct', () => {
+  describeP1('ActFacet', () => {
     let issueAmount: BigNumber
 
     beforeEach(async () => {
@@ -1467,7 +1459,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await compoundMock.setRewards(rsrTrader.address, rewardAmountCOMP)
 
       // Via Facade, claim rewards from backingManager
-      await expectEvents(facadeAct.claimRewards(rToken.address), [
+      await expectEvents(facade.claimRewards(rToken.address), [
         {
           contract: aToken,
           name: 'RewardsClaimed',
@@ -1500,12 +1492,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Run revenue auctions
       await expect(
-        facadeAct.runRevenueAuctions(
-          rsrTrader.address,
-          [],
-          [token.address],
-          [TradeKind.DUTCH_AUCTION]
-        )
+        facade.runRevenueAuctions(rsrTrader.address, [], [token.address], [TradeKind.DUTCH_AUCTION])
       )
         .to.emit(rsrTrader, 'TradeStarted')
         .withArgs(anyValue, token.address, rsr.address, anyValue, anyValue)
@@ -1518,7 +1505,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Settle and start new auction - Will retry
       await expectEvents(
-        facadeAct.runRevenueAuctions(
+        facade.runRevenueAuctions(
           rsrTrader.address,
           [token.address],
           [token.address],
@@ -1564,7 +1551,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Run revenue auctions
       await expect(
-        facadeAct.runRevenueAuctions(
+        facade.runRevenueAuctions(
           rTokenTrader.address,
           [],
           [token.address],
@@ -1586,7 +1573,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Settle and start new auction - Will retry
       await expectEvents(
-        facadeAct.runRevenueAuctions(
+        facade.runRevenueAuctions(
           rTokenTrader.address,
           [token.address],
           [token.address],
@@ -1617,7 +1604,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Settle and start new auction - Will retry again
       await expectEvents(
-        facadeAct.runRevenueAuctions(
+        facade.runRevenueAuctions(
           rTokenTrader.address,
           [token.address],
           [token.address],
@@ -1656,24 +1643,14 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
 
       await expect(
-        facadeAct.runRevenueAuctions(
-          rsrTrader.address,
-          [],
-          [token.address],
-          [TradeKind.DUTCH_AUCTION]
-        )
+        facade.runRevenueAuctions(rsrTrader.address, [], [token.address], [TradeKind.DUTCH_AUCTION])
       ).to.be.revertedWith('unrecognized version')
 
       // Also set BackingManager to invalid version
       await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
 
       await expect(
-        facadeAct.runRevenueAuctions(
-          rsrTrader.address,
-          [],
-          [token.address],
-          [TradeKind.DUTCH_AUCTION]
-        )
+        facade.runRevenueAuctions(rsrTrader.address, [], [token.address], [TradeKind.DUTCH_AUCTION])
       ).to.be.revertedWith('unrecognized version')
     })
   })

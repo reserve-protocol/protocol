@@ -53,7 +53,6 @@ import {
   Asset,
   ATokenFiatCollateral,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
@@ -63,6 +62,7 @@ import {
   RTokenAsset,
   TestIBackingManager,
   TestIDeployer,
+  TestIFacade,
   TestIMain,
   TestIRToken,
   IAToken,
@@ -124,7 +124,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let chainlinkFeed: AggregatorInterface
 
   let deployer: TestIDeployer
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
   let govParams: IGovParams
@@ -158,6 +158,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       pctRate: fp('0.05'), // 5%
     },
     warmupPeriod: bn('60'),
+    reweightable: false,
   }
 
   const defaultThreshold = fp('0.01') // 1%

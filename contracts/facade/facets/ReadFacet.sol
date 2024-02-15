@@ -12,7 +12,6 @@ import "../../libraries/Fixed.sol";
 import "../../p1/BasketHandler.sol";
 import "../../p1/RToken.sol";
 import "../../p1/StRSRVotes.sol";
-import "./Facet.sol";
 
 /**
  * @title ReadFacet
@@ -22,14 +21,14 @@ import "./Facet.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ReadFacet is IReadFacet, Facet {
+contract ReadFacet is IReadFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
 
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
-    function maxIssuable(IRToken rToken, address account) external staticCall returns (uint256) {
+    function maxIssuable(IRToken rToken, address account) external returns (uint256) {
         IMain main = rToken.main();
 
         require(!main.frozen(), "frozen");
@@ -60,7 +59,6 @@ contract ReadFacet is IReadFacet, Facet {
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
         external
-        staticCall
         returns (
             address[] memory tokens,
             uint256[] memory deposits,
@@ -107,7 +105,6 @@ contract ReadFacet is IReadFacet, Facet {
     /// @custom:static-call
     function redeem(IRToken rToken, uint256 amount)
         external
-        staticCall
         returns (
             address[] memory tokens,
             uint256[] memory withdrawals,
@@ -150,7 +147,7 @@ contract ReadFacet is IReadFacet, Facet {
         uint256 amount,
         uint48[] memory basketNonces,
         uint192[] memory portions
-    ) external staticCall returns (address[] memory tokens, uint256[] memory withdrawals) {
+    ) external returns (address[] memory tokens, uint256[] memory withdrawals) {
         IMain main = rToken.main();
         require(!main.frozen(), "frozen");
 
@@ -193,7 +190,6 @@ contract ReadFacet is IReadFacet, Facet {
     /// @custom:static-call
     function basketBreakdown(IRToken rToken)
         external
-        staticCall
         returns (
             address[] memory erc20s,
             uint192[] memory uoaShares,
@@ -236,7 +232,6 @@ contract ReadFacet is IReadFacet, Facet {
     /// @custom:static-call
     function balancesAcrossAllTraders(IRToken rToken)
         external
-        staticCall
         returns (
             IERC20[] memory erc20s,
             uint256[] memory balances,
