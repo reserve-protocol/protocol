@@ -44,6 +44,11 @@ New governance param added: `reweightable`
 - All plugins with multiple chainlink feeds will now timeout over the maximum of the feeds' timeouts
 - Add ORACLE_TIMEOUT_BUFFER to all usages of chainlink feeds
 
+### Facades
+
+- `FacadeRead`
+  - Use avg prices instead of low prices in `backingOverview()` and `basketBreakdown()`
+
 ### Trading
 
 - `DutchTrade`
