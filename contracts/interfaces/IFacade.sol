@@ -2,12 +2,8 @@
 pragma solidity 0.8.19;
 
 interface IFacade {
-    event FunctionSaved(bytes4 indexed selector, address indexed impl);
-    event FunctionUpdated(bytes4 indexed selector, address indexed impl);
+    event FunctionSaved(address indexed impl, bytes4 indexed selector);
 
-    // Save new implementations to the Facade, reverting if any already exist
+    // Save new implementations to the Facade, forcefully
     function save(address impl, bytes4[] memory selectors) external;
-
-    // Update an existing implementation, reverting if none exists
-    function update(address impl, bytes4 selector) external;
 }

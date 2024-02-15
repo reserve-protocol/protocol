@@ -9,26 +9,19 @@ import "../interfaces/IFacade.sol";
  * @notice A simple nearly-append-only list of functions that can be dynamically controlled
  *   IMPORTANT: The functions should be stateless! They cannot rely on storage.
  */
-contract Facade is Ownable {
+contract Facade is IFacade, Ownable {
     mapping(bytes4 => address) public impls; // version = index + 1
 
     // solhint-disable-next-line no-empty-blocks
     constructor() Ownable() {}
 
-    // Save new implementations to the Facade, reverting if any already exist
+    // Save new implementations to the Facade, forcefully
     function save(address impl, bytes4[] memory selectors) external onlyOwner {
         require(impl != address(0), "zero address");
         for (uint256 i = 0; i < selectors.length; i++) {
-            require(impls[selectors[i]] == address(0), "impl already exists");
             impls[selectors[i]] = impl;
+            emit FunctionSaved(impl, selectors[i]);
         }
-    }
-
-    // Update an existing implementation, reverting if none exists
-    function update(address impl, bytes4 selector) external onlyOwner {
-        require(impl != address(0), "zero address");
-        require(impls[selector] != address(0), "impl does not exist");
-        impls[selector] = impl;
     }
 
     // Find impl for function that is called and execute the
