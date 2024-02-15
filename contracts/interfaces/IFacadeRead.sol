@@ -18,6 +18,13 @@ interface IFacadeRead {
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256);
 
+    /// @param amounts {qTok} The balances of each basket ERC20 to assume
+    /// @return How many RToken can be issued
+    /// @custom:static-call
+    function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
+        external
+        returns (uint256);
+
     /// @return tokens The erc20 needed for the issuance
     /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
     /// @return depositsUoA {UoA} The UoA value of the deposits necessary to issue `amount` RToken
