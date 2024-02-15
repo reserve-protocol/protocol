@@ -36,7 +36,8 @@ contract FacadeRead is IFacadeRead {
         return maxIssuableByAmounts(rToken, balances);
     }
 
-    /// @param amounts {qTok} The balances of each basket ERC20 to assume
+    /// @param amounts {qTok} Amounts per basket ERC20
+    ///                       Assumes same order as current basket ERC20s given by bh.quote()
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
@@ -52,7 +53,6 @@ contract FacadeRead is IFacadeRead {
 
         // Get basket ERC20s
         IBasketHandler bh = main.basketHandler();
-        if (!bh.isReady()) return 0;
         (address[] memory erc20s, uint256[] memory quantities) = bh.quote(FIX_ONE, CEIL);
 
         // Compute how many baskets we can mint with the collateral amounts
