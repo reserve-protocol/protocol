@@ -25,17 +25,25 @@ async function main() {
   // Part 1/3 of the *overall* deployment process: Deploy all contracts
   // See `confirm.ts` for part 2
 
-  // Phase 1- Implementations
+  // Phase 1 -- Implementations
   const scripts = [
-    'phase1-common/0_setup_deployments.ts',
-    'phase1-common/1_deploy_libraries.ts',
-    'phase1-common/2_deploy_implementations.ts',
-    'phase1-common/3_deploy_rsrAsset.ts',
-    'phase1-common/4_deploy_facade.ts',
-    'phase1-common/5_deploy_deployer.ts',
-    'phase1-common/6_deploy_facadeWrite.ts',
-    'phase1-common/7_deploy_facadeAct.ts',
+    'phase1-core/0_setup_deployments.ts',
+    'phase1-core/1_deploy_libraries.ts',
+    'phase1-core/2_deploy_implementations.ts',
+    'phase1-core/3_deploy_rsrAsset.ts',
+    'phase1-core/4_deploy_facade.ts',
+    'phase1-core/5_deploy_deployer.ts',
+    'phase1-core/6_deploy_facadeWrite.ts',
   ]
+
+  // =============================================
+
+  // Phase 1.5 -- Facade
+
+  scripts.push(
+    'phase1-facade/1_deploy_and_save_readFacet.ts',
+    'phase1-facade/2_deploy_and_save_actFacet.ts'
+  )
 
   // =============================================
 

@@ -13,11 +13,12 @@ export interface IDeployments {
   prerequisites: IPrerequisites
   tradingLib: string
   basketLib: string
-  facadeRead: string
+  facade: string
+  actFacet: string
+  readFacet: string
   facadeWriteLib: string
   cvxMiningLib: string
   facadeWrite: string
-  facadeAct: string
   deployer: string
   rsrAsset: string
   implementations: IImplementations

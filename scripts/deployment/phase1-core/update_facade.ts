@@ -5,9 +5,9 @@ import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validateImplementations } from '../utils'
-import { FacadeAct } from '../../../typechain'
+import { ActFacet, Facade, ReadFacet } from '../../../typechain'
 
-let facadeAct: FacadeAct
+let facade: Facade
 
 async function main() {
   // ==== Read Configuration ====
@@ -33,20 +33,40 @@ async function main() {
     throw new Error(`RSR Asset contract not found in network ${hre.network.name}`)
   }
 
-  // ******************** Deploy FacadeAct ****************************************/
+  // ******************** Deploy Facade ****************************************/
 
-  // Deploy FacadeAct
-  const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+  // Deploy Facade
+  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
 
-  facadeAct = <FacadeAct>await FacadeActFactory.connect(burner).deploy()
-  await facadeAct.deployed()
+  // Save ReadFacet to Facade
+  const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
+  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+  await facade.save(
+    readFacet.address,
+    Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
+  )
+
+  // Save ActFacet to Facade
+  const ActFacetFactory: ContractFactory = await ethers.getContractFactory('ActFacet')
+  const actFacet = <ActFacet>await ActFacetFactory.deploy()
+  await facade.save(
+    actFacet.address,
+    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+  )
+
+  return { facade }
+
+  const FacadeFactory = await ethers.getContractFactory('FacadeRead')
+  facadeRead = <FacadeRead>await FacadeFactory.connect(burner).deploy()
+  await facadeRead.deployed()
 
   // Write temporary deployments file
-  deployments.facadeAct = facadeAct.address
+  deployments.facadeRead = facadeRead.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId})
-    FacadeAct:  ${facadeAct.address}
+    Facade:  ${facadeRead.address}
     Deployment file: ${deploymentFilename}`)
 }
 

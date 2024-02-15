@@ -5,9 +5,9 @@ import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validateImplementations } from '../utils'
-import { FacadeRead } from '../../../typechain'
+import { ActFacet } from '../../../typechain'
 
-let facadeRead: FacadeRead
+let actFacet: ActFacet
 
 async function main() {
   // ==== Read Configuration ====
@@ -33,19 +33,33 @@ async function main() {
     throw new Error(`RSR Asset contract not found in network ${hre.network.name}`)
   }
 
-  // ******************** Deploy Facade ****************************************/
+  // ******************** Deploy ActFacet ****************************************/
 
-  const FacadeFactory = await ethers.getContractFactory('FacadeRead')
-  facadeRead = <FacadeRead>await FacadeFactory.connect(burner).deploy()
-  await facadeRead.deployed()
+  // Deploy ActFacet
+  const FacadeActFactory = await ethers.getContractFactory('ActFacet')
+  actFacet = <ActFacet>await FacadeActFactory.connect(burner).deploy()
+  await actFacet.deployed()
 
   // Write temporary deployments file
-  deployments.facadeRead = facadeRead.address
+  deployments.actFacet = actFacet.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId})
-    Facade:  ${facadeRead.address}
+    ActFacet:  ${actFacet.address}
     Deployment file: ${deploymentFilename}`)
+
+  // ******************** Save to Facade ****************************************/
+
+  console.log('Configuring with Facade...')
+
+  // Save ReadFacet to Facade
+  const facade = await ethers.getContractAt('Facade', deployments.facade)
+  await facade.save(
+    actFacet.address,
+    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+  )
+
+  console.log('Finished saving to Facade')
 }
 
 main().catch((error) => {
