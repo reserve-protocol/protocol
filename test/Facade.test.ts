@@ -614,7 +614,8 @@ describe('Facade + FacadeMonitor contracts', () => {
         [rsrTrader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
       )
       const data = funcSig.substring(0, 10) + args.slice(2)
-      await expect(facade.multicall([data])).to.emit(rsrTrader, 'TradeStarted')
+      const facadeAsActFacet = await ethers.getContractAt('ActFacet', facade.address)
+      await expect(facadeAsActFacet.multicall([data])).to.emit(rsrTrader, 'TradeStarted')
 
       // Another call to revenueOverview should not propose any auction
       ;[erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenueOverview(

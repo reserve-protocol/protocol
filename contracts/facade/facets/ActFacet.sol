@@ -17,7 +17,7 @@ import "../../interfaces/IBackingManager.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ActFacet is IActFacet {
+contract ActFacet is IActFacet, Multicall {
     using Address for address;
     using SafeERC20 for IERC20;
     using FixLib for uint192;
@@ -37,7 +37,6 @@ contract ActFacet is IActFacet {
     ///   For each ERC20 in `toSettle`:
     ///     - Settle any open ERC20 trades
     ///   Then:
-    ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
     ///     - Call `revenueTrader.manageTokens(ERC20)` to start an auction
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
