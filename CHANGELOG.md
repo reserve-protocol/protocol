@@ -31,15 +31,12 @@ All collateral plugins should be upgraded. Only compound-v2 ERC20 needs to be ro
 - convex
   - Make `price()` more resistant to manipulation by MEV
   - Emit `RewardsClaimed` event during `claimRewards()`
-- frax-eth
-  - Emit `RewardsClaimed` event during `claimRewards()`
 - morpho-aave
   - Emit `RewardsClaimed` event during `claimRewards()`
 - stargate
   - Emit `RewardsClaimed` event during `claimRewards()`
-- yearnv2
+- yearn-v2
   - Make `price()` more resistant to manipulation by MEV
-  - Emit `RewardsClaimed` event during `claimRewards()`
 
 ### Facades
 
