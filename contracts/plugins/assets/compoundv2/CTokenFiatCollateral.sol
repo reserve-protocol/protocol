@@ -88,15 +88,11 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
         uint256 bal = comp.balanceOf(address(this));
-        // try claiming on the wrapper first
-        try IRewardable(address(erc20)).claimRewards() {} catch {
-            // else: claim directly
-            address[] memory holders = new address[](1);
-            address[] memory cTokens = new address[](1);
-            holders[0] = address(this);
-            cTokens[0] = address(cToken);
-            comptroller.claimComp(holders, cTokens, false, true);
-        }
+        address[] memory holders = new address[](1);
+        address[] memory cTokens = new address[](1);
+        holders[0] = address(this);
+        cTokens[0] = address(cToken);
+        comptroller.claimComp(holders, cTokens, false, true);
         emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
     }
 }

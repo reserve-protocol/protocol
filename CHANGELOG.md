@@ -8,7 +8,7 @@ This release improves how collateral plugins price LP tokens and moves reward cl
 
 Swapout all collateral plugins with appreciation.
 
-All collateral plugins should be upgraded. Only compound-v2 ERC20 needs to be rotated, and it is purely optional to provide gas savings.
+All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken.
 
 ### Core Protocol Contracts
 
