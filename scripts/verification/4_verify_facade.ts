@@ -26,7 +26,7 @@ async function main() {
   /** ******************** Verify ReadFacet ****************************************/
   await verifyContract(
     chainId,
-    deployments.readFacet,
+    deployments.facets.readFacet,
     [],
     'contracts/facade/facets/ReadFacet.sol:ReadFacet'
   )
@@ -34,7 +34,7 @@ async function main() {
   /** ******************** Verify ActFacet ****************************************/
   await verifyContract(
     chainId,
-    deployments.actFacet,
+    deployments.facets.actFacet,
     [],
     'contracts/facade/facets/ActFacet.sol:ActFacet'
   )

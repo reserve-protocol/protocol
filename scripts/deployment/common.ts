@@ -9,13 +9,17 @@ export interface IPrerequisites {
   GNOSIS_EASY_AUCTION: string
 }
 
+export interface IFacets {
+  actFacet: string
+  readFacet: string
+}
+
 export interface IDeployments {
   prerequisites: IPrerequisites
   tradingLib: string
   basketLib: string
   facade: string
-  actFacet: string
-  readFacet: string
+  facets: IFacets
   facadeWriteLib: string
   cvxMiningLib: string
   facadeWrite: string

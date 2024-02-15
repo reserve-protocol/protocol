@@ -56,8 +56,10 @@ async function main() {
     tradingLib: '',
     cvxMiningLib: '',
     facade: '',
-    actFacet: '',
-    readFacet: '',
+    facets: {
+      actFacet: '',
+      readFacet: '',
+    },
     facadeWriteLib: '',
     basketLib: '',
     facadeWrite: '',

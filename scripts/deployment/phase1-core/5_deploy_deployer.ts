@@ -29,9 +29,9 @@ async function main() {
   await validateImplementations(deployments)
 
   // Check previous step executed
-  if (!deployments.facadeRead) {
+  if (!deployments.facade) {
     throw new Error(`Missing deployed contracts in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.facadeRead))) {
+  } else if (!(await isValidContract(hre, deployments.facade))) {
     throw new Error(`Facade contract not found in network ${hre.network.name}`)
   }
 

@@ -4,7 +4,6 @@ import hre, { ethers } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
-import { validateImplementations } from '../utils'
 import { ActFacet } from '../../../typechain'
 
 let actFacet: ActFacet
@@ -24,24 +23,22 @@ async function main() {
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
-  await validateImplementations(deployments)
-
-  // Check previous step executed
-  if (!deployments.rsrAsset) {
+  // Check facade exists
+  if (!deployments.facade) {
     throw new Error(`Missing deployed contracts in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.rsrAsset))) {
-    throw new Error(`RSR Asset contract not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.facade))) {
+    throw new Error(`Facade contract not found in network ${hre.network.name}`)
   }
 
   // ******************** Deploy ActFacet ****************************************/
 
   // Deploy ActFacet
-  const FacadeActFactory = await ethers.getContractFactory('ActFacet')
-  actFacet = <ActFacet>await FacadeActFactory.connect(burner).deploy()
+  const ActFacetFactory = await ethers.getContractFactory('ActFacet')
+  actFacet = <ActFacet>await ActFacetFactory.connect(burner).deploy()
   await actFacet.deployed()
 
   // Write temporary deployments file
-  deployments.actFacet = actFacet.address
+  deployments.facets.actFacet = actFacet.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId})
