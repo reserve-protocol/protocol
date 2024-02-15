@@ -146,13 +146,19 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
 
       // no `C` weights
-      await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
+      //await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
+      //await expect(scenario.forceSetPrimeBasket()).revertedWith("can't rebalance bad weights")
+      await expect(scenario.setPrimeBasket()).revertedWith("missing target weights")
+      await expect(scenario.forceSetPrimeBasket()).revertedWith("missing target weights")
 
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('SA1') as number, fp('0.1').sub(1))
 
       // over-weighted to `A`
-      await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
+      // await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
+      // await expect(scenario.forceSetPrimeBasket()).revertedWith("can't rebalance bad weights")
+      await expect(scenario.setPrimeBasket()).revertedWith("new target weights")
+      await expect(scenario.forceSetPrimeBasket()).revertedWith("new target weights")
 
       // Remove the last one added
       await scenario.popBackingForPrimeBasket()
@@ -394,7 +400,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB0') as number, fp('0.3').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC0') as number, fp('0.3').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.2').sub(1))
-      await scenario.setPrimeBasket()
+      await scenario.forceSetPrimeBasket()
 
       // Switch basket
       await scenario.refreshBasket()

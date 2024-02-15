@@ -755,9 +755,15 @@ contract RebalancingScenario {
     }
 
     function setPrimeBasket() public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
-        _validateWeights();
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        if(!bh.reweightable()) _validateWeights();
         bh.setPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
+    }
+
+    function forceSetPrimeBasket() public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        if(!bh.reweightable()) _validateWeights();
+        bh.forceSetPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
     }
 
     // Backup basket

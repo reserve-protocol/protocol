@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/trading/DutchTradeRouter.sol";
+import "contracts/plugins/mocks/DutchTradeRouter.sol";
 
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
@@ -212,7 +212,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
             params.minTradeVolume
         );
 
-        basketHandler.init(this, params.warmupPeriod, true);
+        basketHandler.init(this, params.warmupPeriod, params.reweightable);
         rsrTrader.init(this, rsr, params.maxTradeSlippage, params.minTradeVolume);
         rTokenTrader.init(
             this,

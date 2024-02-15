@@ -1152,7 +1152,7 @@ const scenarioSpecificTests = () => {
       .connect(alice)
       .pushBackingForPrimeBasket(bn('2534475810960463152805528040151'), 0)
     await expect(scenario.connect(alice).setPrimeBasket()).revertedWith(
-      "can't rebalance bad weights"
+      "missing target weights" // "can't rebalance bad weights"
     )
   })
 
