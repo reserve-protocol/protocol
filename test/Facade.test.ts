@@ -196,18 +196,19 @@ describe('Facade + FacadeMonitor contracts', () => {
   })
 
   describe('Facade', () => {
+    let selector: string
     let revertingFacet: RevertingFacetMock
 
     beforeEach(async () => {
+      selector = readFacet.interface.getSighash('backingOverview(address)')
       const factory = await ethers.getContractFactory('RevertingFacetMock')
       revertingFacet = await factory.deploy()
     })
 
     it('Cannot save zero addr facets', async () => {
-      await expect(facade.save(ZERO_ADDRESS, ['0x01'])).to.be.revertedWith('zero address')
+      await expect(facade.save(ZERO_ADDRESS, [selector])).to.be.revertedWith('zero address')
     })
     it('Can overwrite an entry', async () => {
-      const selector = readFacet.interface.getSighash('backingOverview(address)')
       await expect(facade.save(revertingFacet.address, [selector]))
         .to.emit(facade, 'SelectorSaved')
         .withArgs(revertingFacet.address, selector)
