@@ -126,7 +126,7 @@ interface INetworkConfig {
   AAVE_V3_INCENTIVES_CONTROLLER?: string
   AAVE_V3_POOL?: string
   STARGATE_STAKING_CONTRACT?: string
-  CURVE_POOL_ETH_FRXETH?: string
+  CURVE_POOL_WETH_FRXETH?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -244,7 +244,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
-    CURVE_POOL_ETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
+    CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
   },
   '1': {
     name: 'mainnet',
@@ -350,7 +350,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
-    CURVE_POOL_ETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
+    CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
   },
   '3': {
     name: 'tenderly',
@@ -451,7 +451,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
-    CURVE_POOL_ETH_FRXETH: '0xa1F8A6807c402E4A15ef4EBa36528A3FED24E577',
+    CURVE_POOL_WETH_FRXETH: '0xa1F8A6807c402E4A15ef4EBa36528A3FED24E577',
   },
   '5': {
     name: 'goerli',
