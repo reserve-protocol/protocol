@@ -346,6 +346,18 @@ const scenarioSpecificTests = () => {
     expect(await comp.basketHandler.status()).to.equal(CollateralStatus.DISABLED)
   })
 
+  it('can switch between reweightable/non-reweightable basket - only before REBALANCING', async () => {
+    expect(await comp.basketHandler.reweightable()).to.be.false
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
+
+    // Set to reweightable
+    await scenario.setReweightable(1);
+    expect(await comp.basketHandler.reweightable()).to.be.true
+
+    // Check refresh basket properties remain
+    expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.equal(true)
+  })
+
   it('can manage scenario states - basket switch - covered by RSR [Batch auction]', async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })

@@ -973,6 +973,15 @@ contract RebalancingScenario {
         );
     }
 
+    function setReweightable(
+        uint256 seed
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        seed %= 2;
+        if (seed == 0) bh.setReweightable(false);
+        else if (seed == 1) bh.setReweightable(true);
+    }
+
     function resetStakes() public {
         main.stRSR().resetStakes();
     }

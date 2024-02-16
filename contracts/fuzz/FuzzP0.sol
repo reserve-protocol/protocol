@@ -47,6 +47,10 @@ contract BasketHandlerP0Fuzz is BasketHandlerP0 {
         }
         return true;
     }
+
+    function setReweightable(bool reweight) external {
+        reweightable = reweight;
+    }
 }
 
 contract BackingManagerP0Fuzz is BackingManagerP0 {

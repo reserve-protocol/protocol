@@ -198,6 +198,9 @@ contract ChaosOpsScenario {
             main.backingManager().grantRTokenAllowance(main.tokens(t));
         }
 
+        // Use reweightable basket for Chaos scenario
+        BasketHandlerP1Fuzz(address(main.basketHandler())).setReweightable(true);
+
         // Save RSR and RToken rates
         saveRates();
     }
