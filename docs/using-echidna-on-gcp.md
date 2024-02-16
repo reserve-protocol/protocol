@@ -79,7 +79,7 @@ pip3 install echidna_parade
 # Maybe overkill, but it won't take too long
 solc-select install all
 
-# Install node. Use the snap, instead of the apt pacakge, to avoid installing
+# Install node. Use the snap, instead of the apt package, to avoid installing
 # _way too much_ other junk
 sudo snap install node --classic --channel=16
 

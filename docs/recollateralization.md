@@ -38,7 +38,7 @@ As trades complete, the distance between the top and bottom of the BU price band
 
 In the optimistic case we assume we start with `basketsHeldBy(backingManager).top` basket units and deduct from this the balance deficit for each backing collateral in terms of basket units (converted optimistically). For deficits we assume the low sell price and high basket unit price. We assume no impact from maxTradeSlippage or minTradeVolume dust loss. Finally we add-in contributions from all surplus balances, this time assuming the high sell price and low basket unit price.
 
-Alltogether, this is how many BUs we would end up with after recapitalization if everything went as well as possible.
+Altogether, this is how many BUs we would end up with after recapitalization if everything went as well as possible.
 
 #### `basketRange.bottom`
 
@@ -52,7 +52,7 @@ The BU price band is used in order to determine token surplus/deficit: token sur
 
 This allows the protocol to deterministically select the next trade based on the following set of constraints (in this order of consideration):
 
-1. Always sell more than than the [`minTradeVolume`](system-design.md#minTradeVolume) governance param
+1. Always sell more than the [`minTradeVolume`](system-design.md#minTradeVolume) governance param
 2. Never sell more than the [`maxTradeVolume`](system-design.md#rTokenMaxTradeVolume) governance param
 3. Sell `DISABLED` collateral first, `SOUND` next, and `IFFY` last.
    (Non-collateral assets are considered SOUND for these purposes.)

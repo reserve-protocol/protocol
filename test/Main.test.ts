@@ -70,8 +70,8 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from './fixtures'
@@ -1182,7 +1182,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: newToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: await ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -1204,7 +1204,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: newToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: await ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -1230,7 +1230,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: await gasGuzzlingColl.erc20(),
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: await ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -1629,7 +1629,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
               oracleError: ORACLE_ERROR,
               erc20: erc20s[5].address,
               maxTradeVolume: config.rTokenMaxTradeVolume,
-              oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+              oracleTimeout: ORACLE_TIMEOUT,
               targetName: ethers.utils.formatBytes32String('USD'),
               defaultThreshold: DEFAULT_THRESHOLD,
               delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -1724,7 +1724,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: eurToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('EUR'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral1.delayUntilDefault(),
@@ -2110,7 +2110,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: await collateral0.erc20(),
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('NEW_TARGET'),
         defaultThreshold: fp('0.01'),
         delayUntilDefault: await collateral0.delayUntilDefault(),
@@ -2988,7 +2988,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
 
       // Set collateral1 price to [0, FIX_MAX]
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(collateral0.address, bn('1e8'))
       await assetRegistry.refresh()
 
@@ -3032,7 +3032,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: await collateral2.maxTradeVolume(),
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3045,7 +3045,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set price = 0, which hits 3 of our 4 collateral in the basket
       await setOraclePrice(newColl2.address, bn('0'))
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(collateral1.address, bn('1e8'))
 
       // Check status and price again
@@ -3067,7 +3067,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: await collateral2.maxTradeVolume(),
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3075,7 +3075,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         REVENUE_HIDING
       )
       await assetRegistry.connect(owner).swapRegistered(newColl.address)
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await newColl.setTargetPerRef(1)
       await expectUnpriced(basketHandler.address)
     })
@@ -3092,7 +3092,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3314,7 +3314,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3358,7 +3358,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           oracleError: ORACLE_ERROR,
           erc20: await collateral2.erc20(),
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -3397,7 +3397,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oracleError: ORACLE_ERROR,
         erc20: token0.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: await ethers.utils.formatBytes32String('NEW TARGET'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),

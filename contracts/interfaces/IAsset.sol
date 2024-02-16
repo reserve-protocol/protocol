@@ -69,6 +69,9 @@ interface TestIAsset is IAsset {
     /// @return {s} Seconds that an oracle value is considered valid
     function oracleTimeout() external view returns (uint48);
 
+    /// @return {s} The maximum of all oracle timeouts on the plugin
+    function maxOracleTimeout() external view returns (uint48);
+
     /// @return {s} Seconds that the price() should decay over, after stale price
     function priceTimeout() external view returns (uint48);
 
@@ -136,4 +139,7 @@ interface TestICollateral is TestIAsset, ICollateral {
 
     /// @return The amount of time a collateral must be in IFFY status until being DISABLED
     function delayUntilDefault() external view returns (uint48);
+
+    /// @return The underlying refPerTok, likely not included in all collaterals however.
+    function underlyingRefPerTok() external view returns (uint192);
 }

@@ -1,6 +1,6 @@
 # MEV
 
-This document is intended to serve as a resource for MEV searchers and others looking to interact with the deployed protocol programatically.
+This document is intended to serve as a resource for MEV searchers and others looking to interact with the deployed protocol programmatically.
 
 ## Overview
 
@@ -65,7 +65,7 @@ For a sample price curve, see [docs/system-design.md](./system-design.md#sample-
 
 #### GnosisTrade
 
-`GnosisTrade.sol` implements a batch auction on top of Gnosis's [EasyAuction](https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol) platform. In general a batch auction is designed to minimize MEV, and indeed that's why it was chosen in the first place. Both types of auctions (batch + dutch) can be opened at anytime, but the expectation is that dutch auctions will be preferred by MEV searchers because they are more likely to be profitable.
+`GnosisTrade.sol` implements a batch auction on top of Gnosis's [EasyAuction](https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol) platform. In general a batch auction is designed to minimize MEV, and indeed that's why it was chosen in the first place. Both types of auctions (batch + dutch) can be opened at any time, but the expectation is that dutch auctions will be preferred by MEV searchers because they are more likely to be profitable.
 
 However, if a batch auction is launched, an MEV searcher may still be able to profit. In order to bid in the auction, the searcher must call `function placeSellOrders(uint256 auctionId, uint96[] memory _minBuyAmounts, uint96[] memory _sellAmounts, bytes32[] memory _prevSellOrders, bytes calldata allowListCallData)`, providing an approval in advance. This call will escrow `_sellAmounts` tokens in EasyAuction for the remaining duration of the auction. Once the auction is over, anyone can settle the auction directly in EasyAuction via `settleAuction(uint256 auctionId)`, or by calling `settleTrade(IERC20 erc20)` on the `ITrading` instance in our system that started the trade (either BackingManager or a RevenueTrader).
 

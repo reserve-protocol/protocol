@@ -20,6 +20,7 @@ import "./OracleLib.sol";
  *   - targetPerRef()
  *   - claimRewards()
  * Should not have to re-implement any other methods.
+ * Should also set `oracleTimeout` in constructor if adding a new oracle source with timeout.
  *
  * Can intentionally disable default checks by setting config.defaultThreshold to 0
  * Can intentionally do no revenue hiding by setting revenueHiding to 0

@@ -50,8 +50,8 @@ import {
   IMPLEMENTATION,
   Implementation,
   ORACLE_ERROR,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
   defaultFixture,
@@ -590,7 +590,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should launch revenue auction if UNPRICED', async () => {
         // After oracleTimeout it should still launch auction for RToken
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(DECAY_DELAY.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
 
@@ -1170,7 +1170,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await setOraclePrice(collateral0.address, bn(0))
         await collateral0.refresh()
-        await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+        await advanceTime(PRICE_TIMEOUT.add(DECAY_DELAY).toString())
         await setOraclePrice(rsrAsset.address, bn('1e8'))
 
         const p = await collateral0.price()
@@ -1227,7 +1227,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           ORACLE_ERROR,
           aaveToken.address,
           bn(606), // 2 qTok auction at $300 (after accounting for price.high)
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
 
         // Set a very high price
@@ -1308,7 +1308,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ORACLE_ERROR,
             aaveToken.address,
             MAX_UINT192,
-            ORACLE_TIMEOUT_PRE_BUFFER
+            ORACLE_TIMEOUT
           )
         )
 
@@ -1319,7 +1319,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ORACLE_ERROR,
             rsr.address,
             MAX_UINT192,
-            ORACLE_TIMEOUT_PRE_BUFFER
+            ORACLE_TIMEOUT
           )
         )
 
@@ -1487,7 +1487,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ORACLE_ERROR,
             aaveToken.address,
             fp('1'),
-            ORACLE_TIMEOUT_PRE_BUFFER
+            ORACLE_TIMEOUT
           )
         )
 
@@ -1686,7 +1686,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ORACLE_ERROR,
             aaveToken.address,
             fp('1'),
-            ORACLE_TIMEOUT_PRE_BUFFER
+            ORACLE_TIMEOUT
           )
         )
 
@@ -1885,7 +1885,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ORACLE_ERROR,
             aaveToken.address,
             fp('1'),
-            ORACLE_TIMEOUT_PRE_BUFFER
+            ORACLE_TIMEOUT
           )
         )
 
@@ -3390,7 +3390,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             oracleError: ORACLE_ERROR,
             erc20: token2.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: fp('0.05'),
             delayUntilDefault: await collateral2.delayUntilDefault(),
@@ -4775,7 +4775,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           ORACLE_ERROR,
           compToken.address,
           config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
       )
 

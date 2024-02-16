@@ -30,6 +30,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    // solhint-disable-next-line var-name-mixedcase
     address public immutable CURVE_POOL_EMA_PRICE_ORACLE;
 
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
@@ -45,6 +46,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     }
 
     function refresh() public virtual override {
+        // solhint-disable-next-line no-empty-blocks
         try IsfrxEth(address(erc20)).syncRewards() {} catch {}
 
         super.refresh();

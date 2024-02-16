@@ -84,9 +84,9 @@ export const SLOW = !!useEnv('SLOW')
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 
-export const ORACLE_TIMEOUT_PRE_BUFFER = bn('281474976710655').div(100) // type(uint48).max / 100
+export const ORACLE_TIMEOUT = bn('281474976710655').div(100) // type(uint48).max / 100
 
-export const ORACLE_TIMEOUT = ORACLE_TIMEOUT_PRE_BUFFER.add(300)
+export const DECAY_DELAY = ORACLE_TIMEOUT.add(300)
 
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 
@@ -198,7 +198,7 @@ async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: defaultThreshold,
       delayUntilDefault: delayUntilDefault,
@@ -218,7 +218,7 @@ async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: defaultThreshold,
       delayUntilDefault: delayUntilDefault,
@@ -238,7 +238,7 @@ async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: defaultThreshold,
       delayUntilDefault: delayUntilDefault,
@@ -267,7 +267,7 @@ async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
@@ -295,7 +295,7 @@ async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
@@ -534,7 +534,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT_PRE_BUFFER
+      ORACLE_TIMEOUT
     )
   )
   await rsrAsset.refresh()
@@ -666,7 +666,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       aaveToken.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT_PRE_BUFFER
+      ORACLE_TIMEOUT
     )
   )
   await aaveAsset.refresh()
@@ -681,7 +681,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       compToken.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT_PRE_BUFFER
+      ORACLE_TIMEOUT
     )
   )
   await compAsset.refresh()

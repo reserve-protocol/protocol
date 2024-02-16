@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../OracleLib.sol";
 import "./CTokenFiatCollateral.sol";
@@ -33,6 +34,7 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetUnitOracleTimeout_));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
