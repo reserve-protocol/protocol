@@ -26,7 +26,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   FiatCollateral,
   GnosisMock,
@@ -72,7 +72,7 @@ describe('Assets contracts #fast', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenWrapperMock
+  let cToken: CTokenMock
 
   // Assets
   let collateral0: FiatCollateral
@@ -140,9 +140,7 @@ describe('Assets contracts #fast', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    cToken = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
-    )
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)

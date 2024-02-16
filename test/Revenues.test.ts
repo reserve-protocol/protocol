@@ -23,7 +23,7 @@ import {
   ATokenFiatCollateral,
   Asset,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ComptrollerMock,
   ERC20Mock,
   FacadeTest,
@@ -97,7 +97,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenWrapperMock
+  let token3: CTokenMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -206,9 +206,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
-    )
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -979,13 +977,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
             emitted: true,
@@ -1243,13 +1241,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1360,13 +1358,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Can also claim through Facade
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1520,13 +1518,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1725,13 +1723,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1926,13 +1924,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2232,13 +2230,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
             emitted: true,
@@ -2382,13 +2380,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
             emitted: true,
@@ -2506,13 +2504,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2569,13 +2567,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2834,13 +2832,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2949,13 +2947,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3047,13 +3045,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim rewards
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3101,13 +3099,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3157,13 +3155,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3298,13 +3296,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(rsrTrader.claimRewards(), [
           {
-            contract: token3,
+            contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3339,13 +3337,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim and sweep rewards
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: token2,
+            contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -3364,14 +3362,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should not revert on invalid claim logic', async () => {
-        // Here the aToken is going to have an invalid claimRewards on its asset,
-        // while the cToken will have it on the ERC20
+      it('Should be able to claimRewardsSingle to escape reverting claimRewards()', async () => {
+        // Here the aToken is going to have an invalid claimRewards on its asset
 
         // cToken
         rewardAmountCOMP = bn('0.5e18')
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-        await token3.setRevertClaimRewards(true)
 
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
@@ -3412,8 +3408,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Claim and sweep rewards -- should succeed
-        await expect(backingManager.claimRewards()).not.to.be.reverted
+        // Claim and sweep rewards -- fails
+        await expect(backingManager.claimRewards()).to.be.reverted
+
+        // But can claimRewardsSingle
+        await expect(backingManager.claimRewardsSingle(token3.address)).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
       })
 
       context('DutchTrade', () => {

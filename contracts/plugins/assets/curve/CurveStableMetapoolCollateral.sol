@@ -134,7 +134,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return _safeWrap(metapoolToken.get_virtual_price());
+        return _safeWrap(metapoolToken.get_virtual_price()); // includes inner virtual price
     }
 
     // Check for defaults outside the pool

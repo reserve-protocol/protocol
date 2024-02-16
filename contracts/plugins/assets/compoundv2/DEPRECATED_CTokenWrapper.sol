@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../erc20/RewardableERC20Wrapper.sol";
 import "./ICToken.sol";
 
+/// DEPRECATED
 contract CTokenWrapper is RewardableERC20Wrapper {
     using SafeERC20 for ERC20;
 

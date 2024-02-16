@@ -448,27 +448,11 @@ async function main() {
   /*** Compound V2 not available in Base L2s */
   if (!baseL2Chains.includes(hre.network.name)) {
     /********  Deploy CToken Fiat Collateral - cDAI  **************************/
-    const CTokenFactory = await ethers.getContractFactory('CTokenWrapper')
-    const cDai = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cDAI!)
-
-    const cDaiVault = await CTokenFactory.deploy(
-      networkConfig[chainId].tokens.cDAI!,
-      `${await cDai.name()} Vault`,
-      `${await cDai.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!
-    )
-
-    await cDaiVault.deployed()
-
-    console.log(
-      `Deployed Vault for cDAI on ${hre.network.name} (${chainId}): ${cDaiVault.address} `
-    )
-
     const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
       oracleError: fp('0.0025').toString(), // 0.25%
-      cToken: cDaiVault.address,
+      cToken: networkConfig[chainId].tokens.cDAI,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -481,32 +465,17 @@ async function main() {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cDAI = cDaiCollateral
-    assetCollDeployments.erc20s.cDAI = cDaiVault.address
+    assetCollDeployments.erc20s.cDAI = networkConfig[chainId].tokens.cDAI
     deployedCollateral.push(cDaiCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy CToken Fiat Collateral - cUSDC  **************************/
-    const cUsdc = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cUSDC!)
-
-    const cUsdcVault = await CTokenFactory.deploy(
-      networkConfig[chainId].tokens.cUSDC!,
-      `${await cUsdc.name()} Vault`,
-      `${await cUsdc.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!
-    )
-
-    await cUsdcVault.deployed()
-
-    console.log(
-      `Deployed Vault for cUSDC on ${hre.network.name} (${chainId}): ${cUsdcVault.address} `
-    )
-
     const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
       oracleError: fp('0.0025').toString(), // 0.25%
-      cToken: cUsdcVault.address,
+      cToken: networkConfig[chainId].tokens.cUSDC,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -519,32 +488,17 @@ async function main() {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cUSDC = cUsdcCollateral
-    assetCollDeployments.erc20s.cUSDC = cUsdcVault.address
+    assetCollDeployments.erc20s.cUSDC = networkConfig[chainId].tokens.cUSDC
     deployedCollateral.push(cUsdcCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy CToken Fiat Collateral - cUSDT  **************************/
-    const cUsdt = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cUSDT!)
-
-    const cUsdtVault = await CTokenFactory.deploy(
-      networkConfig[chainId].tokens.cUSDT!,
-      `${await cUsdt.name()} Vault`,
-      `${await cUsdt.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!
-    )
-
-    await cUsdtVault.deployed()
-
-    console.log(
-      `Deployed Vault for cUSDT on ${hre.network.name} (${chainId}): ${cUsdtVault.address} `
-    )
-
     const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
       oracleError: fp('0.0025').toString(), // 0.25%
-      cToken: cUsdtVault.address,
+      cToken: networkConfig[chainId].tokens.cUSDT,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -557,32 +511,17 @@ async function main() {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cUSDT = cUsdtCollateral
-    assetCollDeployments.erc20s.cUSDT = cUsdtVault.address
+    assetCollDeployments.erc20s.cUSDT = networkConfig[chainId].tokens.cUSDT
     deployedCollateral.push(cUsdtCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy CToken Fiat Collateral - cUSDP  **************************/
-    const cUsdp = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cUSDP!)
-
-    const cUsdpVault = await CTokenFactory.deploy(
-      networkConfig[chainId].tokens.cUSDP!,
-      `${await cUsdp.name()} Vault`,
-      `${await cUsdp.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!
-    )
-
-    await cUsdpVault.deployed()
-
-    console.log(
-      `Deployed Vault for cUSDP on ${hre.network.name} (${chainId}): ${cUsdpVault.address} `
-    )
-
     const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
       oracleError: fp('0.01').toString(), // 1%
-      cToken: cUsdpVault.address,
+      cToken: networkConfig[chainId].tokens.cUSDP,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -595,33 +534,18 @@ async function main() {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cUSDP = cUsdpCollateral
-    assetCollDeployments.erc20s.cUSDP = cUsdpVault.address
+    assetCollDeployments.erc20s.cUSDP = networkConfig[chainId].tokens.cUSDP
     deployedCollateral.push(cUsdpCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy CToken Non-Fiat Collateral - cWBTC  **************************/
-    const cWBTC = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cWBTC!)
-
-    const cWBTCVault = await CTokenFactory.deploy(
-      networkConfig[chainId].tokens.cWBTC!,
-      `${await cWBTC.name()} Vault`,
-      `${await cWBTC.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!
-    )
-
-    await cWBTCVault.deployed()
-
-    console.log(
-      `Deployed Vault for cWBTC on ${hre.network.name} (${chainId}): ${cWBTCVault.address} `
-    )
-
     const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
       targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
       combinedOracleError: combinedBTCWBTCError.toString(),
-      cToken: cWBTCVault.address,
+      cToken: networkConfig[chainId].tokens.cWBTC,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '86400', // 24 hr
       targetUnitOracleTimeout: '3600', // 1 hr
@@ -635,34 +559,19 @@ async function main() {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cWBTC = cWBTCCollateral
-    assetCollDeployments.erc20s.cWBTC = cWBTCVault.address
+    assetCollDeployments.erc20s.cWBTC = networkConfig[chainId].tokens.cWBTC
     deployedCollateral.push(cWBTCCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy CToken Self-Referential Collateral - cETH  **************************/
-    const cETH = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cETH!)
-
-    const cETHVault = await CTokenFactory.deploy(
-      networkConfig[chainId].tokens.cETH!,
-      `${await cETH.name()} Vault`,
-      `${await cETH.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!
-    )
-
-    await cETHVault.deployed()
-
-    console.log(
-      `Deployed Vault for cETH on ${hre.network.name} (${chainId}): ${cETHVault.address} `
-    )
-
     const { collateral: cETHCollateral } = await hre.run(
       'deploy-ctoken-selfreferential-collateral',
       {
         priceTimeout: priceTimeout.toString(),
         priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
         oracleError: fp('0.005').toString(), // 0.5%
-        cToken: cETHVault.address,
+        cToken: networkConfig[chainId].tokens.cETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '3600', // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
@@ -675,7 +584,7 @@ async function main() {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cETH = cETHCollateral
-    assetCollDeployments.erc20s.cETH = cETHVault.address
+    assetCollDeployments.erc20s.cETH = networkConfig[chainId].tokens.cETH
     deployedCollateral.push(cETHCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
