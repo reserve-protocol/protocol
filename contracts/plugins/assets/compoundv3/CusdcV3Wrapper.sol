@@ -204,9 +204,9 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
             rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
 
-            uint256 bal = IERC20(rewardERC20).balanceOf(address(this));
+            uint256 bal = rewardERC20.balanceOf(address(this));
             if (owed > bal) owed = bal;
-            IERC20(rewardERC20).safeTransfer(dst, owed);
+            rewardERC20.safeTransfer(dst, owed);
         }
         emit RewardsClaimed(rewardERC20, owed);
     }

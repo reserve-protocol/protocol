@@ -1,11 +1,23 @@
 import { ContractFactory } from 'ethers'
 import { expect } from 'chai'
-import hre, { ethers } from 'hardhat'
+import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
+import {
+  IConfig,
+  IImplementations,
+  IMonitorParams,
+  IRevenueShare,
+  networkConfig,
+} from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
+import {
+  CollateralStatus,
+  PAUSER,
+  LONG_FREEZER,
+  SHORT_FREEZER,
+  ZERO_ADDRESS,
+} from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -24,6 +36,7 @@ import {
   DutchTrade,
   FacadeRead,
   FacadeAct,
+  FacadeMonitor,
   FacadeTest,
   DistributorP1,
   FiatCollateral,
@@ -71,9 +84,9 @@ export const SLOW = !!useEnv('SLOW')
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 
-export const ORACLE_TIMEOUT_PRE_BUFFER = bn('281474976710655').div(100) // type(uint48).max / 100
+export const ORACLE_TIMEOUT = bn('281474976710655').div(100) // type(uint48).max / 100
 
-export const ORACLE_TIMEOUT = ORACLE_TIMEOUT_PRE_BUFFER.add(300)
+export const DECAY_DELAY = ORACLE_TIMEOUT.add(300)
 
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 
@@ -185,7 +198,7 @@ async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: defaultThreshold,
       delayUntilDefault: delayUntilDefault,
@@ -205,7 +218,7 @@ async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: defaultThreshold,
       delayUntilDefault: delayUntilDefault,
@@ -225,7 +238,7 @@ async function collateralFixture(
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: defaultThreshold,
       delayUntilDefault: delayUntilDefault,
@@ -254,7 +267,7 @@ async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
@@ -282,7 +295,7 @@ async function collateralFixture(
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+        oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
@@ -412,6 +425,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
+  facadeMonitor: FacadeMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -469,6 +483,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     },
   }
 
+  // Setup Monitor Params (mock addrs for local deployment)
+  const monitorParams: IMonitorParams = {
+    AAVE_V2_DATA_PROVIDER_ADDR: ZERO_ADDRESS,
+  }
+
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
@@ -484,6 +503,19 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
+
+  // Deploy FacadeMonitor
+  const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
+
+  const facadeMonitor = <FacadeMonitor>await upgrades.deployProxy(
+    FacadeMonitorFactory,
+    [owner.address],
+    {
+      kind: 'uups',
+      initializer: 'init',
+      constructorArgs: [monitorParams],
+    }
+  )
 
   // Deploy RSR chainlink feed
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
@@ -502,7 +534,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT_PRE_BUFFER
+      ORACLE_TIMEOUT
     )
   )
   await rsrAsset.refresh()
@@ -634,7 +666,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       aaveToken.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT_PRE_BUFFER
+      ORACLE_TIMEOUT
     )
   )
   await aaveAsset.refresh()
@@ -649,7 +681,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       ORACLE_ERROR,
       compToken.address,
       config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT_PRE_BUFFER
+      ORACLE_TIMEOUT
     )
   )
   await compAsset.refresh()
@@ -752,6 +784,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     facadeAct,
     facadeTest,
+    facadeMonitor,
     rsrTrader,
     rTokenTrader,
     bySymbol,

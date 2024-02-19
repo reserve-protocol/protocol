@@ -4,6 +4,7 @@ import {
   CurveMetapoolCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
+import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
 import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
@@ -233,7 +234,7 @@ const collateralSpecificStatusTests = () => {
     await expectExactPrice(collateral.address, initialPrice)
 
     // Should decay after oracle timeout
-    await advanceTime(await collateral.oracleTimeout())
+    await advanceTime((await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
     await expectDecayedPrice(collateral.address)
 
     // Should be unpriced after price timeout
@@ -291,6 +292,7 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
   itClaimsRewards: it,

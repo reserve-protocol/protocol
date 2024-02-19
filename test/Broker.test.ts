@@ -13,6 +13,7 @@ import {
   TradeStatus,
   ZERO_ADDRESS,
   ONE_ADDRESS,
+  BidType,
 } from '../common/constants'
 import { bn, fp, divCeil, shortString, toBNDecimals } from '../common/numbers'
 import {
@@ -42,7 +43,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   SLOW,
 } from './fixtures'
@@ -54,7 +55,7 @@ import {
   getLatestBlockTimestamp,
   getLatestBlockNumber,
 } from './utils/time'
-import { ITradeRequest } from './utils/trades'
+import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
 
@@ -131,30 +132,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     )
     prices = { sellLow: fp('1'), sellHigh: fp('1'), buyLow: fp('1'), buyHigh: fp('1') }
   })
-
-  const disableBatchTrade = async () => {
-    if (IMPLEMENTATION == Implementation.P1) {
-      const slot = await getStorageAt(broker.address, 205)
-      await setStorageAt(
-        broker.address,
-        205,
-        slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
-      )
-    } else {
-      const slot = await getStorageAt(broker.address, 56)
-      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
-    }
-    expect(await broker.batchTradeDisabled()).to.equal(true)
-  }
-
-  const disableDutchTrade = async (erc20: string) => {
-    const mappingSlot = IMPLEMENTATION == Implementation.P1 ? bn('208') : bn('57')
-    const p = mappingSlot.toHexString().slice(2).padStart(64, '0')
-    const key = erc20.slice(2).padStart(64, '0')
-    const slot = ethers.utils.keccak256('0x' + key + p)
-    await setStorageAt(broker.address, slot, '0x' + '1'.padStart(64, '0'))
-    expect(await broker.dutchTradeDisabled(erc20)).to.equal(true)
-  }
 
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
@@ -412,7 +389,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Disable batch trade manually
-      await disableBatchTrade()
+      await disableBatchTrade(broker)
       expect(await broker.batchTradeDisabled()).to.equal(true)
 
       // Enable batch trade with owner
@@ -425,7 +402,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Disable dutch trade manually
-      await disableDutchTrade(token0.address)
+      await disableDutchTrade(broker, token0.address)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
 
       // Enable dutch trade with owner
@@ -444,7 +421,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Trade Management', () => {
     it('Should not allow to open Batch trade if Disabled', async () => {
       // Disable Broker Batch Auctions
-      await disableBatchTrade()
+      await disableBatchTrade(broker)
 
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
@@ -479,7 +456,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
 
         // Disable Broker Dutch Auctions for token0
-        await disableDutchTrade(token0.address)
+        await disableDutchTrade(broker, token0.address)
 
         // Dutch Auction openTrade should fail now
         await expect(
@@ -498,7 +475,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
 
         // Disable Broker Dutch Auctions for token1
-        await disableDutchTrade(token1.address)
+        await disableDutchTrade(broker, token1.address)
 
         // Dutch Auction openTrade should fail now
         await expect(
@@ -1251,7 +1228,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token0.address,
           maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1400,6 +1377,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     if (!(Implementation.P1 && useEnv('EXTREME'))) return // prevents bunch of skipped tests
 
     async function runScenario([
+      bidType,
       sellTokDecimals,
       buyTokDecimals,
       auctionSellAmt,
@@ -1495,9 +1473,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
 
-      await expect(router.connect(addr1).bid(trade.address, addr1.address))
-        .to.emit(backingManager, 'TradeSettled')
-        .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      if (bidType.eq(bn(BidType.CALLBACK))) {
+        await expect(router.connect(addr1).bid(trade.address, addr1.address))
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      } else if (bidType.eq(bn(BidType.TRANSFER))) {
+        await expect(trade.connect(addr1).bid())
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      }
 
       // Check balances
       expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))
@@ -1512,6 +1496,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     }
 
     // ==== Generate the tests ====
+
+    const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
     const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
@@ -1530,7 +1516,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // total cases is 5 * 5 * 3 * 6 = 450
     }
 
-    const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, progression)
+    const paramList = cartesianProduct(bidTypes, decimals, decimals, auctionSellAmts, progression)
 
     const numCases = paramList.length.toString()
     paramList.forEach((params, index) => {

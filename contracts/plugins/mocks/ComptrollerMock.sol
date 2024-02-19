@@ -37,4 +37,9 @@ contract ComptrollerMock is IComptroller {
     function getCompAddress() external view returns (address) {
         return address(compToken);
     }
+
+    // mock
+    function enterMarkets(address[] calldata) external returns (uint256[] memory) {
+        return new uint256[](1);
+    }
 }

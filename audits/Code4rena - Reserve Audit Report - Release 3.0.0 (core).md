@@ -1,7 +1,7 @@
 ---
 sponsor: "Reserve"
 slug: "2023-06-reserve"
-date: "2023-09-⭕"  # the date this report is published to the C4 website
+date: "2023-11-13"
 title: "Reserve Protocol - Invitational"
 findings: "https://github.com/code-423n4/2023-06-reserve-findings/issues"
 contest: 248
@@ -45,6 +45,10 @@ All of the issues presented here are linked back to their original finding.
 # Scope
 
 The code under review can be found within the [C4 Reserve Protocol repository](https://github.com/code-423n4/2023-06-reserve), and is composed of 12 smart contracts written in the Solidity programming language and includes 2126 lines of Solidity code.
+
+In addition to the known issues identified by the project team, the C4udit tool was ran prior to the audit launch. This generated the [Automated Findings report](https://gist.github.com/carlitox477/35963b3c46ebd25927c41ce368b8e10c) and all findings therein were classified as out of scope.
+
+*Note: the automated findings report also included [one medium-severity finding](https://gist.github.com/carlitox477/35963b3c46ebd25927c41ce368b8e10c#M-1) that has been acknowledged by the sponsor and confirmed by the judge.*
 
 # Severity Criteria
 
@@ -477,7 +481,7 @@ Add claimRewardsSingle when refresh assert in the `manageToken`.
 
 
 **[tbrent (Reserve) disputed and commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/16#issuecomment-1588019948):**
- > This is similar to an (unmitigated) issue from an earlier contest: https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22
+ > This is similar to an (unmitigated) issue from an earlier audit: https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22
 > 
 > However in this case it has to do with `RevenueTraderP1.manageToken()`, as opposed to `BackingManagerP1.manageTokens()`. 
 > 
@@ -933,9 +937,9 @@ On top of checking that the error data is empty, compare the gas before and afte
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1662876091):**
  > Hey - It's a bit difficult to track deprecated Chainlink oracles since Chainlink removes the announcement once they're deprecated.<br>
-> I was able to track one Oracle that was deprecated during the first contest, from the original issue this seems to be [this one](https://polygonscan.com/address/0x2E5B04aDC0A3b7dB5Fd34AE817c7D0993315A8a6#readContract#F10).<br>
+> I was able to track one Oracle that was deprecated during the first audit, from the original issue this seems to be [this one](https://polygonscan.com/address/0x2E5B04aDC0A3b7dB5Fd34AE817c7D0993315A8a6#readContract#F10).<br>
 > It seems that what happens is that Chainlink sets the aggregator address to the zero address, which makes the call to `latestRoundData()` to revert without any data (I guess this is due to the way Solidity handles calls to a non-contract address).<br>
-> See also the PoC in the [original issue](https://github.com/code-423n4/2023-01-reserve-findings/issues/234) in the January contest.
+> See also the PoC in the [original issue](https://github.com/code-423n4/2023-01-reserve-findings/issues/234) in the January audit.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/8#issuecomment-1662939816):**
  > Got it, checks out. Thanks!
@@ -955,7 +959,7 @@ On top of checking that the error data is empty, compare the gas before and afte
 
 <https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/AssetRegistry.sol#L89-L93> <br><https://github.com/reserve-protocol/protocol/blob/c4ec2473bbcb4831d62af55d275368e73e16b984/contracts/p1/AssetRegistry.sol#L106-L110>
 
-At the mitigation contest there was an issue regarding the `basketHandler.quantity()` call at the unregistration process taking up all gas.
+At the mitigation audit there was an issue regarding the `basketHandler.quantity()` call at the unregistration process taking up all gas.
 As a mitigation to that issue the devs set aside some gas and use the remaining to do that call.
 This opens up to a new kind of attack, where a attacker can cause the call to revert by not supplying enough gas to it.
 
@@ -1005,12 +1009,12 @@ Reserve gas for the call as well:
     }
 ```
 
-Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation contest; however, since this wasn't noticed by the devs and isn't part of the submission, I don't think this should be considered a known issue.
+Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation audit; however, since this wasn't noticed by the devs and isn't part of the submission, I don't think this should be considered a known issue.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-06-reserve-findings/issues/7#issuecomment-1586332703):**
  > Applaud @0xA5DF for highlighting this on their own issue.
 > 
-> > *Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation contest, however since this wasn't noticed by the devs and isn't part of the submission I don't think this should be considered a known issue*
+> > *Disclosure: this issue was [mentioned in the comments](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929) to the issue in the mitigation audit, however since this wasn't noticed by the devs and isn't part of the submission I don't think this should be considered a known issue*
 > 
 > Look forward to discussion with sponsor. 
 
@@ -1481,7 +1485,8 @@ Context
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20#issuecomment-1692159329):**
  > Anticipating restricting governance to only be able to _enable_ batch trade, or dutch trade. 
 
-
+**[pmckelvy1 (Reserve) commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/20#issuecomment-1803002105):**
+> Implemented [here](https://github.com/reserve-protocol/protocol/blob/master/contracts/p1/Broker.sol#L211) and [here](https://github.com/reserve-protocol/protocol/blob/master/contracts/p1/Broker.sol#L217).
 
 ***
 
@@ -1500,7 +1505,8 @@ Mitigation might be to create violation report only if the price is high and the
 
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40#issuecomment-1692064874)**
 
-
+**[pmckelvy1 (Reserve) commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/40#issuecomment-1803002833):**
+> Fixed [here](https://github.com/reserve-protocol/protocol/blob/master/contracts/p1/Broker.sol#L142) - only rebalancing trades can disable dutch trades in this manner.
 
 ***
 
@@ -1518,8 +1524,10 @@ Fully mitigating the issue might not be possible, as it’d require to send from
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36#issuecomment-1692078866):**
  > Anticipating adding a try-catch at the start of `setDistribution()` targeting `RevenueTrader.distributeTokenToBuy()`
 
-
-
+**[pmckelvy1 (Reserve) commented](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/36#issuecomment-1803003171):**
+> > Anticipating adding a try-catch at the start of `setDistribution()` targeting `RevenueTrader.distributeTokenToBuy()`
+> 
+> Added [here](https://github.com/reserve-protocol/protocol/blob/3.1.0/contracts/p1/Distributor.sol#L59).
 ***
 
 ## [M-04 Mitigation Error: Furnace would melt less than intended](https://github.com/code-423n4/2023-08-reserve-mitigation-findings/issues/37)

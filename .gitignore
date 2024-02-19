@@ -29,6 +29,7 @@ scripts/addresses/31337*
 
 *.orig
 .idea
+output.txt
 
 test/__snapshots/
 contracts/facade/FacadeAct.sol

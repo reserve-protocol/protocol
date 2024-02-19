@@ -77,9 +77,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
 
-    // Era. If ever there's a total RSR wipeout, this is incremented
-    // This is only really here for equivalence with P1, which requires it
+    // Eras. These are only really here for equivalence with P1, which requires it
+    // If there's ever a total RSR wipeout to balances, this is incremented
     uint256 internal era;
+    // If there's ever a total RSR wipeout to pending withdrawals, this is incremented
+    uint256 internal draftEra;
 
     // The momentary stake/unstake rate is rsrBacking/totalStaked {RSR/stRSR}
     // That rate is locked in when slow unstaking *begins*
@@ -136,6 +138,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         setRewardRatio(rewardRatio_);
         setWithdrawalLeak(withdrawalLeak_);
         era = 1;
+        draftEra = 1;
     }
 
     /// Assign reward payouts to the staker pool
@@ -201,7 +204,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 lastAvailableAt = index > 0 ? withdrawals[account][index - 1].availableAt : 0;
         uint256 availableAt = Math.max(block.timestamp + unstakingDelay, lastAvailableAt);
         withdrawals[account].push(Withdrawal(account, rsrAmount, stakeAmount, availableAt));
-        emit UnstakingStarted(index, era, account, rsrAmount, stakeAmount, availableAt);
+        emit UnstakingStarted(index, draftEra, account, rsrAmount, stakeAmount, availableAt);
     }
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
@@ -239,7 +242,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(bh.isReady(), "basket not ready");
 
         // Execute accumulated withdrawals
-        emit UnstakingCompleted(start, i, era, account, total);
+        emit UnstakingCompleted(start, i, draftEra, account, total);
         main.rsr().safeTransfer(account, total);
     }
 
@@ -280,7 +283,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         }
 
         // Execute accumulated withdrawals
-        emit UnstakingCancelled(start, i, era, account, total);
+        emit UnstakingCancelled(start, i, draftEra, account, total);
 
         uint256 stakeAmount = total;
         if (totalStaked > 0) stakeAmount = (total * totalStaked) / rsrBacking;
@@ -335,6 +338,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 withdrawalRSRtoTake = (rsrBeingWithdrawn() * rsrAmount + (rsrBalance - 1)) /
             rsrBalance;
         if (
+            withdrawalRSRtoTake == 0 ||
             rsrBeingWithdrawn() - withdrawalRSRtoTake <
             MIN_EXCHANGE_RATE.mulu_toUint(stakeBeingWithdrawn())
         ) {
@@ -382,7 +386,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             address account = accounts.at(i);
             delete withdrawals[account];
         }
-        emit AllUnstakingReset(era);
+        draftEra++;
+        emit AllUnstakingReset(draftEra);
     }
 
     /// @custom:governance

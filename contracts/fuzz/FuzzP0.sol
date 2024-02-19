@@ -27,7 +27,7 @@ contract AssetRegistryP0Fuzz is AssetRegistryP0 {
 }
 
 contract BasketHandlerP0Fuzz is BasketHandlerP0 {
-    using BasketLib for Basket;
+    using BasketLibP0 for Basket;
     Basket internal prev;
 
     function _msgSender() internal view virtual override returns (address) {
@@ -46,6 +46,10 @@ contract BasketHandlerP0Fuzz is BasketHandlerP0 {
             if (prev.refAmts[prev.erc20s[i]] != basket.refAmts[basket.erc20s[i]]) return false;
         }
         return true;
+    }
+
+    function setReweightable(bool reweight) external {
+        reweightable = reweight;
     }
 }
 

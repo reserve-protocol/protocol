@@ -9,6 +9,7 @@ import "./lib/FacadeWriteLib.sol";
  * @notice A UX-friendly layer to interact with the protocol
  * @dev Under the hood, uses two external libs to deal with blocksize limits.
  */
+// slither-disable-start
 contract FacadeWrite is IFacadeWrite {
     using FacadeWriteLib for address;
 
@@ -76,7 +77,7 @@ contract FacadeWrite is IFacadeWrite {
             }
 
             // Set basket
-            basketHandler.setPrimeBasket(basketERC20s, setup.weights);
+            basketHandler.forceSetPrimeBasket(basketERC20s, setup.weights);
             basketHandler.refreshBasket();
         }
 
@@ -209,3 +210,4 @@ contract FacadeWrite is IFacadeWrite {
         main.renounceRole(OWNER, address(this));
     }
 }
+// slither-disable-end

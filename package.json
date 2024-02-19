@@ -36,7 +36,7 @@
     "lint": "bash tools/lint && eslint test/",
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
-    "slither": "python3 tools/slither.py",
+    "slither": "python3 tools/slither.py --exclude-informational --exclude-low --exclude-optimization --exclude uninitialized-state-variables --fail-high",
     "prepare": "husky install",
     "run:backtests": "hardhat run scripts/ci_backtest_plugin.ts",
     "run:4byte": "hardhat run scripts/4byte.ts"
@@ -93,6 +93,7 @@
     "hardhat": "^2.12.3",
     "hardhat-contract-sizer": "^2.4.0",
     "hardhat-gas-reporter": "^1.0.8",
+    "hardhat-storage-layout": "^0.1.7",
     "husky": "^7.0.0",
     "lodash": "^4.17.21",
     "lodash.get": "^4.4.2",

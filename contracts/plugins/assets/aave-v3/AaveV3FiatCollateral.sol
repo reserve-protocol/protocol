@@ -27,7 +27,7 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
     // solhint-enable no-empty-blocks
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rate = StaticATokenV3LM(address(erc20)).rate(); // {ray ref/tok}
 
         return shiftl_toFix(rate, -27); // {ray -> wad}

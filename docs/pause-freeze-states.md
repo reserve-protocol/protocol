@@ -45,7 +45,7 @@ The issuance-paused states indicates that RToken issuance should be paused, and 
 
 ## Trading-pause
 
-The trading-paused state has significantly more scope than the issuance-paused state. It is designed to prevent against cases where the protocol may trade unneccesarily. Many other functions in addition to just `BackingManager.rebalance()` and `RevenueTrader.manageTokens()` are halted. In general anything that manages the backing and revenue for an RToken is halted. This may become neccessary to use due to (among other things):
+The trading-paused state has significantly more scope than the issuance-paused state. It is designed to prevent against cases where the protocol may trade unnecessarily. Many other functions in addition to just `BackingManager.rebalance()` and `RevenueTrader.manageTokens()` are halted. In general anything that manages the backing and revenue for an RToken is halted. This may become necessary to use due to (among other things):
 
 - An asset's `price()` malfunctions or is manipulated
 - A collateral's default detection has a false positive or negative
@@ -58,7 +58,7 @@ An important function of freezing is to provide a finite time for governance to 
 
 ### `Furnace.melt()`
 
-It is necessary for `Furnace.melt()` to remain emabled in order to allow `RTokenAsset.refresh()` to update its `price()`. Any revenue RToken that has already accumulated at the Furnace will continue to be melted, but the flow of new revenue RToken into the contract is halted.
+It is necessary for `Furnace.melt()` to remain enabled in order to allow `RTokenAsset.refresh()` to update its `price()`. Any revenue RToken that has already accumulated at the Furnace will continue to be melted, but the flow of new revenue RToken into the contract is halted.
 
 ### `StRSR.payoutRewards()`
 
@@ -66,7 +66,7 @@ It is necessary for `StRSR.payoutRewards()` to remain enabled in order for `StRS
 
 ### `StRSR.stake()`
 
-It is important for `StRSR.stake()` to remain emabled while frozen in order to allow honest RSR to flow into an RToken to vote against malicious governance proposals.
+It is important for `StRSR.stake()` to remain enabled while frozen in order to allow honest RSR to flow into an RToken to vote against malicious governance proposals.
 
 ### `*.settleTrade()`
 

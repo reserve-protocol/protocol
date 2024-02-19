@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import "../../interfaces/IAssetRegistry.sol";
 import "../../libraries/Fixed.sol";
@@ -56,6 +57,7 @@ struct Basket {
  */
 library BasketLibP1 {
     using BasketLibP1 for Basket;
+    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
@@ -304,6 +306,78 @@ library BasketLibP1 {
                 coll.targetPerRef() > 0;
         } catch {
             return false;
+        }
+    }
+
+    // === Contract-size savers ===
+
+    /// Require that erc20s and targetAmts preserve the current config targets
+    /// @param _targetAmts Scratch space for computation; assumed to be empty
+    function requireConstantConfigTargets(
+        IAssetRegistry assetRegistry,
+        BasketConfig storage config,
+        EnumerableMap.Bytes32ToUintMap storage _targetAmts,
+        IERC20[] memory erc20s,
+        uint192[] memory targetAmts
+    ) internal {
+        // Populate _targetAmts mapping with old basket config
+        uint256 len = config.erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            IERC20 erc20 = config.erc20s[i];
+            bytes32 targetName = config.targetNames[erc20];
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            _targetAmts.set(
+                targetName,
+                contains ? amt + config.targetAmts[erc20] : config.targetAmts[erc20]
+            );
+        }
+
+        // Require new basket is exactly equal to old basket, in terms of target amounts
+        len = erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            bytes32 targetName = assetRegistry.toColl(erc20s[i]).targetName();
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            require(contains && amt >= targetAmts[i], "new target weights");
+            if (amt > targetAmts[i]) _targetAmts.set(targetName, amt - targetAmts[i]);
+            else _targetAmts.remove(targetName);
+        }
+        require(_targetAmts.length() == 0, "missing target weights");
+    }
+
+    /// Normalize the target amounts to maintain constant UoA value with the current config
+    /// @param price {UoA/BU} Price of the reference basket (point estimate)
+    /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
+    function normalizeByPrice(
+        IAssetRegistry assetRegistry,
+        IERC20[] memory erc20s,
+        uint192[] memory targetAmts,
+        uint192 price
+    ) internal view returns (uint192[] memory newTargetAmts) {
+        uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
+
+        // Rounding in this function should always be in favor of RToken holders
+
+        // Compute would-be new price
+        uint192 newPrice; // {UoA/BU}
+        for (uint256 i = 0; i < len; ++i) {
+            ICollateral coll = assetRegistry.toColl(erc20s[i]); // reverts if unregistered
+
+            (uint192 low, uint192 high) = coll.price(); // {UoA/tok}
+            require(low > 0 && high < FIX_MAX, "invalid price");
+
+            // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
+            newPrice += targetAmts[i].mulDiv(
+                (low + high) / 2,
+                coll.targetPerRef().mul(coll.refPerTok(), CEIL),
+                FLOOR
+            ); // revert on overflow
+        }
+
+        // Scale targetAmts by the price ratio
+        newTargetAmts = new uint192[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            // {target/BU} = {target/BU} * {UoA/BU} / {UoA/BU}
+            newTargetAmts[i] = targetAmts[i].mulDiv(price, newPrice, CEIL);
         }
     }
 }

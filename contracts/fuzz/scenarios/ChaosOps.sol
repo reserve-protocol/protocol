@@ -198,6 +198,9 @@ contract ChaosOpsScenario {
             main.backingManager().grantRTokenAllowance(main.tokens(t));
         }
 
+        // Use reweightable basket for Chaos scenario
+        BasketHandlerP1Fuzz(address(main.basketHandler())).setReweightable(true);
+
         // Save RSR and RToken rates
         saveRates();
     }
@@ -700,35 +703,41 @@ contract ChaosOpsScenario {
         }
     }
 
-    function _validateWeights() internal view {
-        uint256 totalWeight = 0;
-        uint256 weightA = 0;
-        uint256 weightB = 0;
-        uint256 weightC = 0;
+    // function _validateWeights() internal view {
+    //     uint256 totalWeight = 0;
+    //     uint256 weightA = 0;
+    //     uint256 weightB = 0;
+    //     uint256 weightC = 0;
 
-        for (uint256 i = 0; i < targetAmtsForPrimeBasket.length; i++) {
-            bytes32 nameGroup = targetNameByToken[address(backingForPrimeBasket[i])];
-            if (nameGroup == bytes32("A")) {
-                weightA += targetAmtsForPrimeBasket[i];
-            } else if (nameGroup == bytes32("B")) {
-                weightB += targetAmtsForPrimeBasket[i];
-            } else if (nameGroup == bytes32("C")) {
-                weightC += targetAmtsForPrimeBasket[i];
-            }
-            totalWeight += targetAmtsForPrimeBasket[i];
-        }
-        require(
-            (weightA * 1e18) / totalWeight == targetWeightsByName[bytes32("A")] &&
-                (weightB * 1e18) / totalWeight == targetWeightsByName[bytes32("B")] &&
-                (weightC * 1e18) / totalWeight == targetWeightsByName[bytes32("C")],
-            "can't rebalance bad weights"
-        );
-    }
+    //     for (uint256 i = 0; i < targetAmtsForPrimeBasket.length; i++) {
+    //         bytes32 nameGroup = targetNameByToken[address(backingForPrimeBasket[i])];
+    //         if (nameGroup == bytes32("A")) {
+    //             weightA += targetAmtsForPrimeBasket[i];
+    //         } else if (nameGroup == bytes32("B")) {
+    //             weightB += targetAmtsForPrimeBasket[i];
+    //         } else if (nameGroup == bytes32("C")) {
+    //             weightC += targetAmtsForPrimeBasket[i];
+    //         }
+    //         totalWeight += targetAmtsForPrimeBasket[i];
+    //     }
+    //     require(
+    //         (weightA * 1e18) / totalWeight == targetWeightsByName[bytes32("A")] &&
+    //             (weightB * 1e18) / totalWeight == targetWeightsByName[bytes32("B")] &&
+    //             (weightC * 1e18) / totalWeight == targetWeightsByName[bytes32("C")],
+    //         "can't rebalance bad weights"
+    //     );
+    // }
 
     function setPrimeBasket() public {
-        _validateWeights();
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+       // if(!bh.reweightable()) _validateWeights();
         bh.setPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
+    }
+
+     function forceSetPrimeBasket() public {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+       // if(!bh.reweightable()) _validateWeights();
+        bh.forceSetPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
     }
 
     // Backup basket

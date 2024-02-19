@@ -70,6 +70,10 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
         prev.setFrom(basket);
     }
 
+    function setReweightable(bool reweight) external {
+        reweightable = reweight;
+    }
+
     function prevEqualsCurr() external view returns (bool) {
         uint256 n = basket.erc20s.length;
         if (n != prev.erc20s.length) return false;

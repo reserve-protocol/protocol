@@ -1,6 +1,6 @@
 # MEV
 
-This document is intended to serve as a resource for MEV searchers and others looking to interact with the deployed protocol programatically.
+This document is intended to serve as a resource for MEV searchers and others looking to interact with the deployed protocol programmatically.
 
 ## Overview
 
@@ -27,7 +27,9 @@ Bidding instructions from the `DutchTrade` contract:
 `DutchTrade` (relevant) interface:
 
 ```solidity
-function bid(bytes memory data) external; // execute a bid at the current block number
+function bid() external; // execute a bid at the current block number via transferFrom
+
+function bidWithCallback(bytes memory data) external; // execute a bid at the current block number with post-hook callback for transfer of tokens
 
 function sell() external view returns (IERC20);
 
@@ -41,7 +43,13 @@ function bidAmount(uint256 blockNumber) external view returns (uint256); // {qBu
 
 ```
 
-To participate:
+To participate, either:
+
+(1) Call `bid()` with a prior approval for the `bidAmount`
+
+OR
+
+(2) Call `bidWithCallback(bytes memory)` from a calling contract that adheres to the `IDutchTradeCallee` interface. It should contain a function `dutchTradeCallback(address buyToken,uint256 buyAmount,bytes calldata data) external;` that transfers `bidAmount` buy tokens. This method will be called by the `DutchTrade` as a callback after the trade has been resolved. See `plugins/mocks/DutchTradeRouter.sol` for an example.
 
 Make sure calling contract implements the `IDutchTradeCallee` interface. It contains a single method function `dutchTradeCallbac(address buyToken,uint256 buyAmount,bytes calldata data) external;`. This method will be called by the `DutchTrade` as a callback after calling `bidWithCallback` and before the trade has been resolved. The trader is expected to pay for the trade during the callback. See `DutchTradeRouter.sol` for an example.
 
@@ -57,7 +65,7 @@ For a sample price curve, see [docs/system-design.md](./system-design.md#sample-
 
 #### GnosisTrade
 
-`GnosisTrade.sol` implements a batch auction on top of Gnosis's [EasyAuction](https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol) platform. In general a batch auction is designed to minimize MEV, and indeed that's why it was chosen in the first place. Both types of auctions (batch + dutch) can be opened at anytime, but the expectation is that dutch auctions will be preferred by MEV searchers because they are more likely to be profitable.
+`GnosisTrade.sol` implements a batch auction on top of Gnosis's [EasyAuction](https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol) platform. In general a batch auction is designed to minimize MEV, and indeed that's why it was chosen in the first place. Both types of auctions (batch + dutch) can be opened at any time, but the expectation is that dutch auctions will be preferred by MEV searchers because they are more likely to be profitable.
 
 However, if a batch auction is launched, an MEV searcher may still be able to profit. In order to bid in the auction, the searcher must call `function placeSellOrders(uint256 auctionId, uint96[] memory _minBuyAmounts, uint96[] memory _sellAmounts, bytes32[] memory _prevSellOrders, bytes calldata allowListCallData)`, providing an approval in advance. This call will escrow `_sellAmounts` tokens in EasyAuction for the remaining duration of the auction. Once the auction is over, anyone can settle the auction directly in EasyAuction via `settleAuction(uint256 auctionId)`, or by calling `settleTrade(IERC20 erc20)` on the `ITrading` instance in our system that started the trade (either BackingManager or a RevenueTrader).
 

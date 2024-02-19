@@ -83,7 +83,7 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate}/*.test.ts
+      - run: npx hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido}/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
@@ -187,3 +187,45 @@ jobs:
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
+
+  monitor-tests:
+    name: 'Monitor Tests (Mainnet)'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: npx hardhat test ./test/monitor/*.test.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          FORK_NETWORK: mainnet
+          FORK: 1
+          PROTO_IMPL: 1
+
+  slither:
+    name: 'Slither'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: pip3 install solc-select slither-analyzer
+      - run: solc-select install 0.8.19
+      - run: solc-select use 0.8.19
+      - run: yarn slither

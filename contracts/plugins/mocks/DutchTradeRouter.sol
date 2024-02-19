@@ -8,8 +8,6 @@ import { IMain } from "../../interfaces/IMain.sol";
 
 /** @title DutchTradeRouter
  * @notice Utility contract for placing bids on DutchTrade auctions
- * @dev This contract is needed as end user wallets cannot call DutchTrade.bid directly anymore, 
- tests and UI need to be updated to use this contract
  */
 contract DutchTradeRouter is IDutchTradeCallee {
     using SafeERC20 for IERC20;

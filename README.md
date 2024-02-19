@@ -24,10 +24,10 @@ For a much more detailed explanation of the economic design, including an hour-l
 - [System Design](https://github.com/reserve-protocol/protocol/blob/master/docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
 - [Pause and Freeze States](https://github.com/reserve-protocol/protocol/blob/master/docs/pause-freeze-states.md): An overview of which protocol functions are halted in the paused and frozen states.
 - [Deployment Variables](https://github.com/reserve-protocol/protocol/blob/master/docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
-- [Our Solidity Style](https://github.com/reserve-protocol/protocol/blob/master/docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
+- [Our Solidity Style](https://github.com/reserve-protocol/protocol/blob/master/docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, especially where those go beyond standard practice.
 - [Writing Collateral Plugins](https://github.com/reserve-protocol/protocol/blob/master/docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
 - [Building on Top](https://github.com/reserve-protocol/protocol/blob/master/docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
-- [MEV](https://github.com/reserve-protocol/protocol/blob/master/docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
+- [MEV](https://github.com/reserve-protocol/protocol/blob/master/docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programmatically.
 - [Rebalancing Algorithm](https://github.com/reserve-protocol/protocol/blob/master/docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
 - [Changelog](https://github.com/reserve-protocol/protocol/blob/master/CHANGELOG.md): Release changelog
 
@@ -64,7 +64,7 @@ Deployed collateral plugin addresses and their configuration parameters can be f
 
 We have a `p0` and `p1` implementation for each contract in our core system. The `p0` version is our _specification_ prototype, and is intended to be as easy as possible to understand. The `p1` version should behave identically, except that it employs substantial optimizations and more complicated algorithms in order to achieve lower gas costs.
 
-We implement and maintain both of these systems in the name of correctness. Implementing p0 helps us to specify the exact intended behavior of the protocol without needing to deal simultaneously with gas optimization; maintaining equivalent behavior of both serves as a substantial extra form of testing. The behavior of each contract in `p1` should be _identical_ to the behavior of the corresponding contract in `p0`, so we can perform [differential testing](https://en.wikipedia.org/wiki/Differential_testing) between them - checking that they behave identicially, both in our explicit tests and in arbitrary randomized tests.
+We implement and maintain both of these systems in the name of correctness. Implementing p0 helps us to specify the exact intended behavior of the protocol without needing to deal simultaneously with gas optimization; maintaining equivalent behavior of both serves as a substantial extra form of testing. The behavior of each contract in `p1` should be _identical_ to the behavior of the corresponding contract in `p0`, so we can perform [differential testing](https://en.wikipedia.org/wiki/Differential_testing) between them - checking that they behave identically, both in our explicit tests and in arbitrary randomized tests.
 
 We thought `p0` and `p1` would end up being a lot more different than they ended up being. For the most part the contracts only really differ for `StRSR.sol`, and a little for `RToken.sol`.
 
@@ -83,7 +83,7 @@ P1 is the production version of the economic protocol.
 - Upgradable
 - Optimized for gas costs
 - No function call needs more than _O(lg N)_ time or space, and it's _O(1)_ where possible.
-  - Caveat: a function might be _O(k)_, where _k_ is the number of registered Assets or Collateral tokens; however, we take great care to make those loops efficient, and to avoid _O(k^2)_ behvior!
+  - Caveat: a function might be _O(k)_, where _k_ is the number of registered Assets or Collateral tokens; however, we take great care to make those loops efficient, and to avoid _O(k^2)_ behavior!
 - No user is ever forced to pay gas to process other users' transactions.
 
 ## Repository Structure

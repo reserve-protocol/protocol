@@ -18,6 +18,13 @@ interface IFacadeRead {
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256);
 
+    /// @param amounts {qTok} The balances of each basket ERC20 to assume
+    /// @return How many RToken can be issued
+    /// @custom:static-call
+    function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
+        external
+        returns (uint256);
+
     /// @return tokens The erc20 needed for the issuance
     /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
     /// @return depositsUoA {UoA} The UoA value of the deposits necessary to issue `amount` RToken
@@ -85,12 +92,14 @@ interface IFacadeRead {
         uint256 amount;
     }
 
+    /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
-    /// @return All the pending StRSR unstakings for an account
-    function pendingUnstakings(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory);
+    /// @return {qRSR} All the pending StRSR unstakings for an account, in RSR
+    function pendingUnstakings(
+        RTokenP1 rToken,
+        uint256 draftEra,
+        address account
+    ) external view returns (Pending[] memory);
 
     /// Returns the prime basket
     /// @dev Indices are shared across return values

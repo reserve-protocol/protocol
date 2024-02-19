@@ -5,6 +5,8 @@ import "./interfaces/IStargateLPStaking.sol";
 import "./interfaces/IStargatePool.sol";
 import "../erc20/RewardableERC20Wrapper.sol";
 
+// solhint-disable no-empty-blocks
+
 contract StargateRewardableWrapper is RewardableERC20Wrapper {
     IStargateLPStaking public immutable stakingContract;
     IStargatePool public immutable pool;
@@ -46,9 +48,11 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
     }
 
     function _claimAssetRewards() internal override {
-        if (stakingContract.totalAllocPoint() != 0) {
-            stakingContract.deposit(poolId, 0);
-        }
+        // `.deposit` call in a try/catch to prevent staking contract
+        // this is because `_claimAssetRewards` is called on all movements
+        // and we want to prevent external calls from bricking the contract
+        // solhint-disable-next-line no-empty-blocks
+        try stakingContract.deposit(poolId, 0) {} catch {}
     }
 
     function _afterDeposit(uint256, address) internal override {
@@ -57,19 +61,16 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
 
         if (poolInfo.allocPoint != 0 && underlyingBalance != 0) {
             pool.approve(address(stakingContract), underlyingBalance);
-            stakingContract.deposit(poolId, underlyingBalance);
+            try stakingContract.deposit(poolId, underlyingBalance) {} catch {}
         }
     }
 
     function _beforeWithdraw(uint256 _amount, address) internal override {
-        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
-
         uint256 underlyingBalance = underlying.balanceOf(address(this));
+
         if (underlyingBalance < _amount) {
-            if (poolInfo.allocPoint != 0) {
-                stakingContract.withdraw(poolId, _amount - underlyingBalance);
-            } else {
-                stakingContract.emergencyWithdraw(poolId);
+            try stakingContract.withdraw(poolId, _amount - underlyingBalance) {} catch {
+                try stakingContract.emergencyWithdraw(poolId) {} catch {}
             }
         }
     }
