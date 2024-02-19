@@ -6340,14 +6340,7 @@
           },
           "t_enum(TradeKind)17751": {
             "label": "enum TradeKind",
-<<<<<<< HEAD
-            "members": [
-              "DUTCH_AUCTION",
-              "BATCH_AUCTION"
-            ],
-=======
             "members": ["DUTCH_AUCTION", "BATCH_AUCTION"],
->>>>>>> 3.2.0
             "numberOfBytes": "1"
           },
           "t_mapping(t_contract(IERC20)11113,t_contract(ITrade)19704)": {
