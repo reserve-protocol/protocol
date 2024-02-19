@@ -358,6 +358,70 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.equal(true)
   })
 
+  it('performs validations on set prime basket if non-reweightable', async () => {
+    // Check current basket
+    const [tokenAddrs] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+
+    expect(tokenAddrs.length).to.equal(9)
+
+    const token0 = await ConAt('ERC20Fuzz', tokenAddrs[0])
+    const token1 = await ConAt('ERC20Fuzz', tokenAddrs[1])
+    const token2 = await ConAt('ERC20Fuzz', tokenAddrs[2])
+    const token3 = await ConAt('ERC20Fuzz', tokenAddrs[3])
+    const token4 = await ConAt('ERC20Fuzz', tokenAddrs[4])
+    const token5 = await ConAt('ERC20Fuzz', tokenAddrs[5])
+    const token6 = await ConAt('ERC20Fuzz', tokenAddrs[6])
+    const token7 = await ConAt('ERC20Fuzz', tokenAddrs[7])
+    const token8 = await ConAt('ERC20Fuzz', tokenAddrs[8])
+
+    const expectedSyms = ['CA0', 'CA1', 'CA2', 'CB0', 'CB1', 'CB2', 'CC0', 'CC1', 'CC2']
+    expect(await token0.symbol()).to.equal(expectedSyms[0])
+    expect(await token1.symbol()).to.equal(expectedSyms[1])
+    expect(await token2.symbol()).to.equal(expectedSyms[2])
+    expect(await token3.symbol()).to.equal(expectedSyms[3])
+    expect(await token4.symbol()).to.equal(expectedSyms[4])
+    expect(await token5.symbol()).to.equal(expectedSyms[5])
+    expect(await token6.symbol()).to.equal(expectedSyms[6])
+    expect(await token7.symbol()).to.equal(expectedSyms[7])
+    expect(await token8.symbol()).to.equal(expectedSyms[8])
+
+    // Update backing for prime basket
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
+
+    // no `C` weights
+    await expect(scenario.setPrimeBasket()).revertedWith("missing target weights")
+    await expect(scenario.forceSetPrimeBasket()).revertedWith("missing target weights")
+
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('SA1') as number, fp('0.1').sub(1))
+
+    // over-weighted to `A`
+    await expect(scenario.setPrimeBasket()).revertedWith("new target weights")
+    await expect(scenario.forceSetPrimeBasket()).revertedWith("new target weights")
+
+    // Remove the last one added
+    await scenario.popBackingForPrimeBasket()
+
+    await scenario.setPrimeBasket()
+
+    // Refresh basket to be able to see updated config
+    await comp.basketHandler.savePrev()
+    await scenario.refreshBasket()
+
+    const [newTokenAddrs, amts] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+    expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
+    expect(newTokenAddrs.length).to.equal(3)
+
+    const tokenInBasket = await ConAt('ERC20Fuzz', newTokenAddrs[0])
+    expect(await tokenInBasket.symbol()).to.equal('CA1')
+    // 1/1,000,000% revenue hiding
+    expect(amts[0]).to.closeTo(fp('0.4000004'), fp('0.00000001'))
+    expect(amts[1]).to.closeTo(fp('0.3000003'), fp('0.00000001'))
+    expect(amts[2]).to.closeTo(fp('0.3000003'), fp('0.00000001'))
+  })
+
+
   it('can manage scenario states - basket switch - covered by RSR [Batch auction]', async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })

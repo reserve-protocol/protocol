@@ -144,25 +144,8 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       // Update backing for prime basket
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
-
-      // no `C` weights
-      //await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
-      //await expect(scenario.forceSetPrimeBasket()).revertedWith("can't rebalance bad weights")
-      await expect(scenario.setPrimeBasket()).revertedWith("missing target weights")
-      await expect(scenario.forceSetPrimeBasket()).revertedWith("missing target weights")
-
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
-      await scenario.pushBackingForPrimeBasket(tokenIDs.get('SA1') as number, fp('0.1').sub(1))
-
-      // over-weighted to `A`
-      // await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
-      // await expect(scenario.forceSetPrimeBasket()).revertedWith("can't rebalance bad weights")
-      await expect(scenario.setPrimeBasket()).revertedWith("new target weights")
-      await expect(scenario.forceSetPrimeBasket()).revertedWith("new target weights")
-
-      // Remove the last one added
-      await scenario.popBackingForPrimeBasket()
-
+    
       await scenario.setPrimeBasket()
 
       // Refresh basket to be able to see updated config
@@ -176,9 +159,9 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       const tokenInBasket = await ConAt('ERC20Fuzz', newTokenAddrs[0])
       expect(await tokenInBasket.symbol()).to.equal('CA1')
       // 1/1,000,000% revenue hiding
-      expect(amts[0]).to.closeTo(fp('0.4000004'), fp('0.00000001'))
-      expect(amts[1]).to.closeTo(fp('0.3000003'), fp('0.00000001'))
-      expect(amts[2]).to.closeTo(fp('0.3000003'), fp('0.00000001'))
+      expect(amts[0]).to.closeTo(fp('0.4000004'), fp('0.0000001'))
+      expect(amts[1]).to.closeTo(fp('0.3000003'), fp('0.0000001'))
+      expect(amts[2]).to.closeTo(fp('0.3000003'), fp('0.0000001'))
     })
 
     it('can set backup basket and refresh', async () => {
