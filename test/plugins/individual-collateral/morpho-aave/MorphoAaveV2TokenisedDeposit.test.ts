@@ -432,14 +432,6 @@ const execTestForToken = ({
         await advanceTime(hre, 24 * 60 * 60 - 1)
         await methods.claimRewards(bob)
 
-        // console.log(
-        //   'MORPHO:',
-        //   formatUnits(
-        //     await instances.morpho.balanceOf(await bob.getAddress()),
-        //     await instances.morpho.decimals()
-        //   )
-        // )
-
         expect(await instances.morpho.balanceOf(await bob.getAddress())).to.be.closeTo(
           BigNumber.from(i + 1)
             .mul(100)
