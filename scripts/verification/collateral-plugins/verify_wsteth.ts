@@ -62,11 +62,11 @@ async function main() {
       [
         {
           priceTimeout: priceTimeout.toString(),
-          chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
+          chainlinkFeed: BASE_PRICE_FEEDS.stETH_ETH, // ignored
           oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% & 0.5% & 0.15%
           erc20: networkConfig[chainId].tokens.wstETH,
           maxTradeVolume: fp('5e5').toString(), // $500k
-          oracleTimeout: BASE_FEEDS_TIMEOUT.ETH_USD, // 86400, ignored
+          oracleTimeout: BASE_FEEDS_TIMEOUT.stETH_ETH, // 86400, ignored
           targetName: hre.ethers.utils.formatBytes32String('ETH'),
           defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethEth feed oracleError
           delayUntilDefault: bn('86400').toString(), // 24h
