@@ -240,8 +240,6 @@ tests.forEach((test: CurveFiatTest) => {
         BigNumber.from(slotValue).mul(101).div(100).toHexString() // increase debt by 1%
       )
 
-      await ethers.provider.getStorageAt(await collateral.erc20(), 0x28).then(console.log)
-
       await collateral.refresh()
       const refPerTokAfter = await collateral.refPerTok()
 
