@@ -397,6 +397,12 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await expect(facade.callStatic.redeem(rToken.address, issueAmount)).to.be.revertedWith(
         'frozen'
       )
+
+      await expect(facade.callStatic.redeemCustom(
+        rToken.address,
+        issueAmount,
+        [await basketHandler.nonce()],
+        [fp('1')])).to.be.revertedWith('frozen')
     })
 
     it('Should return backingOverview correctly', async () => {
