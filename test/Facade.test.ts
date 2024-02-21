@@ -405,6 +405,15 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
         [fp('1')])).to.be.revertedWith('frozen')
     })
 
+    it('Should revert if portions do not sum to FIX_ONE in redeem custom', async function () {
+      const nonce = await basketHandler.nonce()
+      await expect(facade.callStatic.redeemCustom(
+        rToken.address,
+        issueAmount,
+        [nonce, nonce],
+        [fp('0.5'), fp('0.5').add(1)])).to.be.revertedWith('portions do not add up to FIX_ONE')
+    })
+
     it('Should return backingOverview correctly', async () => {
       let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
