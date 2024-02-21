@@ -3500,7 +3500,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
               await router.connect(addr1).bid(trade.address, addr1.address)
               expect(await trade.bidder()).to.equal(router.address)
-              // Cannot bid once is settled
+
+              // Noone can bid again on the trade directly
+              await expect(trade.connect(addr1).bidWithCallback(new Uint8Array(0))).to.be.revertedWith('bid already received')
+
+              // Cannot bid once is settled via router
               await expect(
                 router.connect(addr1).bid(trade.address, addr1.address)
               ).to.be.revertedWith('trade not open')
