@@ -66,7 +66,7 @@ makeTests(
     aaveIncentivesController: networkConfig[8453].AAVE_V3_INCENTIVES_CONTROLLER!,
     aavePool: networkConfig[8453].AAVE_V3_POOL!,
     aToken: networkConfig[8453].tokens['aBasUSDC']!,
-    whaleTokenHolder: '0x09ad6981381610a5f58c56219f0fe939043f0a36',
+    whaleTokenHolder: '0x20fe51a9229eef2cf8ad9e89d91cab9312cf3b7a',
     forkBlock: 8200000,
     targetNetwork: 'base',
   }
