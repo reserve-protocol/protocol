@@ -56,6 +56,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // solhint-disable-next-line no-empty-blocks
         try this.distributeTokenToBuy() {} catch (bytes memory errData) {
+            // untested:
+            //     OOG pattern tested in other contracts, cost to test here is high
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
         }
@@ -104,11 +106,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   else: sell erc20 for tokenToBuy
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function manageTokens(IERC20[] calldata erc20s, TradeKind[] calldata kinds)
-        external
-        nonReentrant
-        notTradingPausedOrFrozen
-    {
+    function manageTokens(
+        IERC20[] calldata erc20s,
+        TradeKind[] calldata kinds
+    ) external nonReentrant notTradingPausedOrFrozen {
         uint256 len = erc20s.length;
         require(len > 0, "empty erc20s list");
         require(len == kinds.length, "length mismatch");
