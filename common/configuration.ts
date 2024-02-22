@@ -28,7 +28,9 @@ export interface ITokens {
   aWBTC?: string
   aCRV?: string
   aEthUSDC?: string
+  saEthUSDC?: string
   aBasUSDC?: string
+  saBasUSDC?: string
   aWETHv3?: string
   acbETHv3?: string
   cDAI?: string
@@ -76,6 +78,7 @@ export interface ITokens {
 
   pyUSD?: string
   aEthPyUSD?: string
+  saEthPyUSD?: string
 
   // Morpho Aave
   maUSDC?: string
@@ -270,6 +273,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
       aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
+      saEthUSDC: '0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6', // canonical wrapper
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -312,6 +316,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
       pyUSD: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
       aEthPyUSD: '0x0C0d01AbF3e6aDfcA0989eBbA9d6e85dD58EaB1E',
+      saEthPyUSD: '0x00F2a835758B33f3aC53516Ebd69f3dc77B0D152', // canonical wrapper
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -560,6 +565,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       aBasUSDC: '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB',
+      saBasUSDC: '0x4EA71A20e655794051D1eE8b6e4A3269B13ccaCc',
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',

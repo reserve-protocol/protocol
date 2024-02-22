@@ -12,17 +12,29 @@ import { networkConfig } from '#/common/configuration'
  ** --> https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L78
  */
 
+export const PYUSD_MAX_TRADE_VOLUME = fp('0.5e6')
+export const PYUSD_ORACLE_TIMEOUT = bn('86400')
+export const PYUSD_ORACLE_ERROR = fp('0.003')
+
+export const USDC_MAINNET_MAX_TRADE_VOLUME = fp('1e6')
+export const USDC_MAINNET_ORACLE_TIMEOUT = bn('86400')
+export const USDC_MAINNET_ORACLE_ERROR = fp('0.0025')
+
+export const USDC_BASE_MAX_TRADE_VOLUME = fp('0.5e6')
+export const USDC_BASE_ORACLE_TIMEOUT = bn('86400')
+export const USDC_BASE_ORACLE_ERROR = fp('0.003')
+
 // Mainnet - USDC
 makeTests(
   {
     priceTimeout: PRICE_TIMEOUT,
     chainlinkFeed: networkConfig[1].chainlinkFeeds['USDC']!,
-    oracleError: fp('0.0025'),
+    oracleError: USDC_MAINNET_ORACLE_ERROR,
     erc20: '', // to be set
-    maxTradeVolume: fp('1e6'),
-    oracleTimeout: bn('86400'),
+    maxTradeVolume: USDC_MAINNET_MAX_TRADE_VOLUME,
+    oracleTimeout: USDC_MAINNET_ORACLE_TIMEOUT,
     targetName: ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.0125'),
+    defaultThreshold: fp('0.01').add(USDC_MAINNET_ORACLE_TIMEOUT),
     delayUntilDefault: bn('86400'),
   },
   {
@@ -41,12 +53,12 @@ makeTests(
   {
     priceTimeout: PRICE_TIMEOUT,
     chainlinkFeed: networkConfig[8453].chainlinkFeeds['USDC']!,
-    oracleError: fp('0.003'),
+    oracleError: USDC_BASE_ORACLE_ERROR,
     erc20: '', // to be set
-    maxTradeVolume: fp('0.5e6'),
-    oracleTimeout: bn('86400'),
+    maxTradeVolume: USDC_BASE_MAX_TRADE_VOLUME,
+    oracleTimeout: USDC_BASE_ORACLE_TIMEOUT,
     targetName: ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.0125'),
+    defaultThreshold: fp('0.01').add(USDC_BASE_ORACLE_TIMEOUT),
     delayUntilDefault: bn('86400'),
   },
   {
@@ -65,12 +77,12 @@ makeTests(
   {
     priceTimeout: PRICE_TIMEOUT,
     chainlinkFeed: networkConfig[1].chainlinkFeeds['pyUSD']!,
-    oracleError: fp('0.003'),
+    oracleError: PYUSD_ORACLE_ERROR,
     erc20: '', // to be set
-    maxTradeVolume: fp('0.5e6'),
-    oracleTimeout: bn('86400'),
+    maxTradeVolume: PYUSD_MAX_TRADE_VOLUME,
+    oracleTimeout: PYUSD_ORACLE_TIMEOUT,
     targetName: ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.0125'),
+    defaultThreshold: fp('0.01').add(PYUSD_ORACLE_ERROR),
     delayUntilDefault: bn('86400'),
   },
   {
