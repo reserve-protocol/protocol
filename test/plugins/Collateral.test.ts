@@ -816,6 +816,61 @@ describe('Collateral contracts', () => {
       expect(await unpricedAppFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
     })
 
+    it('Should not save prices if try/price returns unpriced - Fiat Collateral', async () => {
+      const UnpricedFiatFactory = await ethers.getContractFactory(
+        'UnpricedFiatCollateralMock'
+      )
+      const unpricedFiatCollateral: UnpricedFiatCollateralMock = <
+        UnpricedFiatCollateralMock
+      >await UnpricedFiatFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await tokenCollateral.chainlinkFeed(), // reuse - mock
+          oracleError: ORACLE_ERROR,
+          erc20: token.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        }
+      )
+
+      // Save prices
+      await unpricedFiatCollateral.refresh()
+
+      // Check initial prices
+      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(unpricedFiatCollateral.address, fp('1'), ORACLE_ERROR, true)
+      let [lowPrice, highPrice] = await unpricedFiatCollateral.price()
+      expect(await unpricedFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedFiatCollateral.lastSave()).to.be.equal(currBlockTimestamp)
+
+      // Refresh saved prices
+      await unpricedFiatCollateral.refresh()
+
+      // Check values remain but timestamp was updated
+      await expectPrice(unpricedFiatCollateral.address, fp('1'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await unpricedFiatCollateral.price()
+      expect(await unpricedFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await unpricedFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
+
+      // Set as unpriced so it returns 0,FIX MAX in try/price
+      await unpricedFiatCollateral.setUnpriced(true)
+
+      // Check that now is unpriced
+      await expectUnpriced(unpricedFiatCollateral.address)
+
+      // Refreshing would not save the new rates
+      await unpricedFiatCollateral.refresh()
+      expect(await unpricedFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
+    })
+
     it('lotPrice (deprecated) is equal to price()', async () => {
       for (const coll of [tokenCollateral, usdcCollateral, aTokenCollateral, cTokenCollateral]) {
         const lotPrice = await coll.lotPrice()
