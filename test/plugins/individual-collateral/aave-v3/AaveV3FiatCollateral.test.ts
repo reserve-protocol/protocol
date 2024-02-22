@@ -4,6 +4,14 @@ import { PRICE_TIMEOUT } from '#/test/fixtures'
 import { makeTests } from './common'
 import { networkConfig } from '#/common/configuration'
 
+/*
+ ** Static AToken Factory for Aave V3
+ ** Mainnet: 0x411D79b8cC43384FDE66CaBf9b6a17180c842511
+ ** --> https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol#L86
+ ** Base: 0x940F9a5d5F9ED264990D0eaee1F3DD60B4Cb9A22
+ ** --> https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L78
+ */
+
 // Mainnet - USDC
 makeTests(
   {
