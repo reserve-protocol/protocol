@@ -2,25 +2,26 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../plugins/trading/DutchTrade.sol";
-import "../interfaces/IAsset.sol";
-import "../interfaces/IAssetRegistry.sol";
-import "../interfaces/IFacadeRead.sol";
-import "../interfaces/IRToken.sol";
-import "../interfaces/IStRSR.sol";
-import "../libraries/Fixed.sol";
-import "../p1/BasketHandler.sol";
-import "../p1/RToken.sol";
-import "../p1/StRSRVotes.sol";
+import "../../plugins/trading/DutchTrade.sol";
+import "../../interfaces/IAsset.sol";
+import "../../interfaces/IAssetRegistry.sol";
+import "../../interfaces/IReadFacet.sol";
+import "../../interfaces/IRToken.sol";
+import "../../interfaces/IStRSR.sol";
+import "../../libraries/Fixed.sol";
+import "../../p1/BasketHandler.sol";
+import "../../p1/RToken.sol";
+import "../../p1/StRSRVotes.sol";
 
 /**
- * @title Facade
- * @notice A UX-friendly layer for reading out the state of a ^3.0.0 RToken in summary views.
+ * @title ReadFacet
+ * @notice
+ *   Facet for reading out the state of a ^3.0.0 RToken in summary views.
  *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract FacadeRead is IFacadeRead {
+contract ReadFacet is IReadFacet {
     using FixLib for uint192;
 
     // === Static Calls ===

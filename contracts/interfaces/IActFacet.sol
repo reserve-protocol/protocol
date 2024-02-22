@@ -6,21 +6,17 @@ import "../interfaces/IStRSRVotes.sol";
 import "../interfaces/IRevenueTrader.sol";
 import "../interfaces/IRToken.sol";
 
-bytes1 constant MAJOR_VERSION_1 = bytes1("1");
-bytes1 constant MAJOR_VERSION_2 = bytes1("2");
-bytes1 constant MAJOR_VERSION_3 = bytes1("3");
-
 /**
- * @title IFacadeAct
+ * @title IActFacet
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely. 
 v */
-interface IFacadeAct {
+interface IActFacet {
     /// Claims rewards from all places they can accrue.
     function claimRewards(IRToken rToken) external;
 
     /// To use this, first call:
-    ///   - FacadeRead.auctionsSettleable(revenueTrader)
-    ///   - FacadeRead.revenueOverview(revenueTrader)
+    ///   - IReadFacet.auctionsSettleable(revenueTrader)
+    ///   - IReadFacet.revenueOverview(revenueTrader)
     /// If either arrays returned are non-empty, then can execute this function productively.
     /// Logic:
     ///   For each ERC20 in `toSettle`:
