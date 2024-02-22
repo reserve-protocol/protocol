@@ -1861,6 +1861,9 @@ describe('Collateral contracts', () => {
       const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
       expect(newLow).to.equal(currLow)
       expect(newHigh).to.equal(currHigh)
+
+      // Refresh is a noop if DISABLED
+      await expect(cTokenNonFiatCollateral.refresh()).to.not.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
