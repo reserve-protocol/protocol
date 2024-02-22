@@ -3283,6 +3283,40 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
+      it('Should support custom destinations only', async () => {
+        // Set distribution all to a custom destination
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(other.address, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(other.address, bn(0), bn(1))
+
+        // No distribution to Furnace or StRSR
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(0))
+
+        const rsrBalInDestination = await rsr.balanceOf(other.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.distributeTokenToBuy()
+        const expectedAmount = rsrBalInDestination.add(issueAmount)
+        expect(await rsr.balanceOf(other.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
       it('Should claim but not sweep rewards to BackingManager from the Revenue Traders', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
@@ -3502,7 +3536,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               expect(await trade.bidder()).to.equal(router.address)
 
               // Noone can bid again on the trade directly
-              await expect(trade.connect(addr1).bidWithCallback(new Uint8Array(0))).to.be.revertedWith('bid already received')
+              await expect(
+                trade.connect(addr1).bidWithCallback(new Uint8Array(0))
+              ).to.be.revertedWith('bid already received')
 
               // Cannot bid once is settled via router
               await expect(
