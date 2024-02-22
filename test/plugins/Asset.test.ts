@@ -758,6 +758,31 @@ describe('Assets contracts #fast', () => {
       await expect(invalidRSRAsset.refresh()).to.be.reverted
     })
 
+    it('Bubbles error up if Chainlink feed reverts for explicit reason', async () => {
+      // Applies to all collateral as well
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidRSRAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          invalidChainlinkFeed.address,
+          ORACLE_ERROR,
+          rsr.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+
+      // Reverting with reason
+      await invalidChainlinkFeed.setRevertWithExplicitError(true)
+      await expect(invalidRSRAsset.tryPrice()).to.be.revertedWith('oracle explicit error')
+    })
+
     it('Should handle price decay correctly', async () => {
       await rsrAsset.refresh()
 
