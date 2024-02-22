@@ -8,6 +8,7 @@ import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constan
 import { bn, fp } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
+  BadERC20,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
@@ -400,6 +401,41 @@ describe('Collateral contracts', () => {
           REVENUE_HIDING
         )
       ).to.be.revertedWith('delayUntilDefault too long')
+    })
+
+    it('Should not allow missing referenceERC20Decimals', async () => {
+      // CTokenFiatCollateral with decimals = 0 in underlying
+      const token0decimals: BadERC20 = await (
+        await ethers.getContractFactory('BadERC20')
+      ).deploy('Bad ERC20', 'BERC20')
+      await token0decimals.setDecimals(0)
+
+      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+      const cToken0Dec: CTokenMock = <CTokenMock>(
+        await CTokenMockFactory.deploy(
+          '0 Decimal Token',
+          '0 Decimal Token',
+          token0decimals.address,
+          compoundMock.address
+        )
+      )
+
+      await expect(
+        CTokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cToken0Dec.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('referenceERC20Decimals missing')
     })
 
     it('Should not allow out of range oracle error', async () => {
@@ -817,13 +853,9 @@ describe('Collateral contracts', () => {
     })
 
     it('Should not save prices if try/price returns unpriced - Fiat Collateral', async () => {
-      const UnpricedFiatFactory = await ethers.getContractFactory(
-        'UnpricedFiatCollateralMock'
-      )
-      const unpricedFiatCollateral: UnpricedFiatCollateralMock = <
-        UnpricedFiatCollateralMock
-      >await UnpricedFiatFactory.deploy(
-        {
+      const UnpricedFiatFactory = await ethers.getContractFactory('UnpricedFiatCollateralMock')
+      const unpricedFiatCollateral: UnpricedFiatCollateralMock = <UnpricedFiatCollateralMock>(
+        await UnpricedFiatFactory.deploy({
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(), // reuse - mock
           oracleError: ORACLE_ERROR,
@@ -833,7 +865,7 @@ describe('Collateral contracts', () => {
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
-        }
+        })
       )
 
       // Save prices
@@ -1030,6 +1062,9 @@ describe('Collateral contracts', () => {
           .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
         expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+        // Refresh is a noop if DISABLED
+        await expect(coll.refresh()).to.not.emit(coll, 'CollateralStatusChanged')
       }
     })
 
@@ -1092,6 +1127,12 @@ describe('Collateral contracts', () => {
       const [newLow, newHigh] = await cTokenCollateral.price()
       expect(newLow).to.equal(currLow)
       expect(newHigh).to.equal(currHigh)
+
+      // Refresh is a noop if already DISABLED
+      await expect(cTokenCollateral.refresh()).to.not.emit(
+        cTokenCollateral,
+        'CollateralStatusChanged'
+      )
     })
 
     it('CTokens - Enters DISABLED state when underlyingRefPerTok reverts', async () => {
@@ -1117,6 +1158,12 @@ describe('Collateral contracts', () => {
       const [newLow, newHigh] = await cTokenCollateral.price()
       expect(newLow).to.equal(currLow)
       expect(newHigh).to.equal(currHigh)
+
+      // Refresh is a noop if already DISABLED
+      await expect(cTokenCollateral.refresh()).to.not.emit(
+        cTokenCollateral,
+        'CollateralStatusChanged'
+      )
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - Fiat', async () => {
