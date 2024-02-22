@@ -41,9 +41,9 @@ makeTests(
   {
     priceTimeout: PRICE_TIMEOUT,
     chainlinkFeed: networkConfig[8453].chainlinkFeeds['USDC']!,
-    oracleError: fp('0.0025'),
+    oracleError: fp('0.003'),
     erc20: '', // to be set
-    maxTradeVolume: fp('1e6'),
+    maxTradeVolume: fp('0.5e6'),
     oracleTimeout: bn('86400'),
     targetName: ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125'),
