@@ -8,7 +8,7 @@ This release improves how collateral plugins price LP tokens and moves reward cl
 
 Swapout all collateral plugins with appreciation.
 
-All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken.
+All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken, as well as aave-v3 USDC/USDCbC for canonical wrappers.
 
 ### Core Protocol Contracts
 
@@ -19,6 +19,9 @@ All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be
 
 ### Assets
 
+- aave-v3
+  - On mainnet: switch from one-off USDC wrapper to canonical USDC wrapper
+  - On base: switch from one-off USDbC wrapper to canonical USDC wrapper
 - compound-v2
   - Remove `CTokenWrapper`
   - Add reward claiming logic to `claimRewards()`
