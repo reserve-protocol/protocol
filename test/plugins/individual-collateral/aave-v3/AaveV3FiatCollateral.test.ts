@@ -55,7 +55,7 @@ makeTests(
     aavePool: networkConfig[8453].AAVE_V3_POOL!,
     aToken: networkConfig[8453].tokens['aBasUSDC']!,
     whaleTokenHolder: '0x09ad6981381610a5f58c56219f0fe939043f0a36',
-    forkBlock: 4446300,
+    forkBlock: 8200000,
     targetNetwork: 'base',
   }
 )
