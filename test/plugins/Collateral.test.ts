@@ -1863,64 +1863,6 @@ describe('Collateral contracts', () => {
       expect(newHigh).to.equal(currHigh)
     })
 
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cNonFiatToken.exchangeRateStored()
-      const [currLow, currHigh] = await cTokenNonFiatCollateral.price()
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-
-      // Make cToken revert on exchangeRateCurrent()
-      await cNonFiatToken.setRevertExchangeRateCurrent(true)
-
-      // Refresh - should not revert - Sets DISABLED
-      await expect(cTokenNonFiatCollateral.refresh())
-        .to.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Exchange rate stored is still accessible
-      expect(await cNonFiatToken.exchangeRateStored()).to.equal(currRate)
-
-      // Price remains the same
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
-    })
-
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cNonFiatToken.exchangeRateStored()
-      const [currLow, currHigh] = await cTokenNonFiatCollateral.price()
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-
-      // Make cToken revert on exchangeRateCurrent()
-      await cNonFiatToken.setRevertExchangeRateCurrent(true)
-
-      // Refresh - should not revert - Sets DISABLED
-      await expect(cTokenNonFiatCollateral.refresh())
-        .to.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Exchange rate stored is still accessible
-      expect(await cNonFiatToken.exchangeRateStored()).to.equal(currRate)
-
-      // Price remains the same
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
-    })
-
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
       const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
