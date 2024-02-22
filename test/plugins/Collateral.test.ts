@@ -1018,7 +1018,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cToken.setRevertExchangeRate(true)
+      await cToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenCollateral.refresh())
@@ -1031,6 +1031,31 @@ describe('Collateral contracts', () => {
 
       // Exchange rate stored is still accessible
       expect(await cToken.exchangeRateStored()).to.equal(currRate)
+
+      // Price remains the same
+      await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await cTokenCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
+    })
+
+    it('CTokens - Enters DISABLED state when underlyingRefPerTok reverts', async () => {
+      const [currLow, currHigh] = await cTokenCollateral.price()
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Make cToken revert on underlyingRefPerTok
+      await cToken.setRevertExchangeRateStored(true)
+      await expect(cToken.exchangeRateStored()).to.be.reverted
+      await expect(cTokenCollateral.underlyingRefPerTok()).to.be.reverted
+
+      // Refresh - should not revert - Sets DISABLED
+      await expect(cTokenCollateral.refresh())
+        .to.emit(cTokenCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Price remains the same
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
@@ -1715,7 +1740,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cNonFiatToken.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -1744,7 +1769,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cNonFiatToken.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -1773,7 +1798,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cNonFiatToken.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -2191,7 +2216,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cSelfRefToken.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
@@ -2220,7 +2245,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cSelfRefToken.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
@@ -2249,7 +2274,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      await cSelfRefToken.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
