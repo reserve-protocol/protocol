@@ -28,7 +28,7 @@ export interface ITokens {
   aWBTC?: string
   aCRV?: string
   aEthUSDC?: string
-  aBasUSDbC?: string
+  aBasUSDC?: string
   aWETHv3?: string
   acbETHv3?: string
   cDAI?: string
@@ -559,7 +559,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WETH: '0x4200000000000000000000000000000000000006',
       cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
-      aBasUSDbC: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
+      aBasUSDC: '0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c',
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',

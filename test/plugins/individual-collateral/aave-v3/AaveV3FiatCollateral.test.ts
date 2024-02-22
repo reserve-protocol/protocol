@@ -45,8 +45,8 @@ makeTests(
     testName: 'USDC - Base',
     aaveIncentivesController: networkConfig[8453].AAVE_V3_INCENTIVES_CONTROLLER!,
     aavePool: networkConfig[8453].AAVE_V3_POOL!,
-    aToken: networkConfig[8453].tokens['aBasUSDbC']!,
-    whaleTokenHolder: '0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA',
+    aToken: networkConfig[8453].tokens['aBasUSDC']!,
+    whaleTokenHolder: '0x087df3f4a6531ceE97650dDA0Bb8499D968f2249',
     forkBlock: 4446300,
     targetNetwork: 'base',
   }
