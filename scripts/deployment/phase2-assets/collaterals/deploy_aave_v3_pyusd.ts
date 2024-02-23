@@ -18,7 +18,7 @@ import {
   PYUSD_MAX_TRADE_VOLUME,
   PYUSD_ORACLE_TIMEOUT,
   PYUSD_ORACLE_ERROR,
-} from '../../../../test/plugins/individual-collateral/aave-v3/AaveV3FiatCollateral.test'
+} from '../../../../test/plugins/individual-collateral/aave-v3/constants'
 
 // This file specifically deploys Aave V3 pyUSD collateral on Mainnet
 

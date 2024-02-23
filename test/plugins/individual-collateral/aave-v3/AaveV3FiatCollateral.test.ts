@@ -3,6 +3,17 @@ import { bn, fp } from '#/common/numbers'
 import { PRICE_TIMEOUT } from '#/test/fixtures'
 import { makeTests } from './common'
 import { networkConfig } from '#/common/configuration'
+import {
+  PYUSD_MAX_TRADE_VOLUME,
+  PYUSD_ORACLE_TIMEOUT,
+  PYUSD_ORACLE_ERROR,
+  USDC_MAINNET_MAX_TRADE_VOLUME,
+  USDC_MAINNET_ORACLE_TIMEOUT,
+  USDC_MAINNET_ORACLE_ERROR,
+  USDC_BASE_MAX_TRADE_VOLUME,
+  USDC_BASE_ORACLE_TIMEOUT,
+  USDC_BASE_ORACLE_ERROR,
+} from './constants'
 
 /*
  ** Static AToken Factory for Aave V3
@@ -11,18 +22,6 @@ import { networkConfig } from '#/common/configuration'
  ** Base: 0x940F9a5d5F9ED264990D0eaee1F3DD60B4Cb9A22
  ** --> https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L78
  */
-
-export const PYUSD_MAX_TRADE_VOLUME = fp('0.5e6')
-export const PYUSD_ORACLE_TIMEOUT = bn('86400')
-export const PYUSD_ORACLE_ERROR = fp('0.003')
-
-export const USDC_MAINNET_MAX_TRADE_VOLUME = fp('1e6')
-export const USDC_MAINNET_ORACLE_TIMEOUT = bn('86400')
-export const USDC_MAINNET_ORACLE_ERROR = fp('0.0025')
-
-export const USDC_BASE_MAX_TRADE_VOLUME = fp('0.5e6')
-export const USDC_BASE_ORACLE_TIMEOUT = bn('86400')
-export const USDC_BASE_ORACLE_ERROR = fp('0.003')
 
 // Mainnet - USDC
 makeTests(

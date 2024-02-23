@@ -21,7 +21,7 @@ import {
   USDC_BASE_MAX_TRADE_VOLUME,
   USDC_BASE_ORACLE_TIMEOUT,
   USDC_BASE_ORACLE_ERROR,
-} from '../../../../test/plugins/individual-collateral/aave-v3/AaveV3FiatCollateral.test'
+} from '../../../../test/plugins/individual-collateral/aave-v3/constants'
 
 // This file specifically deploys Aave V3 USDC collateral
 
@@ -60,15 +60,15 @@ async function main() {
       {
         priceTimeout: priceTimeout,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-        oracleError: USDC_MAINNET_ORACLE_ERROR,
+        oracleError: USDC_MAINNET_ORACLE_ERROR.toString(),
         erc20: networkConfig[chainId].tokens.saEthUSDC!,
-        maxTradeVolume: USDC_MAINNET_MAX_TRADE_VOLUME,
-        oracleTimeout: USDC_MAINNET_ORACLE_TIMEOUT,
+        maxTradeVolume: USDC_MAINNET_MAX_TRADE_VOLUME.toString(),
+        oracleTimeout: USDC_MAINNET_ORACLE_TIMEOUT.toString(),
         targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.01').add(USDC_MAINNET_ORACLE_ERROR),
-        delayUntilDefault: bn('86400'),
+        defaultThreshold: fp('0.01').add(USDC_MAINNET_ORACLE_ERROR).toString(),
+        delayUntilDefault: bn('86400').toString(),
       },
-      revenueHiding
+      revenueHiding.toString()
     )
     await collateral.deployed()
     await (await collateral.refresh()).wait()
@@ -85,15 +85,15 @@ async function main() {
       {
         priceTimeout: priceTimeout,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-        oracleError: USDC_BASE_ORACLE_ERROR,
+        oracleError: USDC_BASE_ORACLE_ERROR.toString(),
         erc20: networkConfig[chainId].tokens.saBasUSDC!,
-        maxTradeVolume: USDC_BASE_MAX_TRADE_VOLUME,
-        oracleTimeout: USDC_BASE_ORACLE_TIMEOUT,
+        maxTradeVolume: USDC_BASE_MAX_TRADE_VOLUME.toString(),
+        oracleTimeout: USDC_BASE_ORACLE_TIMEOUT.toString(),
         targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.01').add(USDC_BASE_ORACLE_ERROR),
-        delayUntilDefault: bn('86400'),
+        defaultThreshold: fp('0.01').add(USDC_BASE_ORACLE_ERROR).toString(),
+        delayUntilDefault: bn('86400').toString(),
       },
-      revenueHiding
+      revenueHiding.toString()
     )
     await collateral.deployed()
     await (await collateral.refresh()).wait()
