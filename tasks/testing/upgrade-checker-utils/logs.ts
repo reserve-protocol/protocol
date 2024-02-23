@@ -1,10 +1,9 @@
-import { ITokens, networkConfig } from '#/common/configuration'
+import { networkConfig } from '#/common/configuration'
 
 const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.USDC!.toLowerCase()]: 'USDC',
   [networkConfig['1'].tokens.USDT!.toLowerCase()]: 'USDT',
   [networkConfig['1'].tokens.USDP!.toLowerCase()]: 'USDP',
-  [networkConfig['1'].tokens.TUSD!.toLowerCase()]: 'TUSD',
   [networkConfig['1'].tokens.BUSD!.toLowerCase()]: 'BUSD',
   [networkConfig['1'].tokens.FRAX!.toLowerCase()]: 'FRAX',
   [networkConfig['1'].tokens.MIM!.toLowerCase()]: 'MIM',
@@ -30,7 +29,6 @@ const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.COMP!.toLowerCase()]: 'COMP',
   [networkConfig['1'].tokens.WETH!.toLowerCase()]: 'WETH',
   [networkConfig['1'].tokens.WBTC!.toLowerCase()]: 'WBTC',
-  [networkConfig['1'].tokens.EURT!.toLowerCase()]: 'EURT',
   [networkConfig['1'].tokens.RSR!.toLowerCase()]: 'RSR',
   [networkConfig['1'].tokens.CRV!.toLowerCase()]: 'CRV',
   [networkConfig['1'].tokens.CVX!.toLowerCase()]: 'CVX',
