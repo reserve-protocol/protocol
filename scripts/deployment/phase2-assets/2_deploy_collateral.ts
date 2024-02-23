@@ -148,29 +148,6 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
-  /********  Deploy Fiat Collateral - TUSD  **************************/
-  if (networkConfig[chainId].tokens.TUSD && networkConfig[chainId].chainlinkFeeds.TUSD) {
-    const { collateral: tusdCollateral } = await hre.run('deploy-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.TUSD,
-      oracleError: fp('0.003').toString(), // 0.3%
-      tokenAddress: networkConfig[chainId].tokens.TUSD,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.013').toString(), // 1.3%
-      delayUntilDefault: bn('86400').toString(), // 24h
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', tusdCollateral)
-    await (await collateral.refresh()).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.TUSD = tusdCollateral
-    assetCollDeployments.erc20s.TUSD = networkConfig[chainId].tokens.TUSD
-    deployedCollateral.push(tusdCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-  }
   /********  Deploy Fiat Collateral - BUSD  **************************/
   if (networkConfig[chainId].tokens.BUSD && networkConfig[chainId].chainlinkFeeds.BUSD) {
     const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
@@ -641,38 +618,6 @@ async function main() {
     assetCollDeployments.collateral.WETH = wETHCollateral
     assetCollDeployments.erc20s.WETH = networkConfig[chainId].tokens.WETH
     deployedCollateral.push(wETHCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-  }
-
-  /********  Deploy EUR Fiat Collateral  - EURT **************************/
-  const eurtError = fp('0.02') // 2%
-
-  if (
-    networkConfig[chainId].tokens.EURT &&
-    networkConfig[chainId].chainlinkFeeds.EUR &&
-    networkConfig[chainId].chainlinkFeeds.EURT
-  ) {
-    const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
-      targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
-      oracleError: eurtError.toString(), // 2%
-      tokenAddress: networkConfig[chainId].tokens.EURT,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetUnitOracleTimeout: '86400', // 24 hr
-      targetName: ethers.utils.formatBytes32String('EUR'),
-      defaultThreshold: fp('0.03').toString(), // 3%
-      delayUntilDefault: bn('86400').toString(), // 24h
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', eurtCollateral)
-    await (await collateral.refresh()).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.EURT = eurtCollateral
-    assetCollDeployments.erc20s.EURT = networkConfig[chainId].tokens.EURT
-    deployedCollateral.push(eurtCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
