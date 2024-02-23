@@ -6,7 +6,7 @@ import { IMPLEMENTATION } from '../../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import forkBlockNumber from '../fork-block-numbers'
-import { FacadeAct, RevenueTraderP1 } from '../../../typechain'
+import { ActFacet, RevenueTraderP1 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from '../../utils/time'
 import { ONE_PERIOD } from '#/common/constants'
@@ -18,10 +18,10 @@ const FACADE_ACT_ADDR = '0xeaCaF85eA2df99e56053FD0250330C148D582547' // V3
 const SELL_TOKEN_ADDR = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15' // aUSDC
 
 describeFork(
-  `FacadeAct - Settle Auctions - Mainnet Check - Mainnet Forking P${IMPLEMENTATION}`,
+  `ActFacet - Settle Auctions - Mainnet Check - Mainnet Forking P${IMPLEMENTATION}`,
   function () {
-    let facadeAct: FacadeAct
-    let newFacadeAct: FacadeAct
+    let facadeAct: ActFacet
+    let newFacadeAct: ActFacet
     let revenueTrader: RevenueTraderP1
     let chainId: number
 
@@ -43,7 +43,7 @@ describeFork(
       })
     }
 
-    describe('FacadeAct', () => {
+    describe('ActFacet', () => {
       before(async () => {
         await setup(forkBlockNumber['mainnet-2.0'])
 
@@ -60,7 +60,7 @@ describeFork(
         snap = await evmSnapshot()
 
         // Get contracts
-        facadeAct = <FacadeAct>await ethers.getContractAt('FacadeAct', FACADE_ACT_ADDR)
+        facadeAct = <ActFacet>await ethers.getContractAt('ActFacet', FACADE_ACT_ADDR)
         revenueTrader = <RevenueTraderP1>(
           await ethers.getContractAt('RevenueTraderP1', REVENUE_TRADER_ADDR)
         )
@@ -76,7 +76,7 @@ describeFork(
         expect(await revenueTrader.tradesOpen()).to.equal(0)
       })
 
-      it('Should fail with deployed FacadeAct', async () => {
+      it('Should fail with deployed ActFacet', async () => {
         expect(await revenueTrader.tradesOpen()).to.equal(1)
         await expect(
           facadeAct.runRevenueAuctions(revenueTrader.address, [SELL_TOKEN_ADDR], [], [1])
@@ -84,10 +84,10 @@ describeFork(
         expect(await revenueTrader.tradesOpen()).to.equal(1)
       })
 
-      it('Should work with fixed FacadeAct', async () => {
+      it('Should work with fixed ActFacet', async () => {
         expect(await revenueTrader.tradesOpen()).to.equal(1)
 
-        const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+        const FacadeActFactory = await ethers.getContractFactory('ActFacet')
         newFacadeAct = await FacadeActFactory.deploy()
 
         await newFacadeAct.runRevenueAuctions(revenueTrader.address, [SELL_TOKEN_ADDR], [], [1])
@@ -95,8 +95,8 @@ describeFork(
         expect(await revenueTrader.tradesOpen()).to.equal(0)
       })
 
-      it('Fixed FacadeAct should return right revenueOverview', async () => {
-        const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+      it('Fixed ActFacet should return right revenueOverview', async () => {
+        const FacadeActFactory = await ethers.getContractFactory('ActFacet')
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
         newFacadeAct = await FacadeActFactory.deploy()
 
@@ -142,8 +142,8 @@ describeFork(
         }
       })
 
-      it('Fixed FacadeAct should run revenue auctions', async () => {
-        const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+      it('Fixed ActFacet should run revenue auctions', async () => {
+        const FacadeActFactory = await ethers.getContractFactory('ActFacet')
         newFacadeAct = await FacadeActFactory.deploy()
 
         expect(await revenueTrader.tradesOpen()).to.equal(1)

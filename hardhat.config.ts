@@ -111,10 +111,6 @@ const config: HardhatUserConfig = {
         version: '0.6.12',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
-      'contracts/facade/FacadeRead.sol': {
-        version: '0.8.19',
-        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
-      },
     },
   },
 

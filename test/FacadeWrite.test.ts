@@ -31,7 +31,6 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FacadeWrite,
   FiatCollateral,
@@ -43,6 +42,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -103,7 +103,7 @@ describe('FacadeWrite contract', () => {
   let timelock: TimelockController
 
   // Facade
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWriteLibAddr: string
 
