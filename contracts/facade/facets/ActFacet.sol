@@ -4,24 +4,25 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
-import "../plugins/trading/DutchTrade.sol";
-import "../plugins/trading/GnosisTrade.sol";
-import "../interfaces/IBackingManager.sol";
-import "../interfaces/IFacadeAct.sol";
-import "../interfaces/IFacadeRead.sol";
+import "../../plugins/trading/DutchTrade.sol";
+import "../../plugins/trading/GnosisTrade.sol";
+import "../../interfaces/IActFacet.sol";
+import "../../interfaces/IBackingManager.sol";
 
 /**
- * @title Facade
- * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely.
+ * @title ActFacet
+ * @notice
+ *   Facet to help batch compound actions that cannot be done from an EOA, solely.
  *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
+ * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract FacadeAct is IFacadeAct, Multicall {
+contract ActFacet is IActFacet, Multicall {
     using Address for address;
     using SafeERC20 for IERC20;
     using FixLib for uint192;
 
-    function claimRewards(IRToken rToken) public {
+    function claimRewards(IRToken rToken) external {
         IMain main = rToken.main();
         main.backingManager().claimRewards();
         main.rTokenTrader().claimRewards();
@@ -36,7 +37,6 @@ contract FacadeAct is IFacadeAct, Multicall {
     ///   For each ERC20 in `toSettle`:
     ///     - Settle any open ERC20 trades
     ///   Then:
-    ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
     ///     - Call `revenueTrader.manageTokens(ERC20)` to start an auction
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
@@ -51,10 +51,7 @@ contract FacadeAct is IFacadeAct, Multicall {
 
         // if 2.1.0, distribute tokenToBuy
         bytes1 majorVersion = bytes(revenueTrader.version())[0];
-        if (
-            toSettle.length > 0 &&
-            (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1)
-        ) {
+        if (toSettle.length > 0 && (majorVersion == bytes1("2") || majorVersion == bytes1("1"))) {
             address(revenueTrader).functionCall(
                 abi.encodeWithSignature("manageToken(address)", revenueTrader.tokenToBuy())
             );
@@ -218,10 +215,10 @@ contract FacadeAct is IFacadeAct, Multicall {
 
     function _settleTrade(ITrading trader, IERC20 toSettle) private {
         bytes1 majorVersion = bytes(trader.version())[0];
-        if (majorVersion == MAJOR_VERSION_3) {
+        if (majorVersion == bytes1("3")) {
             // Settle auctions
             trader.settleTrade(toSettle);
-        } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
             address(trader).functionCall(abi.encodeWithSignature("settleTrade(address)", toSettle));
         } else {
             _revertUnrecognizedVersion();
@@ -231,10 +228,10 @@ contract FacadeAct is IFacadeAct, Multicall {
     function _forwardRevenue(IBackingManager bm, IERC20[] memory toStart) private {
         bytes1 majorVersion = bytes(bm.version())[0];
         // Need to use try-catch here in order to still show revenueOverview when basket not ready
-        if (majorVersion == MAJOR_VERSION_3) {
+        if (majorVersion == bytes1("3")) {
             // solhint-disable-next-line no-empty-blocks
             try bm.forwardRevenue(toStart) {} catch {}
-        } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(bm).call{ value: 0 }(
                 abi.encodeWithSignature("manageTokens(address[])", toStart)
@@ -252,9 +249,9 @@ contract FacadeAct is IFacadeAct, Multicall {
     ) private {
         bytes1 majorVersion = bytes(revenueTrader.version())[0];
 
-        if (majorVersion == MAJOR_VERSION_3) {
+        if (majorVersion == bytes1("3")) {
             revenueTrader.manageTokens(toStart, kinds);
-        } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
             for (uint256 i = 0; i < toStart.length; ++i) {
                 address(revenueTrader).functionCall(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
@@ -268,10 +265,10 @@ contract FacadeAct is IFacadeAct, Multicall {
     function _rebalance(IBackingManager bm, TradeKind kind) private {
         bytes1 majorVersion = bytes(bm.version())[0];
 
-        if (majorVersion == MAJOR_VERSION_3) {
+        if (majorVersion == bytes1("3")) {
             // solhint-disable-next-line no-empty-blocks
             try bm.rebalance(kind) {} catch {}
-        } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
             IERC20[] memory emptyERC20s = new IERC20[](0);
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(bm).call{ value: 0 }(

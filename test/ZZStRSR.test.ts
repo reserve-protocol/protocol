@@ -12,13 +12,13 @@ import { expectEvents } from '../common/events'
 import {
   ERC20Mock,
   ERC1271Mock,
-  FacadeRead,
   StRSRP0,
   StRSRP1Votes,
   StaticATokenMock,
   IAssetRegistry,
   TestIBackingManager,
   TestIBasketHandler,
+  TestIFacade,
   TestIMain,
   TestIRToken,
   TestIStRSR,
@@ -70,7 +70,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
   let rToken: TestIRToken
-  let facade: FacadeRead
+  let facade: TestIFacade
   let assetRegistry: IAssetRegistry
 
   // StRSR

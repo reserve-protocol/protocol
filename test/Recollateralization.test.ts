@@ -20,7 +20,6 @@ import {
   CTokenMock,
   DutchTrade,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -31,6 +30,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
+  TestIFacade,
   TestIMain,
   TestIRToken,
   TestIStRSR,
@@ -104,7 +104,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
   let stRSR: TestIStRSR
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
