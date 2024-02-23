@@ -1,6 +1,6 @@
 # Exhaustive Testing
 
-The exhaustive tests include `Broker.test.ts`, `Furnace.test.ts`, `RToken.test.ts`, `ZTradingExtremes.test.ts` and `ZZStRSR.test.ts`, and are meant to test the protocol when given permutations of input values on the extreme ends of the spectrum of possiblities.
+The exhaustive tests include `Broker.test.ts`, `Furnace.test.ts`, `RToken.test.ts`, `ZTradingExtremes.test.ts` and `ZZStRSR.test.ts`, and are meant to test the protocol when given permutations of input values on the extreme ends of the spectrum of possibilities.
 
 The env vars related to exhaustive testing are `EXTREME` and `SLOW`.
 

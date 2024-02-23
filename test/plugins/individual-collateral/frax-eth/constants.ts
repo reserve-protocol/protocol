@@ -7,9 +7,8 @@ export const FRX_ETH = networkConfig['31337'].tokens.frxETH as string
 export const SFRX_ETH = networkConfig['31337'].tokens.sfrxETH as string
 export const WETH = networkConfig['31337'].tokens.WETH as string
 export const FRX_ETH_MINTER = '0xbAFA44EFE7901E04E39Dad13167D089C559c1138'
-export const FRXETH_ETH_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.frxETH as string
 export const CURVE_POOL_EMA_PRICE_ORACLE_ADDRESS = networkConfig['31337']
-  .CURVE_POOL_ETH_FRXETH as string
+  .CURVE_POOL_WETH_FRXETH as string
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours in seconds
