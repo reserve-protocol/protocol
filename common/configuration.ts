@@ -28,7 +28,7 @@ export interface ITokens {
   aWBTC?: string
   aCRV?: string
   aEthUSDC?: string
-  aBasUSDbC?: string
+  aBasUSDC?: string
   aWETHv3?: string
   acbETHv3?: string
   cDAI?: string
@@ -73,6 +73,9 @@ export interface ITokens {
   wsgUSDbC?: string
   yvCurveUSDPcrvUSD?: string
   yvCurveUSDCcrvUSD?: string
+
+  pyUSD?: string
+  aEthPyUSD?: string
 
   // Morpho Aave
   maUSDC?: string
@@ -307,6 +310,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
       yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
       yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
+      pyUSD: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
+      aEthPyUSD: '0x0C0d01AbF3e6aDfcA0989eBbA9d6e85dD58EaB1E',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -334,6 +339,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
       frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
+      pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
@@ -552,7 +558,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WETH: '0x4200000000000000000000000000000000000006',
       cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
-      aBasUSDbC: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
+      aBasUSDC: '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB',
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
