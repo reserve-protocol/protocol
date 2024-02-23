@@ -20,13 +20,13 @@ Throughout our system, any variable in state or memory, function parameter, or r
 
 These operations mostly come in a few classes:
 
-- Conversion operations between Fix and and regular `uint` values: `toFix` and `toUint`
+- Conversion operations between Fix and regular `uint` values: `toFix` and `toUint`
 - Typical numeric operations like `plus`, `minus`, `mul`, `div`, `pow`, `lt`, `eq`, and so on
 - Typical operations between Fix and unsigned int values, which have a `u` appended: `plusu`, `minusu`, `mulu`, `divu`
 - A few special-case operations, inferrable from their datatypes. (For instance, `divuu(uint256 x, uint256 y) pure returns (uint192)` takes two unsigned integer values and returns their ratio as a Fix value, and `divFix(uint256 x, uint192 y) pure returns (uint192)` divides a Fix by an unsigned int, returning a Fix value.
 - Chained operations, like `mulu_toUint` or `muluDivu`, which just to perform those operations in sequence.
 
-Criticially, all of these operations are written so that they only fail with overflow errors if their result is outside the range of the return type. This is what motivates the chained operations, which are typically more expensive than their unchained analogues, but which do whatever work is necessary to avoid intermediate overflow. For instance:
+Critically, all of these operations are written so that they only fail with overflow errors if their result is outside the range of the return type. This is what motivates the chained operations, which are typically more expensive than their unchained analogues, but which do whatever work is necessary to avoid intermediate overflow. For instance:
 
 ```solidity
 uint192 one = FIX_ONE;
@@ -59,7 +59,7 @@ We don't have static checking for the following properties, so we have to mainta
 Outside of Fixed.sol:
 
 - NEVER allow a `uint192` to be implicitly upcast to `uint256`, without a comment explaining what is happening and why.
-- NEVER explcitily cast between `uint192` and `uint256` without doing the appropriate numeric conversion (e.g, `toUint()` or `toFix()`.)
+- NEVER explicitly cast between `uint192` and `uint256` without doing the appropriate numeric conversion (e.g, `toUint()` or `toFix()`.)
 - ONLY use standard arithmetic operations on `uint192` values IF:
   - you're gas-optimizing a hotspot in P1 and need to remove Fixlib calls
   - in inline comments, you explain what you're doing and why
@@ -86,7 +86,7 @@ Throughout our code, we use [dimensional analysis][] to guard against mistakes o
 ### Developer discipline
 
 - All declarations of state variables and interface parameters that represent a value with one of the above dimensions MUST have a comment naming their unit.
-- Wherever those values are used in assignments in our code, the sides of the assignemnt MUST have the same dimensions.
+- Wherever those values are used in assignments in our code, the sides of the assignment MUST have the same dimensions.
   - Amid complex arithmetic, that the dimension are the same SHOULD be demonstrated in a nearby comment.
 
 [atto]: https://en.wikipedia.org/wiki/Atto-
@@ -147,7 +147,7 @@ All execution flows through the protocol should contain at most a single (1) act
 
 Functions that are not system-external, but are `external` and can be called by other contracts in the system, are tagged with `@custom:protected`. It is governance's job to ensure a malicious contract is never allowed to masquerade as a component and call one of these. They do not execute when paused.
 
-For each `external` or `public` function, one of these tags MUST be in the correponding function's natSpec comments. We don't have a static checker for this property, but it needs to be maintained by all developers.
+For each `external` or `public` function, one of these tags MUST be in the corresponding function's natSpec comments. We don't have a static checker for this property, but it needs to be maintained by all developers.
 
 ### `@custom:interaction`
 
@@ -228,7 +228,7 @@ Anything that doesn't fit these two policies precisely must be carefully and ful
 
 - `RewardableLib.claimRewards()`
 
-- The entire `GnosisTrade` contract is using the moral equivalent of `ReentrancyGuard` to ensure its own reentrancy-safety, but since it's also using the state machine pattern, it can do both with the same state varible and save gas on SLOADs and SSTOREs.
+- The entire `GnosisTrade` contract is using the moral equivalent of `ReentrancyGuard` to ensure its own reentrancy-safety, but since it's also using the state machine pattern, it can do both with the same state variable and save gas on SLOADs and SSTOREs.
 
 ### Reentrancy risk from collateral
 
@@ -267,7 +267,7 @@ try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
 }
 ```
 
-Notice, though, that we're _not_ going IFFY when `errData` is empty, but instead just reverting with another empty error. Why? Well, it's not very well-documented (and honestly it feels like a likely candidate for future change in the EVM), but the EVM emits a error with empty low-level data if it hits an out-of-gas error. This is an issue for us, though, because if the collateral contract goes IFFY on any out-of-gas error, then an attacker can set a collateral contract to IFFY at will, just by crafting an otherwise-legitimate transaction targeted to run out of gas during the `chainlinkFeed.price_()` call.
+Notice, though, that we're _not_ going IFFY when `errData` is empty, but instead just reverting with another empty error. Why? Well, it's not very well-documented (and honestly it feels like a likely candidate for future change in the EVM), but the EVM emits an error with empty low-level data if it hits an out-of-gas error. This is an issue for us, though, because if the collateral contract goes IFFY on any out-of-gas error, then an attacker can set a collateral contract to IFFY at will, just by crafting an otherwise-legitimate transaction targeted to run out of gas during the `chainlinkFeed.price_()` call.
 
 So, to err on the side of non-griefability, these collateral contracts allow empty errors to pass through, rather than catching them and going IFFY.
 
@@ -277,7 +277,7 @@ Components of production version P1 are designed to be upgradeable using the Pro
 
 [proxy-docs]: https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies
 
-This implies that the core contracts in P1 (`Main` and core components) are meant to be deployed as implementation contracts, which will serve as a reference to deploy later specific instances (or "proxies") via the `Deployer` contract. If changes are required in the future, a new implementation version can be deployed and the Proxy can be upgrated to point to this new implementation, while preserving its state and storage.
+This implies that the core contracts in P1 (`Main` and core components) are meant to be deployed as implementation contracts, which will serve as a reference to deploy later specific instances (or "proxies") via the `Deployer` contract. If changes are required in the future, a new implementation version can be deployed and the Proxy can be upgraded to point to this new implementation, while preserving its state and storage.
 
 ### Writing upgrade-safe contracts
 
@@ -303,7 +303,7 @@ The **recommended** process to perform an upgrade is the following:
 
 - Ensure metadata of the existing/deployed implementations is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. This can be done for prior versions using the `upgrades/force-import.ts` task in our repository. This task is limited to be run only on Mainnet.
 
-- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe". At anytime you can check for compatibility by running the `upgrades/validate-upgrade.ts` task in our repo, in a Mainnet fork. This task would compare the current code vs. a previously deployed implementation and validate if it is "upgrade safe". Make sure the FORK_BLOCK is set up appropiately.
+- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe". At any time you can check for compatibility by running the `upgrades/validate-upgrade.ts` task in our repo, in a Mainnet fork. This task would compare the current code vs. a previously deployed implementation and validate if it is "upgrade safe". Make sure the FORK_BLOCK is set up appropriately.
 
 - To deploy to Mainnet the new version, make sure you use the script provided in `scripts/deployment/phase1-common/2_deploy_implementations.ts`. If you are upgrading a previous version you need to specify the `LAST_VERSION_DEPLOYED` value at the top of the script. For new, clean deployments just leave that empty. This script will perform all validations on the new code, deploy the new implementation contracts, and register the deployment in the network file. It relies on the `deployImplementation` (for new deployments) or `prepareUpgrade` functions of the OZ Plugin.
 
@@ -325,7 +325,7 @@ Here, "contract state" refers to the normal storage variables of a smart contrac
 - P1 core contracts MUST NOT set state variables in their constructor.
 - P1 core contracts MUST NOT initialize state variables where they are declared.
 
-Instead of any of these, P1 core contracts will probably each define an initializer funcion, per the usual OZ upgradability pattern. A P1 core contract MAY depend on that initializer having run before any other functions.
+Instead of any of these, P1 core contracts will probably each define an initializer function, per the usual OZ upgradability pattern. A P1 core contract MAY depend on that initializer having run before any other functions.
 
 ### Storage Gaps
 

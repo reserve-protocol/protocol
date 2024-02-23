@@ -87,11 +87,21 @@ New governance param added: `reweightable`
 - All plugins with multiple chainlink feeds will now timeout over the maximum of the feeds' timeouts
 - Add ORACLE_TIMEOUT_BUFFER to all usages of chainlink feeds
 
+### Facades
+
+- `FacadeRead`
+  - Use avg prices instead of low prices in `backingOverview()` and `basketBreakdown()`
+
 ### Trading
 
 - `DutchTrade`
 
   - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans. Example of how-to-use in `contracts/plugins/mocks/DutchTradeRouter.sol`
+
+  ### Facades
+
+  - `FacadeRead`
+    - Add `maxIssuableByAmounts()` function to provide an estimation independent of account balances
 
 # 3.1.0
 
