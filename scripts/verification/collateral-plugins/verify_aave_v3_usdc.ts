@@ -6,7 +6,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { fp, bn } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import { priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
@@ -25,37 +25,32 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  /********  Verify Wrapper  **************************/
-  const erc20 = await ethers.getContractAt(
-    'StaticATokenV3LM',
-    deployments.erc20s.aEthUSDC as string
-  )
-
-  await verifyContract(
-    chainId,
-    deployments.erc20s.aEthUSDC,
-    [await erc20.POOL(), await erc20.INCENTIVES_CONTROLLER()],
-    'contracts/plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol:StaticATokenV3LM'
+  const collateral = await ethers.getContractAt(
+    'AaveV3FiatCollateral',
+    baseL2Chains.includes(hre.network.name)
+      ? deployments.collateral.saBasUSDC!
+      : deployments.collateral.saEthUSDC!
   )
 
   /********  Verify Aave V3 USDC plugin  **************************/
-  const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  // Works for both Mainnet and Base
 
   await verifyContract(
     chainId,
-    deployments.collateral.aEthUSDC,
+    collateral.address,
     [
       {
-        erc20: erc20.address,
+        erc20: await collateral.erc20(),
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: priceTimeout.toString(),
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-        oracleError: usdcOracleError.toString(),
-        oracleTimeout: usdcOracleTimeout, // 24 hr
-        maxTradeVolume: fp('1e6').toString(),
-        defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
-        delayUntilDefault: bn('86400').toString(),
+        chainlinkFeed: await collateral.chainlinkFeed(),
+        oracleError: await collateral.oracleError(),
+        oracleTimeout: await collateral.oracleTimeout(),
+        maxTradeVolume: await collateral.maxTradeVolume(),
+        defaultThreshold: fp('0.01')
+          .add(await collateral.oracleError())
+          .toString(),
+        delayUntilDefault: await collateral.delayUntilDefault(),
       },
       revenueHiding.toString(),
     ],
