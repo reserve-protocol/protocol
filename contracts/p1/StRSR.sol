@@ -1002,8 +1002,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     *
-     * StRSRP1 uses 53 total slots, not 50.
      */
     uint256[28] private __gap;
 }
