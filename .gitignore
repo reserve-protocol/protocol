@@ -29,7 +29,6 @@ scripts/addresses/31337*
 
 *.orig
 .idea
-output.txt
 
 # Scripts for local/test interactions
 scripts/test.ts

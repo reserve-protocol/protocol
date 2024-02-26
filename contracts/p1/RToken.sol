@@ -529,6 +529,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * RToken uses 56 slots, not 50.
      */
-    uint256[36] private __gap;
+    uint256[42] private __gap;
 }
