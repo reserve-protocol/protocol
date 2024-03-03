@@ -1,7 +1,7 @@
 /* eslint-disable no-process-exit */
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { baseL2Chains, networkConfig } from '../common/configuration'
+import { arbitrumL2Chains, baseL2Chains, networkConfig } from '../common/configuration'
 import { sh } from './deployment/utils'
 
 async function main() {
@@ -46,7 +46,7 @@ async function main() {
   // =============================================
 
   // Phase 2 - Assets/Collateral
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     scripts.push(
       'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
@@ -84,8 +84,9 @@ async function main() {
       'phase2-assets/collaterals/deploy_stargate_usdc_collateral.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )
+  } else if (chainId == '42161' || chainId == '421614') {
+    // TODO: Arbitrum
   }
-
   // ===============================================
 
   // Phase 3 - RTokens

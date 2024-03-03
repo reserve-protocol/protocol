@@ -1,7 +1,12 @@
 /* eslint-disable no-process-exit */
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { baseL2Chains, developmentChains, networkConfig } from '../common/configuration'
+import {
+  arbitrumL2Chains,
+  baseL2Chains,
+  developmentChains,
+  networkConfig,
+} from '../common/configuration'
 import { sh } from './deployment/utils'
 import {
   getDeploymentFile,
@@ -47,7 +52,7 @@ async function main() {
   ]
 
   // Phase 2 - Individual Plugins
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     scripts.push(
       'collateral-plugins/verify_convex_stable.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
@@ -75,6 +80,8 @@ async function main() {
       'collateral-plugins/verify_stargate_usdc',
       'assets/verify_stg.ts'
     )
+  } else if (chainId == '42161' || chainId == '421614') {
+    // TODO: Arbitrum
   }
 
   // Phase 3 - RTokens and Governance

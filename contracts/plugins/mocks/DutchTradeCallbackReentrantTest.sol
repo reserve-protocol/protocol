@@ -20,7 +20,11 @@ contract DutchTradeCallbackReentrantTest is IDutchTradeCallee {
         trade.bidWithCallback(new bytes(0));
     }
 
-    function dutchTradeCallback(address buyToken, uint256 buyAmount, bytes calldata) external {
+    function dutchTradeCallback(
+        address buyToken,
+        uint256 buyAmount,
+        bytes calldata
+    ) external {
         require(msg.sender == address(_currentTrade), "Nope");
 
         IERC20(buyToken).safeTransfer(msg.sender, buyAmount);

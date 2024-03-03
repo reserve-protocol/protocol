@@ -14,6 +14,7 @@ type IEnvVars =
   | 'PROTO_IMPL'
   | 'ETHERSCAN_API_KEY'
   | 'BASESCAN_API_KEY'
+  | 'ARBISCAN_API_KEY'
   | 'NO_OPT'
   | 'ONLY_FAST'
   | 'JOBS'
@@ -23,6 +24,8 @@ type IEnvVars =
   | 'SKIP_PROMPT'
   | 'BASE_GOERLI_RPC_URL'
   | 'BASE_RPC_URL'
+  | 'ARBITRUM_SEPOLIA_RPC_URL'
+  | 'ARBITRUM_RPC_URL'
   | 'FORK_NETWORK'
   | 'FORK_BLOCK'
 

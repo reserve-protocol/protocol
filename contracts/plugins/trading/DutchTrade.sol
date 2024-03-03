@@ -180,7 +180,7 @@ contract DutchTrade is ITrade {
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
 
-        uint256 _startBlock = block.number + 1; // start in the next block
+        uint256 _startBlock = NetworkConfigLib.blockNumber() + 1; // start in the next block
         startBlock = _startBlock; // gas-saver
 
         uint256 _endBlock = _startBlock + auctionLength / ONE_BLOCK; // FLOOR; endBlock is inclusive
@@ -207,7 +207,7 @@ contract DutchTrade is ITrade {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(block.number); // enforces auction ongoing
+        uint192 price = _price(NetworkConfigLib.blockNumber()); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -245,7 +245,7 @@ contract DutchTrade is ITrade {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(block.number); // enforces auction ongoing
+        uint192 price = _price(NetworkConfigLib.blockNumber()); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -288,7 +288,10 @@ contract DutchTrade is ITrade {
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == address(origin), "only origin can settle");
-        require(bidder != address(0) || block.number > endBlock, "auction not over");
+        require(
+            bidder != address(0) || NetworkConfigLib.blockNumber() > endBlock,
+            "auction not over"
+        );
 
         if (bidType == BidType.CALLBACK) {
             soldAmt = lot(); // {qSellTok}
@@ -314,7 +317,9 @@ contract DutchTrade is ITrade {
     /// @return true iff the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
-        return status == TradeStatus.OPEN && (bidder != address(0) || block.number > endBlock);
+        return
+            status == TradeStatus.OPEN &&
+            (bidder != address(0) || NetworkConfigLib.blockNumber() > endBlock);
     }
 
     // === Private ===

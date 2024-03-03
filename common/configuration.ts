@@ -488,12 +488,26 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
     STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C',
   },
+  '421614': {
+    name: 'arbitrum-sepolia',
+    tokens: {
+      // mocks
+      RSR: '0xf4C5d33DABb9D4681ED9b83618d629BA1006AE16',
+    },
+    chainlinkFeeds: {
+      // mocks
+      RSR: '0x46c600CB3Fb7Bf386F8f53952D64aC028e289AFb',
+    },
+    GNOSIS_EASY_AUCTION: '0x9C75314AFD011F22648ca9C655b61674e27bA4AC', // mock
+  },
 }
 networkConfig['31337'] = networkConfig['1']
 
 export const developmentChains = ['hardhat', 'localhost']
 
 export const baseL2Chains = ['base-goerli', 'base']
+
+export const arbitrumL2Chains = ['arbitrum-sepolia', 'arbitrum']
 
 // Common configuration interfaces
 export interface IConfig {
