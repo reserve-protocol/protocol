@@ -410,7 +410,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       if (IMPLEMENTATION == Implementation.P0) {
         await whileImpersonating(ZERO_ADDRESS, async (signer) => {
           await expect(stRSR.connect(signer).stake(amount)).to.be.revertedWith(
-            'insufficient allowance'
+            'ERC20: insufficient allowance'
           )
         })
       } else if (IMPLEMENTATION == Implementation.P1) {

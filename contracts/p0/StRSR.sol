@@ -310,7 +310,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
     function seizeRSR(uint256 rsrAmount) external notTradingPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "!bm");
         require(rsrAmount > 0, "Amount cannot be zero");
         main.poke();
 
@@ -607,7 +607,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         bytes32 r,
         bytes32 s
     ) public virtual {
-        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
+        require(block.timestamp <= deadline, "expired deadline");
 
         bytes32 structHash = keccak256(
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
