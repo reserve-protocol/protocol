@@ -317,7 +317,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint192 initialExchangeRate = exchangeRate();
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
-        require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
+        require(rsrAmount <= rsrBalance, "seize exceeds balance");
 
         uint256 seizedRSR;
 
@@ -607,7 +607,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         bytes32 r,
         bytes32 s
     ) public virtual {
-        require(block.timestamp <= deadline, "expired deadline");
+        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)

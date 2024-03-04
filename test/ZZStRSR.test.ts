@@ -1604,7 +1604,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(amount)).to.be.revertedWith(
-          'Cannot seize more RSR than we hold'
+          'seize exceeds balance'
         )
       })
 

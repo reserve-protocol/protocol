@@ -438,7 +438,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(rsrAmount > 0, "Amount cannot be zero");
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
-        require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
+        require(rsrAmount <= rsrBalance, "seize exceeds balance");
 
         _payoutRewards();
 
@@ -929,7 +929,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         bytes32 r,
         bytes32 s
     ) public {
-        require(block.timestamp <= deadline, "expired deadline");
+        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
