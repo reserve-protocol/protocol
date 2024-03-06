@@ -1178,10 +1178,11 @@ contract RebalancingScenario {
 
     function echidna_batchRebalancingProperties() external returns (bool) {
         assert(main.hasRole(OWNER, address(this)));
+
         BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
         BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
 
-        if (status == ScenarioStatus.REBALANCING_ONGOING) {
+        if (status == ScenarioStatus.REBALANCING_ONGOING && !main.tradingPausedOrFrozen()) {
             BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
             if (basketsHeld.bottom > main.rToken().basketsNeeded()) {
                 return false;
@@ -1249,7 +1250,7 @@ contract RebalancingScenario {
         BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
         BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
 
-        if (status == ScenarioStatus.REBALANCING_ONGOING) {
+        if (status == ScenarioStatus.REBALANCING_ONGOING && !main.tradingPausedOrFrozen()) {
             uint256 tradesBMPrev = bm.tradesOpen();
             uint256 tradesBrokerPrev = broker.tradesLength();
 
