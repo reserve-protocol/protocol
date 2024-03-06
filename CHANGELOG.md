@@ -41,6 +41,13 @@ All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be
 - yearn-v2
   - Make `price()` more resistant to manipulation by MEV
 
+### Trading
+
+- `GnosisTrade`
+  - Add `version()` getter
+- `DutchTrade`
+  - Add `version()` getter
+
 ### Facades
 
 - `FacadeMonitor.sol`
