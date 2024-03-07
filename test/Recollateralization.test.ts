@@ -1166,7 +1166,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await advanceTime(config.batchAuctionLength.add(100).toString())
 
           // End current auction, should not start any new auctions
-          await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          await expectEvents(backingManager.settleTrade(token0.address), [
             {
               contract: backingManager,
               name: 'TradeSettled',
@@ -1179,12 +1179,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               ],
               emitted: true,
             },
-            { contract: backingManager, name: 'TradeStarted', emitted: false },
             {
               contract: basketHandler,
               name: 'LastCollateralizedChanged',
-              args: [anyValue, 3],
-              emitted: true,
+              emitted: false,
             },
           ])
 
@@ -1200,10 +1198,15 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await rToken.totalSupply()).to.equal(issueAmount) // assets kept in backing buffer
 
           // Regression test -- Jan 29 2024
-          // After recollateralization: should NOT allow redeemCustom at previous basket
+          // After recollateralization: should invalidate previous nonce and revert
           await expect(
             rToken.connect(addr1).redeemCustom(addr1.address, bn('1'), [2], [fp('1')], [], [])
           ).to.be.revertedWith('invalid basketNonce')
+
+          // Confirm lastCollateralized will next be updated by assetRegistry.refresh()
+          expect(await basketHandler.lastCollateralized()).to.equal(2)
+          await assetRegistry.refresh()
+          expect(await basketHandler.lastCollateralized()).to.equal(3)
 
           // Check price in USD of the current RToken
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
