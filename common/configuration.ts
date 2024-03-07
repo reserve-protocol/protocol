@@ -99,6 +99,7 @@ export interface IFeeds {
 }
 
 export interface IPools {
+  cvxCrvUSDUSDC?: string
   cvx3Pool?: string
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
