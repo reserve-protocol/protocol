@@ -2375,16 +2375,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // send enough backupToken1 to BackingManager to recollateralize and process redemption correctly
         await backupToken1.mint(backingManager.address, issueAmount)
 
-        await rToken
-          .connect(addr1)
-          .redeemCustom(
-            addr1.address,
-            amount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+        // Now that it's recollateralized, should not be able to redeemCustom on old nonce
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).to.be.revertedWith('invalid basketNonce')
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
@@ -2517,16 +2520,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // send enough backupToken2 to BackingManager to recollateralize and process redemption correctly
         await backupToken2.mint(backingManager.address, issueAmount)
 
-        await rToken
-          .connect(addr1)
-          .redeemCustom(
-            addr1.address,
-            amount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+        // Now that it's recollateralized, should not be able to redeemCustom on old nonce
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).to.be.revertedWith('invalid basketNonce')
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
@@ -2654,7 +2660,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           Test Custom Redemption - Should behave as if token is not registered
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
-        await backupToken1.mint(backingManager.address, issueAmount)
+        await backupToken1.mint(backingManager.address, issueAmount.div(2))
 
         // rToken redemption
         await expect(
