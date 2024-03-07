@@ -58,6 +58,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_3pool_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_curve_stable_plugin.ts',
