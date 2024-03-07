@@ -218,7 +218,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         trackStatus();
     }
 
-    /// Track basket status changes if they ocurred
+    /// Track basket status and collateralization changes
     // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
     /// @custom:refresher
     function trackStatus() public {
@@ -228,12 +228,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             lastStatus = currentStatus;
             lastStatusTimestamp = uint48(block.timestamp);
         }
-    }
 
-    /// Track when last collateralized
-    // effects: lastCollateralized' = nonce if nonce > lastCollateralized && fullyCapitalized
-    /// @custom:refresher
-    function trackCollateralization() external {
+        // Invalidate old nonces if fully collateralized
         if (nonce > lastCollateralized && fullyCollateralized()) {
             emit LastCollateralizedChanged(lastCollateralized, nonce);
             lastCollateralized = nonce;
