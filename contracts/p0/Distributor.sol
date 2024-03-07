@@ -83,10 +83,10 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = address(main.furnace());
-                accountRewards = true;
+                if (transferAmt > 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
-                accountRewards = true;
+                if (transferAmt > 0) accountRewards = true;
             }
             erc20.safeTransferFrom(_msgSender(), addrTo, transferAmt);
         }
