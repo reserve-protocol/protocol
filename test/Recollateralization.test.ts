@@ -1197,16 +1197,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount) // assets kept in backing buffer
 
-          // Regression test -- Jan 29 2024
-          // After recollateralization: should invalidate previous nonce and revert
+          // After recollateralization: redemption on previous nonce should be empty
           await expect(
             rToken.connect(addr1).redeemCustom(addr1.address, bn('1'), [2], [fp('1')], [], [])
-          ).to.be.revertedWith('invalid basketNonce')
-
-          // Confirm lastCollateralized will next be updated by assetRegistry.refresh()
-          expect(await basketHandler.lastCollateralized()).to.equal(2)
-          await assetRegistry.refresh()
-          expect(await basketHandler.lastCollateralized()).to.equal(3)
+          ).to.be.revertedWith('empty redemption')
 
           // Check price in USD of the current RToken
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)

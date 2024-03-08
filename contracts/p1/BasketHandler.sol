@@ -175,7 +175,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
 
         // Invalidate old nonces if fully collateralized
-        if (nonce > lastCollateralized && fullyCollateralized()) {
+        if (reweightable && nonce > lastCollateralized && fullyCollateralized()) {
             emit LastCollateralizedChanged(lastCollateralized, nonce);
             lastCollateralized = nonce;
         }
