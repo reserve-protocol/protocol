@@ -576,6 +576,8 @@ const scenarioSpecificTests = () => {
       // Check balances after
       expect(await c2.balanceOf(trade.address)).to.equal(0)
       expect(await c0.balanceOf(comp.backingManager.address)).to.be.gt(0)
+
+      await advanceTime(12)
     }
 
     expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
