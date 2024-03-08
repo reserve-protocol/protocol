@@ -107,8 +107,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
-
-        basketHandler.trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
