@@ -2214,6 +2214,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await setStorageAt(main.address, 204, indexBH.address)
         if (IMPLEMENTATION == Implementation.P1) {
           await setStorageAt(rToken.address, 355, indexBH.address)
+          await setStorageAt(backingManager.address, 302, indexBH.address)
+          await setStorageAt(assetRegistry.address, 201, indexBH.address)
         }
         await indexBH
           .connect(owner)
@@ -2370,8 +2372,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         /*
           Test Custom Redemption
         */
-        const balsBefore = await getBalances(addr1.address, expectedTokens)
-
         // Should not be able to redeemCustom on old nonce, but not because of invalid nonce
         await expect(
           rToken
@@ -2388,6 +2388,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         // send enough backupToken1 to BackingManager to recollateralize and process redemption correctly
         await backupToken1.mint(backingManager.address, issueAmount)
+        expect(await indexBH.fullyCollateralized()).to.equal(true)
 
         // Now should not be able to redeem because of invalid old nonce
         await expect(
@@ -2402,8 +2403,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
               quote.quantities
             )
         ).to.be.revertedWith('invalid basketNonce')
-        const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
       })
 
       it('Repeating basket nonces should not be exploitable', async () => {
@@ -2514,9 +2513,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         /*
           Test Custom Redemption
         */
-        const balsBefore = await getBalances(addr1.address, expectedTokens)
-        await backupToken1.mint(backingManager.address, issueAmount)
-
         // Should not be able to redeem, but not because of invalid nonce
         await expect(
           rToken
@@ -2532,7 +2528,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         ).revertedWith('redemption below minimum')
 
         // send enough backupToken2 to BackingManager to recollateralize and process redemption correctly
+        await backupToken1.mint(backingManager.address, issueAmount)
         await backupToken2.mint(backingManager.address, issueAmount)
+        expect(await indexBH.fullyCollateralized()).to.equal(true)
 
         // Now should not be able to redeem because of invalid old nonce
         await expect(
@@ -2547,8 +2545,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
               quote.quantities
             )
         ).to.be.revertedWith('invalid basketNonce')
-        const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
       })
 
       it('Should correctly quote historical redemption with almost all assets unregistered', async () => {
