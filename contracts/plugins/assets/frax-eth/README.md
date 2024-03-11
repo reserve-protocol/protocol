@@ -31,6 +31,7 @@ This function returns rate of `frxETH/sfrxETH`, getting from [pricePerShare()](h
 #### target-per-ref price {tar/ref}
 
 The targetPerRef price of `ETH/frxETH` is received from the frxETH/ETH FRAX-managed oracle ([details here](https://docs.frax.finance/frax-oracle/frax-oracle-overview)).
+
 #### tryPrice
 
 This function uses `refPerTok` and the chainlink price of `USD/ETH` to return the current price range of the collateral. Once an oracle becomes available for `frxETH/ETH`, this function should be modified to use it and return the appropiate `pegPrice`.
