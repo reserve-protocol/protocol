@@ -43,7 +43,7 @@ async function main() {
         defaultThreshold: fp('0.02').add(oracleError).toString(), // ~2.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
-      '0', // revenueHiding = 0
+      fp('1e-4').toString(),
       networkConfig[chainId].CURVE_POOL_WETH_FRXETH!,
     ],
     'contracts/plugins/assets/frax-eth/SFraxEthCollateral.sol:SFraxEthCollateral'
