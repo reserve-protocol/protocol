@@ -78,6 +78,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.saEthPyUSD = collateral.address
+  assetCollDeployments.erc20s.saEthPyUSD = networkConfig[chainId].tokens.saEthPyUSD!
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
