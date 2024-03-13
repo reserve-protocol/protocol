@@ -106,10 +106,11 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   else: sell erc20 for tokenToBuy
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function manageTokens(
-        IERC20[] calldata erc20s,
-        TradeKind[] calldata kinds
-    ) external nonReentrant notTradingPausedOrFrozen {
+    function manageTokens(IERC20[] calldata erc20s, TradeKind[] calldata kinds)
+        external
+        nonReentrant
+        notTradingPausedOrFrozen
+    {
         uint256 len = erc20s.length;
         require(len > 0, "empty erc20s list");
         require(len == kinds.length, "length mismatch");
