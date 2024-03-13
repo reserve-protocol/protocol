@@ -5,16 +5,17 @@ import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validateImplementations } from '../utils'
-import { FacadeAct } from '../../../typechain'
+import { DeployerP1 } from '../../../typechain'
 
-let facadeAct: FacadeAct
+let deployer: DeployerP1
 
 async function main() {
   // ==== Read Configuration ====
   const [burner] = await hre.ethers.getSigners()
+
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying Facade to network ${hre.network.name} (${chainId})
+  console.log(`Deploying Deployer to network ${hre.network.name} (${chainId})
     with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
@@ -24,29 +25,34 @@ async function main() {
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
+  // Validate implementations
   await validateImplementations(deployments)
 
   // Check previous step executed
-  if (!deployments.rsrAsset) {
+  if (!deployments.facade) {
     throw new Error(`Missing deployed contracts in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.rsrAsset))) {
-    throw new Error(`RSR Asset contract not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.facade))) {
+    throw new Error(`Facade contract not found in network ${hre.network.name}`)
   }
 
-  // ******************** Deploy FacadeAct ****************************************/
-
-  // Deploy FacadeAct
-  const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
-
-  facadeAct = <FacadeAct>await FacadeActFactory.connect(burner).deploy()
-  await facadeAct.deployed()
+  // ******************** Deploy Deployer ****************************************/
+  const DeployerFactory = await ethers.getContractFactory('DeployerP1')
+  deployer = <DeployerP1>(
+    await DeployerFactory.connect(burner).deploy(
+      deployments.prerequisites.RSR,
+      deployments.prerequisites.GNOSIS_EASY_AUCTION,
+      deployments.rsrAsset,
+      deployments.implementations
+    )
+  )
+  await deployer.deployed()
 
   // Write temporary deployments file
-  deployments.facadeAct = facadeAct.address
+  deployments.deployer = deployer.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId})
-    FacadeAct:  ${facadeAct.address}
+    Deployer:  ${deployer.address}
     Deployment file: ${deploymentFilename}`)
 }
 

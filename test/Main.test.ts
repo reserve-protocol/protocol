@@ -39,7 +39,6 @@ import {
   DutchTrade,
   CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -56,6 +55,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -141,7 +141,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager

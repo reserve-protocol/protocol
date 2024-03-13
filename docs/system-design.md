@@ -44,7 +44,7 @@ The protocol (weakly) assumes a 12-second blocktime. This section documents the 
 
 #### Should-be-changed if blocktime different
 
-- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` shouild be updated to melt more often.
+- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` should be updated to melt more often.
 
 #### Probably fine if blocktime different
 
@@ -119,7 +119,7 @@ For instance, if the reference basket contains the pair `<cUSDC, O.29>`, then on
 
 This is the form of the basket that recipients and redeemer will care most about. Issuance and redemption quantities are given by the collateral basket times the current `rTok/BU` exchange rate.
 
-While an issuance is pending in the mempool, the quantities of tokens that will be ingested when the transaciton is mined may decrease slightly as the collateral becomes worth more. If furnace melting happens in that time, however, this can increase the quantity of collateral tokens in the basket and cause the issuance to fail.
+While an issuance is pending in the mempool, the quantities of tokens that will be ingested when the transaction is mined may decrease slightly as the collateral becomes worth more. If furnace melting happens in that time, however, this can increase the quantity of collateral tokens in the basket and cause the issuance to fail.
 
 On the other hand, while a redemption is pending in the mempool, the quantities of collateral tokens the redeemer will receive steadily decreases. If a furnace melting happens in that time the quantities will be increased, causing the redeemer to get more than they expected.
 
@@ -140,7 +140,7 @@ Non-owner roles:
 Design intentions:
 
 - The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
-- The SHORT_FREEZER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code and can act quickly, and with some tolerance for false positives though less than in pausing. If a bug is detected, a short freeze can be triggered which will automatically expire if it is not renewed by LONG_FREEZER. The OWNER (governance) may also step in and unfreeze at anytime.
+- The SHORT_FREEZER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code and can act quickly, and with some tolerance for false positives though less than in pausing. If a bug is detected, a short freeze can be triggered which will automatically expire if it is not renewed by LONG_FREEZER. The OWNER (governance) may also step in and unfreeze at any time.
 - The LONG_FREEZER role should be assigned to an address that will highly optimize for no false positives. It is much longer than the short freeze. It exists so that in the case of a zero-day exploit, governance can act before the system unfreezes and resumes functioning.
 
 ## System Auctions
@@ -152,7 +152,7 @@ The Reserve Protocol makes a few different types of trades:
 - collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults. This only happens in the BackingManager.
 - RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer. These auctions also happen in the BackingManager.
 
-Each type of trade can happen two ways: either by a falling-price ductch auction (DutchTrade) or by a batch auction via Gnosis EasyAuction (GnosisTrade). More trading methods can be added in the future.
+Each type of trade can happen two ways: either by a falling-price dutch auction (DutchTrade) or by a batch auction via Gnosis EasyAuction (GnosisTrade). More trading methods can be added in the future.
 
 ### Gnosis EasyAuction Batch Auctions (GnosisTrade)
 

@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./IBroker.sol";
+import "./IVersioned.sol";
 
 enum TradeStatus {
     NOT_STARTED, // before init()
@@ -17,7 +18,7 @@ enum TradeStatus {
  *
  * Usage: if (canSettle()) settle()
  */
-interface ITrade {
+interface ITrade is IVersioned {
     /// Complete the trade and transfer tokens back to the origin trader
     /// @return soldAmt {qSellTok} The quantity of tokens sold
     /// @return boughtAmt {qBuyTok} The quantity of tokens bought

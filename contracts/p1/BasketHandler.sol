@@ -632,7 +632,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
-    // ==== FacadeRead views ====
+    // ==== ReadFacet views ====
     // Not used in-protocol; helpful for reconstructing state
 
     /// Get a reference basket in today's collateral tokens, by nonce
@@ -716,6 +716,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * BasketHandler uses 58 slots, not 50.
      */
-    uint256[28] private __gap;
+    uint256[36] private __gap;
 }

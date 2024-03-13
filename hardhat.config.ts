@@ -8,7 +8,6 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
-import 'hardhat-storage-layout'
 import * as tenderly from '@tenderly/hardhat-tenderly'
 
 import { useEnv } from '#/utils/env'
@@ -45,7 +44,7 @@ const config: HardhatUserConfig = {
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
-      allowUnlimitedContractSize: true,
+      allowUnlimitedContractSize: true
     },
     localhost: {
       // network for long-lived mainnet forks
@@ -111,10 +110,6 @@ const config: HardhatUserConfig = {
         version: '0.6.12',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
-      'contracts/facade/FacadeRead.sol': {
-        version: '0.8.19',
-        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
-      },
     },
   },
 
@@ -140,7 +135,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: useEnv('ETHERSCAN_API_KEY'),
-      base: useEnv('BASESCAN_API_KEY'),
+      base: useEnv('BASESCAN_API_KEY')
     },
     customChains: [
       {

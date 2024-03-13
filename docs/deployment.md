@@ -2,7 +2,7 @@
 
 Mostly, this is about _test_ deployment, though the same elements should work to deploy to any network once configured.
 
-Real mainnet deployment, though, will entail an deployment checklist (see below) and serious operational security considerations (not yet articulated).
+Real mainnet deployment, though, will entail a deployment checklist (see below) and serious operational security considerations (not yet articulated).
 
 ## Configure Environment
 
@@ -146,7 +146,7 @@ First, clear any stale `*-tmp-*.json` deployment files if it's important for the
 
 Do NOT screenshare this part!
 
-It's important that nobody know the deployment key between steps 1 and 2 of the FacadeWrite: `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts`. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: at minimum 3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps, causing us to have to start the FacadeWrite steps again.
+It's important that nobody knows the deployment key between steps 1 and 2 of the FacadeWrite: `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts`. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: at minimum 3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps, causing us to have to start the FacadeWrite steps again.
 
 First, make sure you have golang setup on your machine. If you don't, here are the quick steps:
 

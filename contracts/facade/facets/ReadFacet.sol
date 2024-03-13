@@ -2,25 +2,26 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../plugins/trading/DutchTrade.sol";
-import "../interfaces/IAsset.sol";
-import "../interfaces/IAssetRegistry.sol";
-import "../interfaces/IFacadeRead.sol";
-import "../interfaces/IRToken.sol";
-import "../interfaces/IStRSR.sol";
-import "../libraries/Fixed.sol";
-import "../p1/BasketHandler.sol";
-import "../p1/RToken.sol";
-import "../p1/StRSRVotes.sol";
+import "../../plugins/trading/DutchTrade.sol";
+import "../../interfaces/IAsset.sol";
+import "../../interfaces/IAssetRegistry.sol";
+import "../../interfaces/IReadFacet.sol";
+import "../../interfaces/IRToken.sol";
+import "../../interfaces/IStRSR.sol";
+import "../../libraries/Fixed.sol";
+import "../../p1/BasketHandler.sol";
+import "../../p1/RToken.sol";
+import "../../p1/StRSRVotes.sol";
 
 /**
- * @title Facade
- * @notice A UX-friendly layer for reading out the state of a ^3.0.0 RToken in summary views.
+ * @title ReadFacet
+ * @notice
+ *   Facet for reading out the state of a ^3.0.0 RToken in summary views.
  *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract FacadeRead is IFacadeRead {
+contract ReadFacet is IReadFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
@@ -28,6 +29,22 @@ contract FacadeRead is IFacadeRead {
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256) {
+        (address[] memory erc20s, ) = rToken.main().basketHandler().quote(FIX_ONE, FLOOR);
+        uint256[] memory balances = new uint256[](erc20s.length);
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            balances[i] = IERC20(erc20s[i]).balanceOf(account);
+        }
+        return maxIssuableByAmounts(rToken, balances);
+    }
+
+    /// @param amounts {qTok} Amounts per basket ERC20
+    ///                       Assumes same order as current basket ERC20s given by bh.quote()
+    /// @return {qRTok} How many RToken `account` can issue given current holdings
+    /// @custom:static-call
+    function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
+        public
+        returns (uint256)
+    {
         IMain main = rToken.main();
 
         require(!main.frozen(), "frozen");
@@ -35,19 +52,23 @@ contract FacadeRead is IFacadeRead {
         // Poke Main
         main.assetRegistry().refresh();
 
-        // {BU}
-        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
-        uint192 needed = rToken.basketsNeeded();
+        // Get basket ERC20s
+        IBasketHandler bh = main.basketHandler();
+        (address[] memory erc20s, uint256[] memory quantities) = bh.quote(FIX_ONE, CEIL);
 
-        int8 decimals = int8(rToken.decimals());
+        // Compute how many baskets we can mint with the collateral amounts
+        uint192 baskets = type(uint192).max;
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            // {BU} = {tok} / {tok/BU}
+            uint192 inBUs = divuu(amounts[i], quantities[i]); // FLOOR
+            baskets = fixMin(baskets, inBUs);
+        }
 
-        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (needed.eq(FIX_ZERO)) return basketsHeld.bottom.shiftl_toUint(decimals);
-
-        uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
-
-        // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
-        return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
+        // Convert baskets to RToken
+        // {qRTok} = {qRTok/BU} * {qRTok} / {BU}
+        uint256 totalSupply = rToken.totalSupply();
+        if (totalSupply == 0) return baskets;
+        return baskets.muluDivu(rToken.basketsNeeded(), rToken.totalSupply(), FLOOR);
     }
 
     /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
@@ -210,13 +231,17 @@ contract FacadeRead is IFacadeRead {
         targets = new bytes32[](erc20s.length);
         for (uint256 i = 0; i < erc20s.length; ++i) {
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
+            targets[i] = coll.targetName();
+
             int8 decimals = int8(IERC20Metadata(erc20s[i]).decimals());
-            (uint192 lowPrice, ) = coll.price();
+            (uint192 low, uint192 high) = coll.price();
+            if (low == 0 || high == FIX_MAX) continue;
+
+            uint192 avg = (low + high) / 2; // {UoA/tok}
 
             // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
-            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(lowPrice);
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(avg);
             uoaSum += uoaAmts[i];
-            targets[i] = coll.targetName();
         }
 
         uoaShares = new uint192[](erc20s.length);
@@ -359,17 +384,19 @@ contract FacadeRead is IFacadeRead {
             for (uint256 i = 0; i < basketERC20s.length; i++) {
                 IAsset asset = reg.toAsset(IERC20(basketERC20s[i]));
 
-                // {UoA/tok}
-                (uint192 low, ) = asset.price();
-
                 // {tok}
                 uint192 needed = shiftl_toFix(quantities[i], -int8(asset.erc20Decimals()));
 
+                // {UoA/tok}
+                (uint192 low, uint192 high) = asset.price();
+                if (low == 0 || high == FIX_MAX) continue;
+                uint192 avg = (low + high) / 2;
+
                 // {UoA} = {UoA} + {tok}
-                uoaNeeded += needed.mul(low);
+                uoaNeeded += needed.mul(avg);
 
                 // {UoA} = {UoA} + {tok} * {UoA/tok}
-                uoaHeldInBaskets += fixMin(needed, asset.bal(address(bm))).mul(low);
+                uoaHeldInBaskets += fixMin(needed, asset.bal(address(bm))).mul(avg);
             }
 
             backing = uoaHeldInBaskets.div(uoaNeeded);
@@ -383,13 +410,14 @@ contract FacadeRead is IFacadeRead {
             rsrAsset.bal(address(rToken.main().stRSR()))
         );
 
-        (uint192 lowPrice, ) = rsrAsset.price();
+        (uint192 lowPrice, uint192 highPrice) = rsrAsset.price();
+        if (lowPrice > 0 && highPrice < FIX_MAX) {
+            // {UoA} = {tok} * {UoA/tok}
+            uint192 rsrUoA = rsrBal.mul((lowPrice + highPrice) / 2);
 
-        // {UoA} = {tok} * {UoA/tok}
-        uint192 rsrUoA = rsrBal.mul(lowPrice);
-
-        // {1} = {UoA} / {UoA}
-        overCollateralization = rsrUoA.div(uoaNeeded);
+            // {1} = {UoA} / {UoA}
+            overCollateralization = rsrUoA.div(uoaNeeded);
+        }
     }
 
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset

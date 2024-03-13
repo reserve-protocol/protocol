@@ -8,7 +8,7 @@ This release improves how collateral plugins price LP tokens and moves reward cl
 
 Swapout all collateral plugins with appreciation.
 
-All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken.
+All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken, as well as aave-v3 USDC/USDCbC for canonical wrappers.
 
 ### Core Protocol Contracts
 
@@ -19,6 +19,9 @@ All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be
 
 ### Assets
 
+- aave-v3
+  - On mainnet: switch from one-off USDC wrapper to canonical USDC wrapper
+  - On base: switch from one-off USDbC wrapper to canonical USDC wrapper
 - compound-v2
   - Remove `CTokenWrapper`
   - Add reward claiming logic to `claimRewards()`
@@ -31,12 +34,20 @@ All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be
 - convex
   - Make `price()` more resistant to manipulation by MEV
   - Emit `RewardsClaimed` event during `claimRewards()`
+  - Add new `crvUSD-USDC` plugin
 - morpho-aave
   - Emit `RewardsClaimed` event during `claimRewards()`
 - stargate
   - Emit `RewardsClaimed` event during `claimRewards()`
 - yearn-v2
   - Make `price()` more resistant to manipulation by MEV
+
+### Trading
+
+- `GnosisTrade`
+  - Add `version()` getter
+- `DutchTrade`
+  - Add `version()` getter
 
 ### Facades
 
@@ -87,11 +98,21 @@ New governance param added: `reweightable`
 - All plugins with multiple chainlink feeds will now timeout over the maximum of the feeds' timeouts
 - Add ORACLE_TIMEOUT_BUFFER to all usages of chainlink feeds
 
+### Facades
+
+- `FacadeRead`
+  - Use avg prices instead of low prices in `backingOverview()` and `basketBreakdown()`
+
 ### Trading
 
 - `DutchTrade`
 
   - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans. Example of how-to-use in `contracts/plugins/mocks/DutchTradeRouter.sol`
+
+  ### Facades
+
+  - `FacadeRead`
+    - Add `maxIssuableByAmounts()` function to provide an estimation independent of account balances
 
 # 3.1.0
 

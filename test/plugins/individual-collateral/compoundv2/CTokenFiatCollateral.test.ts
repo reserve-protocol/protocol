@@ -56,7 +56,6 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
@@ -66,6 +65,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIDeployer,
+  TestIFacade,
   TestIMain,
   TestIRToken,
 } from '../../../../typechain'
@@ -122,7 +122,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let basketHandler: TestIBasketHandler
 
   let deployer: TestIDeployer
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
   let govParams: IGovParams

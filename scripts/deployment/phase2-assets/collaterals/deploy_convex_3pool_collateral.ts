@@ -9,7 +9,6 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  IDeployments,
   getDeploymentFilename,
   fileExists,
 } from '../../common'
@@ -35,7 +34,7 @@ import {
   USDT_USD_FEED,
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
-// This file specifically deploys Convex Stable Plugin for 3pool
+// Convex Stable Plugin: 3pool
 
 async function main() {
   // ==== Read Configuration ====
@@ -55,8 +54,6 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
-  const deployments = <IDeployments>getDeploymentFile(phase1File)
-
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
@@ -106,7 +103,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
-    `Deployed Convex Stable Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Convex Stable Collateral for 3Pool to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
   assetCollDeployments.collateral.cvx3Pool = collateral.address

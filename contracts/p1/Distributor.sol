@@ -215,6 +215,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * Distributor uses 53 slots, not 50.
      */
-    uint256[41] private __gap;
+    uint256[44] private __gap;
 }
