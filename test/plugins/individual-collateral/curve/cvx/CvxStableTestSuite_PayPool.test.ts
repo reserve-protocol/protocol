@@ -157,13 +157,14 @@ const makeCollateralFixtureContext = (
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts))[0] as unknown)
     const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
     const crv = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV)
+    const pyusd = <ERC20Mock>await ethers.getContractAt('ERC20Mock', pyUSD)
 
     return {
       alice,
       collateral,
       curvePool: curvePool,
       wrapper: wrapper,
-      rewardTokens: [cvx, crv],
+      rewardTokens: [cvx, crv, pyusd],
       poolTokens: [
         await ethers.getContractAt('ERC20Mock', pyUSD),
         await ethers.getContractAt('ERC20Mock', USDC),
