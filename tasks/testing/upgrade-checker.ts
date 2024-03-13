@@ -6,7 +6,7 @@ import { useEnv } from '#/utils/env'
 import { expect } from 'chai'
 import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
-import { TradeKind } from '#/common/constants'
+import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import {
@@ -125,7 +125,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
         await rToken.connect(baseBridge).transfer(tester.address, redeemAmt)
       }
     )
-    if (!(await rToken.balanceOf(tester.address)).gt(redeemAmt)) throw new Error('missing R')
+    if (!(await rToken.balanceOf(tester.address)).gte(redeemAmt)) throw new Error('missing R')
 
     /*
       redeem
@@ -143,16 +143,17 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
     console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
     const [erc20s] = await basketHandler.quote(fp('1'), 0)
     for (const e of erc20s) {
-      const erc20 = await hre.ethers.getContractAt('IERC20', e)
-      await erc20.connect(tester).approve(rToken.address, bn('1e77')) // max approval
+      const erc20 = await hre.ethers.getContractAt('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20', e)
+      await erc20.connect(tester).approve(rToken.address, MAX_UINT256) // max approval
     }
+    const preBal = await rToken.balanceOf(tester.address)
     await rToken.connect(tester).issue(issueAmt)
 
     const postIssueBal = await rToken.balanceOf(tester.address)
-    if (!postIssueBal.eq(issueAmt)) {
+    if (!postIssueBal.eq(preBal.add(issueAmt))) {
       throw new Error(
         `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
-          issueAmt,
+          preBal.add(issueAmt),
           'mwei'
         )}    balance: ${formatUnits(postIssueBal, 'mwei')}`
       )
@@ -182,10 +183,11 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
 
     const balPrevRSR = await rsr.balanceOf(stRSR.address)
     const balPrevStRSR = await stRSR.balanceOf(tester.address)
+    const testerBal = await rsr.balanceOf(tester.address)
 
     await stakeAndDelegateRsr(hre, rToken.address, tester.address)
 
-    expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(stakeAmount))
+    expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(testerBal))
     expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
   })
 

@@ -38,7 +38,7 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   const compContract = await hre.ethers.getContractAt('ERC20Mock', comp)
 
   // fake enough rewards to trade
-  await whileImpersonating(hre, '0x2775b1c75658Be0F640272CCb8c72ac986009e38', async (compWhale) => {
+  await whileImpersonating(hre, '0x73AF3bcf944a6559933396c1577B257e2054D935', async (compWhale) => {
     await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
   })
 
