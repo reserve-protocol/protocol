@@ -8,6 +8,7 @@ import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
 import { TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import {
   recollateralize,
   redeemRTokens,
@@ -46,12 +47,12 @@ import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
   21-34 more points of work to make this more generic
 */
 
-task('upgrade-checker', 'Mints all the tokens to an address')
+task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .addOptionalParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params, hre) => {
-    await resetFork(hre, Number(useEnv('FORK_BLOCK')))
+    // await resetFork(hre, Number(useEnv('FORK_BLOCK')))
     const [tester] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
@@ -67,7 +68,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     }
 
     // make sure subgraph is configured
-    if (!useEnv('SUBGRAPH_URL')) {
+    if (params.proposalId && !useEnv('SUBGRAPH_URL')) {
       throw new Error('SUBGRAPH_URL required for subgraph queries')
     }
 
@@ -108,107 +109,50 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
-    // Move past trading delay
+    /*
+      recollateralize
+    */
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
+    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION)
+    if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
 
-    await recollateralize(
+    // // Give `tester` RTokens from Base bridge
+    const redeemAmt = fp('1e3')
+    await whileImpersonating(
       hre,
-      rToken.address,
-      (await broker.dutchAuctionLength()) > 0 ? TradeKind.DUTCH_AUCTION : TradeKind.BATCH_AUCTION
+      '0x3154Cf16ccdb4C6d922629664174b904d80F2C35', // base bridge address on mainnet
+      async (baseBridge) => {
+        await rToken.connect(baseBridge).transfer(tester.address, redeemAmt)
+      }
     )
-
-    // 3. Run various checks
-    const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
-    const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
-    const usdtAddress = networkConfig['1'].tokens.USDT!
-    const usdcAddress = networkConfig['1'].tokens.USDC!
-    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
-    const cUsdcAddress = networkConfig['1'].tokens.cUSDC!
-    const cUsdtVaultAddress = '0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase()
-    const cUsdcVaultAddress = '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase()
+    if (!(await rToken.balanceOf(tester.address)).gt(redeemAmt)) throw new Error('missing R')
 
     /*
+      redeem
+    */
+    await redeemRTokens(hre, tester, params.rtoken, redeemAmt)
 
+    // 3. Run the 3.0.0 checks
+    await runChecks3_3_0(hre, params.rtoken, params.governor)
+
+    /*
       mint
-
-     this is another area that needs to be made general
-     for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
-
     */
 
-    const initialBal = bn('2e11')
-    const issueAmount = fp('1e5')
-    const usdt = await hre.ethers.getContractAt('ERC20Mock', usdtAddress)
-    const usdc = await hre.ethers.getContractAt('ERC20Mock', usdcAddress)
-    const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
-    const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
-    const cUsdtVault = await hre.ethers.getContractAt('CTokenWrapper', cUsdtVaultAddress)
-    const saUsdc = await hre.ethers.getContractAt('StaticATokenLM', saUsdcAddress)
-    const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
-    const cUsdcVault = await hre.ethers.getContractAt('CTokenWrapper', cUsdcVaultAddress)
+    const issueAmt = redeemAmt.div(2)
+    console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
+    const [erc20s] = await basketHandler.quote(fp('1'), 0)
+    for (const e of erc20s) {
+      const erc20 = await hre.ethers.getContractAt('IERC20', e)
+      await erc20.connect(tester).approve(rToken.address, bn('1e77')) // max approval
+    }
+    await rToken.connect(tester).issue(issueAmt)
 
-    // get saUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
-        await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
-      }
-    )
-    const saUsdtBal = await saUsdt.balanceOf(tester.address)
-    await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
-
-    // get cUsdtVault
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
-        await cUsdt.connect(usdtSigner).mint(initialBal)
-        const bal = await cUsdt.balanceOf(usdtSigner.address)
-        await cUsdt.connect(usdtSigner).approve(cUsdtVault.address, bal)
-        await cUsdtVault.connect(usdtSigner).deposit(bal, tester.address)
-      }
-    )
-
-    const cUsdtVaultBal = await cUsdtVault.balanceOf(tester.address)
-    await cUsdtVault.connect(tester).approve(rToken.address, cUsdtVaultBal)
-
-    // get saUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
-        await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
-      }
-    )
-    const saUsdcBal = await saUsdc.balanceOf(tester.address)
-    await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
-
-    // get cUsdcVault
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
-        await cUsdc.connect(usdcSigner).mint(initialBal)
-        const bal = await cUsdc.balanceOf(usdcSigner.address)
-        await cUsdc.connect(usdcSigner).approve(cUsdcVault.address, bal)
-        await cUsdcVault.connect(usdcSigner).deposit(bal, tester.address)
-      }
-    )
-    const cUsdcVaultBal = await cUsdcVault.balanceOf(tester.address)
-    await cUsdcVault.connect(tester).approve(rToken.address, cUsdcVaultBal)
-
-    console.log(`\nIssuing  ${formatEther(issueAmount)} RTokens...`)
-    await rToken.connect(tester).issue(issueAmount)
     const postIssueBal = await rToken.balanceOf(tester.address)
-    if (!postIssueBal.eq(issueAmount)) {
+    if (!postIssueBal.eq(issueAmt)) {
       throw new Error(
         `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
-          issueAmount,
+          issueAmt,
           'mwei'
         )}    balance: ${formatUnits(postIssueBal, 'mwei')}`
       )
@@ -217,27 +161,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     console.log('successfully minted RTokens')
 
     /*
-
-      redeem
-
-    */
-    const redeemAmount = fp('5e4')
-    await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
-
-    // 3. Run the 3.0.0 checks
-    await runChecks3_3_0(hre, params.rtoken, params.governor)
-
-    /*
-
       claim rewards
-
     */
     await claimRsrRewards(hre, params.rtoken)
 
     /*
-
       staking/unstaking
-
     */
 
     // get RSR
@@ -258,47 +187,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(stakeAmount))
     expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
-
-    /*
-
-      switch basket and recollateralize - using Batch Auctions
-      Also check for custom redemption
-
-    */
-
-    const bas = await basketHandler.getPrimeBasket()
-    console.log(bas.erc20s)
-
-    const prevNonce = await basketHandler.nonce()
-    const governor = await hre.ethers.getContractAt('Governance', params.governor)
-    const timelockAddress = await governor.timelock()
-    await whileImpersonating(hre, timelockAddress, async (tl) => {
-      await basketHandler
-        .connect(tl)
-        .setPrimeBasket([saUsdtAddress, cUsdtVaultAddress], [fp('0.5'), fp('0.5')])
-      await basketHandler.connect(tl).refreshBasket()
-      const tradingDelay = await backingManager.tradingDelay()
-      await advanceBlocks(hre, tradingDelay / 12 + 1)
-      await advanceTime(hre, tradingDelay + 1)
-    })
-
-    const b = await basketHandler.getPrimeBasket()
-    console.log(b.erc20s)
-
-    /*
-       custom redemption
-    */
-    // Cannot do normal redeem
-    expect(await basketHandler.fullyCollateralized()).to.equal(false)
-    await expect(rToken.connect(tester).redeem(redeemAmount)).to.be.revertedWith(
-      'partial redemption; use redeemCustom'
-    )
-
-    // Do custom redemption on previous basket
-    await customRedeemRTokens(hre, tester, params.rtoken, prevNonce, redeemAmount)
-
-    // Recollateralize using Batch auctions
-    await recollateralize(hre, rToken.address, TradeKind.BATCH_AUCTION)
   })
 
 task('propose', 'propose a gov action')

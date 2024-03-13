@@ -3,6 +3,7 @@ import { networkConfig } from '#/common/configuration'
 export const whales: { [key: string]: string } = {
   [networkConfig['1'].tokens.USDT!.toLowerCase()]: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',
   [networkConfig['1'].tokens.USDC!.toLowerCase()]: '0x756D64Dc5eDb56740fC617628dC832DDBCfd373c',
+  [networkConfig['1'].tokens.pyUSD!.toLowerCase()]: '0xA5588F7cdf560811710A2D82D3C9c99769DB1Dcb',
   [networkConfig['1'].tokens.RSR!.toLowerCase()]: '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1',
   [networkConfig['1'].tokens.cUSDT!.toLowerCase()]: '0xb99CC7e10Fe0Acc68C50C7829F473d81e23249cc',
   [networkConfig['1'].tokens.aUSDT!.toLowerCase()]: '0x0B6B712B0f3998961Cd3109341b00c905b16124A',
@@ -13,11 +14,11 @@ export const whales: { [key: string]: string } = {
 
   [networkConfig['1'].tokens.aUSDC!.toLowerCase()]: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
   [networkConfig['1'].tokens.cUSDC!.toLowerCase()]: '0x97D868b5C2937355Bf89C5E5463d52016240fE86',
+  [networkConfig['1'].tokens.cUSDCv3!.toLowerCase()]: '0x7f714b13249BeD8fdE2ef3FBDfB18Ed525544B03',
   ['0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()]:
     '0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC', // saUSDC
   ['0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase()]:
     '0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC', // cUSDCVault
-
   [networkConfig['1'].tokens.RSR!.toLowerCase()]: '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1',
   [networkConfig['1'].tokens.WBTC!.toLowerCase()]: '0x8eb8a3b98659cce290402893d0123abb75e3ab28',
   [networkConfig['1'].tokens.stETH!.toLowerCase()]: '0x176F3DAb24a159341c0509bB36B833E7fdd0a132',
@@ -33,4 +34,6 @@ export const collateralToUnderlying: { [key: string]: string } = {
     networkConfig['1'].tokens.USDC!.toLowerCase(),
   [networkConfig['1'].tokens.cUSDT!.toLowerCase()]: networkConfig['1'].tokens.USDT!.toLowerCase(),
   [networkConfig['1'].tokens.cUSDC!.toLowerCase()]: networkConfig['1'].tokens.USDC!.toLowerCase(),
+  [networkConfig['1'].tokens.saEthUSDC!.toLowerCase()]:
+    networkConfig['1'].tokens.aEthUSDC!.toLowerCase(),
 }

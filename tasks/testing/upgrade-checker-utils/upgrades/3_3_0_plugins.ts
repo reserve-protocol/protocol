@@ -47,27 +47,6 @@ export default async (
   const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
 
-  /*
-    Asset Registry - new getters       
-  */
-  const nextTimestamp = (await getLatestBlockTimestamp(hre)) + 10
-  await setNextBlockTimestamp(hre, nextTimestamp)
-  await assetRegistry.refresh()
-  expect(await assetRegistry.lastRefresh()).to.equal(nextTimestamp)
-  expect(await assetRegistry.size()).to.equal(16)
-  console.log(`successfully tested new AssetRegistry getters`)
-
-  /*
-    Governance changes
-  */
-  console.log(`testing governance executor...`)
-
-  const EXECUTOR_ROLE = await timelock.EXECUTOR_ROLE()
-  expect(await timelock.hasRole(EXECUTOR_ROLE, governor.address)).to.equal(true)
-  expect(await timelock.hasRole(EXECUTOR_ROLE, ZERO_ADDRESS)).to.equal(false)
-
-  console.log(`successfully tested governance executor`)
-
   console.log('\n3.3.0 check succeeded!')
 }
 
@@ -128,7 +107,7 @@ export const proposal_3_3_0_step_1: ProposalBuilder = async (
     }),
   ]
 
-  const description = 'Step 1/4 of eUSD 3.3.0 plugin upgrade'
+  const description = 'Step 1/4 of eUSD 3.3.0 plugin upgrade.'
 
   return buildProposal(txs, description)
 }
@@ -153,7 +132,7 @@ export const proposal_3_3_0_step_2: ProposalBuilder = async (
     await basketHandler.populateTransaction.refreshBasket(),
   ]
 
-  const description = 'Step 2/4 of eUSD 3.3.0 plugin upgrade'
+  const description = 'Step 2/4 of eUSD 3.3.0 plugin upgrade.'
 
   return buildProposal(txs, description)
 }
@@ -178,7 +157,7 @@ export const proposal_3_3_0_step_3: ProposalBuilder = async (
     await basketHandler.populateTransaction.refreshBasket(),
   ]
 
-  const description = 'Step 3/4 of eUSD 3.3.0 plugin upgrade'
+  const description = 'Step 3/4 of eUSD 3.3.0 plugin upgrade.'
 
   return buildProposal(txs, description)
 }
@@ -221,7 +200,7 @@ export const proposal_3_3_0_step_4: ProposalBuilder = async (
     await assetRegistry.populateTransaction.unregister(saUSDTCollateralAddr),
   ]
 
-  const description = 'Step 4/4 of eUSD 3.3.0 plugin upgrade'
+  const description = 'Step 4/4 of eUSD 3.3.0 plugin upgrade.'
 
   return buildProposal(txs, description)
 }

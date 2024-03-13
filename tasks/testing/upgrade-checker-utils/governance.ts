@@ -36,31 +36,35 @@ export const passAndExecuteProposal = async (
   if (propState == ProposalState.Active) {
     console.log(`Prop ${proposalId} is ACTIVE, moving to SUCCEEDED...`)
 
-    // gather enough whale voters
-    let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
-    const startBlock = await governor.proposalSnapshot(proposalId)
-    const quorum = await governor.quorum(startBlock)
+    // // gather enough whale voters
+    // let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
+    // const startBlock = await governor.proposalSnapshot(proposalId)
+    // const quorum = await governor.quorum(startBlock)
 
-    let quorumNotReached = true
-    let currentVoteAmount = BigNumber.from(0)
-    let i = 0
-    while (quorumNotReached) {
-      const whale = whales[i]
-      currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
-      i += 1
-      if (currentVoteAmount.gt(quorum)) {
-        quorumNotReached = false
-      }
-    }
+    // let quorumNotReached = true
+    // let currentVoteAmount = BigNumber.from(0)
+    // let i = 0
+    // while (quorumNotReached) {
+    //   const whale = whales[i]
+    //   currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
+    //   i += 1
+    //   if (currentVoteAmount.gt(quorum)) {
+    //     quorumNotReached = false
+    //   }
+    // }
 
-    whales = whales.slice(0, i)
+    // whales = whales.slice(0, i)
 
-    // cast enough votes to pass the proposal
-    for (const whale of whales) {
-      await whileImpersonating(hre, whale.address, async (signer) => {
-        await governor.connect(signer).castVote(proposalId, 1)
-      })
-    }
+    // // cast enough votes to pass the proposal
+    // for (const whale of whales) {
+    //   await whileImpersonating(hre, whale.address, async (signer) => {
+    //     await governor.connect(signer).castVote(proposalId, 1)
+    //   })
+    // }
+
+    // Vote from testing account, on the assumption it is staked/delegated
+    const [tester] = await hre.ethers.getSigners()
+    await governor.connect(tester).castVote(proposalId, 1)
 
     // Advance time till voting is complete
     const votingPeriod = await governor.votingPeriod()

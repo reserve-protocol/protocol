@@ -8,8 +8,8 @@ import { fp } from '#/common/numbers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { callAndGetNextTrade, runBatchTrade, runDutchTrade } from './trades'
 import { CollateralStatus } from '#/common/constants'
-import { FacadeAct } from '@typechain/FacadeAct'
-import { FacadeRead } from '@typechain/FacadeRead'
+import { ActFacet } from '@typechain/ActFacet'
+import { ReadFacet } from '@typechain/ReadFacet'
 
 type Balances = { [key: string]: BigNumber }
 
@@ -91,9 +91,9 @@ export const customRedeemRTokens = async (
   console.log(`\nCustom Redeeming ${formatEther(redeemAmount)}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
 
-  const FacadeReadFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeRead')
-  const facadeRead = <FacadeRead>await FacadeReadFactory.deploy()
-  const redeemQuote = await facadeRead.callStatic.redeemCustom(
+  const ReadFacetFactory: ContractFactory = await hre.ethers.getContractFactory('ReadFacet')
+  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+  const redeemQuote = await readFacet.callStatic.redeemCustom(
     rToken.address,
     redeemAmount,
     [basketNonce],
@@ -118,7 +118,7 @@ export const customRedeemRTokens = async (
     [basketNonce],
     [fp('1')],
     expectedTokens,
-    expectedQuantities.map((q) => q.mul(99).div(100))
+    expectedQuantities.map((q: BigNumber) => q.mul(99).div(100))
   )
   const postRedeemRTokenBal = await rToken.balanceOf(user.address)
   const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
@@ -170,9 +170,9 @@ const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     await main.basketHandler()
   )
 
-  // Deploy FacadeAct
-  const FacadeActFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeAct')
-  const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
+  // Deploy ActFacet
+  const FacadeActFactory: ContractFactory = await hre.ethers.getContractFactory('ActFacet')
+  const facadeAct = <ActFacet>await FacadeActFactory.deploy()
 
   // Move post trading delay
   await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
@@ -224,11 +224,8 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     await main.basketHandler()
   )
 
-  // Move post trading delay
-  await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
-
   let tradesRemain = false
-  let sellToken: string = ''
+  let sellToken = ''
 
   const [newTradeCreated, initialSellToken] = await callAndGetNextTrade(
     backingManager.rebalance(TradeKind.DUTCH_AUCTION),

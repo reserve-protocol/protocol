@@ -1,6 +1,7 @@
 import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
+import { networkConfig } from '../../../common/configuration'
 import {
   advanceBlocks,
   advanceTime,
@@ -106,29 +107,25 @@ export const runDutchTrade = async (
   console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
 
   const endBlock = await trade.endBlock()
-  const whaleAddr = whales[buyTokenAddress.toLowerCase()]
+  const [tester] = await hre.ethers.getSigners()
 
   // Bid close to end block
   await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(5))
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
-  await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
+  await getTokens(hre, buyTokenAddress, buyAmount, tester.address)
 
-  await whileImpersonating(hre, whaleAddr, async (whale) => {
-    const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-    // Bid
-
-    ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
-      router.bid(trade.address, await router.signer.getAddress()),
-      trader
-    )
-  })
+  // Bid
+  ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
+    router.bid(trade.address, await router.signer.getAddress()),
+    trader
+  )
 
   if (
     (await trade.canSettle()) ||
     (await trade.status()) != TradeStatus.CLOSED ||
-    (await trade.bidder()) != whaleAddr
+    (await trade.bidder()) != tester.address
   ) {
     throw new Error(`Error settling Dutch Trade`)
   }
@@ -143,8 +140,8 @@ export const callAndGetNextTrade = async (
   tx: Promise<ContractTransaction>,
   trader: TestITrading
 ): Promise<[boolean, string]> => {
-  let tradesRemain: boolean = false
-  let newSellToken: string = ''
+  let tradesRemain = false
+  let newSellToken = ''
 
   // Process transaction and get next trade
   const r = await tx
@@ -283,7 +280,57 @@ const getERC20Tokens = async (
   recipient: string
 ) => {
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
-  await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
-    await token.connect(whaleSigner).transfer(recipient, amount)
-  })
+
+  // special-cases for wrappers with 0 supply
+  const wcUSDCv3 = await hre.ethers.getContractAt(
+    'CusdcV3Wrapper',
+    '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'
+  )
+  const saEthUSDC = await hre.ethers.getContractAt(
+    'IStaticATokenV3LM',
+    networkConfig['1'].tokens.saEthUSDC!
+  )
+
+  if (tokenAddress == wcUSDCv3.address) {
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
+      async (whaleSigner) => {
+        const cUSDCv3 = await hre.ethers.getContractAt(
+          'ERC20Mock',
+          networkConfig['1'].tokens.cUSDCv3!
+        )
+        console.log('1a', cUSDCv3.address, whaleSigner.address, wcUSDCv3.address, amount)
+        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
+        console.log('1.5a', cUSDCv3.address, whaleSigner.address, wcUSDCv3.address, amount)
+        // TODO why is this failing...
+        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, amount)
+        console.log('2a')
+        await wcUSDCv3.connect(whaleSigner).deposit(amount)
+        console.log('3a')
+        await wcUSDCv3.connect(whaleSigner).transfer(recipient, amount)
+      }
+    )
+  } else if (tokenAddress == saEthUSDC.address) {
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+      async (whaleSigner) => {
+        const USDC = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.USDC!)
+        console.log('1b')
+        await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
+        console.log('2b')
+        await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
+        console.log('3b', amount, await token.balanceOf(whaleSigner.address), recipient)
+        // TODO why is this failing...
+        await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
+      }
+    )
+  } else {
+    const addr = whales[token.address.toLowerCase()]
+    if (!addr) throw new Error('missing whale for ' + tokenAddress)
+    await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
+      await token.connect(whaleSigner).transfer(recipient, amount)
+    })
+  }
 }
