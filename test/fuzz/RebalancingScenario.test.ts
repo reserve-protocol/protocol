@@ -1257,14 +1257,15 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 
-  it('invariants hold after unregistering an asset', async () => {
+  it.only('invariants hold after unregistering an asset', async () => {
     await scenario.unregisterAsset(0)
     await scenario.echidna_RTokenRateNeverFallInNormalOps()
     await scenario.echidna_assetRegistryInvariants()
     await scenario.echidna_backingManagerInvariants()
     await scenario.echidna_basketInvariants()
     await scenario.echidna_basketRangeSmallerWhenRebalancing()
-    await scenario.echidna_batchRebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     await scenario.echidna_brokerInvariants()
     await scenario.echidna_distributorInvariants()
     await scenario.echidna_dutchRebalancingProperties()
@@ -1281,14 +1282,15 @@ const scenarioSpecificTests = () => {
     await scenario.echidna_stRSRInvariants()
   })
 
-  it('invariants hold when collateral is swapped for asset', async () => {
+  it.only('invariants hold when collateral is swapped for asset', async () => {
     await scenario.swapRegisteredAsset(0, 0, 0, 0, false, false, 0)
     await scenario.echidna_RTokenRateNeverFallInNormalOps()
     await scenario.echidna_assetRegistryInvariants()
     await scenario.echidna_backingManagerInvariants()
     await scenario.echidna_basketInvariants()
     await scenario.echidna_basketRangeSmallerWhenRebalancing()
-    await scenario.echidna_batchRebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     await scenario.echidna_brokerInvariants()
     await scenario.echidna_distributorInvariants()
     await scenario.echidna_dutchRebalancingProperties()
@@ -1305,7 +1307,7 @@ const scenarioSpecificTests = () => {
     await scenario.echidna_stRSRInvariants()
   })
 
-  it('batch/dutch rebalancing invariants do not revert when trading paused/frozen', async () => {
+  it.only('batch/dutch rebalancing invariants do not revert when trading paused/frozen', async () => {
     await scenario
       .connect(alice)
       .updatePrice(
@@ -1371,28 +1373,28 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
     expect(await main.tradingPaused()).to.equal(true)
-    await scenario.echidna_batchRebalancingProperties()
-    await scenario.echidna_dutchRebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
 
     // unpause
     await scenario.connect(alice).unpauseTrading()
     expect(await main.tradingPaused()).to.equal(false)
-    await scenario.echidna_batchRebalancingProperties()
-    await scenario.echidna_dutchRebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
 
     // freeze
     await scenario.connect(alice).grantRole(1, 0)
     await scenario.connect(alice).freezeShort()
     expect(await main.frozen()).to.equal(true)
-    await scenario.echidna_batchRebalancingProperties()
-    await scenario.echidna_dutchRebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
 
     // unfreeze
     await scenario.grantRole(0, 0) // grant OWNER role
     await scenario.connect(alice).unfreeze()
     expect(await main.frozen()).to.equal(false)
-    await scenario.echidna_batchRebalancingProperties()
-    await scenario.echidna_dutchRebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 }
 
