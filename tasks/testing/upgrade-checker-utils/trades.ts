@@ -1,4 +1,4 @@
-import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
+import { MAX_UINT256, QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
 import { networkConfig } from '../../../common/configuration'
@@ -36,7 +36,7 @@ export const runBatchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+  console.log(`Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
   const endTime = await trade.endTime()
   const worstPrice = await trade.worstCasePrice() // trade.buy() per trade.sell()
   const auctionId = await trade.auctionId()
@@ -104,17 +104,20 @@ export const runDutchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+  console.log(`Running dutch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
 
   const endBlock = await trade.endBlock()
   const [tester] = await hre.ethers.getSigners()
 
   // Bid close to end block
-  await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(5))
+  await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(20))
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
   await getTokens(hre, buyTokenAddress, buyAmount, tester.address)
+
+  const buyToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
+  await buyToken.connect(tester).approve(router.address, MAX_UINT256)
 
   // Bid
   ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
@@ -122,10 +125,12 @@ export const runDutchTrade = async (
     trader
   )
 
+  console.log('checking', await trade.status(), await trade.canSettle(), await trade.bidder(), tester.address)
+
   if (
     (await trade.canSettle()) ||
     (await trade.status()) != TradeStatus.CLOSED ||
-    (await trade.bidder()) != tester.address
+    (await trade.bidder()) != router.address
   ) {
     throw new Error(`Error settling Dutch Trade`)
   }
@@ -174,6 +179,7 @@ export const getTokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  console.log('getting tokens...', tokenAddress)
   switch (tokenAddress) {
     case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15': // saUSDC
     case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9': // saUSDT
@@ -300,15 +306,11 @@ const getERC20Tokens = async (
           'ERC20Mock',
           networkConfig['1'].tokens.cUSDCv3!
         )
-        console.log('1a', cUSDCv3.address, whaleSigner.address, wcUSDCv3.address, amount)
         await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
-        console.log('1.5a', cUSDCv3.address, whaleSigner.address, wcUSDCv3.address, amount)
-        // TODO why is this failing...
-        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, amount)
-        console.log('2a')
-        await wcUSDCv3.connect(whaleSigner).deposit(amount)
-        console.log('3a')
-        await wcUSDCv3.connect(whaleSigner).transfer(recipient, amount)
+        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
+        await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(2))
+        const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
+        await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
       }
     )
   } else if (tokenAddress == saEthUSDC.address) {
@@ -317,12 +319,8 @@ const getERC20Tokens = async (
       whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
       async (whaleSigner) => {
         const USDC = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.USDC!)
-        console.log('1b')
         await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
-        console.log('2b')
         await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
-        console.log('3b', amount, await token.balanceOf(whaleSigner.address), recipient)
-        // TODO why is this failing...
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
       }
     )

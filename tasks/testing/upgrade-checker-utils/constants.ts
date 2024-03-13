@@ -2,7 +2,7 @@ import { networkConfig } from '#/common/configuration'
 
 export const whales: { [key: string]: string } = {
   [networkConfig['1'].tokens.USDT!.toLowerCase()]: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',
-  [networkConfig['1'].tokens.USDC!.toLowerCase()]: '0x756D64Dc5eDb56740fC617628dC832DDBCfd373c',
+  [networkConfig['1'].tokens.USDC!.toLowerCase()]: '0xAFAaDfa18D9d63d09F19a5445e29CEc601054C5e',
   [networkConfig['1'].tokens.pyUSD!.toLowerCase()]: '0xA5588F7cdf560811710A2D82D3C9c99769DB1Dcb',
   [networkConfig['1'].tokens.RSR!.toLowerCase()]: '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1',
   [networkConfig['1'].tokens.cUSDT!.toLowerCase()]: '0xb99CC7e10Fe0Acc68C50C7829F473d81e23249cc',
