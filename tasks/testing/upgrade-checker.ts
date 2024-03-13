@@ -8,7 +8,6 @@ import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
 import { TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
-import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import {
   recollateralize,
   redeemRTokens,
@@ -16,7 +15,12 @@ import {
 } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
-import runChecks3_0_0, { proposal_3_0_0 } from './upgrade-checker-utils/upgrades/3_0_0'
+import runChecks3_3_0, {
+  proposal_3_3_0_step_1,
+  proposal_3_3_0_step_2,
+  proposal_3_3_0_step_3,
+  proposal_3_3_0_step_4,
+} from './upgrade-checker-utils/upgrades/3_3_0_plugins'
 import {
   passAndExecuteProposal,
   proposeUpgrade,
@@ -24,7 +28,7 @@ import {
 } from './upgrade-checker-utils/governance'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 
-// run script for eUSD (version 3.0.0)
+// run script for eUSD (version 3.3.0)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
 
 /*
@@ -71,7 +75,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // 1. Approve and execute the governance proposal
     if (!params.proposalid) {
-      const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_0)
+      const proposal = await proposeUpgrade(
+        hre,
+        params.rtoken,
+        params.governor,
+        proposal_3_3_0_step_1
+      )
 
       await passAndExecuteProposal(
         hre,
@@ -83,9 +92,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     } else {
       await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposalid)
     }
-
-    // we pushed the chain forward, so we need to keep the rToken SOUND
-    await pushOraclesForward(hre, params.rtoken)
 
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
 
@@ -219,11 +225,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
     // 3. Run the 3.0.0 checks
-    await pushOraclesForward(hre, params.rtoken)
-    await runChecks3_0_0(hre, params.rtoken, params.governor)
-
-    // we pushed the chain forward, so we need to keep the rToken SOUND
-    await pushOraclesForward(hre, params.rtoken)
+    await runChecks3_3_0(hre, params.rtoken, params.governor)
 
     /*
 
@@ -264,9 +266,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     */
 
-    // we pushed the chain forward, so we need to keep the rToken SOUND
-    await pushOraclesForward(hre, params.rtoken)
-
     const bas = await basketHandler.getPrimeBasket()
     console.log(bas.erc20s)
 
@@ -306,5 +305,5 @@ task('propose', 'propose a gov action')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params, hre) => {
-    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_0)
+    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_3_0_step_1)
   })
