@@ -1257,7 +1257,7 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 
-  it.only('invariants hold after unregistering an asset', async () => {
+  it('invariants hold after unregistering an asset', async () => {
     await scenario.unregisterAsset(0)
     await scenario.echidna_RTokenRateNeverFallInNormalOps()
     await scenario.echidna_assetRegistryInvariants()
@@ -1282,7 +1282,7 @@ const scenarioSpecificTests = () => {
     await scenario.echidna_stRSRInvariants()
   })
 
-  it.only('invariants hold when collateral is swapped for asset', async () => {
+  it('invariants hold when collateral is swapped for asset', async () => {
     await scenario.swapRegisteredAsset(0, 0, 0, 0, false, false, 0)
     await scenario.echidna_RTokenRateNeverFallInNormalOps()
     await scenario.echidna_assetRegistryInvariants()
@@ -1307,7 +1307,7 @@ const scenarioSpecificTests = () => {
     await scenario.echidna_stRSRInvariants()
   })
 
-  it.only('batch/dutch rebalancing invariants do not revert when trading paused/frozen', async () => {
+  it('batch/dutch rebalancing invariants do not revert when trading paused/frozen', async () => {
     await scenario
       .connect(alice)
       .updatePrice(
