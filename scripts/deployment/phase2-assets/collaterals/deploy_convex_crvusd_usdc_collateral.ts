@@ -61,19 +61,19 @@ async function main() {
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-  const w3Pool = await ConvexStakingWrapperFactory.deploy()
-  await w3Pool.deployed()
-  await (await w3Pool.initialize(crvUSD_USDC_POOL_ID)).wait()
+  const crvUsdUSDCPool = await ConvexStakingWrapperFactory.deploy()
+  await crvUsdUSDCPool.deployed()
+  await (await crvUsdUSDCPool.initialize(crvUSD_USDC_POOL_ID)).wait()
 
   console.log(
-    `Deployed wrapper for Convex Stable crvUSD-USDC pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
+    `Deployed wrapper for Convex Stable crvUSD-USDC pool on ${hre.network.name} (${chainId}): ${crvUsdUSDCPool.address} `
   )
 
   const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
-      erc20: w3Pool.address,
+      erc20: crvUsdUSDCPool.address,
       targetName: ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -103,7 +103,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxCrvUSDUSDC = collateral.address
-  assetCollDeployments.erc20s.cvxCrvUSDUSDC = w3Pool.address
+  assetCollDeployments.erc20s.cvxCrvUSDUSDC = crvUsdUSDCPool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

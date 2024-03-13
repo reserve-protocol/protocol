@@ -41,7 +41,7 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const w3PoolCollateral = await ethers.getContractAt(
+  const crvUsdUSDCPoolCollateral = await ethers.getContractAt(
     'CurveStableCollateral',
     deployments.collateral.cvxCrvUSDUSDC as string
   )
@@ -50,7 +50,7 @@ async function main() {
 
   await verifyContract(
     chainId,
-    await w3PoolCollateral.erc20(),
+    await crvUsdUSDCPoolCollateral.erc20(),
     [],
     'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
   )
@@ -61,7 +61,7 @@ async function main() {
     deployments.collateral.cvxCrvUSDUSDC,
     [
       {
-        erc20: await w3PoolCollateral.erc20(),
+        erc20: await crvUsdUSDCPoolCollateral.erc20(),
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
