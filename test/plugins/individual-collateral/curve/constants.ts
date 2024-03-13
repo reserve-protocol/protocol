@@ -55,7 +55,7 @@ export const crvUSD_ORACLE_ERROR = fp('0.005')
 // pyUSD
 export const pyUSD_USD_FEED = networkConfig['1'].chainlinkFeeds.pyUSD!
 export const pyUSD_ORACLE_TIMEOUT = bn('86400')
-export const pyUSD_ORACLE_ERROR = fp('0.03')
+export const pyUSD_ORACLE_ERROR = fp('0.003')
 
 // Tokens
 export const DAI = networkConfig['1'].tokens.DAI!
