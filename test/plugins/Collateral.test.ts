@@ -1863,7 +1863,10 @@ describe('Collateral contracts', () => {
       expect(newHigh).to.equal(currHigh)
 
       // Refresh is a noop if DISABLED
-      await expect(cTokenNonFiatCollateral.refresh()).to.not.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
+      await expect(cTokenNonFiatCollateral.refresh()).to.not.emit(
+        cTokenNonFiatCollateral,
+        'CollateralStatusChanged'
+      )
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
@@ -2284,7 +2287,10 @@ describe('Collateral contracts', () => {
       expect(newHigh).to.equal(currHigh)
 
       // Refresh is a noop if DISABLED
-      await expect(cTokenSelfReferentialCollateral.refresh()).to.not.emit(cTokenSelfReferentialCollateral, 'CollateralStatusChanged')
+      await expect(cTokenSelfReferentialCollateral.refresh()).to.not.emit(
+        cTokenSelfReferentialCollateral,
+        'CollateralStatusChanged'
+      )
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
