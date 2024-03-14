@@ -105,8 +105,7 @@ contract DutchTrade is ITrade, Versioned {
     IERC20Metadata public buy;
     uint192 public sellAmount; // {sellTok}
 
-    // The auction runs from [startBlock, endTime], inclusive
-    uint256 public startBlock; // {block} when the dutch auction begins (one block after init())
+    // The auction runs from [startTime, endTime], inclusive
     uint48 public startTime; // {s} when the dutch auction begins (one block after init()) lossy!
     uint48 public endTime; // {s} not used in this contract; needed on interface
 
@@ -180,10 +179,6 @@ contract DutchTrade is ITrade, Versioned {
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
-
-        // Track auction start by block, to ensure starting price occurs in next bloeck
-        uint256 _startBlock = NetworkConfigLib.blockNumber() + 1; // start in the next block
-        startBlock = _startBlock; // gas-saver
 
         // Track auction end by time, to generalize to all chains
         uint48 _startTime = uint48(block.timestamp) + ONE_BLOCK;
