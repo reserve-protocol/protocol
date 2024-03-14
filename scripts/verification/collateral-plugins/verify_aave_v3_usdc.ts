@@ -26,7 +26,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const erc20 = await ethers.getContractAt(
-    'IERC20',
+    'ERC20Mock',
     baseL2Chains.includes(hre.network.name)
       ? deployments.erc20s.saBasUSDC!
       : deployments.erc20s.saEthUSDC!
