@@ -79,7 +79,7 @@ uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
  *   a bid to occur if no bots are online and the only bidders are humans.
  *
  * To bid:
- * 1. Call `bidAmount()` view to check prices at various blocks.
+ * 1. Call `bidAmount()` view to check prices at various future timestamps.
  * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
  * 3. Wait until the desired block is reached (hopefully not in the first 20% of the auction)
  * 4. Call bid()
