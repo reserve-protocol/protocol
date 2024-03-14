@@ -119,6 +119,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
     if (!(await basketHandler.fullyCollateralized())) {
       throw new Error('Basket is not fully collateralized')
     }
+
     console.log('Basket is fully collateralized!')
   })
 
@@ -154,8 +155,6 @@ task('propose', 'propose a gov action')
 
     const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, stepFunction)
     await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId, proposal)
-
-    // await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_3_0_step_3)
   })
 
 task('recollateralize')
@@ -262,3 +261,24 @@ task('recollateralize')
     expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(testerBal))
     expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
   })
+
+task('hyusd-test', 'propose a gov action').setAction(async (params: ProposeParams, hre) => {
+  const [tester] = await hre.ethers.getSigners()
+
+  await hre.run('give-rsr', { address: tester.address })
+  await stakeAndDelegateRsr(hre, '0xacdf0dba4b9839b96221a8487e9ca660a48212be', tester.address)
+
+  await passAndExecuteProposal(
+    hre,
+    '0xacdf0dba4b9839b96221a8487e9ca660a48212be',
+    '0x22d7937438b4bBf02f6cA55E3831ABB94Bd0b6f1',
+    '56375661373325357163307105282637191906372195918163014747036462170506704909512',
+    undefined,
+    ['0xCFA67f42A0fDe4F0Fb612ea5e66170B0465B84c1', '0x7Dee4DbeF75f93cCA06823Ac915Df990be3F1538']
+  )
+
+  await hre.run('recollateralize', {
+    rtoken: params.rtoken,
+    governor: params.governor,
+  })
+})

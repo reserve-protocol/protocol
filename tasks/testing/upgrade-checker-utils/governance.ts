@@ -1,9 +1,9 @@
 import { ProposalState } from '#/common/constants'
 import { bn } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
-import { Proposal, getProposalDetails } from '#/utils/subgraph'
+import { Delegate, Proposal, getDelegates, getProposalDetails } from '#/utils/subgraph'
 import { advanceBlocks, advanceTime } from '#/utils/time'
-import { PopulatedTransaction } from 'ethers'
+import { BigNumber, PopulatedTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { pushOraclesForward } from './oracles'
 
@@ -12,7 +12,8 @@ export const passAndExecuteProposal = async (
   rtokenAddress: string,
   governorAddress: string,
   proposalId: string,
-  proposal?: Proposal
+  proposal?: Proposal,
+  extraAssets: string[] = []
 ) => {
   console.log(`\nPassing & executing proposal ${proposalId}...`)
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
@@ -36,41 +37,44 @@ export const passAndExecuteProposal = async (
   if (propState == ProposalState.Active) {
     console.log(`Prop ${proposalId} is ACTIVE, moving to SUCCEEDED...`)
 
-    // // gather enough whale voters
-    // let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
-    // const startBlock = await governor.proposalSnapshot(proposalId)
-    // const quorum = await governor.quorum(startBlock)
+    if (!proposal) {
+      // gather enough whale voters
+      let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
+      const startBlock = await governor.proposalSnapshot(proposalId)
+      const quorum = await governor.quorum(startBlock)
 
-    // let quorumNotReached = true
-    // let currentVoteAmount = BigNumber.from(0)
-    // let i = 0
-    // while (quorumNotReached) {
-    //   const whale = whales[i]
-    //   currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
-    //   i += 1
-    //   if (currentVoteAmount.gt(quorum)) {
-    //     quorumNotReached = false
-    //   }
-    // }
+      let quorumNotReached = true
+      let currentVoteAmount = BigNumber.from(0)
+      let i = 0
+      while (quorumNotReached) {
+        const whale = whales[i]
+        currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
+        i += 1
+        if (currentVoteAmount.gt(quorum)) {
+          quorumNotReached = false
+        }
+      }
 
-    // whales = whales.slice(0, i)
+      whales = whales.slice(0, i)
 
-    // // cast enough votes to pass the proposal
-    // for (const whale of whales) {
-    //   await whileImpersonating(hre, whale.address, async (signer) => {
-    //     await governor.connect(signer).castVote(proposalId, 1)
-    //   })
-    // }
-
-    // Vote from testing account, on the assumption it is staked/delegated
-    const [tester] = await hre.ethers.getSigners()
-    await governor.connect(tester).castVote(proposalId, 1)
+      // cast enough votes to pass the proposal
+      for (const whale of whales) {
+        await whileImpersonating(hre, whale.address, async (signer) => {
+          await governor.connect(signer).castVote(proposalId, 1)
+        })
+      }
+    } else {
+      // Vote from testing account, on the assumption it is staked/delegated
+      const [tester] = await hre.ethers.getSigners()
+      await governor.connect(tester).castVote(proposalId, 1)
+    }
 
     // Advance time till voting is complete
     const votingPeriod = await governor.votingPeriod()
     await advanceBlocks(hre, votingPeriod.add(1))
 
     propState = await governor.state(proposalId)
+
     // Finished voting - Check proposal state
     if (propState != ProposalState.Succeeded) {
       throw new Error('Proposal should have succeeded')
@@ -83,7 +87,7 @@ export const passAndExecuteProposal = async (
     console.log(`Prop ${proposalId} is SUCCEEDED, moving to QUEUED...`)
 
     if (!proposal) {
-      proposal = await getProposalDetails(`${governorAddress.toLowerCase()}-${proposalId}`)
+      proposal = await getProposalDetails(proposalId)
     }
 
     descriptionHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(proposal.description))
@@ -113,7 +117,7 @@ export const passAndExecuteProposal = async (
     // Advance time required by timelock
     await advanceTime(hre, minDelay.add(1).toString())
     await advanceBlocks(hre, 1)
-    await pushOraclesForward(hre, rtokenAddress)
+    await pushOraclesForward(hre, rtokenAddress, extraAssets)
 
     console.log('Executing now...')
 
@@ -125,7 +129,7 @@ export const passAndExecuteProposal = async (
     //      The issue here is that the gov proposal may have registered a new asset
     //      The previous oracle refresh would not have caught that asset
     //      This means any setPrimeBasket() call would skip the asset
-    await pushOraclesForward(hre, rtokenAddress)
+    await pushOraclesForward(hre, rtokenAddress, extraAssets)
 
     // Check proposal state
     propState = await governor.state(proposalId)

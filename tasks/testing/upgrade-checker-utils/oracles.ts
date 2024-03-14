@@ -24,7 +24,11 @@ export const overrideOracle = async (
   return hre.ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
 }
 
-export const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string) => {
+export const pushOraclesForward = async (
+  hre: HardhatRuntimeEnvironment,
+  rTokenAddress: string,
+  extraAssets: string[] = []
+) => {
   console.log(`Pushing Oracles forward for RToken ${rTokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -33,7 +37,12 @@ export const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenA
     await main.assetRegistry()
   )
   const registry = await assetRegistry.getRegistry()
+
   for (const asset of registry.assets) {
+    await pushOracleForward(hre, asset)
+  }
+
+  for (const asset of extraAssets) {
     await pushOracleForward(hre, asset)
   }
 }
