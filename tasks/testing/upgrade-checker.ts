@@ -116,8 +116,10 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
       'IBasketHandler',
       await main.basketHandler()
     )
-    if (!(await basketHandler.fullyCollateralized()))
+    if (!(await basketHandler.fullyCollateralized())) {
       throw new Error('Basket is not fully collateralized')
+    }
+    console.log('Basket is fully collateralized!')
   })
 
 interface ProposeParams {
