@@ -106,7 +106,7 @@ contract DutchTrade is ITrade, Versioned {
     uint192 public sellAmount; // {sellTok}
 
     // The auction runs from [startBlock, endTime], inclusive
-    uint256 public startBlock; // {block} when the dutch auction begins (one block after init())    uint256 public endBlock; // {block} when the dutch auction ends if no bids are received
+    uint256 public startBlock; // {block} when the dutch auction begins (one block after init())
     uint48 public startTime; // {s} when the dutch auction begins (one block after init()) lossy!
     uint48 public endTime; // {s} not used in this contract; needed on interface
 
