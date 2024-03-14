@@ -138,7 +138,7 @@ async function main() {
       `Deployed Aave V3 USDC collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
     )
 
-    assetCollDeployments.erc20s.saEthUSDC = erc20.address
+    assetCollDeployments.erc20s.saBasUSDC = erc20.address
     assetCollDeployments.collateral.saBasUSDC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
