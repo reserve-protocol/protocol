@@ -161,6 +161,7 @@ export const proposal_3_3_0_step_3: ProposalBuilder = async (
 
   return buildProposal(txs, description)
 }
+
 export const proposal_3_3_0_step_4: ProposalBuilder = async (
   hre: HardhatRuntimeEnvironment,
   rTokenAddress: string

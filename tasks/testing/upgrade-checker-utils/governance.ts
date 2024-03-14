@@ -1,9 +1,9 @@
 import { ProposalState } from '#/common/constants'
 import { bn } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
-import { Delegate, Proposal, getDelegates, getProposalDetails } from '#/utils/subgraph'
+import { Proposal, getProposalDetails } from '#/utils/subgraph'
 import { advanceBlocks, advanceTime } from '#/utils/time'
-import { BigNumber, PopulatedTransaction } from 'ethers'
+import { PopulatedTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { pushOraclesForward } from './oracles'
 
@@ -85,8 +85,9 @@ export const passAndExecuteProposal = async (
     if (!proposal) {
       proposal = await getProposalDetails(`${governorAddress.toLowerCase()}-${proposalId}`)
     }
+
     descriptionHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(proposal.description))
-    // Queue propoal
+    // Queue proposal
     await governor.queue(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
 
     // Check proposal state
@@ -102,15 +103,19 @@ export const passAndExecuteProposal = async (
     if (!proposal) {
       proposal = await getProposalDetails(`${governorAddress.toLowerCase()}-${proposalId}`)
     }
+
     descriptionHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(proposal.description))
 
     const timelock = await hre.ethers.getContractAt('TimelockController', await governor.timelock())
     const minDelay = await timelock.getMinDelay()
 
+    console.log('Preparing execution...')
     // Advance time required by timelock
     await advanceTime(hre, minDelay.add(1).toString())
     await advanceBlocks(hre, 1)
     await pushOraclesForward(hre, rtokenAddress)
+
+    console.log('Executing now...')
 
     // Execute
     await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
@@ -145,7 +150,7 @@ export const stakeAndDelegateRsr = async (
 
 export const buildProposal = (txs: Array<PopulatedTransaction>, description: string): Proposal => {
   const targets = txs.map((tx: PopulatedTransaction) => tx.to!)
-  const values = txs.map((tx: PopulatedTransaction) => bn(0))
+  const values = txs.map(() => bn(0))
   const calldatas = txs.map((tx: PopulatedTransaction) => tx.data!)
   return {
     targets,
@@ -166,7 +171,7 @@ export const proposeUpgrade = async (
   rTokenAddress: string,
   governorAddress: string,
   proposalBuilder: ProposalBuilder
-): Promise<Proposal> => {
+) => {
   console.log(`\nGenerating and proposing proposal...`)
   const [tester] = await hre.ethers.getSigners()
 
@@ -197,5 +202,8 @@ export const proposeUpgrade = async (
   console.log('\nSuccessfully proposed!')
   console.log(`Proposal ID: ${resp.events![0].args!.proposalId}`)
 
-  return { ...proposal, proposalId: resp.events![0].args!.proposalId }
+  return {
+    ...proposal,
+    proposalId: resp.events![0].args!.proposalId as string,
+  }
 }

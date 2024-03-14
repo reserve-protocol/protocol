@@ -47,11 +47,17 @@ import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
   21-34 more points of work to make this more generic
 */
 
+interface Params {
+  rtoken: string
+  governor: string
+  proposalId?: string
+}
+
 task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
-  .addOptionalParam('proposalid', 'the ID of the governance proposal', undefined)
-  .setAction(async (params, hre) => {
+  .addOptionalParam('proposalId', 'the ID of the governance proposal', undefined)
+  .setAction(async (params: Params, hre) => {
     // await resetFork(hre, Number(useEnv('FORK_BLOCK')))
     const [tester] = await hre.ethers.getSigners()
 
@@ -72,10 +78,28 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
       throw new Error('SUBGRAPH_URL required for subgraph queries')
     }
 
-    console.log(`starting at block ${await getLatestBlockNumber(hre)}`)
+    console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
-    // 1. Approve and execute the governance proposal
-    if (!params.proposalid) {
+    {
+      // Step 1
+      const proposal = await proposeUpgrade(
+        hre,
+        params.rtoken,
+        params.governor,
+        proposal_3_3_0_step_1
+      )
+
+      await passAndExecuteProposal(
+        hre,
+        params.rtoken,
+        params.governor,
+        proposal.proposalId,
+        proposal
+      )
+    }
+
+    {
+      // Step 2
       const proposal = await proposeUpgrade(
         hre,
         params.rtoken,
@@ -87,12 +111,16 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
         hre,
         params.rtoken,
         params.governor,
-        proposal.proposalId!,
+        proposal.proposalId,
         proposal
       )
-    } else {
-      await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposalid)
     }
+
+    // // 1. Approve and execute the governance proposal
+    // if (!params.proposalId) {
+    // } else {
+    //   await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposalId)
+    // }
 
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
 
@@ -106,7 +134,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
       'BackingManagerP1',
       await main.backingManager()
     )
-    const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
+    // const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
     /*
@@ -116,7 +144,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
     await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION)
     if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
 
-    // // Give `tester` RTokens from Base bridge
+    // Give `tester` RTokens from Base bridge
     const redeemAmt = fp('1e3')
     await whileImpersonating(
       hre,
@@ -143,7 +171,10 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
     console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
     const [erc20s] = await basketHandler.quote(fp('1'), 0)
     for (const e of erc20s) {
-      const erc20 = await hre.ethers.getContractAt('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20', e)
+      const erc20 = await hre.ethers.getContractAt(
+        '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+        e
+      )
       await erc20.connect(tester).approve(rToken.address, MAX_UINT256) // max approval
     }
     const preBal = await rToken.balanceOf(tester.address)
@@ -159,7 +190,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
       )
     }
 
-    console.log('successfully minted RTokens')
+    console.log('Successfully minted RTokens')
 
     /*
       claim rewards
@@ -195,5 +226,5 @@ task('propose', 'propose a gov action')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params, hre) => {
-    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_3_0_step_1)
+    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_3_0_step_3)
   })

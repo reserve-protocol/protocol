@@ -36,7 +36,9 @@ export const runBatchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log(`Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+  console.log(
+    `Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
+  )
   const endTime = await trade.endTime()
   const worstPrice = await trade.worstCasePrice() // trade.buy() per trade.sell()
   const auctionId = await trade.auctionId()
@@ -92,8 +94,8 @@ export const runDutchTrade = async (
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
 
-  let tradesRemain: boolean = false
-  let newSellToken: string = ''
+  let tradesRemain = false
+  let newSellToken = ''
 
   const tradeAddr = await trader.trades(tradeToken)
   const trade = <DutchTrade>await hre.ethers.getContractAt('DutchTrade', tradeAddr)
@@ -104,7 +106,10 @@ export const runDutchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log(`Running dutch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+  console.log('=========')
+  console.log(
+    `Running Dutch Trade: Selling ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
+  )
 
   const endBlock = await trade.endBlock()
   const [tester] = await hre.ethers.getSigners()
@@ -125,7 +130,13 @@ export const runDutchTrade = async (
     trader
   )
 
-  console.log('checking', await trade.status(), await trade.canSettle(), await trade.bidder(), tester.address)
+  console.log(
+    'Trade State:',
+    TradeStatus[await trade.status()],
+    await trade.canSettle(),
+    await trade.bidder(),
+    tester.address
+  )
 
   if (
     (await trade.canSettle()) ||
@@ -151,20 +162,28 @@ export const callAndGetNextTrade = async (
   // Process transaction and get next trade
   const r = await tx
   const resp = await r.wait()
-  const iface: Interface = trader.interface
+  const iface = trader.interface
+
   for (const event of resp.events!) {
     let parsedLog: LogDescription | undefined
     try {
       parsedLog = iface.parseLog(event)
+      // eslint-disable-next-line no-empty
     } catch {}
+
     if (parsedLog && parsedLog.name == 'TradeStarted') {
+      // TODO: Improve this to include proper token details and parsing.
+
       console.log(
-        `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
+        `
+       ====== Trade Started: Selling ${logToken(parsedLog.args.sell)} / Buying ${logToken(
           parsedLog.args.buy
-        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
-          parsedLog.args.sellAmount
-        }`
+        )} ======
+       minBuyAmount: ${parsedLog.args.minBuyAmount}
+       sellAmount: ${parsedLog.args.sellAmount}
+      `.trim()
       )
+
       tradesRemain = true
       newSellToken = parsedLog.args.sell
     }
@@ -172,6 +191,7 @@ export const callAndGetNextTrade = async (
 
   return [tradesRemain, newSellToken]
 }
+
 // impersonate the whale to provide the required tokens to recipient
 export const getTokens = async (
   hre: HardhatRuntimeEnvironment,
@@ -179,7 +199,7 @@ export const getTokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  console.log('getting tokens...', tokenAddress)
+  console.log('Acquiring tokens...', tokenAddress)
   switch (tokenAddress) {
     case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15': // saUSDC
     case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9': // saUSDT

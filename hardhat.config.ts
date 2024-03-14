@@ -25,7 +25,7 @@ const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const BASE_RPC_URL = useEnv('BASE_RPC_URL')
-const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
+const MNEMONIC = useEnv('MNEMONIC') || 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
@@ -44,15 +44,13 @@ const config: HardhatUserConfig = {
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
-      allowUnlimitedContractSize: true
+      allowUnlimitedContractSize: true,
     },
     localhost: {
       // network for long-lived mainnet forks
-      chainId: 31337,
-      url: 'http://127.0.0.1:8546',
-      gas: 0x1ffffffff,
-      blockGasLimit: 0x1fffffffffffff,
-      allowUnlimitedContractSize: true,
+      chainId: 1,
+      url: 'http://local.akshatmittal.com:8545',
+      timeout: 0,
     },
     goerli: {
       chainId: 5,
@@ -135,7 +133,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: useEnv('ETHERSCAN_API_KEY'),
-      base: useEnv('BASESCAN_API_KEY')
+      base: useEnv('BASESCAN_API_KEY'),
     },
     customChains: [
       {

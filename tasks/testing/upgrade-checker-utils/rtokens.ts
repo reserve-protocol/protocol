@@ -3,7 +3,7 @@ import { ONE_PERIOD, TradeKind } from '#/common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber, ContractFactory } from 'ethers'
 import { formatEther } from 'ethers/lib/utils'
-import { advanceTime } from '#/utils/time'
+import { advanceBlocks, advanceTime } from '#/utils/time'
 import { fp } from '#/common/numbers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { callAndGetNextTrade, runBatchTrade, runDutchTrade } from './trades'
@@ -158,7 +158,8 @@ export const recollateralize = async (
 }
 
 const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
-  console.log(`\n\n* * * * * Recollateralizing (Batch) RToken ${rtokenAddress}...`)
+  console.log(`* * * * * Recollateralizing (Batch) RToken ${rtokenAddress}...`)
+
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const backingManager = await hre.ethers.getContractAt(
@@ -211,7 +212,10 @@ const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
 }
 
 const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
-  console.log(`\n\n* * * * * Recollateralizing (Dutch) RToken ${rtokenAddress}...`)
+  console.log('*')
+  console.log(`* * * * * Recollateralizing RToken (Dutch): ${rtokenAddress}...`)
+  console.log('*')
+
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
 
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -238,7 +242,8 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
 
     while (tradesRemain) {
       ;[tradesRemain, sellToken] = await runDutchTrade(hre, backingManager, sellToken)
-      await advanceTime(hre, ONE_PERIOD.toString())
+
+      await advanceBlocks(hre, 1)
     }
   }
 
