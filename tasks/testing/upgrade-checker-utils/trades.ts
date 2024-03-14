@@ -316,6 +316,10 @@ const getERC20Tokens = async (
     'IStaticATokenV3LM',
     networkConfig['1'].tokens.saEthUSDC!
   )
+  const saEthPyUSD = await hre.ethers.getContractAt(
+    'IStaticATokenV3LM',
+    networkConfig['1'].tokens.saEthPyUSD!
+  )
 
   if (tokenAddress == wcUSDCv3.address) {
     await whileImpersonating(
@@ -342,6 +346,17 @@ const getERC20Tokens = async (
         await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
         await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
+      }
+    )
+  } else if (tokenAddress == saEthPyUSD.address) {
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.pyUSD!.toLowerCase()],
+      async (whaleSigner) => {
+        const pyUSD = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.pyUSD!)
+        await pyUSD.connect(whaleSigner).approve(saEthPyUSD.address, amount.mul(2))
+        await saEthPyUSD.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
+        await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
   } else {

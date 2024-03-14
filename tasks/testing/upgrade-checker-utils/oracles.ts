@@ -47,11 +47,11 @@ const checkOracleExists = async (
 
   try {
     await assetContract.chainlinkFeed()
-    console.log(`Chainlink Oracle Found. Processing RTokenAsset: ${asset}`)
+    console.log(`Chainlink Oracle Found. Processing asset: ${asset}`)
 
     await fn(assetContract)
   } catch {
-    console.log(`Chainlink Oracle Missing. Skipping RTokenAsset: ${asset}`)
+    console.log(`Chainlink Oracle Missing. Skipping asset: ${asset}`)
   }
 }
 

@@ -93,11 +93,31 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
       governor: params.governor,
     })
 
-    // // 1. Approve and execute the governance proposal
-    // if (!params.proposalId) {
-    // } else {
-    //   await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposalId)
-    // }
+    await hre.run('propose', {
+      step: '3',
+      rtoken: params.rtoken,
+      governor: params.governor,
+    })
+
+    await hre.run('recollateralize', {
+      rtoken: params.rtoken,
+      governor: params.governor,
+    })
+
+    await hre.run('propose', {
+      step: '4',
+      rtoken: params.rtoken,
+      governor: params.governor,
+    })
+
+    const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
+    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    const basketHandler = await hre.ethers.getContractAt(
+      'IBasketHandler',
+      await main.basketHandler()
+    )
+    if (!(await basketHandler.fullyCollateralized()))
+      throw new Error('Basket is not fully collateralized')
   })
 
 interface ProposeParams {
@@ -113,6 +133,7 @@ task('propose', 'propose a gov action')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params: ProposeParams, hre) => {
     const stepFunction = (() => {
+      console.log(`=========================== STEP ${params.step} ===============================`)
       if (params.step === '1') {
         return proposal_3_3_0_step_1
       }

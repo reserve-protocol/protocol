@@ -120,6 +120,13 @@ export const passAndExecuteProposal = async (
     // Execute
     await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
 
+    // We might have registered new assets,
+    // TODO can we do better?
+    //      The issue here is that the gov proposal may have registered a new asset
+    //      The previous oracle refresh would not have caught that asset
+    //      This means any setPrimeBasket() call would skip the asset
+    await pushOraclesForward(hre, rtokenAddress)
+
     // Check proposal state
     propState = await governor.state(proposalId)
     if (propState != ProposalState.Executed) {

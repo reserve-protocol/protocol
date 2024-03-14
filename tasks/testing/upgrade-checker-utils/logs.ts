@@ -42,6 +42,8 @@ const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.DAI!.toLowerCase()]: 'DAI',
   [networkConfig['1'].tokens.aEthUSDC!.toLowerCase()]: 'aEthUSDC',
   [networkConfig['1'].tokens.saEthUSDC!.toLowerCase()]: 'saEthUSDC',
+  [networkConfig['1'].tokens.aEthPyUSD!.toLowerCase()]: 'aEthPyUSD',
+  [networkConfig['1'].tokens.saEthPyUSD!.toLowerCase()]: 'saEthPyUSD',
   [networkConfig['1'].tokens.cUSDCv3!.toLowerCase()]: 'cUSDCv3',
   ['0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()]: 'saUSDC',
   ['0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()]: 'saUSDT',

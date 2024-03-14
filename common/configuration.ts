@@ -206,7 +206,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
       pyUSD: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
       aEthPyUSD: '0x0C0d01AbF3e6aDfcA0989eBbA9d6e85dD58EaB1E',
-      saEthPyUSD: '0x00F2a835758B33f3aC53516Ebd69f3dc77B0D152', // canonical wrapper
+      saEthPyUSD: '0x8d6E0402A3E3aD1b43575b05905F9468447013cF', // our wrapper
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
