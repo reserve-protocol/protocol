@@ -80,7 +80,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
         hre,
         params.rtoken,
         params.governor,
-        proposal_3_3_0_step_1
+        proposal_3_3_0_step_2
       )
 
       await passAndExecuteProposal(

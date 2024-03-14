@@ -163,7 +163,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
       aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
-      saEthUSDC: '0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6', // canonical wrapper
+      saEthUSDC: '0x093cB4f405924a0C468b43209d5E466F1dd0aC7d', // our wrapper
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
