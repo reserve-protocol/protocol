@@ -25,11 +25,25 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
+  const erc20 = await ethers.getContractAt(
+    'IERC20',
+    baseL2Chains.includes(hre.network.name)
+      ? deployments.erc20s.saBasUSDC!
+      : deployments.erc20s.saEthUSDC!
+  )
   const collateral = await ethers.getContractAt(
     'AaveV3FiatCollateral',
     baseL2Chains.includes(hre.network.name)
       ? deployments.collateral.saBasUSDC!
       : deployments.collateral.saEthUSDC!
+  )
+
+  /********  Verify Aave V3 USDC ERC20  **************************/
+  await verifyContract(
+    chainId,
+    erc20.address,
+    [networkConfig[chainId].AAVE_V3_POOL!, networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!],
+    'contracts/plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol:StaticATokenV3LM'
   )
 
   /********  Verify Aave V3 USDC plugin  **************************/
