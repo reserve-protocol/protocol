@@ -48,8 +48,11 @@ const config: HardhatUserConfig = {
     },
     localhost: {
       // network for long-lived mainnet forks
-      chainId: 1,
-      url: 'http://local.akshatmittal.com:8545',
+      chainId: 31337,
+      url: 'http://127.0.0.1:8546',
+      gas: 0x1ffffffff,
+      blockGasLimit: 0x1fffffffffffff,
+      allowUnlimitedContractSize: true,
       timeout: 0,
     },
     goerli: {
