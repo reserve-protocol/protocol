@@ -112,15 +112,20 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
 
     const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    const assetRegistry = await hre.ethers.getContractAt(
+      'IAssetRegistry',
+      await main.assetRegistry()
+    )
     const basketHandler = await hre.ethers.getContractAt(
       'IBasketHandler',
       await main.basketHandler()
     )
+    await assetRegistry.refresh()
+    if (!((await basketHandler.status()) == 0)) throw new Error('Basket is not SOUND')
     if (!(await basketHandler.fullyCollateralized())) {
       throw new Error('Basket is not fully collateralized')
     }
-
-    console.log('Basket is fully collateralized!')
+    console.log('Basket is SOUND and fully collateralized!')
   })
 
 interface ProposeParams {
