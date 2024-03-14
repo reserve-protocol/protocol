@@ -83,6 +83,11 @@ uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
  * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
  * 3. Wait until the desired block is reached (hopefully not in the first 20% of the auction)
  * 4. Call bid()
+ *
+ * Limitation: In order to support all chains, such as Arbitrum, this contract uses block time
+ *             instead of block number. This means there may be small ways that validators can
+ *             extract MEV by playing around with block.timestamp. However, we think this tradeoff
+ *             is worth it in order to not have to maintain multiple DutchTrade contracts.
  */
 contract DutchTrade is ITrade, Versioned {
     using FixLib for uint192;
@@ -181,7 +186,7 @@ contract DutchTrade is ITrade, Versioned {
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
 
         // Track auction end by time, to generalize to all chains
-        uint48 _startTime = uint48(block.timestamp) + ONE_BLOCK;
+        uint48 _startTime = uint48(block.timestamp) + ONE_BLOCK; // can exceed 1 block
         startTime = _startTime; // gas-saver
         endTime = _startTime + auctionLength;
 
