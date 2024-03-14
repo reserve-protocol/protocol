@@ -106,8 +106,8 @@ contract DutchTrade is ITrade, Versioned {
     uint192 public sellAmount; // {sellTok}
 
     // The auction runs from [startBlock, endTime], inclusive
-    uint256 public startBlock; // {block} when the dutch auction begins (one block after init())
-    uint256 public endBlock; // {block} when the dutch auction ends if no bids are received
+    uint256 public startBlock; // {block} when the dutch auction begins (one block after init())    uint256 public endBlock; // {block} when the dutch auction ends if no bids are received
+    uint48 public startTime; // {s} when the dutch auction begins (one block after init()) lossy!
     uint48 public endTime; // {s} not used in this contract; needed on interface
 
     uint192 public bestPrice; // {buyTok/sellTok} The best plausible price based on oracle data
@@ -133,11 +133,11 @@ contract DutchTrade is ITrade, Versioned {
         return sellAmount.shiftl_toUint(int8(sell.decimals()));
     }
 
-    /// Calculates how much buy token is needed to purchase the lot at a particular block
-    /// @param blockNumber {block} The block number of the bid
+    /// Calculates how much buy token is needed to purchase the lot at a particular time
+    /// @param timestamp {s} The timestamp of the bid
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
-    function bidAmount(uint256 blockNumber) external view returns (uint256) {
-        return _bidAmount(_price(blockNumber));
+    function bidAmount(uint256 timestamp) external view returns (uint256) {
+        return _bidAmount(_price(timestamp));
     }
 
     // ==== Constructor ===
@@ -181,13 +181,14 @@ contract DutchTrade is ITrade, Versioned {
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
 
+        // Track auction start by block, to ensure starting price occurs in next bloeck
         uint256 _startBlock = NetworkConfigLib.blockNumber() + 1; // start in the next block
         startBlock = _startBlock; // gas-saver
 
-        uint256 _endBlock = _startBlock + auctionLength / ONE_BLOCK; // FLOOR; endBlock is inclusive
-        endBlock = _endBlock; // gas-saver
-
-        endTime = uint48(block.timestamp + ONE_BLOCK * (_endBlock - _startBlock + 1));
+        // Track auction end by time, to generalize to all chains
+        uint48 _startTime = uint48(block.timestamp) + ONE_BLOCK;
+        startTime = _startTime; // gas-saver
+        endTime = _startTime + auctionLength;
 
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
         uint192 _worstPrice = prices.sellLow.mulDiv(
@@ -208,7 +209,7 @@ contract DutchTrade is ITrade, Versioned {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(NetworkConfigLib.blockNumber()); // enforces auction ongoing
+        uint192 price = _price(block.timestamp); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -246,7 +247,7 @@ contract DutchTrade is ITrade, Versioned {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(NetworkConfigLib.blockNumber()); // enforces auction ongoing
+        uint192 price = _price(block.timestamp); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -289,10 +290,7 @@ contract DutchTrade is ITrade, Versioned {
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == address(origin), "only origin can settle");
-        require(
-            bidder != address(0) || NetworkConfigLib.blockNumber() > endBlock,
-            "auction not over"
-        );
+        require(bidder != address(0) || block.timestamp > endTime, "auction not over");
 
         if (bidType == BidType.CALLBACK) {
             soldAmt = lot(); // {qSellTok}
@@ -318,21 +316,19 @@ contract DutchTrade is ITrade, Versioned {
     /// @return true iff the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
-        return
-            status == TradeStatus.OPEN &&
-            (bidder != address(0) || NetworkConfigLib.blockNumber() > endBlock);
+        return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
     }
 
     // === Private ===
 
     /// Return the price of the auction at a particular timestamp
-    /// @param blockNumber {block} The block number to get price for
+    /// @param timestamp {s} The timestamp to get price for
     /// @return {buyTok/sellTok}
-    function _price(uint256 blockNumber) private view returns (uint192) {
-        uint256 _startBlock = startBlock; // gas savings
-        uint256 _endBlock = endBlock; // gas savings
-        require(blockNumber >= _startBlock, "auction not started");
-        require(blockNumber <= _endBlock, "auction over");
+    function _price(uint256 timestamp) private view returns (uint192) {
+        uint256 _startTime = startTime; // {s} gas savings
+        uint48 _endTime = endTime; // {s} gas savings
+        require(timestamp >= _startTime, "auction not started");
+        require(timestamp <= _endTime, "auction over");
 
         /// Price Curve:
         ///   - first 20%: geometrically decrease the price from 1000x the bestPrice to 1.5x it
@@ -340,7 +336,7 @@ contract DutchTrade is ITrade, Versioned {
         ///   - next  50%: linearly decrease the price from bestPrice to worstPrice
         ///   - last   5%: constant at worstPrice
 
-        uint192 progression = divuu(blockNumber - _startBlock, _endBlock - _startBlock); // {1}
+        uint192 progression = divuu(timestamp - _startTime, _endTime - _startTime); // {1}
 
         // Fast geometric decay -- 0%-20% of auction
         if (progression < TWENTY_PERCENT) {
