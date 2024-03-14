@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "../interfaces/IVersioned.sol";
 
 // This value should be updated on each release
-string constant VERSION = "3.2.0";
+string constant VERSION = "3.3.0";
 
 /**
  * @title Versioned

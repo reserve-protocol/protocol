@@ -34,12 +34,20 @@ All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be
 - convex
   - Make `price()` more resistant to manipulation by MEV
   - Emit `RewardsClaimed` event during `claimRewards()`
+  - Add new `crvUSD-USDC` plugin
 - morpho-aave
   - Emit `RewardsClaimed` event during `claimRewards()`
 - stargate
   - Emit `RewardsClaimed` event during `claimRewards()`
 - yearn-v2
   - Make `price()` more resistant to manipulation by MEV
+
+### Trading
+
+- `GnosisTrade`
+  - Add `version()` getter
+- `DutchTrade`
+  - Add `version()` getter
 
 ### Facades
 
