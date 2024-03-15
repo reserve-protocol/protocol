@@ -145,7 +145,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
-    
+
       await scenario.setPrimeBasket()
 
       // Refresh basket to be able to see updated config

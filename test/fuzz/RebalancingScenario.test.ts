@@ -1396,6 +1396,49 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
+
+  it('Handles small deviations from basket range check', async () => {
+    await scenario.setReweightable(1)
+    const s0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA0'))
+
+    // Setup a new basket C0 and C1 only
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA0') as number, fp('0.4').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.6').sub(1))
+    await scenario.forceSetPrimeBasket()
+
+    // Set backup config SA0, SA1, SA2 as backup
+    await scenario.pushBackingForBackup(tokenIDs.get('SA0') as number)
+    await scenario.pushBackingForBackup(tokenIDs.get('SA1') as number)
+    await scenario.pushBackingForBackup(tokenIDs.get('SA2') as number)
+    await scenario.setBackupConfig(0)
+
+    // Switch basket
+    await scenario.refreshBasket()
+
+    await advanceTime(301137)
+    await advanceBlocks(10543)
+
+    await scenario.connect(alice).issueTo('61', 0) // 61
+
+    // No s0 tokens in backing manager
+    expect(await s0.balanceOf(comp.backingManager.address)).to.equal(0)
+
+    // Unregister C0, first asset in basket
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).refreshBasket()
+
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
+
+    await advanceTime(304430)
+    await advanceBlocks(8789)
+
+    // Set minTradeVolume to 0 - properties hold
+    await scenario.connect(alice).setBackingManagerMinTradeVolume(0)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
