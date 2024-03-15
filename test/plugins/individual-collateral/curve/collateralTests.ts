@@ -40,9 +40,8 @@ import {
 import {
   advanceBlocks,
   advanceTime,
-  getLatestBlockNumber,
+  advanceToTimestamp,
   getLatestBlockTimestamp,
-  setNextBlockTimestamp,
 } from '#/test/utils/time'
 import {
   ERC20Mock,
@@ -344,7 +343,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await mintCollateralTo(ctx, amount, ctx.alice, ctx.collateral.address)
 
           await advanceBlocks(1000)
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
 
           const before = await Promise.all(
             ctx.rewardTokens.map((t) => t.balanceOf(ctx.wrapper.address))
@@ -365,7 +364,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await mintCollateralTo(ctx, amount, ctx.alice, ctx.alice.address)
 
           await advanceBlocks(1000)
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
 
           const before = await Promise.all(
             ctx.rewardTokens.map((t) => t.balanceOf(ctx.alice.address))
@@ -451,14 +450,14 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
           // After oracle timeout decay begins
           const decayDelay = (await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + decayDelay)
           await advanceBlocks(1 + decayDelay / 12)
           await ctx.collateral.refresh()
           await expectDecayedPrice(ctx.collateral.address)
 
           // After price timeout it becomes unpriced
           const priceTimeout = await ctx.collateral.priceTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + priceTimeout)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + priceTimeout)
           await advanceBlocks(1 + priceTimeout / 12)
           await expectUnpriced(ctx.collateral.address)
 
@@ -576,9 +575,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
           await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
+          // Check status + whenDefault
           const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await setNextBlockTimestamp(nextBlockTimestamp)
           const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
           await expect(ctx.collateral.refresh())
@@ -599,9 +597,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
           await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
+          // Check status + whenDefault
           const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await setNextBlockTimestamp(nextBlockTimestamp)
           const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
           await expect(ctx.collateral.refresh())
@@ -622,9 +619,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
           await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await setNextBlockTimestamp(nextBlockTimestamp)
+          // Check status + whenDefault
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -668,7 +663,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
         it('enters IFFY state when price becomes stale', async () => {
           const decayDelay = (await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + decayDelay)
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
@@ -754,7 +749,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
           it('after oracle timeout', async () => {
             const oracleTimeout = (await ctx.collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
-            await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
             await advanceBlocks(oracleTimeout / 12)
           })
 
@@ -959,7 +954,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         )
 
         // Advance past warmup period
-        await setNextBlockTimestamp(
+        await advanceToTimestamp(
           (await getLatestBlockTimestamp()) + (await basketHandler.warmupPeriod())
         )
 
@@ -997,9 +992,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(anyValue, [pairedERC20.address], [fp('1e-4')], false)
-        await setNextBlockTimestamp(
-          (await getLatestBlockTimestamp()) + config.warmupPeriod.toNumber()
-        )
+        await advanceToTimestamp((await getLatestBlockTimestamp()) + config.warmupPeriod.toNumber())
 
         // Run rebalancing auction
         await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
@@ -1011,9 +1004,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
         expect(await trade.sell()).to.equal(collateralERC20.address)
         expect(await trade.buy()).to.equal(pairedERC20.address)
-        const buyAmt = await trade.bidAmount(await trade.endBlock())
+        const buyAmt = await trade.bidAmount(await trade.endTime())
         await pairedERC20.connect(addr1).approve(trade.address, buyAmt)
-        await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+        await advanceToTimestamp((await trade.endTime()) - 1)
         const pairedBal = await pairedERC20.balanceOf(backingManager.address)
         await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
           backingManager,
@@ -1049,9 +1042,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
         expect(await trade.sell()).to.equal(collateralERC20.address)
         expect(await trade.buy()).to.equal(rToken.address)
-        const buyAmt = await trade.bidAmount(await trade.endBlock())
+        const buyAmt = await trade.bidAmount(await trade.endTime())
         await rToken.connect(addr1).approve(trade.address, buyAmt)
-        await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+        await advanceToTimestamp((await trade.endTime()) - 1)
 
         await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
           rTokenTrader,

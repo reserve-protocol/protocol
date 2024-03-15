@@ -79,7 +79,9 @@ contract Governance is
         returns (uint256)
     {
         uint256 asMicroPercent = super.proposalThreshold(); // {micro %}
-        uint256 pastSupply = token.getPastTotalSupply(block.number - 1); // {qStRSR}
+
+        // {qStRSR}
+        uint256 pastSupply = token.getPastTotalSupply(NetworkConfigLib.blockNumber() - 1);
         // max StRSR supply is 1e38
 
         // CEIL to make sure thresholds near 0% don't get rounded down to 0 tokens

@@ -11,7 +11,6 @@ import { setOraclePrice } from './utils/oracles'
 import { disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { whileImpersonating } from './utils/impersonation'
 import {
-  ActFacet,
   Asset,
   BackingManagerP1,
   BackingMgrCompatibleV1,
@@ -54,7 +53,7 @@ import {
   DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './fixtures'
-import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { advanceToTimestamp, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import {
   CollateralStatus,
   TradeKind,
@@ -675,7 +674,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction is over
-      await advanceBlocks(2 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Now should be settleable
       const settleable = await facade.auctionsSettleable(rsrTrader.address)
@@ -1568,7 +1567,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1632,7 +1631,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Upgrade components to V2
       await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
@@ -1667,7 +1666,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       await rTokenTrader.connect(owner).upgradeTo(revTraderV1.address)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Settle and start new auction - Will retry again
       await expectEvents(

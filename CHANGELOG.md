@@ -1,5 +1,21 @@
 # Changelog
 
+# 3.4.0
+
+## Upgrade Steps
+
+## Core Protocol Contracts
+
+## Plugins
+
+### Trading
+
+- `DutchTrade`
+  - Switch to timestamp-based model
+  - `price(uint256 blockNumber)` -> `price(uint48 timestamp)`
+  - Remove `startBlock() returns (uint256)` + `endBlock() returns (uint256)`
+  - Add `endTime() returns (uint48)`
+
 # 3.3.0
 
 This release improves how collateral plugins price LP tokens and moves reward claiming out to the asset plugin level.
@@ -10,7 +26,7 @@ Swapout all collateral plugins with appreciation.
 
 All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken, as well as aave-v3 USDC/USDCbC for canonical wrappers.
 
-### Core Protocol Contracts
+## Core Protocol Contracts
 
 - `BackingManager` + `RevenueTrader`
   - Change `claimRewards()` to delegatecall to the list of registered plugins

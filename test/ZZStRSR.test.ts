@@ -415,9 +415,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         })
       } else if (IMPLEMENTATION == Implementation.P1) {
         await whileImpersonating(ZERO_ADDRESS, async (signer) => {
-          await expect(stRSR.connect(signer).stake(amount)).to.be.revertedWith(
-            'ERC20: mint to the zero address'
-          )
+          await expect(stRSR.connect(signer).stake(amount)).to.be.revertedWith('zero address mint')
         })
       }
     })
@@ -1561,13 +1559,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
       await whileImpersonating(basketHandler.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount)).to.be.revertedWith(
-          'not backing manager'
-        )
+        await expect(stRSR.connect(signer).seizeRSR(amount)).to.be.revertedWith('!bm')
       })
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
 
-      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
+      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('!bm')
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 
@@ -1608,7 +1604,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(amount)).to.be.revertedWith(
-          'Cannot seize more RSR than we hold'
+          'seize exceeds balance'
         )
       })
 
@@ -2316,7 +2312,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       //  Perform transfer with user with no stake
       await expect(stRSR.connect(addr2).transfer(addr1.address, amount)).to.be.revertedWith(
-        'ERC20: transfer amount exceeds balance'
+        'transfer amount exceeds balance'
       )
 
       // Nothing transferred
@@ -2333,13 +2329,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to send to zero address
       await expect(stRSR.connect(addr1).transfer(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'ERC20: transfer to or from the zero address'
+        'zero address transfer'
       )
 
       // Attempt to send from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).transfer(addr2.address, amount)).to.be.revertedWith(
-          'ERC20: transfer to or from the zero address'
+          'zero address transfer'
         )
       })
 
@@ -2353,14 +2349,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should not allow transfer/transferFrom to address(this)', async () => {
       // transfer
       await expect(stRSR.connect(addr1).transfer(stRSR.address, 1)).to.be.revertedWith(
-        'StRSR transfer to self'
+        'transfer to self'
       )
 
       // transferFrom
       await stRSR.connect(addr1).approve(addr2.address, 1)
       await expect(
         stRSR.connect(addr2).transferFrom(addr1.address, stRSR.address, 1)
-      ).to.be.revertedWith('StRSR transfer to self')
+      ).to.be.revertedWith('transfer to self')
     })
 
     it('Should transferFrom stakes between accounts', async function () {
@@ -2530,7 +2526,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
       await expect(
         stRSR.connect(addr2).transferFrom(addr1.address, other.address, amount)
-      ).to.be.revertedWith('ERC20: insufficient allowance')
+      ).to.be.revertedWith('insufficient allowance')
 
       // Nothing transferred
       expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
@@ -2546,13 +2542,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to set allowance to zero address
       await expect(stRSR.connect(addr1).approve(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'ERC20: approve to or from the zero address'
+        'zero address approval'
       )
 
       // Attempt set allowance from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).approve(addr2.address, amount)).to.be.revertedWith(
-          'ERC20: approve to or from the zero address'
+          'zero address approval'
         )
       })
 
@@ -2588,7 +2584,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Should not allow to decrease below zero
       await expect(
         stRSR.connect(addr1).decreaseAllowance(addr2.address, amount.add(1))
-      ).to.be.revertedWith('ERC20: decreased allowance below zero')
+      ).to.be.revertedWith('decreased allowance below zero')
 
       // No changes
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)

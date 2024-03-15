@@ -74,19 +74,19 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     }
 
     function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < block.number, "ERC20Votes: block not yet mined");
+        require(blockNumber < NetworkConfigLib.blockNumber(), "ERC20Votes: block not yet mined");
         uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
         return _checkpointsLookup(_checkpoints[pastEra][account], blockNumber);
     }
 
     function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < block.number, "ERC20Votes: block not yet mined");
+        require(blockNumber < NetworkConfigLib.blockNumber(), "ERC20Votes: block not yet mined");
         uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
         return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], blockNumber);
     }
 
     function getPastEra(uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < block.number, "ERC20Votes: block not yet mined");
+        require(blockNumber < NetworkConfigLib.blockNumber(), "ERC20Votes: block not yet mined");
         return _checkpointsLookup(_eras, blockNumber);
     }
 
@@ -215,12 +215,12 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         oldWeight = pos == 0 ? 0 : ckpts[pos - 1].val;
         newWeight = op(oldWeight, delta);
 
-        if (pos > 0 && ckpts[pos - 1].fromBlock == block.number) {
+        if (pos > 0 && ckpts[pos - 1].fromBlock == NetworkConfigLib.blockNumber()) {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(
                 Checkpoint({
-                    fromBlock: SafeCastUpgradeable.toUint48(block.number),
+                    fromBlock: SafeCastUpgradeable.toUint48(NetworkConfigLib.blockNumber()),
                     val: SafeCastUpgradeable.toUint224(newWeight)
                 })
             );

@@ -22,6 +22,7 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
 
 /**
  * @title StaticATokenLM
+ * @dev Do not use on Arbitrum!
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  *
@@ -38,6 +39,7 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * Users should also be careful when claiming rewards using `forceUpdate=false` as this will result on permanent
  * loss of pending/uncollected rewards. It is recommended to always claim rewards using `forceUpdate=true`
  * unless the user is sure that gas costs would exceed the lost rewards.
+ *
  *
  * @author Aave
  * From: https://github.com/aave/protocol-v2/blob/238e5af2a95c3fbb83b0c8f44501ed2541215122/contracts/protocol/tokenization/StaticATokenLM.sol#L255
@@ -409,6 +411,8 @@ contract StaticATokenLM is
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
+        // Alert! block.number is incompatible with Arbitrum!
+        // Should be fine because Aave V2 is not currently deployed to Arbitrum
         if (block.number > _lastRewardBlock) {
             _lastRewardBlock = block.number;
             uint256 supply = totalSupply();

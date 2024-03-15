@@ -32,11 +32,11 @@ enum BidType {
 //   4. 95% - 100%: Constant at the worstPrice
 //
 // For a trade between 2 assets with 1% oracleError:
-//   A 30-minute auction on a chain with a 12-second blocktime has a ~20% price drop per block
-//   during the 1st period, ~0.8% during the 2nd period, and ~0.065% during the 3rd period.
+//   A 30-minute auction has a 20% price drop (every 12 seconds) during the 1st period,
+//   ~0.8% during the 2nd period, and ~0.065% during the 3rd period.
 //
 //   30-minutes is the recommended length of auction for a chain with 12-second blocktimes.
-//   6 minutes, 7.5 minutes, 15 minutes, 1.5 minutes for each pariod respectively.
+//   Period lengths: 6 minutes, 7.5 minutes, 15 minutes, 1.5 minutes.
 //
 //   Longer and shorter times can be used as well. The pricing method does not degrade
 //   beyond the degree to which less overall blocktime means less overall precision.
@@ -79,10 +79,15 @@ uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
  *   a bid to occur if no bots are online and the only bidders are humans.
  *
  * To bid:
- * 1. Call `bidAmount()` view to check prices at various blocks.
+ * 1. Call `bidAmount()` view to check prices at various future timestamps.
  * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
- * 3. Wait until the desired block is reached (hopefully not in the first 20% of the auction)
+ * 3. Wait until the desired time is reached (hopefully not in the first 20% of the auction)
  * 4. Call bid()
+ *
+ * Limitation: In order to support all chains, such as Arbitrum, this contract uses block time
+ *             instead of block number. This means there may be small ways that validators can
+ *             extract MEV by playing around with block.timestamp. However, we think this tradeoff
+ *             is worth it in order to not have to maintain multiple DutchTrade contracts.
  */
 contract DutchTrade is ITrade, Versioned {
     using FixLib for uint192;
@@ -105,9 +110,8 @@ contract DutchTrade is ITrade, Versioned {
     IERC20Metadata public buy;
     uint192 public sellAmount; // {sellTok}
 
-    // The auction runs from [startBlock, endTime], inclusive
-    uint256 public startBlock; // {block} when the dutch auction begins (one block after init())
-    uint256 public endBlock; // {block} when the dutch auction ends if no bids are received
+    // The auction runs from [startTime, endTime], inclusive
+    uint48 public startTime; // {s} when the dutch auction begins (one block after init()) lossy!
     uint48 public endTime; // {s} not used in this contract; needed on interface
 
     uint192 public bestPrice; // {buyTok/sellTok} The best plausible price based on oracle data
@@ -133,11 +137,11 @@ contract DutchTrade is ITrade, Versioned {
         return sellAmount.shiftl_toUint(int8(sell.decimals()));
     }
 
-    /// Calculates how much buy token is needed to purchase the lot at a particular block
-    /// @param blockNumber {block} The block number of the bid
+    /// Calculates how much buy token is needed to purchase the lot at a particular time
+    /// @param timestamp {s} The timestamp of the bid
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
-    function bidAmount(uint256 blockNumber) external view returns (uint256) {
-        return _bidAmount(_price(blockNumber));
+    function bidAmount(uint48 timestamp) external view returns (uint256) {
+        return _bidAmount(_price(timestamp));
     }
 
     // ==== Constructor ===
@@ -181,13 +185,10 @@ contract DutchTrade is ITrade, Versioned {
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
 
-        uint256 _startBlock = block.number + 1; // start in the next block
-        startBlock = _startBlock; // gas-saver
-
-        uint256 _endBlock = _startBlock + auctionLength / ONE_BLOCK; // FLOOR; endBlock is inclusive
-        endBlock = _endBlock; // gas-saver
-
-        endTime = uint48(block.timestamp + ONE_BLOCK * (_endBlock - _startBlock + 1));
+        // Track auction end by time, to generalize to all chains
+        uint48 _startTime = uint48(block.timestamp) + ONE_BLOCK; // can exceed 1 block
+        startTime = _startTime; // gas-saver
+        endTime = _startTime + auctionLength;
 
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
         uint192 _worstPrice = prices.sellLow.mulDiv(
@@ -208,7 +209,7 @@ contract DutchTrade is ITrade, Versioned {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(block.number); // enforces auction ongoing
+        uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -237,7 +238,7 @@ contract DutchTrade is ITrade, Versioned {
 
     /// Bid with callback for the auction lot at the current price; settle trade in protocol
     ///  Sold funds are sent back to the callee first via callee.dutchTradeCallback(...)
-    ///  Balance of buy token must increase by bidAmount(current block) after callback
+    ///  Balance of buy token must increase by bidAmount(block.timestamp) after callback
     ///
     /// @dev Caller must implement IDutchTradeCallee
     /// @param data {bytes} The data to pass to the callback
@@ -246,7 +247,7 @@ contract DutchTrade is ITrade, Versioned {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(block.number); // enforces auction ongoing
+        uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -289,7 +290,7 @@ contract DutchTrade is ITrade, Versioned {
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == address(origin), "only origin can settle");
-        require(bidder != address(0) || block.number > endBlock, "auction not over");
+        require(bidder != address(0) || block.timestamp > endTime, "auction not over");
 
         if (bidType == BidType.CALLBACK) {
             soldAmt = lot(); // {qSellTok}
@@ -315,19 +316,19 @@ contract DutchTrade is ITrade, Versioned {
     /// @return true iff the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
-        return status == TradeStatus.OPEN && (bidder != address(0) || block.number > endBlock);
+        return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
     }
 
     // === Private ===
 
     /// Return the price of the auction at a particular timestamp
-    /// @param blockNumber {block} The block number to get price for
+    /// @param timestamp {s} The timestamp to get price for
     /// @return {buyTok/sellTok}
-    function _price(uint256 blockNumber) private view returns (uint192) {
-        uint256 _startBlock = startBlock; // gas savings
-        uint256 _endBlock = endBlock; // gas savings
-        require(blockNumber >= _startBlock, "auction not started");
-        require(blockNumber <= _endBlock, "auction over");
+    function _price(uint48 timestamp) private view returns (uint192) {
+        uint48 _startTime = startTime; // {s} gas savings
+        uint48 _endTime = endTime; // {s} gas savings
+        require(timestamp >= _startTime, "auction not started");
+        require(timestamp <= _endTime, "auction over");
 
         /// Price Curve:
         ///   - first 20%: geometrically decrease the price from 1000x the bestPrice to 1.5x it
@@ -335,7 +336,7 @@ contract DutchTrade is ITrade, Versioned {
         ///   - next  50%: linearly decrease the price from bestPrice to worstPrice
         ///   - last   5%: constant at worstPrice
 
-        uint192 progression = divuu(blockNumber - _startBlock, _endBlock - _startBlock); // {1}
+        uint192 progression = divuu(timestamp - _startTime, _endTime - _startTime); // {1}
 
         // Fast geometric decay -- 0%-20% of auction
         if (progression < TWENTY_PERCENT) {

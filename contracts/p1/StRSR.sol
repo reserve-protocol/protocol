@@ -434,11 +434,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external {
         requireNotTradingPausedOrFrozen();
 
-        require(_msgSender() == address(backingManager), "not backing manager");
+        require(_msgSender() == address(backingManager), "!bm");
         require(rsrAmount > 0, "Amount cannot be zero");
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
-        require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
+        require(rsrAmount <= rsrBalance, "seize exceeds balance");
 
         _payoutRewards();
 
@@ -816,7 +816,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
         address owner = _msgSender();
         uint256 currentAllowance = _allowances[era][owner][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        require(currentAllowance >= subtractedValue, "decreased allowance below zero");
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
@@ -831,14 +831,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256 amount
     ) internal {
-        require(
-            from != address(0) && to != address(0),
-            "ERC20: transfer to or from the zero address"
-        );
+        require(from != address(0) && to != address(0), "zero address transfer");
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 fromBalance = eraStakes[from];
-        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+        require(fromBalance >= amount, "transfer amount exceeds balance");
         unchecked {
             eraStakes[from] = fromBalance - amount;
         }
@@ -853,7 +850,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // effects: bal[account] += amount; totalStakes += amount
     // this must only be called from a function that will fixup stakeRSR/Rate
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
+        require(account != address(0), "zero address mint");
         assert(totalStakes + amount < type(uint224).max);
 
         stakes[era][account] += amount;
@@ -869,13 +866,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function _burn(address account, uint256 amount) internal virtual {
         // untestable:
         //      _burn is only called from unstake(), which uses msg.sender as `account`
-        require(account != address(0), "ERC20: burn from the zero address");
+        require(account != address(0), "zero address burn");
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 accountBalance = eraStakes[account];
         // untestable:
         //      _burn is only called from unstake(), which already checks this
-        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        require(accountBalance >= amount, "burn amount exceeds balance");
         unchecked {
             eraStakes[account] = accountBalance - amount;
         }
@@ -890,10 +887,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address spender,
         uint256 amount
     ) internal {
-        require(
-            owner != address(0) && spender != address(0),
-            "ERC20: approve to or from the zero address"
-        );
+        require(owner != address(0) && spender != address(0), "zero address approval");
 
         _allowances[era][owner][spender] = amount;
         emit Approval(owner, spender, amount);
@@ -906,7 +900,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) internal {
         uint256 currentAllowance = _allowances[era][owner][spender];
         if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+            require(currentAllowance >= amount, "insufficient allowance");
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
             }
@@ -920,7 +914,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256
     ) internal virtual {
-        require(to != address(this), "StRSR transfer to self");
+        require(to != address(this), "transfer to self");
     }
 
     // === ERC20Permit ===

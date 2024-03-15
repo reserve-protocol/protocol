@@ -38,10 +38,10 @@ import {
   DutchTradeRouter,
 } from '../typechain'
 import {
-  advanceTime,
   advanceBlocks,
+  advanceTime,
+  advanceToTimestamp,
   getLatestBlockTimestamp,
-  getLatestBlockNumber,
 } from './utils/time'
 import {
   Collateral,
@@ -3251,18 +3251,19 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           )
           await token1.connect(addr1).approve(trade.address, initialBal)
 
-          const start = await trade.startBlock()
-          const end = await trade.endBlock()
+          const start = await trade.startTime()
+          const end = await trade.endTime()
 
           // Simulate 30 minutes of blocks, should swap at right price each time
           const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
           await token1.connect(addr1).approve(router.address, constants.MaxUint256)
-          let now = bn(await getLatestBlockNumber())
-          while (now.lt(end)) {
+          await advanceToTimestamp(start)
+          let now = start
+          while (now < end) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = divCeil(
               await dutchBuyAmount(
-                fp(now.sub(start)).div(end.sub(start)),
+                fp(now - start).div(end - start),
                 collateral1.address,
                 collateral0.address,
                 issueAmount,
@@ -3276,8 +3277,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               .connect(addr1)
               .callStatic.bid(trade.address, addr1.address)
             expect(staticResult.buyAmt).to.equal(actual)
-            await advanceBlocks(1)
-            now = bn(await getLatestBlockNumber())
+            await advanceToTimestamp(now + 12)
+            now = await getLatestBlockTimestamp()
           }
         })
 
@@ -3290,9 +3291,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             await backingManager.trades(token0.address)
           )
           await token1.connect(addr1).approve(trade.address, initialBal)
-          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
+          await advanceToTimestamp((await trade.endTime()) + 1)
           await expect(
-            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
           ).to.be.revertedWith('auction over')
           await expect(router.connect(addr1).bid(trade.address, addr1.address)).be.revertedWith(
             'auction over'
@@ -3323,7 +3324,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             await token1.connect(addr1).approve(trade1.address, initialBal)
 
             // Snipe auction at 0s left
-            await advanceBlocks((await trade1.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+
+            await advanceToTimestamp((await trade1.endTime()) - 1)
 
             await router.connect(addr1).bid(trade1.address, addr1.address)
             expect(await trade1.canSettle()).to.equal(false)
@@ -3363,7 +3365,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             await token1.connect(addr1).approve(trade2.address, initialBal)
 
             // Advance to final block of auction
-            await advanceBlocks((await trade2.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+            await advanceToTimestamp((await trade2.endTime()) - 1)
             expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
             expect(await trade2.canSettle()).to.equal(false)
 
@@ -3377,7 +3379,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           it('via fallback to Batch Auction', async () => {
             // Advance past auction end block
-            await advanceBlocks((await trade2.endBlock()).sub(await getLatestBlockNumber()).add(1))
+            await advanceToTimestamp((await trade2.endTime()) + 1)
             expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
             expect(await trade2.canSettle()).to.equal(true)
 
@@ -5143,7 +5145,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       let tradeAddr = await backingManager.trades(token2.address)
       let trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await backupToken1.connect(addr1).approve(trade.address, initialBal)
-      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+      await advanceToTimestamp((await trade.endTime()) - 1)
 
       await snapshotGasCost(await router.connect(addr1).bid(trade.address, addr1.address))
 
