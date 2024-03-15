@@ -50,7 +50,6 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
-  advanceBlocks,
   advanceTime,
   advanceToTimestamp,
   getLatestBlockTimestamp,
@@ -1461,13 +1460,19 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
       const now = await getLatestBlockTimestamp()
+      const startTime = await trade.startTime()
       const endTime = await trade.endTime()
-      if (now < endTime) await advanceToTimestamp(await trade.endTime())
+      const bidTime =
+        startTime +
+        progression
+          .mul(endTime - startTime)
+          .div(fp('1'))
+          .toNumber()
+      if (now < bidTime) await advanceToTimestamp(bidTime - 1)
 
       // Bid
       const sellAmt = await trade.lot()
-      const bidBlock = bn('1').add(await getLatestBlockNumber())
-      const bidAmt = await trade.bidAmount(bidBlock)
+      const bidAmt = await trade.bidAmount(bidTime)
       expect(bidAmt).to.be.gt(0)
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
