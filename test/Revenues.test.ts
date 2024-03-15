@@ -3703,7 +3703,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Perform test for both bid types
         bidTypes.forEach((bidType) => {
-          it(`Should bid at exactly endBlock() and not launch another auction - Bid Type: ${
+          it(`Should bid at exactly endTime() and not launch another auction - Bid Type: ${
             Object.values(BidType)[bidType]
           }`, async () => {
             const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
