@@ -87,7 +87,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
         out.trade = trade;
         out.buyToken = IERC20(trade.buy());
         out.sellToken = IERC20(trade.sell());
-        out.buyAmt = trade.bidAmount(NetworkConfigLib.blockNumber()); // {qBuyToken}
+        out.buyAmt = trade.bidAmount(block.timestamp); // {qBuyToken}
         out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt);
 
         uint256 sellAmt = out.sellToken.balanceOf(address(this)); // {qSellToken}
