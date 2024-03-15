@@ -730,13 +730,13 @@ contract ChaosOpsScenario {
 
     function setPrimeBasket() public {
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
-       // if(!bh.reweightable()) _validateWeights();
+        // if(!bh.reweightable()) _validateWeights();
         bh.setPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
     }
 
-     function forceSetPrimeBasket() public {
+    function forceSetPrimeBasket() public {
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
-       // if(!bh.reweightable()) _validateWeights();
+        // if(!bh.reweightable()) _validateWeights();
         bh.forceSetPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
     }
 

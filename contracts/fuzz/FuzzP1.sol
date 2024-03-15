@@ -66,6 +66,10 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 
+    function basketLength() public view returns (uint256) {
+        return basket.erc20s.length;
+    }
+
     function savePrev() external {
         prev.setFrom(basket);
     }
@@ -194,10 +198,16 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
     }
 
     function isBasketRangeSmaller() external view returns (bool) {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(
+            address(IMainFuzz(address(main)).basketHandler())
+        );
         BasketRange memory currentRange = getCurrentBasketRange();
+
         return
-            currentRange.top <= basketRangePrev.top &&
-            currentRange.bottom >= basketRangePrev.bottom;
+            currentRange.top <=
+            basketRangePrev.top.mul(FIX_ONE.plus(maxTradeSlippage), CEIL) + bh.basketLength() &&
+            currentRange.bottom >=
+            basketRangePrev.bottom.mul(FIX_ONE.minus(maxTradeSlippage), FLOOR);
     }
 
     function isValidSurplusToken(IERC20 token) external view returns (bool) {
@@ -339,7 +349,7 @@ contract BrokerP1Fuzz is BrokerP1 {
 
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         tradeSet.add(address(trade));
-        tradeKindSet[address(trade)] = uint256(TradeKind.BATCH_AUCTION);
+        tradeKindSet[address(trade)] = uint256(TradeKind.DUTCH_AUCTION);
         lastOpenedTrade = trade;
         return trade;
     }

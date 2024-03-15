@@ -121,7 +121,6 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         return refPerTokModel.price();
     }
-    
 }
 
 // A CollateralMock that does not use decaying lotPrice()s, but instead just returns the last saved
