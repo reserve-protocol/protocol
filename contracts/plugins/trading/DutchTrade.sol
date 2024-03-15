@@ -140,7 +140,7 @@ contract DutchTrade is ITrade, Versioned {
     /// Calculates how much buy token is needed to purchase the lot at a particular time
     /// @param timestamp {s} The timestamp of the bid
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
-    function bidAmount(uint256 timestamp) external view returns (uint256) {
+    function bidAmount(uint48 timestamp) external view returns (uint256) {
         return _bidAmount(_price(timestamp));
     }
 
@@ -209,7 +209,7 @@ contract DutchTrade is ITrade, Versioned {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(block.timestamp); // enforces auction ongoing
+        uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -247,7 +247,7 @@ contract DutchTrade is ITrade, Versioned {
         require(bidder == address(0), "bid already received");
 
         // {buyTok/sellTok}
-        uint192 price = _price(block.timestamp); // enforces auction ongoing
+        uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
 
         // {qBuyTok}
         amountIn = _bidAmount(price);
@@ -324,8 +324,8 @@ contract DutchTrade is ITrade, Versioned {
     /// Return the price of the auction at a particular timestamp
     /// @param timestamp {s} The timestamp to get price for
     /// @return {buyTok/sellTok}
-    function _price(uint256 timestamp) private view returns (uint192) {
-        uint256 _startTime = startTime; // {s} gas savings
+    function _price(uint48 timestamp) private view returns (uint192) {
+        uint48 _startTime = startTime; // {s} gas savings
         uint48 _endTime = endTime; // {s} gas savings
         require(timestamp >= _startTime, "auction not started");
         require(timestamp <= _endTime, "auction over");
