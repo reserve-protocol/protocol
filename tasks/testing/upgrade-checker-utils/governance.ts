@@ -117,19 +117,17 @@ export const passAndExecuteProposal = async (
     // Advance time required by timelock
     await advanceTime(hre, minDelay.add(1).toString())
     await advanceBlocks(hre, 1)
+
+    /*
+     ** Executing proposals requires that the oracles aren't stale.
+     ** Make sure to specify any extra assets that may have been registered.
+     */
     await pushOraclesForward(hre, rtokenAddress, extraAssets)
 
     console.log('Executing now...')
 
     // Execute
     await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
-
-    // We might have registered new assets,
-    // TODO can we do better?
-    //      The issue here is that the gov proposal may have registered a new asset
-    //      The previous oracle refresh would not have caught that asset
-    //      This means any setPrimeBasket() call would skip the asset
-    await pushOraclesForward(hre, rtokenAddress, extraAssets)
 
     // Check proposal state
     propState = await governor.state(proposalId)

@@ -186,7 +186,15 @@ task('recollateralize')
       recollateralize
     */
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
-    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION)
+    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION).catch((e: Error) => {
+      if (e.message.includes('already collateralized')) {
+        console.log('Already Collateralized!')
+
+        return
+      }
+
+      throw e
+    })
     if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
 
     // Give `tester` RTokens from Base bridge
@@ -285,5 +293,31 @@ task('hyusd-test', 'propose a gov action').setAction(async (params: ProposeParam
   await hre.run('recollateralize', {
     rtoken: params.rtoken,
     governor: params.governor,
+  })
+})
+
+task('eusd-q1-2024-test', 'Test deployed eUSD Proposals').setAction(async (_, hre) => {
+  await passAndExecuteProposal(
+    hre,
+    '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
+    '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
+    '114052081659629247617665835769035094910371266951213483500173240902265689564540'
+  )
+
+  await hre.run('recollateralize', {
+    rtoken: '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
+    governor: '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
+  })
+
+  await passAndExecuteProposal(
+    hre,
+    '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
+    '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
+    '84013999114211651083886802889501217056607481369823717462033802424606122383108'
+  )
+
+  await hre.run('recollateralize', {
+    rtoken: '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
+    governor: '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
   })
 })
