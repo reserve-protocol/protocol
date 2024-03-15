@@ -32,11 +32,11 @@ enum BidType {
 //   4. 95% - 100%: Constant at the worstPrice
 //
 // For a trade between 2 assets with 1% oracleError:
-//   A 30-minute auction on a chain with a 12-second blocktime has a ~20% price drop per block
-//   during the 1st period, ~0.8% during the 2nd period, and ~0.065% during the 3rd period.
+//   A 30-minute auction has a 20% price drop (every 12 seconds) during the 1st period,
+//   ~0.8% during the 2nd period, and ~0.065% during the 3rd period.
 //
 //   30-minutes is the recommended length of auction for a chain with 12-second blocktimes.
-//   6 minutes, 7.5 minutes, 15 minutes, 1.5 minutes for each pariod respectively.
+//   Period lengths: 6 minutes, 7.5 minutes, 15 minutes, 1.5 minutes.
 //
 //   Longer and shorter times can be used as well. The pricing method does not degrade
 //   beyond the degree to which less overall blocktime means less overall precision.
@@ -81,7 +81,7 @@ uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
  * To bid:
  * 1. Call `bidAmount()` view to check prices at various future timestamps.
  * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
- * 3. Wait until the desired block is reached (hopefully not in the first 20% of the auction)
+ * 3. Wait until the desired time is reached (hopefully not in the first 20% of the auction)
  * 4. Call bid()
  *
  * Limitation: In order to support all chains, such as Arbitrum, this contract uses block time
@@ -238,7 +238,7 @@ contract DutchTrade is ITrade, Versioned {
 
     /// Bid with callback for the auction lot at the current price; settle trade in protocol
     ///  Sold funds are sent back to the callee first via callee.dutchTradeCallback(...)
-    ///  Balance of buy token must increase by bidAmount(current block) after callback
+    ///  Balance of buy token must increase by bidAmount(block.timestamp) after callback
     ///
     /// @dev Caller must implement IDutchTradeCallee
     /// @param data {bytes} The data to pass to the callback
