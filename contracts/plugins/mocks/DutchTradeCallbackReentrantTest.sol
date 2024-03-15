@@ -15,7 +15,11 @@ contract DutchTradeCallbackReentrantTest is IDutchTradeCallee {
         _currentTrade = trade;
         _trader = trader;
 
-        trade.buy().transferFrom(msg.sender, address(this), trade.bidAmount(block.number));
+        trade.buy().transferFrom(
+            msg.sender,
+            address(this),
+            trade.bidAmount(uint48(block.timestamp))
+        );
 
         trade.bidWithCallback(new bytes(0));
     }
