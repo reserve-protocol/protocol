@@ -112,7 +112,7 @@ contract DutchTrade is ITrade, Versioned {
 
     // The auction runs from [startTime, endTime], inclusive
     uint48 public startTime; // {s} when the dutch auction begins (one block after init()) lossy!
-    uint48 public endTime; // {s} not used in this contract; needed on interface
+    uint48 public endTime; // {s} when the dutch auction ends
 
     uint192 public bestPrice; // {buyTok/sellTok} The best plausible price based on oracle data
     uint192 public worstPrice; // {buyTok/sellTok} The worst plausible price based on oracle data

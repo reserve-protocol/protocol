@@ -14,7 +14,7 @@
   - Switch to timestamp-based model
   - `price(uint256 blockNumber)` -> `price(uint48 timestamp)`
   - Remove `startBlock() returns (uint256)` + `endBlock() returns (uint256)`
-  - Add `endTime() returns (uint48)`
+  - Add `startTime() returns (uint48)` (`endTime() returns (uint48)` already existed and is now used in the contract)
 
 # 3.3.0
 
