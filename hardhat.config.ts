@@ -92,6 +92,7 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: MNEMONIC,
       },
+      gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     'arbitrum-sepolia': {
       chainId: 421614,
