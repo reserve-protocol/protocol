@@ -2,7 +2,7 @@ import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
 import {
-  advanceBlocks,
+  advanceToTimestamp,
   advanceTime,
   getLatestBlockNumber,
   getLatestBlockTimestamp,
@@ -13,7 +13,7 @@ import { TestITrading } from '@typechain/TestITrading'
 import { BigNumber, ContractTransaction } from 'ethers'
 import { Interface, LogDescription } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { collateralToUnderlying, whales } from './constants'
+import { whales } from './constants'
 import { logToken } from './logs'
 
 export const runBatchTrade = async (
@@ -91,8 +91,8 @@ export const runDutchTrade = async (
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
 
-  let tradesRemain: boolean = false
-  let newSellToken: string = ''
+  let tradesRemain = false
+  let newSellToken = ''
 
   const tradeAddr = await trader.trades(tradeToken)
   const trade = <DutchTrade>await hre.ethers.getContractAt('DutchTrade', tradeAddr)
@@ -105,25 +105,19 @@ export const runDutchTrade = async (
   const buyTokenAddress = await trade.buy()
   console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
 
-  const endBlock = await trade.endBlock()
+  const endTime = await trade.endTime()
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
 
   // Bid close to end block
-  await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(5))
+  await advanceToTimestamp(hre, endTime - 5)
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
   await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
-
-  await whileImpersonating(hre, whaleAddr, async (whale) => {
-    const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-    // Bid
-
-    ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
-      router.bid(trade.address, await router.signer.getAddress()),
-      trader
-    )
-  })
+  ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
+    router.bid(trade.address, await router.signer.getAddress()),
+    trader
+  )
 
   if (
     (await trade.canSettle()) ||
@@ -143,8 +137,8 @@ export const callAndGetNextTrade = async (
   tx: Promise<ContractTransaction>,
   trader: TestITrading
 ): Promise<[boolean, string]> => {
-  let tradesRemain: boolean = false
-  let newSellToken: string = ''
+  let tradesRemain = false
+  let newSellToken = ''
 
   // Process transaction and get next trade
   const r = await tx
@@ -154,7 +148,9 @@ export const callAndGetNextTrade = async (
     let parsedLog: LogDescription | undefined
     try {
       parsedLog = iface.parseLog(event)
-    } catch {}
+    } catch {
+      // ignore
+    }
     if (parsedLog && parsedLog.name == 'TradeStarted') {
       console.log(
         `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
@@ -190,44 +186,6 @@ export const getTokens = async (
       await getERC20Tokens(hre, tokenAddress, amount, recipient)
       return
   }
-}
-
-// mint regular cTokens  for an amount of `underlying`
-const mintCToken = async (
-  hre: HardhatRuntimeEnvironment,
-  tokenAddress: string,
-  amount: BigNumber,
-  recipient: string
-) => {
-  const collateral = await hre.ethers.getContractAt('ICToken', tokenAddress)
-  const underlying = await hre.ethers.getContractAt(
-    'ERC20Mock',
-    collateralToUnderlying[tokenAddress.toLowerCase()]
-  )
-  await whileImpersonating(hre, whales[tokenAddress.toLowerCase()], async (whaleSigner) => {
-    await underlying.connect(whaleSigner).approve(collateral.address, amount)
-    await collateral.connect(whaleSigner).mint(amount)
-    const bal = await collateral.balanceOf(whaleSigner.address)
-    await collateral.connect(whaleSigner).transfer(recipient, bal)
-  })
-}
-
-// mints staticAToken for an amount of `underlying`
-const mintStaticAToken = async (
-  hre: HardhatRuntimeEnvironment,
-  tokenAddress: string,
-  amount: BigNumber,
-  recipient: string
-) => {
-  const collateral = await hre.ethers.getContractAt('StaticATokenLM', tokenAddress)
-  const underlying = await hre.ethers.getContractAt(
-    'ERC20Mock',
-    collateralToUnderlying[tokenAddress.toLowerCase()]
-  )
-  await whileImpersonating(hre, whales[tokenAddress.toLowerCase()], async (whaleSigner) => {
-    await underlying.connect(whaleSigner).approve(collateral.address, amount)
-    await collateral.connect(whaleSigner).deposit(recipient, amount, 0, true)
-  })
 }
 
 // get a specific amount of wrapped cTokens
