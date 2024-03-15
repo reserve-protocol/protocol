@@ -575,9 +575,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
           await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
+          // Check status + whenDefault
           const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await advanceToTimestamp(nextBlockTimestamp)
           const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
           await expect(ctx.collateral.refresh())
@@ -598,9 +597,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
           await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
+          // Check status + whenDefault
           const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await advanceToTimestamp(nextBlockTimestamp)
           const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
           await expect(ctx.collateral.refresh())
@@ -621,9 +619,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
           await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
+          // Check status + whenDefault
           const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await advanceToTimestamp(nextBlockTimestamp)
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 

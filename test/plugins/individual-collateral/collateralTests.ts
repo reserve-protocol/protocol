@@ -474,9 +474,8 @@ export default function fn<X extends CollateralFixtureContext>(
             // Depeg - Reducing price by 20%
             await reduceTargetPerRef(ctx, 20)
 
-            // Set next block timestamp - for deterministic result
+            // Check status + whenDefault
             const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            await advanceToTimestamp(nextBlockTimestamp)
             const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
             await expect(collateral.refresh())
               .to.emit(collateral, 'CollateralStatusChanged')
@@ -498,9 +497,8 @@ export default function fn<X extends CollateralFixtureContext>(
             // Depeg - Raising price by 20%
             await increaseTargetPerRef(ctx, 20)
 
-            // Set next block timestamp - for deterministic result
+            // Check status + whenDefault
             const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            await advanceToTimestamp(nextBlockTimestamp)
             const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
             await expect(collateral.refresh())
@@ -523,9 +521,8 @@ export default function fn<X extends CollateralFixtureContext>(
             // Depeg - Reducing price by 20%
             await reduceTargetPerRef(ctx, 20)
 
-            // Set next block timestamp - for deterministic result
+            // Check status + whenDefault
             const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            await advanceToTimestamp(nextBlockTimestamp)
             await collateral.refresh()
             expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
