@@ -16,7 +16,7 @@ import {
 } from '../../../../typechain'
 import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
-import { CollateralStatus } from '../../../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   PRICE_TIMEOUT,
@@ -25,7 +25,6 @@ import {
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  WETH,
   FRX_ETH,
   SFRX_ETH,
   ETH_USD_PRICE_FEED,
@@ -58,10 +57,10 @@ interface SfrxEthCollateralOpts extends CollateralOpts {
   _maximumCurvePoolEma?: BigNumberish
 }
 
-export const defaultRethCollateralOpts: SfrxEthCollateralOpts = {
+export const defaultSFrxEthCollateralOpts: SfrxEthCollateralOpts = {
   erc20: SFRX_ETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
-  rewardERC20: WETH,
+  rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
@@ -78,7 +77,7 @@ export const defaultRethCollateralOpts: SfrxEthCollateralOpts = {
 export const deployCollateral = async (
   opts: SfrxEthCollateralOpts = {}
 ): Promise<TestICollateral> => {
-  opts = { ...defaultRethCollateralOpts, ...opts }
+  opts = { ...defaultSFrxEthCollateralOpts, ...opts }
 
   const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'SFraxEthCollateral'
@@ -119,7 +118,7 @@ const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CollateralOpts = {}
 ): Fixture<SFrxEthCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultRethCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultSFrxEthCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
