@@ -620,7 +620,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await updateAnswerTx.wait()
 
           // Check status + whenDefault
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 

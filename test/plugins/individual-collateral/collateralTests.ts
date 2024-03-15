@@ -522,7 +522,6 @@ export default function fn<X extends CollateralFixtureContext>(
             await reduceTargetPerRef(ctx, 20)
 
             // Check status + whenDefault
-            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
             await collateral.refresh()
             expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
