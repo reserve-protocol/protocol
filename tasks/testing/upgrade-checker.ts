@@ -17,9 +17,12 @@ import runChecks3_3_0, {
   proposal_3_3_0_step_4,
 } from './upgrade-checker-utils/upgrades/3_3_0_plugins'
 import {
-  passAndExecuteProposal,
+  passProposal,
+  executeProposal,
   proposeUpgrade,
   stakeAndDelegateRsr,
+  moveProposalToActive,
+  voteProposal,
 } from './upgrade-checker-utils/governance'
 import { advanceTime, getLatestBlockNumber } from '#/utils/time'
 
@@ -159,7 +162,11 @@ task('propose', 'propose a gov action')
     })()
 
     const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, stepFunction)
-    await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId, proposal)
+
+    await moveProposalToActive(hre, params.rtoken, params.governor, proposal.proposalId)
+    await voteProposal(hre, params.rtoken, params.governor, proposal.proposalId)
+    await passProposal(hre, params.rtoken, params.governor, proposal.proposalId)
+    await executeProposal(hre, params.rtoken, params.governor, proposal.proposalId, proposal)
   })
 
 task('recollateralize')
@@ -275,49 +282,36 @@ task('recollateralize')
     expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
   })
 
-task('hyusd-test', 'propose a gov action').setAction(async (params: ProposeParams, hre) => {
-  const [tester] = await hre.ethers.getSigners()
-
-  await hre.run('give-rsr', { address: tester.address })
-  await stakeAndDelegateRsr(hre, '0xacdf0dba4b9839b96221a8487e9ca660a48212be', tester.address)
-
-  await passAndExecuteProposal(
-    hre,
-    '0xacdf0dba4b9839b96221a8487e9ca660a48212be',
-    '0x22d7937438b4bBf02f6cA55E3831ABB94Bd0b6f1',
-    '56375661373325357163307105282637191906372195918163014747036462170506704909512',
-    undefined,
-    ['0xCFA67f42A0fDe4F0Fb612ea5e66170B0465B84c1', '0x7Dee4DbeF75f93cCA06823Ac915Df990be3F1538']
-  )
-
-  await hre.run('recollateralize', {
-    rtoken: params.rtoken,
-    governor: params.governor,
-  })
-})
-
 task('eusd-q1-2024-test', 'Test deployed eUSD Proposals').setAction(async (_, hre) => {
-  await passAndExecuteProposal(
-    hre,
-    '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
-    '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
-    '114052081659629247617665835769035094910371266951213483500173240902265689564540'
-  )
+  console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
+  const RTokenAddress = '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f'
+  const RTokenGovernor = '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6'
+
+  const ProposalIdOne =
+    '114052081659629247617665835769035094910371266951213483500173240902265689564540'
+  const ProposalIdTwo =
+    '84013999114211651083886802889501217056607481369823717462033802424606122383108'
+
+  // Make sure both proposals are active.
+  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
   await hre.run('recollateralize', {
-    rtoken: '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
-    governor: '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
+    rtoken: RTokenAddress,
+    governor: RTokenGovernor,
   })
 
-  await passAndExecuteProposal(
-    hre,
-    '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
-    '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
-    '84013999114211651083886802889501217056607481369823717462033802424606122383108'
-  )
-
+  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
   await hre.run('recollateralize', {
-    rtoken: '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f',
-    governor: '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
+    rtoken: RTokenAddress,
+    governor: RTokenGovernor,
   })
 })
