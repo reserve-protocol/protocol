@@ -3,10 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IAsset.sol";
-import "../../interfaces/IAssetRegistry.sol";
-import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
-import "./RecollateralizationLib.sol";
 
 struct TradeInfo {
     IAsset sell;
