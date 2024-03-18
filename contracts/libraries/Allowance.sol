@@ -23,6 +23,9 @@ library AllowanceLib {
 
         // 1. Set initial allowance to 0
         token.approve(spender, 0);
+        // untestable:
+        //    allowance should always be 0 if token behaves correctly
+        require(token.allowance(address(this), spender) == 0, "allowance not 0");
 
         if (value == 0) return;
 
@@ -34,6 +37,11 @@ library AllowanceLib {
         } catch {}
 
         // 3. Fall-back to setting a maximum allowance
-        if (!success) token.approve(spender, type(uint256).max);
+        if (!success) {
+            token.approve(spender, type(uint256).max);
+            // untestable:
+            //    allowance should always be max value if token behaves correctly
+            require(token.allowance(address(this), spender) >= value, "allowance missing");
+        }
     }
 }
