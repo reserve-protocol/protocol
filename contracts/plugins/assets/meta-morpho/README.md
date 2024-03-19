@@ -1,0 +1,3 @@
+# MetaMorpho
+
+Morpho Blue is a permisionless lending protocol. At the time of this writing (March 19th, 2024), the only way to deposit is through something called **MetaMorpho**: (somewhat) managed ERC4626 vaults. Our integration with these tokens is straightforward with the exception of reward claiming, which occurs via supplying a merkle proof. This can be done permisionlessly and without interacting with any of our contracts, so any interaction with rewards is omitted here. The expectation is -- _and this is important to emphasize_ -- **any MORPHO reward claiming is left up to the RToken community to cause**. MORPHO needs to be registered as an asset to liquidate the tokens afterwards.
