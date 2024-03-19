@@ -1,0 +1,8 @@
+{
+  "collateral": {
+    "wstETH": "0x02Ee6862cF431D7CEaa78112D635D2Be7DdFC178"
+  },
+  "erc20s": {
+    "wstETH": "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452"
+  }
+}

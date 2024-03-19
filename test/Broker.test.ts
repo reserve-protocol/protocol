@@ -2,7 +2,7 @@ import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardha
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber, ContractFactory, constants } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import {
@@ -13,6 +13,7 @@ import {
   TradeStatus,
   ZERO_ADDRESS,
   ONE_ADDRESS,
+  BidType,
 } from '../common/constants'
 import { bn, fp, divCeil, shortString, toBNDecimals } from '../common/numbers'
 import {
@@ -42,7 +43,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   SLOW,
 } from './fixtures'
@@ -1227,7 +1228,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           oracleError: ORACLE_ERROR,
           erc20: token0.address,
           maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -1376,11 +1377,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     if (!(Implementation.P1 && useEnv('EXTREME'))) return // prevents bunch of skipped tests
 
     async function runScenario([
+      bidType,
       sellTokDecimals,
       buyTokDecimals,
       auctionSellAmt,
       progression,
     ]: BigNumber[]) {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
       // Factories
       const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
@@ -1454,6 +1457,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const tradeAddr = await backingManager.trades(sellTok.address)
       await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
       const currentBlock = bn(await getLatestBlockNumber())
       const toAdvance = progression
         .mul((await trade.endBlock()).sub(currentBlock))
@@ -1468,9 +1472,16 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(bidAmt).to.be.gt(0)
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
-      await expect(trade.connect(addr1).bid())
-        .to.emit(backingManager, 'TradeSettled')
-        .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+
+      if (bidType.eq(bn(BidType.CALLBACK))) {
+        await expect(router.connect(addr1).bid(trade.address, addr1.address))
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      } else if (bidType.eq(bn(BidType.TRANSFER))) {
+        await expect(trade.connect(addr1).bid())
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+      }
 
       // Check balances
       expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))
@@ -1485,6 +1496,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     }
 
     // ==== Generate the tests ====
+
+    const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
     const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
@@ -1503,7 +1516,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // total cases is 5 * 5 * 3 * 6 = 450
     }
 
-    const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, progression)
+    const paramList = cartesianProduct(bidTypes, decimals, decimals, auctionSellAmts, progression)
 
     const numCases = paramList.length.toString()
     paramList.forEach((params, index) => {

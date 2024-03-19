@@ -25,10 +25,16 @@ contract SFraxCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {}
 
+    function refresh() public virtual override {
+        try IStakedFrax(address(erc20)).syncRewardsAndDistribution() {} catch {}
+
+        super.refresh();
+    }
+
     // solhint-enable no-empty-blocks
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return
             divuu(
                 IStakedFrax(address(erc20)).totalAssets(),

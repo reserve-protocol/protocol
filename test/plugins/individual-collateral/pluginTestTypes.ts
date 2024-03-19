@@ -91,6 +91,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   // toggle on or off: tests that focus on a targetPerRef default
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
 
+  // toggle on or off: tests that focus on a targetPerRef defaulting upwards
+  itChecksTargetPerRefDefaultUp: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // toggle on or off: tests that focus on a refPerTok default
   itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
 
@@ -105,6 +108,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
 
   // does the peg price matter for the results of tryPrice()?
   itIsPricedByPeg?: boolean
+
+  // is an oracle that could go stale involved in refPerTok?
+  itHasOracleRefPerTok?: boolean
 
   // a function to reset the fork to a desired block
   resetFork: () => void

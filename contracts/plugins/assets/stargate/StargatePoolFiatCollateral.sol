@@ -27,7 +27,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     }
 
     /// @return _rate {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view virtual override returns (uint192) {
+    function underlyingRefPerTok() public view virtual override returns (uint192) {
         uint256 _totalSupply = pool.totalSupply();
         uint192 _rate = FIX_ONE; // 1:1 if pool has no tokens at all
         if (_totalSupply != 0) {

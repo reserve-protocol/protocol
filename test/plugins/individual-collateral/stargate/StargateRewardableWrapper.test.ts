@@ -257,18 +257,26 @@ describeFork('Wrapped S*USDC', () => {
     it('claims previous rewards', async () => {
       await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
       await stakingContract.addRewardsToUser(bn('0'), wrapper.address, bn('20000e18'))
-      const availableReward = await stakingContract.pendingStargate('0', wrapper.address)
+      const availableReward = await stakingContract.pendingEmissionToken('0', wrapper.address)
       await mockPool.mint(bob.address, initialAmount)
       await wrapper.connect(bob).claimRewards()
 
       expect(availableReward).to.be.eq(await stargate.balanceOf(bob.address))
     })
 
+    it('regression: wrapper works even if staking contract is out of funds', async () => {
+      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
+      await stakingContract.addRewardsToUser(bn('0'), wrapper.address, bn('20000e18'))
+      await stakingContract.setAvailableRewards(0)
+
+      await wrapper.connect(bob).transfer(charles.address, await wrapper.balanceOf(bob.address))
+    })
+
     describe('Tracking', () => {
       it('tracks slightly complex', async () => {
         const rewardIncrement = bn('20000e18')
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement)
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement
         )
         await mockPool.mint(charles.address, initialAmount)
@@ -279,7 +287,7 @@ describeFork('Wrapped S*USDC', () => {
         await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(wrapper.address)).to.be.eq(rewardIncrement)
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement.mul(2))
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement.mul(2)
         )
         await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address), bob.address)
@@ -295,7 +303,7 @@ describeFork('Wrapped S*USDC', () => {
       it('tracks moderately complex sequence', async () => {
         const rewardIncrement = bn('20000e18')
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement)
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement
         )
 
@@ -309,7 +317,7 @@ describeFork('Wrapped S*USDC', () => {
         await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(wrapper.address)).to.be.eq(rewardIncrement)
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement.mul(2))
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement.mul(2)
         )
 
@@ -323,7 +331,7 @@ describeFork('Wrapped S*USDC', () => {
         // bob rewards - 0
         // charles rewards - 20k
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement.mul(3))
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement.mul(3)
         )
 
@@ -347,7 +355,7 @@ describeFork('Wrapped S*USDC', () => {
       it('maintains user rewards when transferring tokens', async () => {
         const rewardIncrement = bn('20000e18')
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement)
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement
         )
         // bob rewards - 20k
@@ -355,14 +363,14 @@ describeFork('Wrapped S*USDC', () => {
 
         // claims pending rewards to wrapper
         await wrapper.connect(bob).transfer(charles.address, initialAmount.div(2))
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(0)
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(0)
         expect(await wrapper.balanceOf(bob.address)).to.be.eq(initialAmount.div(2))
         expect(await wrapper.balanceOf(charles.address)).to.be.eq(initialAmount.div(2))
         // bob rewards - 20k
         // charles rewards - 0
 
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement)
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
+        expect(await stakingContract.pendingEmissionToken(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement
         )
         // bob rewards - 30k

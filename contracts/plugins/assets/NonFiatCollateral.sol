@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../libraries/Fixed.sol";
 import "./FiatCollateral.sol";
 
@@ -31,6 +32,7 @@ contract NonFiatCollateral is FiatCollateral {
 
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetUnitOracleTimeout_));
     }
 
     /// Can revert, used by other contract functions in order to catch errors

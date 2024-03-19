@@ -10,7 +10,7 @@ import {
   Implementation,
   SLOW,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
   defaultFixture, // intentional
 } from '../fixtures'
@@ -554,7 +554,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Make collateral0 price (0, FIX_MAX)
       await setOraclePrice(collateral0.address, bn('0'))
       await collateral0.refresh()
-      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+      await advanceTime(PRICE_TIMEOUT.add(DECAY_DELAY).toString())
       await setOraclePrice(collateral0.address, bn('0'))
       await setOraclePrice(await assetRegistry.toAsset(rsr.address), bn('1e8'))
 

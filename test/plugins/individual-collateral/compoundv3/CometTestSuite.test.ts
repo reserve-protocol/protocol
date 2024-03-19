@@ -269,11 +269,6 @@ const reduceRefPerTok = async (ctx: CometCollateralFixtureContext, pctDecrease: 
   await cometAsMock.setBaseSupplyIndex(bsi.sub(bsi.mul(pctDecrease).div(100)))
 
   await setCode(COMET_EXT, oldBytecode)
-  // const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
-  // await ctx.wcusdcV3Mock.setMockExchangeRate(
-  //   true,
-  //   currentExchangeRate.sub(currentExchangeRate.mul(pctDecrease).div(100))
-  // )
 }
 
 const increaseRefPerTok = async () => {
@@ -383,6 +378,14 @@ const collateralSpecificStatusTests = () => {
     refPerTok = refPerTok.sub(refPerTok.div(100))
     expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
   })
+
+  it('should not brick refPerTok() even if _underlyingRefPerTok() reverts', async () => {
+    const { collateral, wcusdcV3Mock } = await deployCollateralCometMockContext({})
+    await wcusdcV3Mock.setRevertExchangeRate(true)
+    await expect(collateral.refresh()).not.to.be.reverted
+    await expect(collateral.refPerTok()).not.to.be.reverted
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+  })
 }
 
 const beforeEachRewardsTest = async (ctx: CometCollateralFixtureContext) => {
@@ -407,6 +410,7 @@ const opts = {
   getExpectedPrice,
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,

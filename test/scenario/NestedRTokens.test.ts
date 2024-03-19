@@ -22,7 +22,7 @@ import {
   DefaultFixture,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../fixtures'
@@ -119,7 +119,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           oracleError: ORACLE_ERROR,
           erc20: staticATokenERC20.address,
           maxTradeVolume: one.config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,

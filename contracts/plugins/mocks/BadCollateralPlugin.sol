@@ -32,13 +32,13 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
         // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
         // revenue hiding: do not DISABLE if drawdown is small
-        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+        uint192 underlyingRefPerTok_ = underlyingRefPerTok();
 
         // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+        uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
 
         // uint192(<) is equivalent to Fix.lt
-        if (checkHardDefault && underlyingRefPerTok < exposedReferencePrice) {
+        if (checkHardDefault && underlyingRefPerTok_ < exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;
             markStatus(CollateralStatus.DISABLED);
         } else if (!checkHardDefault || hiddenReferencePrice > exposedReferencePrice) {

@@ -9,6 +9,21 @@ import "../../interfaces/IAsset.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
 
+interface IDutchTradeCallee {
+    function dutchTradeCallback(
+        address buyToken,
+        // {qBuyTok}
+        uint256 buyAmount,
+        bytes calldata data
+    ) external;
+}
+
+enum BidType {
+    NONE,
+    CALLBACK,
+    TRANSFER
+}
+
 // A dutch auction in 4 parts:
 //   1.  0% -  20%: Geometric decay from 1000x the bestPrice to ~1.5x the bestPrice
 //   2. 20% -  45%: Linear decay from ~1.5x the bestPrice to the bestPrice
@@ -76,6 +91,8 @@ contract DutchTrade is ITrade {
 
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
+
+    BidType public bidType; // = BidType.NONE
 
     TradeStatus public status; // reentrancy protection
 
@@ -183,7 +200,7 @@ contract DutchTrade is ITrade {
         bestPrice = _bestPrice; // gas-saver
     }
 
-    /// Bid for the auction lot at the current price; settling atomically via a callback
+    /// Bid for the auction lot at the current price; settle trade in protocol
     /// @dev Caller must have provided approval
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid() external returns (uint256 amountIn) {
@@ -195,9 +212,9 @@ contract DutchTrade is ITrade {
         // {qBuyTok}
         amountIn = _bidAmount(price);
 
-        // Transfer in buy tokens
+        // Mark bidder
         bidder = msg.sender;
-        buy.safeTransferFrom(msg.sender, address(this), amountIn);
+        bidType = BidType.TRANSFER;
 
         // status must begin OPEN
         assert(status == TradeStatus.OPEN);
@@ -207,10 +224,58 @@ contract DutchTrade is ITrade {
             broker.reportViolation();
         }
 
-        // settle() via callback
+        // Transfer in buy tokens from bidder
+        buy.safeTransferFrom(msg.sender, address(this), amountIn);
+
+        // settle() in core protocol
         origin.settleTrade(sell);
 
-        // confirm callback succeeded
+        // confirm .settleTrade() succeeded and .settle() has been called
+        assert(status == TradeStatus.CLOSED);
+    }
+
+    /// Bid with callback for the auction lot at the current price; settle trade in protocol
+    ///  Sold funds are sent back to the callee first via callee.dutchTradeCallback(...)
+    ///  Balance of buy token must increase by bidAmount(current block) after callback
+    ///
+    /// @dev Caller must implement IDutchTradeCallee
+    /// @param data {bytes} The data to pass to the callback
+    /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
+    function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
+        require(bidder == address(0), "bid already received");
+
+        // {buyTok/sellTok}
+        uint192 price = _price(block.number); // enforces auction ongoing
+
+        // {qBuyTok}
+        amountIn = _bidAmount(price);
+
+        // Mark bidder
+        bidder = msg.sender;
+        bidType = BidType.CALLBACK;
+
+        // status must begin OPEN
+        assert(status == TradeStatus.OPEN);
+
+        // reportViolation if auction cleared in geometric phase
+        if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
+            broker.reportViolation();
+        }
+
+        // Transfer sell tokens to bidder
+        sell.safeTransfer(bidder, lot()); // {qSellTok}
+
+        uint256 balanceBefore = buy.balanceOf(address(this)); // {qBuyTok}
+        IDutchTradeCallee(bidder).dutchTradeCallback(address(buy), amountIn, data);
+        require(
+            amountIn <= buy.balanceOf(address(this)) - balanceBefore,
+            "insufficient buy tokens"
+        );
+
+        // settle() in core protocol
+        origin.settleTrade(sell);
+
+        // confirm .settleTrade() succeeded and .settle() has been called
         assert(status == TradeStatus.CLOSED);
     }
 
@@ -223,13 +288,13 @@ contract DutchTrade is ITrade {
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == address(origin), "only origin can settle");
+        require(bidder != address(0) || block.number > endBlock, "auction not over");
 
-        // Received bid
-        if (bidder != address(0)) {
+        if (bidType == BidType.CALLBACK) {
+            soldAmt = lot(); // {qSellTok}
+        } else if (bidType == BidType.TRANSFER) {
             soldAmt = lot(); // {qSellTok}
             sell.safeTransfer(bidder, soldAmt); // {qSellTok}
-        } else {
-            require(block.number > endBlock, "auction not over");
         }
 
         // Transfer remaining balances back to origin

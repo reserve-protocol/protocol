@@ -37,6 +37,7 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, _targetPerTokChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -64,11 +65,11 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
         // assert(low <= high); obviously true just by inspection
 
         // {target/ref} = {target/tok} / {ref/tok}
-        pegPrice = targetPerTok.div(_underlyingRefPerTok());
+        pegPrice = targetPerTok.div(underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return FIX_ONE.div(_safeWrap(IAnkrETH(address(erc20)).ratio()), FLOOR);
     }
 }

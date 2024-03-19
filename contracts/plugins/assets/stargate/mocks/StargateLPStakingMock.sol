@@ -15,6 +15,8 @@ contract StargateLPStakingMock is IStargateLPStaking {
 
     uint256 public totalAllocPoint = 0;
 
+    uint256 public availableRewards = type(uint256).max;
+
     constructor(ERC20Mock stargateMock_) {
         stargateMock = stargateMock_;
         stargate = address(stargateMock_);
@@ -25,7 +27,16 @@ contract StargateLPStakingMock is IStargateLPStaking {
         return _poolInfo.length;
     }
 
-    function pendingStargate(uint256 pid, address user) external view override returns (uint256) {
+    function setAvailableRewards(uint256 amount) external {
+        availableRewards = amount;
+    }
+
+    function pendingEmissionToken(uint256 pid, address user)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return poolToUserRewardsPending[pid][user];
     }
 
@@ -84,6 +95,8 @@ contract StargateLPStakingMock is IStargateLPStaking {
 
     function _emitUserRewards(uint256 pid, address user) private {
         uint256 amount = poolToUserRewardsPending[pid][user];
+        require(availableRewards >= amount, "LPStakingTime: eTokenBal must be >= _amount");
+        availableRewards -= amount;
         stargateMock.mint(user, amount);
         poolToUserRewardsPending[pid][user] = 0;
     }

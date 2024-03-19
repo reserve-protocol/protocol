@@ -35,8 +35,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     IERC20 private rsr;
     IERC20 private rToken;
-    address private furnace;
-    address private stRSR;
+    IFurnace private furnace;
+    IStRSR private stRSR;
     address private rTokenTrader;
     address private rsrTrader;
 
@@ -108,8 +108,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         Transfer[] memory transfers = new Transfer[](destinations.length());
         uint256 numTransfers;
 
-        address furnaceAddr = furnace; // gas-saver
-        address stRSRAddr = stRSR; // gas-saver
+        address furnaceAddr = address(furnace); // gas-saver
+        address stRSRAddr = address(stRSR); // gas-saver
 
         bool accountRewards = false;
 
@@ -144,9 +144,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
         // Perform reward accounting
         if (accountRewards) {
             if (isRSR) {
-                main.stRSR().payoutRewards();
+                stRSR.payoutRewards();
             } else {
-                main.furnace().melt();
+                furnace.melt();
             }
         }
     }
@@ -176,7 +176,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     function _setDistribution(address dest, RevenueShare memory share) internal {
         require(dest != address(0), "dest cannot be zero");
         require(
-            dest != furnace && dest != stRSR,
+            dest != address(furnace) && dest != address(stRSR),
             "destination can not be furnace or strsr directly"
         );
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
@@ -205,8 +205,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     function cacheComponents() public {
         rsr = main.rsr();
         rToken = IERC20(address(main.rToken()));
-        furnace = address(main.furnace());
-        stRSR = address(main.stRSR());
+        furnace = main.furnace();
+        stRSR = main.stRSR();
         rTokenTrader = address(main.rTokenTrader());
         rsrTrader = address(main.rsrTrader());
     }
@@ -215,6 +215,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * Distributor uses 53 slots, not 50.
      */
     uint256[44] private __gap;
 }

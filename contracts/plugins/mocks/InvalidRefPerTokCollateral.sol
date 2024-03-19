@@ -26,27 +26,32 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
 
     function refresh() public virtual override {
         CollateralStatus oldStatus = status();
-        uint192 underlyingRefPerTok = _underlyingRefPerTok();
-        // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
 
-        exposedReferencePrice = hiddenReferencePrice;
+            exposedReferencePrice = hiddenReferencePrice;
 
-        // Check for soft default + save prices
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            // {UoA/tok}, {UoA/tok}, {target/ref}
-            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+                // {UoA/tok}, {UoA/tok}, {target/ref}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // Save prices if high price is finite
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
+                // Save prices if high price is finite
+                if (high < FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    lastSave = uint48(block.timestamp);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
+            markStatus(CollateralStatus.DISABLED);
         }
 
         CollateralStatus newStatus = status();
@@ -76,7 +81,7 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return rateMock;
     }
 }

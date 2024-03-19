@@ -23,7 +23,7 @@ import {
   defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT_PRE_BUFFER,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 
@@ -82,7 +82,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       oracleError: ORACLE_ERROR,
       erc20: token1.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+      oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -124,7 +124,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
           oracleError: ORACLE_ERROR,
           erc20: token0.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,

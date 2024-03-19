@@ -39,7 +39,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  DECAY_DELAY,
   VERSION,
 } from './fixtures'
 import { useEnv } from '#/utils/env'
@@ -369,7 +369,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should not issue RTokens if UNPRICED collateral', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      await advanceTime(DECAY_DELAY.toString())
 
       // Start issuance pre-pause
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
@@ -1096,7 +1096,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem if basket is UNPRICED #fast', async function () {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(DECAY_DELAY.toString())
 
         await rToken.connect(addr1).redeem(issueAmount)
         expect(await rToken.totalSupply()).to.equal(0)
@@ -1227,23 +1227,23 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           .connect(addr1)
           .redeemCustom(addr1.address, fp('1'), [await basketHandler.nonce()], [fp('1')], [], [])
 
-        // New reference basket
+        // Cannot redeem after new reference basket
         await basketHandler.refreshBasket()
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-
-        // Custom redemption should not revert since there is collateral overlap
         await expect(rToken.connect(addr1).redeem(1)).to.be.revertedWith(
           'partial redemption; use redeemCustom'
         )
+
+        // Can redeemCustom at latest basket nonce
         const nonce = await basketHandler.nonce()
         await rToken.connect(addr1).redeemCustom(addr1.address, fp('1'), [nonce], [fp('1')], [], [])
 
-        // Previous basket nonce should be redeemable
+        // Can redeemCustom at previous basket nonce
         await rToken
           .connect(addr1)
           .redeemCustom(addr1.address, fp('1'), [nonce - 1], [fp('1')], [], [])
 
-        // Future basket nonce should not be redeemable
+        // Cannot redeemCustom at future basket nonce
         await expect(
           rToken.connect(addr1).redeemCustom(addr1.address, fp('1'), [nonce + 1], [fp('1')], [], [])
         ).to.be.revertedWith('invalid basketNonce')
@@ -1718,7 +1718,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem if basket is UNPRICED #fast', async function () {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(DECAY_DELAY.toString())
 
         const basketNonces = [1]
         const portions = [fp('1')]

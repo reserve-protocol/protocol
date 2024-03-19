@@ -7,8 +7,8 @@ import {
   Collateral,
   IMPLEMENTATION,
   ORACLE_ERROR,
+  DECAY_DELAY,
   ORACLE_TIMEOUT,
-  ORACLE_TIMEOUT_PRE_BUFFER,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../fixtures'
@@ -1091,7 +1091,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       })
 
       it('Should handle invalid/stale Price - Assets', async () => {
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Stale Oracle
         await expectUnpriced(compAsset.address)
@@ -1123,7 +1123,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             ORACLE_ERROR,
             networkConfig[chainId].tokens.stkAAVE || '',
             config.rTokenMaxTradeVolume,
-            ORACLE_TIMEOUT_PRE_BUFFER
+            ORACLE_TIMEOUT
           )
         )
         await setOraclePrice(zeroPriceAsset.address, bn('1e10'))
@@ -1134,7 +1134,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeroPriceAsset.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeroPriceAsset.address, bn(0))
         await expectDecayedPrice(zeroPriceAsset.address)
 
@@ -1146,7 +1146,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         await expectUnpriced(daiCollateral.address)
         await expectUnpriced(usdcCollateral.address)
@@ -1203,7 +1203,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           oracleError: ORACLE_ERROR,
           erc20: dai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -1217,7 +1217,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeroFiatCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeroFiatCollateral.address, bn(0))
         await expectDecayedPrice(zeroFiatCollateral.address)
 
@@ -1237,7 +1237,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.SOUND)
 
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Compound
         await expectUnpriced(cDaiCollateral.address)
@@ -1289,7 +1289,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: cDaiVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -1305,7 +1305,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeropriceCtokenCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
         await expectDecayedPrice(zeropriceCtokenCollateral.address)
 
@@ -1321,7 +1321,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - ATokens Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Aave
         await expectUnpriced(aDaiCollateral.address)
@@ -1377,7 +1377,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: stataDai.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
@@ -1393,7 +1393,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeroPriceAtokenCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
         await expectDecayedPrice(zeroPriceAtokenCollateral.address)
 
@@ -1409,7 +1409,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - Non-Fiatcoins', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Aave
         await expectUnpriced(wbtcCollateral.address)
@@ -1456,13 +1456,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: wbtc.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
         await setOraclePrice(zeroPriceNonFiatCollateral.address, bn('1e10'))
         await zeroPriceNonFiatCollateral.refresh()
@@ -1472,7 +1472,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeroPriceNonFiatCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeroPriceNonFiatCollateral.address, bn(0))
         await expectDecayedPrice(zeroPriceNonFiatCollateral.address)
 
@@ -1484,7 +1484,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Compound
         await expectUnpriced(cWBTCCollateral.address)
@@ -1536,13 +1536,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
               oracleError: ORACLE_ERROR,
               erc20: cWBTCVault.address,
               maxTradeVolume: config.rTokenMaxTradeVolume,
-              oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+              oracleTimeout: ORACLE_TIMEOUT,
               targetName: ethers.utils.formatBytes32String('BTC'),
               defaultThreshold,
               delayUntilDefault,
             },
             mockChainlinkFeed.address,
-            ORACLE_TIMEOUT_PRE_BUFFER,
+            ORACLE_TIMEOUT,
             REVENUE_HIDING
           )
         )
@@ -1554,7 +1554,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeropriceCtokenNonFiatCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeropriceCtokenNonFiatCollateral.address, bn(0))
         await expectDecayedPrice(zeropriceCtokenNonFiatCollateral.address)
 
@@ -1568,7 +1568,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const delayUntilDefault = bn('86400') // 24h
 
         // Dows not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Aave
         await expectUnpriced(wethCollateral.address)
@@ -1611,7 +1611,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           oracleError: ORACLE_ERROR,
           erc20: weth.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('ETH'),
           defaultThreshold: bn('0'),
           delayUntilDefault,
@@ -1625,7 +1625,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeroPriceSelfReferentialCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
         await expectDecayedPrice(zeroPriceSelfReferentialCollateral.address)
 
@@ -1643,7 +1643,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const delayUntilDefault = bn('86400') // 24h
 
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         // Compound
         await expectUnpriced(cETHCollateral.address)
@@ -1694,7 +1694,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: cETHVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: bn('0'),
             delayUntilDefault,
@@ -1713,7 +1713,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(zeroPriceCtokenSelfReferentialCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
         await expectDecayedPrice(zeroPriceCtokenSelfReferentialCollateral.address)
 
@@ -1731,7 +1731,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - EUR Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
 
         await expectUnpriced(eurtCollateral.address)
 
@@ -1777,13 +1777,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: eurt.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT_PRE_BUFFER,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('EUR'),
             defaultThreshold,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
-          ORACLE_TIMEOUT_PRE_BUFFER
+          ORACLE_TIMEOUT
         )
         await setOraclePrice(invalidPriceEURCollateral.address, bn('1e10'))
         await invalidPriceEURCollateral.refresh()
@@ -1794,7 +1794,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectExactPrice(invalidPriceEURCollateral.address, initialPrice)
 
         // After oracle timeout, begins decay
-        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await advanceTime(DECAY_DELAY.add(1).toString())
         await setOraclePrice(invalidPriceEURCollateral.address, bn(0))
         await expectDecayedPrice(invalidPriceEURCollateral.address)
 

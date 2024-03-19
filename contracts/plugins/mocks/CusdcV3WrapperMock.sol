@@ -13,6 +13,7 @@ contract CusdcV3WrapperMock {
     address internal mockTarget;
     mapping(bytes4 => bool) internal isMocking;
     uint256 internal mockExchangeRate_;
+    bool internal revertExchangeRate;
 
     constructor(address mockTarget_) {
         mockTarget = mockTarget_;
@@ -23,7 +24,12 @@ contract CusdcV3WrapperMock {
         mockExchangeRate_ = mockValue;
     }
 
+    function setRevertExchangeRate(bool shouldRevert) external {
+        revertExchangeRate = shouldRevert;
+    }
+
     function exchangeRate() public view returns (uint256) {
+        if (revertExchangeRate) revert("exchangeRate revert");
         if (isMocking[this.exchangeRate.selector]) {
             return mockExchangeRate_;
         } else {

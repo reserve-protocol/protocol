@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FIX_MAX, FixLib, _safeWrap } from "../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "./OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "./AppreciatingFiatCollateral.sol";
@@ -9,7 +10,7 @@ import { CollateralStatus } from "../../interfaces/IAsset.sol";
 /**
  * @title L2LSDCollateral
  * @notice Base collateral plugin for LSDs on L2s.  Inherited per collateral.
- * @notice _underlyingRefPerTok uses a chainlink feed rather than direct contract calls.
+ * @notice underlyingRefPerTok uses a chainlink feed rather than direct contract calls.
  */
 abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -34,6 +35,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
 
         exchangeRateChainlinkFeed = _exchangeRateChainlinkFeed;
         exchangeRateChainlinkTimeout = _exchangeRateChainlinkTimeout;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, _exchangeRateChainlinkTimeout));
     }
 
     /// Should not revert
@@ -47,13 +49,13 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
 
         // revenue hiding: do not DISABLE if drawdown is small
         // underlyingRefPerTok may fail call to chainlink oracle, need to catch
-        try this.getUnderlyingRefPerTok() returns (uint192 underlyingRefPerTok) {
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
             // {ref/tok} = {ref/tok} * {1}
-            uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
 
             // uint192(<) is equivalent to Fix.lt
-            if (underlyingRefPerTok < exposedReferencePrice) {
-                exposedReferencePrice = underlyingRefPerTok;
+            if (underlyingRefPerTok_ < exposedReferencePrice) {
+                exposedReferencePrice = underlyingRefPerTok_;
                 markStatus(CollateralStatus.DISABLED);
             } else if (hiddenReferencePrice > exposedReferencePrice) {
                 exposedReferencePrice = hiddenReferencePrice;
@@ -98,12 +100,8 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
         }
     }
 
-    function getUnderlyingRefPerTok() public view returns (uint192) {
-        return _underlyingRefPerTok();
-    }
-
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return exchangeRateChainlinkFeed.price(exchangeRateChainlinkTimeout);
     }
 }

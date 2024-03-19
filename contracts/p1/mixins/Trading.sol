@@ -57,10 +57,15 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         setMinTradeVolume(minTradeVolume_);
     }
 
+    /// Contract-size helper
+    // solhint-disable-next-line no-empty-blocks
+    function requireNotTradingPausedOrFrozen() internal view notTradingPausedOrFrozen {}
+
     /// Claim all rewards
     /// Collective Action
     /// @custom:interaction CEI
-    function claimRewards() external notTradingPausedOrFrozen {
+    function claimRewards() external {
+        requireNotTradingPausedOrFrozen();
         RewardableLibP1.claimRewards(main.assetRegistry());
     }
 
@@ -68,7 +73,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Collective Action
     /// @param erc20 The ERC20 to claimRewards on
     /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
+    function claimRewardsSingle(IERC20 erc20) external {
+        requireNotTradingPausedOrFrozen();
         RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
 

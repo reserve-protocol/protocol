@@ -95,7 +95,7 @@ contract DeployerP0 is IDeployer, Versioned {
         );
 
         // Init Basket Handler
-        main.basketHandler().init(main, params.warmupPeriod);
+        main.basketHandler().init(main, params.warmupPeriod, params.reweightable);
 
         // Init Revenue Traders
         main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
