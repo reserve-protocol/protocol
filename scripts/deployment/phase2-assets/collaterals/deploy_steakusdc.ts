@@ -60,7 +60,7 @@ async function main() {
       chainlinkFeed: USDC_USD_FEED,
       oracleError: USDC_ORACLE_ERROR.toString(),
       erc20: networkConfig[chainId].tokens.steakUSDC,
-      maxTradeVolume: fp('1e6').toString(),
+      maxTradeVolume: fp('1e6').toString(), // 17m vault
       oracleTimeout: USDC_ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: USDC_ORACLE_ERROR.add(fp('0.01')).toString(), // +1% buffer rule
