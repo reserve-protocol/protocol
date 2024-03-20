@@ -3,36 +3,27 @@ pragma solidity 0.8.19;
 
 // solhint-disable-next-line max-line-length
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { AppreciatingFiatCollateral, CollateralConfig } from "../AppreciatingFiatCollateral.sol";
+import { CollateralConfig } from "../AppreciatingFiatCollateral.sol";
+import { FixLib, CEIL } from "../../../libraries/Fixed.sol";
 import { OracleLib } from "../OracleLib.sol";
-// solhint-disable-next-line max-line-length
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { shiftl_toFix, FIX_ONE, FixLib, CEIL } from "../../../libraries/Fixed.sol";
-import { IERC4626 } from "../../../vendor/oz/IERC4626.sol";
+import { MetaMorphoCollateral } from "./MetaMorphoCollateral.sol";
 
 /**
- * @title MetaMorphoSelfReferentialCollateral
+ * @title MetaMorphoNonFiatCollateral
  * @notice Collateral plugin for a MetaMorpho vault with self referential collateral, like WETH
  * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract MetaMorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
-    using OracleLib for AggregatorV3Interface;
+contract MetaMorphoNonFiatCollateral is MetaMorphoCollateral {
     using FixLib for uint192;
-
-    uint256 private immutable oneShare;
-    int8 private immutable refDecimals;
+    using OracleLib for AggregatorV3Interface;
 
     /// config.erc20 must be a MetaMorpho ERC4626 vault
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
+        MetaMorphoCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold == 0, "default threshold not supported");
-        require(address(config.erc20) != address(0), "missing erc20");
-        IERC4626 vault = IERC4626(address(config.erc20));
-        oneShare = 10**vault.decimals();
-        refDecimals = int8(uint8(IERC20Metadata(vault.asset()).decimals()));
+        // require(config.defaultThreshold > 0, "defaultThreshold zero");
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -58,10 +49,5 @@ contract MetaMorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
         // assert(low <= high); obviously true just by inspection
 
         pegPrice = targetPerRef();
-    }
-
-    /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function underlyingRefPerTok() public view override returns (uint192) {
-        return shiftl_toFix(IERC4626(address(erc20)).convertToAssets(oneShare), -refDecimals);
     }
 }
