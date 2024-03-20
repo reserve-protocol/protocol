@@ -6,14 +6,16 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/
 import { CollateralConfig } from "../AppreciatingFiatCollateral.sol";
 import { FixLib, CEIL } from "../../../libraries/Fixed.sol";
 import { OracleLib } from "../OracleLib.sol";
-import { MetaMorphoCollateral } from "./MetaMorphoCollateral.sol";
+import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
 
 /**
- * @title MetaMorphoNonFiatCollateral
+ * @title MetaMorphoSelfReferentialCollateral
  * @notice Collateral plugin for a MetaMorpho vault with self referential collateral, like WETH
  * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
+ *
+ * For example: Re7WETH
  */
-contract MetaMorphoNonFiatCollateral is MetaMorphoCollateral {
+contract MetaMorphoSelfReferentialCollateral is ERC4626FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -21,7 +23,7 @@ contract MetaMorphoNonFiatCollateral is MetaMorphoCollateral {
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        MetaMorphoCollateral(config, revenueHiding)
+        ERC4626FiatCollateral(config, revenueHiding)
     {
         // require(config.defaultThreshold > 0, "defaultThreshold zero");
     }

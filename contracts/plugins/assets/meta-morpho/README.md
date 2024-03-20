@@ -23,5 +23,5 @@ MetaMorpho suffers from a similar to that of the Curve volatile pools which can 
 
 ## Future Work
 
-- Assets need to exist for each of the Reward Tokens
+- Assets need to exist for each of the Reward Tokens, which requires oracles. Only USDC meets this bar; SWISE, BTRFLY, and MORPHO do not have oracles yet.
 - The right reward token assets need to be registered for an RToken as a function of their collateral. This can be done using the above table.
