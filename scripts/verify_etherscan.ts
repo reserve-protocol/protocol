@@ -71,7 +71,9 @@ async function main() {
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
       'collateral-plugins/verify_sfrax.ts',
-      'collateral-plugins/verify_sfrax_eth.ts'
+      'collateral-plugins/verify_sfrax_eth.ts',
+      'collateral-plugins/verify_steakusdc.ts',
+      'collateral-plugins/verify_re7weth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
