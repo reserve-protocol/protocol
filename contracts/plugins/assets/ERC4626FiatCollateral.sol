@@ -13,6 +13,8 @@ import { shiftl_toFix } from "../../libraries/Fixed.sol";
 /**
  * @title ERC4626FiatCollateral
  * @notice Collateral plugin for a ERC4626 vault
+ *
+ * Warning: Only valid for linear ERC4626 vaults
  */
 contract ERC4626FiatCollateral is AppreciatingFiatCollateral {
     uint256 private immutable oneShare;
