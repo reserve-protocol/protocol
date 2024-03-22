@@ -40,10 +40,16 @@ const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.rETH!.toLowerCase()]: 'rETH',
   [networkConfig['1'].tokens.cUSDCv3!.toLowerCase()]: 'cUSDCv3',
   [networkConfig['1'].tokens.DAI!.toLowerCase()]: 'DAI',
+  [networkConfig['1'].tokens.aEthUSDC!.toLowerCase()]: 'aEthUSDC',
+  [networkConfig['1'].tokens.saEthUSDC!.toLowerCase()]: 'saEthUSDC',
+  [networkConfig['1'].tokens.aEthPyUSD!.toLowerCase()]: 'aEthPyUSD',
+  [networkConfig['1'].tokens.saEthPyUSD!.toLowerCase()]: 'saEthPyUSD',
+  [networkConfig['1'].tokens.cUSDCv3!.toLowerCase()]: 'cUSDCv3',
   ['0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()]: 'saUSDC',
   ['0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()]: 'saUSDT',
   ['0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase()]: 'cUSDCVault',
   ['0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase()]: 'cUSDTVault',
+  ['0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'.toLowerCase()]: 'wcUSDCv3',
 }
 
 export const logToken = (tokenAddress: string) => {
