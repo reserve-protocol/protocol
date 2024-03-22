@@ -2,8 +2,6 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IComponent.sol";
-import "./IMain.sol";
 
 /**
  * @title IRewardable
