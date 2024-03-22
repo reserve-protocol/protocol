@@ -171,7 +171,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
       aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
-      saEthUSDC: '0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6', // canonical wrapper
+      saEthUSDC: '0x093cB4f405924a0C468b43209d5E466F1dd0aC7d', // our wrapper
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -216,7 +216,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
       pyUSD: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
       aEthPyUSD: '0x0C0d01AbF3e6aDfcA0989eBbA9d6e85dD58EaB1E',
-      saEthPyUSD: '0x00F2a835758B33f3aC53516Ebd69f3dc77B0D152', // canonical wrapper
+      saEthPyUSD: '0x8d6E0402A3E3aD1b43575b05905F9468447013cF', // our wrapper
       steakUSDC: '0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB',
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',

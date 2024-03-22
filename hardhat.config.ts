@@ -27,7 +27,7 @@ const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 const ARBITRUM_SEPOLIA_RPC_URL = useEnv('ARBITRUM_SEPOLIA_RPC_URL')
 const ARBITRUM_RPC_URL = useEnv('ARBITRUM_RPC_URL')
-const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
+const MNEMONIC = useEnv('MNEMONIC') || 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
@@ -55,6 +55,7 @@ const config: HardhatUserConfig = {
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
+      timeout: 0,
     },
     goerli: {
       chainId: 5,

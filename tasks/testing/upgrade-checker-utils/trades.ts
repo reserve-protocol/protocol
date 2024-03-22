@@ -1,6 +1,7 @@
-import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
+import { MAX_UINT256, QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
 import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
+import { networkConfig } from '../../../common/configuration'
 import {
   advanceToTimestamp,
   advanceTime,
@@ -11,7 +12,7 @@ import { DutchTrade } from '@typechain/DutchTrade'
 import { GnosisTrade } from '@typechain/GnosisTrade'
 import { TestITrading } from '@typechain/TestITrading'
 import { BigNumber, ContractTransaction } from 'ethers'
-import { Interface, LogDescription } from 'ethers/lib/utils'
+import { LogDescription } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { whales } from './constants'
 import { logToken } from './logs'
@@ -35,7 +36,9 @@ export const runBatchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+  console.log(
+    `Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
+  )
   const endTime = await trade.endTime()
   const worstPrice = await trade.worstCasePrice() // trade.buy() per trade.sell()
   const auctionId = await trade.auctionId()
@@ -103,7 +106,10 @@ export const runDutchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+  console.log('=========')
+  console.log(
+    `Running Dutch Trade: Selling ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
+  )
 
   const endTime = await trade.endTime()
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
@@ -114,15 +120,28 @@ export const runDutchTrade = async (
 
   // Ensure funds available
   await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
+
+  const buyToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
+  await buyToken.connect(whaleAddr).approve(router.address, MAX_UINT256)
+
+  // Bid
   ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
     router.bid(trade.address, await router.signer.getAddress()),
     trader
   )
 
+  console.log(
+    'Trade State:',
+    TradeStatus[await trade.status()],
+    await trade.canSettle(),
+    await trade.bidder(),
+    whaleAddr
+  )
+
   if (
     (await trade.canSettle()) ||
     (await trade.status()) != TradeStatus.CLOSED ||
-    (await trade.bidder()) != whaleAddr
+    (await trade.bidder()) != router.address
   ) {
     throw new Error(`Error settling Dutch Trade`)
   }
@@ -143,22 +162,28 @@ export const callAndGetNextTrade = async (
   // Process transaction and get next trade
   const r = await tx
   const resp = await r.wait()
-  const iface: Interface = trader.interface
+  const iface = trader.interface
+
   for (const event of resp.events!) {
     let parsedLog: LogDescription | undefined
     try {
       parsedLog = iface.parseLog(event)
-    } catch {
-      // ignore
-    }
+      // eslint-disable-next-line no-empty
+    } catch {}
+
     if (parsedLog && parsedLog.name == 'TradeStarted') {
+      // TODO: Improve this to include proper token details and parsing.
+
       console.log(
-        `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
+        `
+       ====== Trade Started: Selling ${logToken(parsedLog.args.sell)} / Buying ${logToken(
           parsedLog.args.buy
-        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
-          parsedLog.args.sellAmount
-        }`
+        )} ======
+       minBuyAmount: ${parsedLog.args.minBuyAmount}
+       sellAmount: ${parsedLog.args.sellAmount}
+      `.trim()
       )
+
       tradesRemain = true
       newSellToken = parsedLog.args.sell
     }
@@ -166,6 +191,7 @@ export const callAndGetNextTrade = async (
 
   return [tradesRemain, newSellToken]
 }
+
 // impersonate the whale to provide the required tokens to recipient
 export const getTokens = async (
   hre: HardhatRuntimeEnvironment,
@@ -173,6 +199,7 @@ export const getTokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  console.log('Acquiring tokens...', tokenAddress)
   switch (tokenAddress) {
     case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15': // saUSDC
     case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9': // saUSDT
@@ -241,7 +268,64 @@ const getERC20Tokens = async (
   recipient: string
 ) => {
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
-  await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
-    await token.connect(whaleSigner).transfer(recipient, amount)
-  })
+
+  // special-cases for wrappers with 0 supply
+  const wcUSDCv3 = await hre.ethers.getContractAt(
+    'CusdcV3Wrapper',
+    '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'
+  )
+  const saEthUSDC = await hre.ethers.getContractAt(
+    'IStaticATokenV3LM',
+    networkConfig['1'].tokens.saEthUSDC!
+  )
+  const saEthPyUSD = await hre.ethers.getContractAt(
+    'IStaticATokenV3LM',
+    networkConfig['1'].tokens.saEthPyUSD!
+  )
+
+  if (tokenAddress == wcUSDCv3.address) {
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
+      async (whaleSigner) => {
+        const cUSDCv3 = await hre.ethers.getContractAt(
+          'ERC20Mock',
+          networkConfig['1'].tokens.cUSDCv3!
+        )
+        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
+        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
+        await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(2))
+        const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
+        await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
+      }
+    )
+  } else if (tokenAddress == saEthUSDC.address) {
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+      async (whaleSigner) => {
+        const USDC = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.USDC!)
+        await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
+        await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
+        await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
+      }
+    )
+  } else if (tokenAddress == saEthPyUSD.address) {
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.pyUSD!.toLowerCase()],
+      async (whaleSigner) => {
+        const pyUSD = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.pyUSD!)
+        await pyUSD.connect(whaleSigner).approve(saEthPyUSD.address, amount.mul(2))
+        await saEthPyUSD.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
+        await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
+      }
+    )
+  } else {
+    const addr = whales[token.address.toLowerCase()]
+    if (!addr) throw new Error('missing whale for ' + tokenAddress)
+    await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
+      await token.connect(whaleSigner).transfer(recipient, amount)
+    })
+  }
 }

@@ -97,13 +97,9 @@ interface IBasketHandler is IComponent {
     /// @custom:interaction
     function refreshBasket() external;
 
-    /// Track the basket status changes
+    /// Track basket status and collateralization changes
     /// @custom:refresher
     function trackStatus() external;
-
-    /// Track when last collateralized
-    /// @custom:refresher
-    function trackCollateralization() external;
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCollateralized() external view returns (bool);
@@ -175,6 +171,8 @@ interface IBasketHandler is IComponent {
 }
 
 interface TestIBasketHandler is IBasketHandler {
+    function lastCollateralized() external view returns (uint48);
+
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;

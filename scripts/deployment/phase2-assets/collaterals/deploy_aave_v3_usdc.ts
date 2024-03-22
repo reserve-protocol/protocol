@@ -53,15 +53,35 @@ async function main() {
   /********  Deploy Aave V3 USDC collateral plugin  **************************/
 
   const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
+  const StaticATokenFactory = await hre.ethers.getContractFactory('StaticATokenV3LM')
+  const erc20 = await StaticATokenFactory.deploy(
+    networkConfig[chainId].AAVE_V3_POOL!,
+    networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
+  )
+  await erc20.deployed()
 
   // Mainnet
   if (!baseL2Chains.includes(hre.network.name)) {
+    /********  Deploy Aave V3 USDC wrapper  **************************/
+
+    await (
+      await erc20.initialize(
+        networkConfig[chainId].tokens.aEthUSDC!,
+        'Static Aave Ethereum USDC',
+        'saEthUSDC'
+      )
+    ).wait()
+
+    console.log(
+      `Deployed wrapper for Aave V3 USDC on ${hre.network.name} (${chainId}): ${erc20.address} `
+    )
+
     const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
         oracleError: USDC_MAINNET_ORACLE_ERROR.toString(),
-        erc20: networkConfig[chainId].tokens.saEthUSDC!,
+        erc20: erc20.address,
         maxTradeVolume: USDC_MAINNET_MAX_TRADE_VOLUME.toString(),
         oracleTimeout: USDC_MAINNET_ORACLE_TIMEOUT.toString(),
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -78,15 +98,30 @@ async function main() {
       `Deployed Aave V3 USDC collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
     )
 
+    assetCollDeployments.erc20s.saEthUSDC = erc20.address
     assetCollDeployments.collateral.saEthUSDC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   } else {
+    /********  Deploy Aave V3 USDC wrapper  **************************/
+
+    await (
+      await erc20.initialize(
+        networkConfig[chainId].tokens.aBasUSDC!,
+        'Static Aave Base USDC',
+        'saBasUSDC'
+      )
+    ).wait()
+
+    console.log(
+      `Deployed wrapper for Aave V3 USDC on ${hre.network.name} (${chainId}): ${erc20.address} `
+    )
+
     const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
         oracleError: USDC_BASE_ORACLE_ERROR.toString(),
-        erc20: networkConfig[chainId].tokens.saBasUSDC!,
+        erc20: erc20.address,
         maxTradeVolume: USDC_BASE_MAX_TRADE_VOLUME.toString(),
         oracleTimeout: USDC_BASE_ORACLE_TIMEOUT.toString(),
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -103,6 +138,7 @@ async function main() {
       `Deployed Aave V3 USDC collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
     )
 
+    assetCollDeployments.erc20s.saBasUSDC = erc20.address
     assetCollDeployments.collateral.saBasUSDC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
