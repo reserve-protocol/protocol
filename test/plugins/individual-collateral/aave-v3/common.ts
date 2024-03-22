@@ -36,7 +36,8 @@ type AltParams = {
   aToken: string
   whaleTokenHolder: string
   forkBlock: number
-  targetNetwork: 'mainnet' | 'base'
+  targetNetwork: 'mainnet' | 'base' | 'arbitrum'
+  toleranceDivisor?: BigNumber
 }
 
 export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: AltParams) => {
@@ -121,6 +122,12 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
     recipient: string
   ) => {
     const requiredCollat = await ctx.staticWrapper.previewMint(amount)
+
+    console.log(
+      ctx.baseToken.address,
+      altParams.whaleTokenHolder,
+      await ctx.baseToken.balanceOf(altParams.whaleTokenHolder)
+    )
 
     // Impersonate holder
     await whileImpersonating(altParams.whaleTokenHolder, async (signer) => {
@@ -213,7 +220,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
     chainlinkDefaultAnswer: 1e8,
     itChecksPriceChanges: it,
     getExpectedPrice,
-    toleranceDivisor: bn('1e9'), // 1e15 adjusted for ((x + 1)/x) timestamp precision
+    toleranceDivisor: altParams.toleranceDivisor ?? bn('1e9'), // 1e15 adjusted for ((x + 1)/x) timestamp precision
     targetNetwork: altParams.targetNetwork,
   }
 

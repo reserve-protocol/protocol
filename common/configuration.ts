@@ -31,6 +31,10 @@ export interface ITokens {
   saEthUSDC?: string
   aBasUSDC?: string
   saBasUSDC?: string
+  aArbUSDCn?: string
+  saArbUSDCn?: string
+  aArbUSDT?: string
+  saArbUSDT?: string
   aWETHv3?: string
   acbETHv3?: string
   cDAI?: string
@@ -507,11 +511,21 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     name: 'arbitrum',
     tokens: {
       RSR: '0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594',
+      USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
+      USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
+      aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
+      saArbUSDCn: '', // TODO our wrapper. remove from deployment script after placing here
+      aArbUSDT: '0x6ab707aca953edaefbc4fd23ba73294241490620',
+      saArbUSDT: '', // TODO our wrapper. remove from deployment script after placing here
     },
     chainlinkFeeds: {
+      USDC: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
+      USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
     },
     GNOSIS_EASY_AUCTION: '0xcD033976a011F41D2AB6ef47984041568F818E73', // our deployment
+    AAVE_V3_POOL: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
+    AAVE_V3_INCENTIVES_CONTROLLER: '0x929EC64c34a17401F460460D4B9390518E5B473e',
   },
   '421614': {
     name: 'arbitrum-sepolia',
