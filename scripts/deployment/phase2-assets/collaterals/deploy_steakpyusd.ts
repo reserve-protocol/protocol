@@ -60,7 +60,7 @@ async function main() {
       chainlinkFeed: PYUSD_USD_FEED,
       oracleError: PYUSD_ORACLE_ERROR.toString(),
       erc20: networkConfig[chainId].tokens.steakPYUSD,
-      maxTradeVolume: fp('0.5e6').toString(), // $1.7m vault
+      maxTradeVolume: fp('0.25e6').toString(), // $1.7m vault
       oracleTimeout: PYUSD_ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: PYUSD_ORACLE_ERROR.add(fp('0.01')).toString(), // +1% buffer rule
