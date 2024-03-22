@@ -77,7 +77,6 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     revenueHiding.toString(),
-    bn('10000e6').toString() // $10k
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()

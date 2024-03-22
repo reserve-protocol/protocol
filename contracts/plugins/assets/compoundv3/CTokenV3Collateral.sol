@@ -23,20 +23,17 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
 
     IComet public immutable comet;
-    uint256 public immutable reservesThresholdIffy; // {qUSDC}
     uint8 public immutable cometDecimals;
     IERC20 private immutable comp;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding,
-        uint256 reservesThresholdIffy_
+        uint192 revenueHiding
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         comp = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
-        reservesThresholdIffy = reservesThresholdIffy_;
         cometDecimals = comet.decimals();
     }
 
@@ -74,12 +71,6 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                 exposedReferencePrice = hiddenReferencePrice;
             }
 
-            int256 cometReserves = comet.getReserves();
-            if (cometReserves < 0) {
-                markStatus(CollateralStatus.DISABLED);
-            } else if (uint256(cometReserves) < reservesThresholdIffy) {
-                markStatus(CollateralStatus.IFFY);
-            } else {
                 // Check for soft default + save prices
                 try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                     // {UoA/tok}, {UoA/tok}, {target/ref}
@@ -109,7 +100,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                     if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
                 }
-            }
+            
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
