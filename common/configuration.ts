@@ -70,6 +70,8 @@ export interface ITokens {
   sUSDT?: string
   sETH?: string
   MORPHO?: string
+  SWISE?: string
+  BTRFLY?: string
   astETH?: string
   wsgUSDC?: string
   wsgUSDbC?: string
@@ -87,6 +89,12 @@ export interface ITokens {
   maWBTC?: string
   maWETH?: string
   maStETH?: string
+
+  // MetaMorpho
+  steakUSDC?: string
+  bbUSDT?: string
+  steakPYUSD?: string
+  Re7WETH?: string
 }
 
 export interface IFeeds {
@@ -202,11 +210,17 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
       MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+      SWISE: '0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2',
+      BTRFLY: '0xc55126051B22eBb829D00368f4B12Bde432de5Da',
       yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
       yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
       pyUSD: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
       aEthPyUSD: '0x0C0d01AbF3e6aDfcA0989eBbA9d6e85dD58EaB1E',
       saEthPyUSD: '0x00F2a835758B33f3aC53516Ebd69f3dc77B0D152', // canonical wrapper
+      steakUSDC: '0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB',
+      steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
+      bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
+      Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
