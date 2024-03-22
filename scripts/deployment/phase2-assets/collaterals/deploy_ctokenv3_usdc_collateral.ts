@@ -72,7 +72,6 @@ async function main() {
     revenueHiding.toString(),
     bn('10000e6').toString() // $10k
   )
-
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
