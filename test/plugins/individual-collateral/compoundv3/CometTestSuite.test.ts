@@ -180,9 +180,7 @@ const deployCollateralCometMockContext = async (
   collateralOpts.chainlinkFeed = chainlinkFeed.address
 
   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-  const cusdcV3 = <CometMock>(
-    await CometFactory.deploy(CUSDC_V3)
-  )
+  const cusdcV3 = <CometMock>await CometFactory.deploy(CUSDC_V3)
 
   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
     await ethers.getContractFactory('CusdcV3Wrapper')

@@ -27,10 +27,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     IERC20 private immutable comp;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         comp = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
@@ -71,36 +70,35 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                 exposedReferencePrice = hiddenReferencePrice;
             }
 
-                // Check for soft default + save prices
-                try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
-                    // {UoA/tok}, {UoA/tok}, {target/ref}
-                    // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+                // {UoA/tok}, {UoA/tok}, {target/ref}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-                    // Save prices if priced
-                    if (high < FIX_MAX) {
-                        savedLowPrice = low;
-                        savedHighPrice = high;
-                        lastSave = uint48(block.timestamp);
-                    } else {
-                        // must be unpriced
-                        // untested:
-                        //      validated in other plugins, cost to test here is high
-                        assert(low == 0);
-                    }
-
-                    // If the price is below the default-threshold price, default eventually
-                    // uint192(+/-) is the same as Fix.plus/minus
-                    if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
-                        markStatus(CollateralStatus.IFFY);
-                    } else {
-                        markStatus(CollateralStatus.SOUND);
-                    }
-                } catch (bytes memory errData) {
-                    // see: docs/solidity-style.md#Catching-Empty-Data
-                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                    markStatus(CollateralStatus.IFFY);
+                // Save prices if priced
+                if (high < FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    lastSave = uint48(block.timestamp);
+                } else {
+                    // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
+                    assert(low == 0);
                 }
-            
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
+            }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
