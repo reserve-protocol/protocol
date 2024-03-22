@@ -18,8 +18,8 @@
   "implementations": {
     "main": "",
     "trading": {
-      "gnosisTrade": "",
-      "dutchTrade": ""
+      "gnosisTrade": "0x803a52c5DAB69B78419bb160051071eF2F9Fd227",
+      "dutchTrade": "0x4eDEb80Ce684A890Dd58Ae0d9762C38731b11b99"
     },
     "components": {
       "assetRegistry": "",
