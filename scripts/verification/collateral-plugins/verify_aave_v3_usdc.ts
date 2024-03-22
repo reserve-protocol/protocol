@@ -1,6 +1,6 @@
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { baseL2Chains, developmentChains, networkConfig } from '../../../common/configuration'
+import { developmentChains, networkConfig } from '../../../common/configuration'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -25,18 +25,19 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const erc20 = await ethers.getContractAt(
-    'ERC20Mock',
-    baseL2Chains.includes(hre.network.name)
-      ? deployments.erc20s.saBasUSDC!
-      : deployments.erc20s.saEthUSDC!
-  )
-  const collateral = await ethers.getContractAt(
-    'AaveV3FiatCollateral',
-    baseL2Chains.includes(hre.network.name)
-      ? deployments.collateral.saBasUSDC!
-      : deployments.collateral.saEthUSDC!
-  )
+  const erc20s: { [key: string]: string } = {
+    '1': deployments.erc20s.saEthUSDC!,
+    '8453': deployments.erc20s.saEthUSDC!,
+    '42161': deployments.erc20s.saEthUSDC!,
+  }
+  const erc20 = await ethers.getContractAt('ERC20Mock', erc20s[chainId])
+
+  const collaterals: { [key: string]: string } = {
+    '1': deployments.erc20s.saEthUSDC!,
+    '8453': deployments.erc20s.saEthUSDC!,
+    '42161': deployments.erc20s.saEthUSDC!,
+  }
+  const collateral = await ethers.getContractAt('AaveV3FiatCollateral', collaterals[chainId])
 
   /********  Verify Aave V3 USDC ERC20  **************************/
   await verifyContract(
@@ -47,7 +48,7 @@ async function main() {
   )
 
   /********  Verify Aave V3 USDC plugin  **************************/
-  // Works for both Mainnet and Base
+  // Works for any chain
 
   await verifyContract(
     chainId,
