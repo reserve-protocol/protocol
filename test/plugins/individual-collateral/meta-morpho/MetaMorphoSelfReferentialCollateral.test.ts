@@ -28,8 +28,7 @@ interface MAFiatCollateralOpts extends CollateralOpts {
 
 const makeFiatCollateralTestSuite = (
   collateralName: string,
-  defaultCollateralOpts: MAFiatCollateralOpts,
-  specificTests = false
+  defaultCollateralOpts: MAFiatCollateralOpts
 ) => {
   const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
@@ -147,9 +146,7 @@ const makeFiatCollateralTestSuite = (
 
   const opts = {
     deployCollateral,
-    collateralSpecificConstructorTests: specificTests
-      ? collateralSpecificConstructorTests
-      : () => void 0,
+    collateralSpecificConstructorTests,
     collateralSpecificStatusTests,
     beforeEachRewardsTest,
     makeCollateralFixtureContext,

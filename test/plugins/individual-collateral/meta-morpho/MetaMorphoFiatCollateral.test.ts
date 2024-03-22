@@ -32,8 +32,7 @@ interface MAFiatCollateralOpts extends CollateralOpts {
 
 const makeFiatCollateralTestSuite = (
   collateralName: string,
-  defaultCollateralOpts: MAFiatCollateralOpts,
-  specificTests = false
+  defaultCollateralOpts: MAFiatCollateralOpts
 ) => {
   const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
@@ -143,7 +142,6 @@ const makeFiatCollateralTestSuite = (
   */
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificConstructorTests = () => {}
-
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificStatusTests = () => {}
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -151,9 +149,7 @@ const makeFiatCollateralTestSuite = (
 
   const opts = {
     deployCollateral,
-    collateralSpecificConstructorTests: specificTests
-      ? collateralSpecificConstructorTests
-      : () => void 0,
+    collateralSpecificConstructorTests,
     collateralSpecificStatusTests,
     beforeEachRewardsTest,
     makeCollateralFixtureContext,
@@ -212,11 +208,9 @@ makeFiatCollateralTestSuite(
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - steakPYUSD',
-  makeOpts(tokens.steakPYUSD!, chainlinkFeeds.pyUSD!, PYUSD_ORACLE_TIMEOUT, PYUSD_ORACLE_ERROR),
-  true // Only run specific tests once, since they are slow
+  makeOpts(tokens.steakPYUSD!, chainlinkFeeds.pyUSD!, PYUSD_ORACLE_TIMEOUT, PYUSD_ORACLE_ERROR)
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - bbUSDT',
-  makeOpts(tokens.bbUSDT!, chainlinkFeeds.USDT!, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR),
-  true // Only run specific tests once, since they are slow
+  makeOpts(tokens.bbUSDT!, chainlinkFeeds.USDT!, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR)
 )
