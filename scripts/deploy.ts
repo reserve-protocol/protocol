@@ -72,7 +72,11 @@ async function main() {
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdc.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdp.ts',
       'phase2-assets/collaterals/deploy_sfrax.ts',
-      'phase2-assets/collaterals/deploy_sfrax_eth.ts'
+      'phase2-assets/collaterals/deploy_sfrax_eth.ts',
+      'phase2-assets/collaterals/deploy_steakusdc.ts',
+      'phase2-assets/collaterals/deploy_steakpyusd.ts',
+      'phase2-assets/collaterals/deploy_bbusdt.ts',
+      'phase2-assets/collaterals/deploy_re7weth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
