@@ -56,6 +56,7 @@ async function main() {
     scripts.push(
       'collateral-plugins/verify_convex_crvusd_usdc.ts',
       'collateral-plugins/verify_convex_3pool.ts',
+      'collateral-plugins/verify_convex_paypool.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
       'collateral-plugins/verify_convex_stable_rtoken_metapool.ts',
       'collateral-plugins/verify_curve_stable.ts',
