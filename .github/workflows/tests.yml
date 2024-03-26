@@ -115,7 +115,7 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
-          BASE_RPC_URL: https://arb-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_ARBITRUM_KEY }}
+          BASE_RPC_URL: https://arb-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_ARBITRUM_KEY }}
           FORK_NETWORK: arbitrum
           FORK_BLOCK: 194244696
           FORK: 1
