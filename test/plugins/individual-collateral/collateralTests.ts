@@ -730,7 +730,6 @@ export default function fn<X extends CollateralFixtureContext>(
         expect(await pairedColl.status()).to.equal(CollateralStatus.SOUND)
         pairedERC20 = await ethers.getContractAt('ERC20Mock', await pairedColl.erc20())
 
-        console.log('2')
         // Prep collateral
         collateralERC20 = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
         await mintCollateralTo(
@@ -749,7 +748,6 @@ export default function fn<X extends CollateralFixtureContext>(
           beneficiaries: [],
         }
 
-        console.log('3')
         // Deploy RToken via FacadeWrite
         const receipt = await (
           await facadeWrite.connect(owner).deployRToken(
@@ -762,7 +760,6 @@ export default function fn<X extends CollateralFixtureContext>(
             rTokenSetup
           )
         ).wait()
-        console.log('4')
 
         // Get Main
         const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
@@ -806,7 +803,6 @@ export default function fn<X extends CollateralFixtureContext>(
           (await getLatestBlockTimestamp()) + (await basketHandler.warmupPeriod())
         )
 
-        console.log('5')
         // Should issue
         await collateralERC20.connect(addr1).approve(rToken.address, MAX_UINT256)
         await pairedERC20.connect(addr1).approve(rToken.address, MAX_UINT256)

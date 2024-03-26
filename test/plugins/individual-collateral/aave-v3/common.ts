@@ -123,12 +123,6 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
   ) => {
     const requiredCollat = await ctx.staticWrapper.previewMint(amount)
 
-    console.log(
-      ctx.baseToken.address,
-      altParams.whaleTokenHolder,
-      await ctx.baseToken.balanceOf(altParams.whaleTokenHolder)
-    )
-
     // Impersonate holder
     await whileImpersonating(altParams.whaleTokenHolder, async (signer) => {
       await ctx.baseToken
