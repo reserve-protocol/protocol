@@ -52,6 +52,11 @@ export const crvUSD_USD_FEED = networkConfig['1'].chainlinkFeeds.crvUSD!
 export const crvUSD_ORACLE_TIMEOUT = bn('86400')
 export const crvUSD_ORACLE_ERROR = fp('0.005')
 
+// pyUSD
+export const pyUSD_USD_FEED = networkConfig['1'].chainlinkFeeds.pyUSD!
+export const pyUSD_ORACLE_TIMEOUT = bn('86400')
+export const pyUSD_ORACLE_ERROR = fp('0.003')
+
 // Tokens
 export const DAI = networkConfig['1'].tokens.DAI!
 export const USDC = networkConfig['1'].tokens.USDC!
@@ -63,6 +68,7 @@ export const eUSD = networkConfig['1'].tokens.eUSD!
 export const WETH = networkConfig['1'].tokens.WETH!
 export const WBTC = networkConfig['1'].tokens.WBTC!
 export const crvUSD = networkConfig['1'].tokens.crvUSD!
+export const pyUSD = networkConfig['1'].tokens.pyUSD!
 
 export const RSR = networkConfig['1'].tokens.RSR!
 export const CRV = networkConfig['1'].tokens.CRV!
@@ -111,6 +117,12 @@ export const crvUSD_USDC = '0x4dece678ceceb27446b35c672dc7d61f30bad69e'
 export const crvUSD_USDC_POOL_ID = 182
 export const crvUSD_USDC_HOLDER = '0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1'
 export const crvUSD_USDC_GAUGE = '0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1'
+
+// PayPool
+export const PayPool = '0x383e6b4437b59fff47b619cba855ca29342a8559'
+export const PayPool_POOL_ID = 270
+export const PayPool_HOLDER = '0x9da75997624C697444958aDeD6790bfCa96Af19A'
+export const PayPool_GAUGE = '0x9da75997624c697444958aded6790bfca96af19a'
 
 // Curve-specific
 export const CURVE_MINTER = '0xd061d61a4d941c39e5453435b6345dc261c2fce0'
