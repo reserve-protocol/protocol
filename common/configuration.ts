@@ -510,9 +510,11 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
   '42161': {
     name: 'arbitrum',
     tokens: {
+      COMP: '0x354a6da3fcde098f8389cad84b0182725c6c91de',
       RSR: '0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594',
       USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
       USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
+      cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
       saArbUSDCn: '', // TODO our wrapper. remove from deployment script after placing here
       aArbUSDT: '0x6ab707aca953edaefbc4fd23ba73294241490620',
@@ -524,6 +526,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
     },
     GNOSIS_EASY_AUCTION: '0xcD033976a011F41D2AB6ef47984041568F818E73', // our deployment
+    COMET_REWARDS: '0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae',
+    COMET_CONFIGURATOR: '0xb21b06D71c75973babdE35b49fFDAc3F82Ad3775',
+    COMET_PROXY_ADMIN: '0xD10b40fF1D92e2267D099Da3509253D9Da4D715e',
+    COMET_EXT: '0x1B2E88cC7365d90e7E81392432482925BD8437E9',
     AAVE_V3_POOL: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x929EC64c34a17401F460460D4B9390518E5B473e',
   },
