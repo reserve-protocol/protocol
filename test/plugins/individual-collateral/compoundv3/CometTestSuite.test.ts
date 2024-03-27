@@ -76,7 +76,6 @@ interface CometCollateralOpts extends CollateralOpts {
 */
 
 const chainlinkDefaultAnswer = bn('1e8')
-const reservesThresholdIffyDefault = bn('10000e6') // 10k
 
 export const defaultCometCollateralOpts: CometCollateralOpts = {
   erc20: CUSDC_V3,
@@ -90,7 +89,6 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
-  reservesThresholdIffy: reservesThresholdIffyDefault,
 }
 
 export const deployCollateral = async (
@@ -115,7 +113,6 @@ export const deployCollateral = async (
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
-    opts.reservesThresholdIffy,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -183,9 +180,7 @@ const deployCollateralCometMockContext = async (
   collateralOpts.chainlinkFeed = chainlinkFeed.address
 
   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-  const cusdcV3 = <CometMock>(
-    await CometFactory.deploy(collateralOpts.reservesThresholdIffy as BigNumberish, CUSDC_V3)
-  )
+  const cusdcV3 = <CometMock>await CometFactory.deploy(CUSDC_V3)
 
   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
     await ethers.getContractFactory('CusdcV3Wrapper')
@@ -304,55 +299,6 @@ const collateralSpecificConstructorTests = () => {
 }
 
 const collateralSpecificStatusTests = () => {
-  it('enters IFFY state when compound reserves are below target reserves iffy threshold', async () => {
-    const { collateral, cusdcV3 } = await deployCollateralCometMockContext({})
-    const delayUntilDefault = await collateral.delayUntilDefault()
-
-    // Check initial state
-    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-
-    // cUSDC/Comet's reserves gone down below targetReserves
-    await cusdcV3.setReserves(reservesThresholdIffyDefault.sub(1))
-
-    const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-    await setNextBlockTimestamp(nextBlockTimestamp)
-    const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
-
-    await expect(collateral.refresh())
-      .to.emit(collateral, 'CollateralStatusChanged')
-      .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-    expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-    expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-    // Move time forward past delayUntilDefault
-    await advanceTime(delayUntilDefault)
-    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-
-    // Nothing changes if attempt to refresh after default for CTokenV3
-    const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
-    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
-  })
-
-  it('enters DISABLED state if reserves go negative', async () => {
-    const { collateral, cusdcV3 } = await deployCollateralCometMockContext({})
-
-    // Check initial state
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-
-    // cUSDC/Comet's reserves gone down to -1
-    await cusdcV3.setReserves(-1)
-
-    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-    // State remains the same
-    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-  })
-
   it('does revenue hiding correctly', async () => {
     const { collateral, wcusdcV3Mock } = await deployCollateralCometMockContext({
       revenueHiding: fp('0.01'),
