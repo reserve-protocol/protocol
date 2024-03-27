@@ -33,6 +33,7 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   const rsrRatePre = await strsr.exchangeRate()
 
   const rewards = await claimRewards(backingManager)
+  console.log('rewards claimed', rewards)
   await backingManager.forwardRevenue(rewards)
   const comp = '0xc00e94Cb662C3520282E6f5717214004A7f26888'
   const compContract = await hre.ethers.getContractAt('ERC20Mock', comp)

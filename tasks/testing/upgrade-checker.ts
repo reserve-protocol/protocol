@@ -10,6 +10,7 @@ import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
+import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import runChecks3_3_0, {
   proposal_3_3_0_step_1,
   proposal_3_3_0_step_2,
@@ -193,6 +194,7 @@ task('recollateralize')
       recollateralize
     */
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
+    await pushOraclesForward(hre, params.rtoken, [])
     await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION).catch((e: Error) => {
       if (e.message.includes('already collateralized')) {
         console.log('Already Collateralized!')
@@ -204,15 +206,11 @@ task('recollateralize')
     })
     if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
 
-    // Give `tester` RTokens from Base bridge
+    // Give `tester` RTokens from a whale
     const redeemAmt = fp('1e3')
-    await whileImpersonating(
-      hre,
-      '0x3154Cf16ccdb4C6d922629664174b904d80F2C35', // base bridge address on mainnet
-      async (baseBridge) => {
-        await rToken.connect(baseBridge).transfer(tester.address, redeemAmt)
-      }
-    )
+    await whileImpersonating(hre, whales[params.rtoken.toLowerCase()], async (whaleSigner) => {
+      await rToken.connect(whaleSigner).transfer(tester.address, redeemAmt)
+    })
     if (!(await rToken.balanceOf(tester.address)).gte(redeemAmt)) throw new Error('missing R')
 
     /*
@@ -309,6 +307,35 @@ task('eusd-q1-2024-test', 'Test deployed eUSD Proposals').setAction(async (_, hr
     governor: RTokenGovernor,
   })
 
+  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+  await hre.run('recollateralize', {
+    rtoken: RTokenAddress,
+    governor: RTokenGovernor,
+  })
+})
+
+task('hyusd-q1-2024-test', 'Test deployed hyUSD Proposals').setAction(async (_, hre) => {
+  console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
+
+  const RTokenAddress = '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be'
+  const RTokenGovernor = '0x22d7937438b4bBf02f6cA55E3831ABB94Bd0b6f1'
+
+  const ProposalIdOne =
+    '12128108731947079972460039600592322347543776217408895065380983128537007111991'
+  const ProposalIdTwo =
+    '67602359440860478788595002306085984888572052896929999758442845286427134600253'
+
+  // Make sure both proposals are active.
+  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
   await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
   await hre.run('recollateralize', {
     rtoken: RTokenAddress,

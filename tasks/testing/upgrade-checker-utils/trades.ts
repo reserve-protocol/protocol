@@ -12,9 +12,9 @@ import { DutchTrade } from '@typechain/DutchTrade'
 import { GnosisTrade } from '@typechain/GnosisTrade'
 import { TestITrading } from '@typechain/TestITrading'
 import { BigNumber, ContractTransaction } from 'ethers'
-import { Interface, LogDescription } from 'ethers/lib/utils'
+import { LogDescription } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { collateralToUnderlying, whales } from './constants'
+import { whales } from './constants'
 import { logToken } from './logs'
 
 export const runBatchTrade = async (
@@ -114,8 +114,12 @@ export const runDutchTrade = async (
   const endBlock = await trade.endBlock()
   const [tester] = await hre.ethers.getSigners()
 
-  // Bid close to end block
-  await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(20))
+  // Bid near 1:1 point, which occurs at the 70% mark
+  const toAdvance = endBlock
+    .sub(await getLatestBlockNumber(hre))
+    .mul(7)
+    .div(10)
+  await advanceBlocks(hre, toAdvance)
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
@@ -215,44 +219,6 @@ export const getTokens = async (
   }
 }
 
-// mint regular cTokens  for an amount of `underlying`
-const mintCToken = async (
-  hre: HardhatRuntimeEnvironment,
-  tokenAddress: string,
-  amount: BigNumber,
-  recipient: string
-) => {
-  const collateral = await hre.ethers.getContractAt('ICToken', tokenAddress)
-  const underlying = await hre.ethers.getContractAt(
-    'ERC20Mock',
-    collateralToUnderlying[tokenAddress.toLowerCase()]
-  )
-  await whileImpersonating(hre, whales[tokenAddress.toLowerCase()], async (whaleSigner) => {
-    await underlying.connect(whaleSigner).approve(collateral.address, amount)
-    await collateral.connect(whaleSigner).mint(amount)
-    const bal = await collateral.balanceOf(whaleSigner.address)
-    await collateral.connect(whaleSigner).transfer(recipient, bal)
-  })
-}
-
-// mints staticAToken for an amount of `underlying`
-const mintStaticAToken = async (
-  hre: HardhatRuntimeEnvironment,
-  tokenAddress: string,
-  amount: BigNumber,
-  recipient: string
-) => {
-  const collateral = await hre.ethers.getContractAt('StaticATokenLM', tokenAddress)
-  const underlying = await hre.ethers.getContractAt(
-    'ERC20Mock',
-    collateralToUnderlying[tokenAddress.toLowerCase()]
-  )
-  await whileImpersonating(hre, whales[tokenAddress.toLowerCase()], async (whaleSigner) => {
-    await underlying.connect(whaleSigner).approve(collateral.address, amount)
-    await collateral.connect(whaleSigner).deposit(recipient, amount, 0, true)
-  })
-}
-
 // get a specific amount of wrapped cTokens
 const getCTokenVault = async (
   hre: HardhatRuntimeEnvironment,
@@ -320,6 +286,10 @@ const getERC20Tokens = async (
     'IStaticATokenV3LM',
     networkConfig['1'].tokens.saEthPyUSD!
   )
+  const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
+    'ConvexStakingWrapper',
+    '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'
+  )
 
   if (tokenAddress == wcUSDCv3.address) {
     await whileImpersonating(
@@ -359,6 +329,15 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
+  } else if (tokenAddress == stkcvxeUSDFRAXBP.address) {
+    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'
+
+    await whileImpersonating(hre, whales[lpTokenAddr], async (whaleSigner) => {
+      const lpToken = await hre.ethers.getContractAt('ERC20Mock', lpTokenAddr)
+      await lpToken.connect(whaleSigner).approve(stkcvxeUSDFRAXBP.address, amount.mul(2))
+      await stkcvxeUSDFRAXBP.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address)
+      await token.connect(whaleSigner).transfer(recipient, amount)
+    })
   } else {
     const addr = whales[token.address.toLowerCase()]
     if (!addr) throw new Error('missing whale for ' + tokenAddress)

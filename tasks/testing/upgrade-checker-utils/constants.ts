@@ -25,7 +25,13 @@ export const whales: { [key: string]: string } = {
   [networkConfig['1'].tokens.WETH!.toLowerCase()]: '0x8EB8a3b98659Cce290402893d0123abb75E3ab28',
   [networkConfig['1'].tokens.DAI!.toLowerCase()]: '0x8EB8a3b98659Cce290402893d0123abb75E3ab28',
   [networkConfig['1'].tokens.CRV!.toLowerCase()]: '0xf977814e90da44bfa03b6295a0616a897441acec',
-  [networkConfig['1'].tokens.CRV!.toLowerCase()]: '0xf977814e90da44bfa03b6295a0616a897441acec',
+  ['0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F'.toLowerCase()]:
+    '0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784', // cvxeUSDFRAXBP LP token
+  [networkConfig['1'].tokens.sDAI!.toLowerCase()]: '0x4aa42145Aa6Ebf72e164C9bBC74fbD3788045016',
+  ['0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f'.toLowerCase()]:
+    '0x3154Cf16ccdb4C6d922629664174b904d80F2C35', // eUSD
+  ['0xacdf0dba4b9839b96221a8487e9ca660a48212be'.toLowerCase()]:
+    '0x8a8434A5952aC2CF4927bbEa3ace255c6dd165CD', // hyUSD
 }
 
 export const collateralToUnderlying: { [key: string]: string } = {

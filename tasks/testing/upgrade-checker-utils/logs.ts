@@ -45,11 +45,14 @@ const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.aEthPyUSD!.toLowerCase()]: 'aEthPyUSD',
   [networkConfig['1'].tokens.saEthPyUSD!.toLowerCase()]: 'saEthPyUSD',
   [networkConfig['1'].tokens.cUSDCv3!.toLowerCase()]: 'cUSDCv3',
+  ['0xaa91d24c2f7dbb6487f61869cd8cd8afd5c5cab2'.toLowerCase()]: 'mrp-aUSDT',
   ['0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()]: 'saUSDC',
   ['0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()]: 'saUSDT',
   ['0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase()]: 'cUSDCVault',
   ['0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase()]: 'cUSDTVault',
   ['0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'.toLowerCase()]: 'wcUSDCv3',
+  ['0x3BECE5EC596331033726E5C6C188c313Ff4E3fE5'.toLowerCase()]: 'stkcvxeUSDFRAXBP',
+  ['0x83f20f44975d03b1b09e64809b757c47f942beea'.toLowerCase()]: 'sDAI',
 }
 
 export const logToken = (tokenAddress: string) => {
