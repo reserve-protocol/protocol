@@ -743,7 +743,7 @@ export default function fn<X extends CollateralFixtureContext>(
         const rTokenSetup: IRTokenSetup = {
           assets: [],
           primaryBasket: [collateral.address, pairedColl.address],
-          weights: [fp('0.5e-4'), fp('0.5e-4')],
+          weights: [fp('0.5e-3'), fp('0.5e-3')],
           backups: [],
           beneficiaries: [],
         }
@@ -865,13 +865,9 @@ export default function fn<X extends CollateralFixtureContext>(
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         await rToken.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
-        const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
-        await mintCollateralTo(
-          ctx,
-          mintAmt.gt('150') ? mintAmt : bn('150'),
-          addr1,
-          backingManager.address
-        )
+        let mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
+        mintAmt = mintAmt.gt('150') ? mintAmt : bn('150')
+        await mintCollateralTo(ctx, mintAmt, addr1, backingManager.address)
         await backingManager.forwardRevenue([collateralERC20.address])
         expect(await collateralERC20.balanceOf(rTokenTrader.address)).to.be.gt(0)
 
@@ -890,6 +886,7 @@ export default function fn<X extends CollateralFixtureContext>(
         await rToken.connect(addr1).approve(trade.address, buyAmt)
         await advanceToTimestamp((await trade.endTime()) - 1)
 
+        // Bid
         await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
           rTokenTrader,
           'TradeSettled'
