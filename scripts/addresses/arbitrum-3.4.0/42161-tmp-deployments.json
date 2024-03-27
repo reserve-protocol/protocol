@@ -1,0 +1,38 @@
+{
+  "prerequisites": {
+    "RSR": "0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594",
+    "RSR_FEED": "0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488",
+    "GNOSIS_EASY_AUCTION": "0xcD033976a011F41D2AB6ef47984041568F818E73"
+  },
+  "tradingLib": "0x8569D60Df34354CDd1115b90de832845b31C28d2",
+  "cvxMiningLib": "",
+  "facade": "0xB7F55aA5C7d09C091C1bD22B3352e8cb3fACF289",
+  "facets": {
+    "actFacet": "0x182e86Ad4a6139ced4f9Fa4ED3f1Cd9E4F7449e7",
+    "readFacet": "0x37C8ebD57864D38C8F7987B6762e0301b0bAfF6d"
+  },
+  "facadeWriteLib": "0xfd529fa21FBd569Bcf7c7f49694568fD66e8d1e9",
+  "basketLib": "0xf4C5d33DABb9D4681ED9b83618d629BA1006AE16",
+  "facadeWrite": "0x0F345F57ee2b395e23390f8e1F1869D7E6C0F70e",
+  "deployer": "0x184460704886f9F2A7F3A0c2887680867954dC6E",
+  "rsrAsset": "0xaB6b734b618a4824fCCa63014cfaC30CDB41Db2a",
+  "implementations": {
+    "main": "0x9C75314AFD011F22648ca9C655b61674e27bA4AC",
+    "trading": {
+      "gnosisTrade": "0x13B63e7094B61CCbe79CAe3fb602DFd12D59314a",
+      "dutchTrade": "0x46c600CB3Fb7Bf386F8f53952D64aC028e289AFb"
+    },
+    "components": {
+      "assetRegistry": "0xFa93538Ed210486bfdE01b7E2295392fE7153106",
+      "backingManager": "0xcd77df48E548dda056f8563f2520fFD94aD147eE",
+      "basketHandler": "0xa8d818C719c1034E731Feba2088F4F011D44ACB3",
+      "broker": "0xd3025304C6487FC5c39010bEA0B46cc0690ab229",
+      "distributor": "0x38eF27D791cd60074Fa0345E8F82Df25e1f80B41",
+      "furnace": "0xDf99ccA98349DeF0eaB8eC37C1a0B270de38E682",
+      "rsrTrader": "0xf67454a5e8081F52768cD350A4Ac9E832c5101b6",
+      "rTokenTrader": "0xf67454a5e8081F52768cD350A4Ac9E832c5101b6",
+      "rToken": "0x6bae9bE78cbE3Cd93FC02D974a66F9700E4a299C",
+      "stRSR": "0x02Ee6862cF431D7CEaa78112D635D2Be7DdFC178"
+    }
+  }
+}

@@ -50,7 +50,6 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
-  advanceBlocks,
   advanceTime,
   advanceToTimestamp,
   getLatestBlockTimestamp,
@@ -1135,14 +1134,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startBlock()).to.equal((await getLatestBlockNumber()) + 1)
-        const tradeLen = (await trade.endBlock()).sub(await trade.startBlock())
-        expect(await trade.endTime()).to.equal(
-          tradeLen
-            .add(1)
-            .mul(12)
-            .add(await getLatestBlockTimestamp())
-        )
+        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 12)
+        const tradeLen = (await trade.endTime()) - (await trade.startTime())
+        expect(await trade.endTime()).to.equal(tradeLen + 12 + (await getLatestBlockTimestamp()))
         expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
@@ -1302,8 +1296,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         })
 
         // Advance blocks til trade can be settled
-        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
-        await advanceBlocks(tradeLen.add(1))
+        const now = await getLatestBlockTimestamp()
+        const tradeLen = (await trade.endTime()) - now
+        await advanceToTimestamp(now + tradeLen + 12)
 
         // Settle trade
         expect(await trade.canSettle()).to.equal(true)
@@ -1341,8 +1336,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance blocks til trade can be settled
-        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
-        await advanceBlocks(tradeLen.add(1))
+        const now = await getLatestBlockTimestamp()
+        const tradeLen = (await trade.endTime()) - now
+        await advanceToTimestamp(now + tradeLen + 12)
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -1463,17 +1459,20 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
-      const currentBlock = bn(await getLatestBlockNumber())
-      const toAdvance = progression
-        .mul((await trade.endBlock()).sub(currentBlock))
-        .div(fp('1'))
-        .sub(1)
-      if (toAdvance.gt(0)) await advanceBlocks(toAdvance)
+      const now = await getLatestBlockTimestamp()
+      const startTime = await trade.startTime()
+      const endTime = await trade.endTime()
+      const bidTime =
+        startTime +
+        progression
+          .mul(endTime - startTime)
+          .div(fp('1'))
+          .toNumber()
+      if (now < bidTime) await advanceToTimestamp(bidTime - 1)
 
       // Bid
       const sellAmt = await trade.lot()
-      const bidBlock = bn('1').add(await getLatestBlockNumber())
-      const bidAmt = await trade.bidAmount(bidBlock)
+      const bidAmt = await trade.bidAmount(bidTime)
       expect(bidAmt).to.be.gt(0)
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
@@ -1734,7 +1733,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceBlocks((await newTrade.endBlock()).sub(await getLatestBlockNumber()))
+        await advanceToTimestamp(await newTrade.endTime())
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {

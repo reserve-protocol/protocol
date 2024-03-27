@@ -1,7 +1,12 @@
 /* eslint-disable no-process-exit */
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { baseL2Chains, developmentChains, networkConfig } from '../common/configuration'
+import {
+  arbitrumL2Chains,
+  baseL2Chains,
+  developmentChains,
+  networkConfig,
+} from '../common/configuration'
 import { sh } from './deployment/utils'
 import {
   getDeploymentFile,
@@ -47,7 +52,7 @@ async function main() {
   ]
 
   // Phase 2 - Individual Plugins
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     scripts.push(
       'collateral-plugins/verify_convex_crvusd_usdc.ts',
       'collateral-plugins/verify_convex_3pool.ts',
@@ -67,7 +72,9 @@ async function main() {
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
       'collateral-plugins/verify_sfrax.ts',
-      'collateral-plugins/verify_sfrax_eth.ts'
+      'collateral-plugins/verify_sfrax_eth.ts',
+      'collateral-plugins/verify_steakusdc.ts',
+      'collateral-plugins/verify_re7weth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -78,6 +85,8 @@ async function main() {
       'collateral-plugins/verify_stargate_usdc',
       'assets/verify_stg.ts'
     )
+  } else if (chainId == '42161' || chainId == '421614') {
+    // TODO: Arbitrum
   }
 
   // Phase 3 - RTokens and Governance

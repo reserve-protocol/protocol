@@ -4,7 +4,7 @@ import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
-import { IComponents, baseL2Chains } from '../../common/configuration'
+import { IComponents, arbitrumL2Chains, baseL2Chains } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
@@ -113,10 +113,17 @@ export async function verifyContract(
 
     let url: string
     if (baseL2Chains.includes(hre.network.name)) {
+      const BASESCAN_API_KEY = useEnv('BASESCAN_API_KEY')
       // Base L2
-      url = `${getBasescanURL(
+      url = `${getCustomVerificationURL(
         chainId
-      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${BASESCAN_API_KEY}`
+    } else if (arbitrumL2Chains.includes(hre.network.name)) {
+      const ARBISCAN_API_KEY = useEnv('ARBISCAN_API_KEY')
+      // Arbitrum L2
+      url = `${getCustomVerificationURL(
+        chainId
+      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${ARBISCAN_API_KEY}`
     } else {
       // Ethereum
       url = `${getEtherscanBaseURL(
@@ -162,7 +169,7 @@ export const getEtherscanBaseURL = (chainId: number, api = false) => {
   return `https://${prefix}etherscan.io`
 }
 
-export const getBasescanURL = (chainId: number) => {
+export const getCustomVerificationURL = (chainId: number) => {
   // For Base, get URL from HH config
   const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
   if (!chainConfig || !chainConfig.urls) {
@@ -180,8 +187,7 @@ export const getEmptyDeployment = (): IDeployments => {
     },
     tradingLib: '',
     basketLib: '',
-    actFacet: '',
-    readFacet: '',
+    facets: { actFacet: '', readFacet: '' },
     facade: '',
     facadeWriteLib: '',
     cvxMiningLib: '',

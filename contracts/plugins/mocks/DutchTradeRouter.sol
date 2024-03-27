@@ -6,6 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IDutchTradeCallee, TradeStatus, DutchTrade } from "../trading/DutchTrade.sol";
 import { IMain } from "../../interfaces/IMain.sol";
 
+import { NetworkConfigLib } from "../../libraries/NetworkConfigLib.sol";
+
 /** @title DutchTradeRouter
  * @notice Utility contract for placing bids on DutchTrade auctions
  */
@@ -85,7 +87,7 @@ contract DutchTradeRouter is IDutchTradeCallee {
         out.trade = trade;
         out.buyToken = IERC20(trade.buy());
         out.sellToken = IERC20(trade.sell());
-        out.buyAmt = trade.bidAmount(block.number); // {qBuyToken}
+        out.buyAmt = trade.bidAmount(uint48(block.timestamp)); // {qBuyToken}
         out.buyToken.safeTransferFrom(bidder, address(this), out.buyAmt);
 
         uint256 sellAmt = out.sellToken.balanceOf(address(this)); // {qSellToken}
