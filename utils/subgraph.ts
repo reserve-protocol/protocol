@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { BigNumber, BigNumberish } from 'ethers'
 import { gql, GraphQLClient } from 'graphql-request'
 import { useEnv } from './env'
@@ -25,6 +24,7 @@ export const getDelegates = async (governance: string): Promise<Array<Delegate>>
     }
   `
   const whales = await client.request(query, { governance })
+  // @ts-expect-error Subgraphs are bad
   return whales.delegates
 }
 
@@ -53,5 +53,6 @@ export const getProposalDetails = async (proposalId: string): Promise<Proposal> 
     }
   `
   const prop = await client.request(query, { id: proposalId })
+  // @ts-expect-error Subgraphs are bad
   return prop.proposal
 }

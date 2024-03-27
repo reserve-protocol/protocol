@@ -9,7 +9,7 @@ import "../interfaces/IFacadeMonitor.sol";
 import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
-import "../plugins/assets/compoundv2/CTokenWrapper.sol";
+import "../plugins/assets/compoundv2/DEPRECATED_CTokenWrapper.sol";
 import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
 import "../plugins/assets/stargate/StargateRewardableWrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
@@ -157,20 +157,18 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
             );
             availableLiquidity = underlying.balanceOf(address(aToken));
         } else if (collType == CollPluginType.COMPOUND_V2 || collType == CollPluginType.FLUX) {
-            ICToken cToken;
-            uint256 cTokenBal;
-            if (collType == CollPluginType.COMPOUND_V2) {
-                // CompoundV2 uses a vault to wrap the CToken
-                CTokenWrapper cTokenVault = CTokenWrapper(address(erc20));
-                cToken = ICToken(address(cTokenVault.underlying()));
-                cTokenBal = cTokenVault.balanceOf(address(rToken.main().backingManager()));
-            } else {
-                // FLUX - Uses FToken directly (fork of CToken)
-                cToken = ICToken(address(erc20));
-                cTokenBal = cToken.balanceOf(address(rToken.main().backingManager()));
-            }
-            IERC20 underlying = IERC20(cToken.underlying());
+            // (1) OLD compound-v2 uses a wrapper
+            // (2) NEW compound-v2 does not use a wrapper
+            // (3) FLUX does not use a wrapper
+            ICToken cToken = ICToken(ICToken(address(erc20)).underlying()); // case (1)
 
+            // solhint-disable-next-line no-empty-blocks
+            try cToken.underlying() returns (address) {} catch {
+                cToken = ICToken(address(erc20)); // case (2) or (3)
+            }
+            uint256 cTokenBal = cToken.balanceOf(address(rToken.main().backingManager()));
+
+            IERC20 underlying = IERC20(cToken.underlying());
             uint256 exchangeRate = cToken.exchangeRateStored();
 
             backingBalance = (cTokenBal * exchangeRate) / 1e18;

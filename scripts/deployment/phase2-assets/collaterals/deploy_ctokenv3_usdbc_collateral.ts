@@ -76,8 +76,7 @@ async function main() {
       defaultThreshold: fp('0.01').add(usdcOracleError).toString(), // 1% + 0.3%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    revenueHiding.toString(),
-    bn('10000e6').toString() // $10k
+    revenueHiding.toString()
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()

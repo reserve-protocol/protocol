@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
+import "../assets/compoundv2/ICToken.sol";
 import "./ERC20Mock.sol";
 
 contract CTokenMock is ERC20Mock {
@@ -13,13 +14,17 @@ contract CTokenMock is ERC20Mock {
 
     bool public revertExchangeRate;
 
+    IComptroller public immutable comptroller;
+
     constructor(
         string memory name,
         string memory symbol,
-        address underlyingToken
+        address underlyingToken,
+        IComptroller _comptroller
     ) ERC20Mock(name, symbol) {
         _underlyingToken = underlyingToken;
         _exchangeRate = _toExchangeRate(FIX_ONE);
+        comptroller = _comptroller;
     }
 
     function decimals() public pure override returns (uint8) {

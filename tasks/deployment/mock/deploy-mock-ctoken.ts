@@ -6,6 +6,7 @@ task('deploy-mock-ctoken', 'Deploys a mock CToken')
   .addParam('name', 'Token name')
   .addParam('symbol', 'Token symbol')
   .addParam('erc20', 'Underlying ERC20 address')
+  .addParam('comptroller', 'The Comptroller')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
@@ -21,7 +22,7 @@ task('deploy-mock-ctoken', 'Deploys a mock CToken')
     const erc20 = <CTokenMock>(
       await (await hre.ethers.getContractFactory('CTokenMock'))
         .connect(deployer)
-        .deploy(params.name, params.symbol, params.erc20)
+        .deploy(params.name, params.symbol, params.erc20, params.comptroller)
     )
     await erc20.deployed()
 

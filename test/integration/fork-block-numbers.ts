@@ -6,7 +6,7 @@ const forkBlockNumber = {
   'flux-finance': 16836855, // Ethereum
   'mainnet-2.0': 17522362, // Ethereum
   'facade-monitor': 18742016, // Ethereum
-  default: 18522901, // Ethereum
+  default: 19275770, // Ethereum
 }
 
 export default forkBlockNumber

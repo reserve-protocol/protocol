@@ -134,7 +134,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     // solhint-disable no-empty-blocks
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks

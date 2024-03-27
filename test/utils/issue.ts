@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 
 import { bn, fp } from '../../common/numbers'
-import { FacadeRead, TestIRToken } from '../../typechain'
+import { TestIFacade, TestIRToken } from '../../typechain'
 import { IMPLEMENTATION, Implementation } from '../fixtures'
 import { advanceBlocks } from './time'
 
@@ -14,7 +14,7 @@ import { advanceBlocks } from './time'
 // blocks, we do this more cleverly than just one big issuance...
 // This presumes that user has already granted allowances of basket tokens!
 export async function issueMany(
-  facade: FacadeRead,
+  facade: TestIFacade,
   rToken: TestIRToken,
   toIssue: BigNumber,
   user: SignerWithAddress

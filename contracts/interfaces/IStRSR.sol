@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "../libraries/Fixed.sol";
 import "./IComponent.sol";
-import "./IMain.sol";
 
 /**
  * @title IStRSR

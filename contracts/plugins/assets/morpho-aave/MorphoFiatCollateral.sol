@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 // solhint-disable-next-line max-line-length
-import { AppreciatingFiatCollateral, CollateralConfig } from "../AppreciatingFiatCollateral.sol";
+import { Asset, AppreciatingFiatCollateral, CollateralConfig, IRewardable } from "../AppreciatingFiatCollateral.sol";
 import { MorphoTokenisedDeposit } from "./MorphoTokenisedDeposit.sol";
 import { OracleLib } from "../OracleLib.sol";
 // solhint-disable-next-line max-line-length
@@ -18,6 +18,7 @@ import { shiftl_toFix, FIX_ONE } from "../../../libraries/Fixed.sol";
 contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
+    IERC20Metadata private immutable morpho;
     uint256 private immutable oneShare;
     int8 private immutable refDecimals;
 
@@ -30,6 +31,7 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
         require(address(config.erc20) != address(0), "missing erc20");
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         MorphoTokenisedDeposit vault = MorphoTokenisedDeposit(address(config.erc20));
+        morpho = IERC20Metadata(address(vault.rewardToken()));
         oneShare = 10**vault.decimals();
         refDecimals = int8(uint8(IERC20Metadata(vault.asset()).decimals()));
     }
@@ -41,5 +43,13 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
                 MorphoTokenisedDeposit(address(erc20)).convertToAssets(oneShare),
                 -refDecimals
             );
+    }
+
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @custom:delegate-call
+    function claimRewards() external virtual override(Asset, IRewardable) {
+        uint256 bal = morpho.balanceOf(address(this));
+        IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - bal);
     }
 }

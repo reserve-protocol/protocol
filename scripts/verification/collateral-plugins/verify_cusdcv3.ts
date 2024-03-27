@@ -64,7 +64,6 @@ async function main() {
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       revenueHiding,
-      bn('10000e6'), // $10k
     ],
     'contracts/plugins/assets/compoundv3/CTokenV3Collateral.sol:CTokenV3Collateral'
   )

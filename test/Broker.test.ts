@@ -46,6 +46,7 @@ import {
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   SLOW,
+  VERSION,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
@@ -1109,6 +1110,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.canSettle()).to.equal(false)
       })
 
+      it('Should have version()', async () => {
+        expect(await trade.version()).to.equal(VERSION)
+      })
+
       it('Should initialize DutchTrade correctly - only once', async () => {
         // Fund trade and initialize
         await token0.connect(owner).mint(trade.address, amount)
@@ -1553,6 +1558,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         TradeFactory = await ethers.getContractFactory('GnosisTrade')
         newTrade = <GnosisTrade>await TradeFactory.deploy()
         await setStorageAt(newTrade.address, 0, 0)
+      })
+
+      it('Should have version()', async () => {
+        expect(await newTrade.version()).to.equal(VERSION)
       })
 
       it('Open Trade ', async () => {

@@ -6,6 +6,7 @@ import { bn, fp } from '../../../common/numbers'
 import { useEnv } from '#/utils/env'
 import { Implementation, IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
 import {
+  ActFacet,
   Asset,
   AssetRegistryP1,
   BackingManagerP1,
@@ -17,18 +18,18 @@ import {
   DistributorP1,
   DutchTrade,
   ERC20Mock,
-  FacadeRead,
-  FacadeAct,
   FacadeTest,
   FacadeWrite,
   FurnaceP1,
   GnosisTrade,
   IGnosis,
   MainP1,
+  ReadFacet,
   RevenueTraderP1,
   RTokenP1,
   StRSRP1Votes,
   TestIDeployer,
+  TestIFacade,
   RecollateralizationLibP1,
 } from '../../../typechain'
 
@@ -67,8 +68,7 @@ export interface DefaultFixture extends RSRAndModuleFixture {
   salt: string
   deployer: TestIDeployer
   rsrAsset: Asset
-  facade: FacadeRead
-  facadeAct: FacadeAct
+  facade: TestIFacade
   facadeTest: FacadeTest
   facadeWrite: FacadeWrite
   govParams: IGovParams
@@ -84,13 +84,25 @@ export const getDefaultFixture = async function (salt: string) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
-    // Deploy FacadeRead
-    const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
-    const facade = <FacadeRead>await FacadeReadFactory.deploy()
+    // Deploy Facade
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+    const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
 
-    // Deploy FacadeAct
-    const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
-    const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
+    // Save ReadFacet to Facade
+    const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
+    const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+    await facade.save(
+      readFacet.address,
+      Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
+    )
+
+    // Save ActFacet to Facade
+    const ActFacetFactory: ContractFactory = await ethers.getContractFactory('ActFacet')
+    const actFacet = <ActFacet>await ActFacetFactory.deploy()
+    await facade.save(
+      actFacet.address,
+      Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+    )
 
     // Deploy FacadeTest
     const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -231,7 +243,6 @@ export const getDefaultFixture = async function (salt: string) {
       deployer,
       gnosis,
       facade,
-      facadeAct,
       facadeTest,
       facadeWrite,
       govParams,

@@ -49,7 +49,9 @@ async function main() {
   // Phase 2 - Individual Plugins
   if (!baseL2Chains.includes(hre.network.name)) {
     scripts.push(
-      'collateral-plugins/verify_convex_stable.ts',
+      'collateral-plugins/verify_convex_crvusd_usdc.ts',
+      'collateral-plugins/verify_convex_3pool.ts',
+      'collateral-plugins/verify_convex_paypool.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
       'collateral-plugins/verify_convex_stable_rtoken_metapool.ts',
       'collateral-plugins/verify_curve_stable.ts',
@@ -64,14 +66,15 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
-      'collateral-plugins/verify_sfrax.ts'
+      'collateral-plugins/verify_sfrax.ts',
+      'collateral-plugins/verify_sfrax_eth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
     scripts.push(
       'collateral-plugins/verify_cbeth.ts',
       'collateral-plugins/verify_cusdbcv3.ts',
-      'collateral-plugins/verify_aave_v3_usdbc',
+      'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_stargate_usdc',
       'assets/verify_stg.ts'
     )

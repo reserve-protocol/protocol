@@ -706,7 +706,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Few more quanta of decrease results in default
-          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(4)) // sub 4 to compenstate for rounding
+          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(4)) // sub 4 to compensate for rounding
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
@@ -849,6 +849,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           amtRate: fp('1e6'), // 1M RToken
           pctRate: fp('0.05'), // 5%
         },
+        reweightable: false,
       }
 
       interface IntegrationFixture {

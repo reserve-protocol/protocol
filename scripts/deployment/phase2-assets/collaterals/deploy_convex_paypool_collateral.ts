@@ -9,7 +9,6 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  IDeployments,
   getDeploymentFilename,
   fileExists,
 } from '../../common'
@@ -17,25 +16,21 @@ import { CurveStableCollateral } from '../../../../typechain'
 import { revenueHiding } from '../../utils'
 import {
   CurvePoolType,
-  DAI_ORACLE_ERROR,
-  DAI_ORACLE_TIMEOUT,
-  DAI_USD_FEED,
+  pyUSD_ORACLE_ERROR,
+  pyUSD_ORACLE_TIMEOUT,
+  pyUSD_USD_FEED,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
-  THREE_POOL,
-  THREE_POOL_TOKEN,
-  THREE_POOL_CVX_POOL_ID,
+  PayPool,
+  PayPool_POOL_ID,
   USDC_ORACLE_ERROR,
   USDC_ORACLE_TIMEOUT,
   USDC_USD_FEED,
-  USDT_ORACLE_ERROR,
-  USDT_ORACLE_TIMEOUT,
-  USDT_USD_FEED,
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
-// This file specifically deploys Convex Stable Plugin for 3pool
+// Convex Stable Plugin: paypool
 
 async function main() {
   // ==== Read Configuration ====
@@ -55,8 +50,6 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
-  const deployments = <IDeployments>getDeploymentFile(phase1File)
-
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
@@ -68,19 +61,19 @@ async function main() {
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-  const w3Pool = await ConvexStakingWrapperFactory.deploy()
-  await w3Pool.deployed()
-  await (await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)).wait()
+  const payPool = await ConvexStakingWrapperFactory.deploy()
+  await payPool.deployed()
+  await (await payPool.initialize(PayPool_POOL_ID)).wait()
 
   console.log(
-    `Deployed wrapper for Convex Stable 3Pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
+    `Deployed wrapper for Convex Stable PayPool on ${hre.network.name} (${chainId}): ${payPool.address} `
   )
 
   const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
-      erc20: w3Pool.address,
+      erc20: payPool.address,
       targetName: ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -92,13 +85,13 @@ async function main() {
     },
     revenueHiding.toString(),
     {
-      nTokens: 3,
-      curvePool: THREE_POOL,
+      nTokens: 2,
+      curvePool: PayPool,
       poolType: CurvePoolType.Plain,
-      feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
-      oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
-      oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
-      lpToken: THREE_POOL_TOKEN,
+      feeds: [[pyUSD_USD_FEED], [USDC_USD_FEED]],
+      oracleTimeouts: [[pyUSD_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
+      oracleErrors: [[pyUSD_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
+      lpToken: PayPool,
     }
   )
   await collateral.deployed()
@@ -106,11 +99,11 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
-    `Deployed Convex Stable Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Convex Stable Collateral for PayPool to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.collateral.cvx3Pool = collateral.address
-  assetCollDeployments.erc20s.cvx3Pool = w3Pool.address
+  assetCollDeployments.collateral.cvxPayPool = collateral.address
+  assetCollDeployments.erc20s.cvxPayPool = payPool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

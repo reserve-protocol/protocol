@@ -17,8 +17,8 @@ switch (forkNetwork) {
     break
 }
 
-const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
-const CUSDC_NAME = chainId == '8453' ? 'cUSDbCv3' : 'cUSDCv3'
+const USDC_NAME = 'USDC'
+const CUSDC_NAME = 'cUSDCv3'
 
 // Mainnet Addresses
 export const RSR = networkConfig[chainId].tokens.RSR as string
@@ -29,7 +29,7 @@ export const REWARDS = networkConfig[chainId].COMET_REWARDS!
 export const USDC = networkConfig[chainId].tokens[USDC_NAME]!
 export const USDC_HOLDER =
   chainId == '8453'
-    ? '0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA'
+    ? '0xcdac0d6c6c59727a65f871236188350531885c43'
     : '0x0a59649758aa4d66e25f08dd01271e891fe52199'
 export const COMET_CONFIGURATOR = networkConfig[chainId].COMET_CONFIGURATOR!
 export const COMET_PROXY_ADMIN = networkConfig[chainId].COMET_PROXY_ADMIN!
@@ -43,4 +43,4 @@ export const DELAY_UNTIL_DEFAULT = bn(86400)
 export const MAX_TRADE_VOL = bn(1000000)
 export const USDC_DECIMALS = bn(6)
 
-export const FORK_BLOCK = chainId == '8453' ? 4446300 : 15850930
+export const FORK_BLOCK = chainId == '8453' ? 12292893 : 15850930

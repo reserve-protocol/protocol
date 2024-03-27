@@ -9,7 +9,7 @@ import {
   IAssetCollDeployments,
 } from '../deployment/common'
 import { combinedError, priceTimeout, revenueHiding, verifyContract } from '../deployment/utils'
-import { ATokenMock, ATokenFiatCollateral, ICToken, CTokenFiatCollateral } from '../../typechain'
+import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
 
@@ -114,25 +114,6 @@ async function main() {
       revenueHiding.toString(),
     ],
     'contracts/plugins/assets/aave/ATokenFiatCollateral.sol:ATokenFiatCollateral'
-  )
-  /********  Verify CTokenWrapper - cDAI  **************************/
-  const cToken: ICToken = <ICToken>(
-    await ethers.getContractAt('ICToken', networkConfig[chainId].tokens.cDAI as string)
-  )
-  const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
-    await ethers.getContractAt('CTokenFiatCollateral', deployments.collateral.cDAI as string)
-  )
-
-  await verifyContract(
-    chainId,
-    await cTokenCollateral.erc20(),
-    [
-      cToken.address,
-      `${await cToken.name()} Vault`,
-      `${await cToken.symbol()}-VAULT`,
-      networkConfig[chainId].COMPTROLLER!,
-    ],
-    'contracts/plugins/assets/compoundv2/CTokenWrapper.sol:CTokenWrapper'
   )
   /********************** Verify CTokenFiatCollateral - cDAI  ****************************************/
   await verifyContract(

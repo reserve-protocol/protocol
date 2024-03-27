@@ -6,12 +6,12 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 
 /**
- * @title IFacadeRead
+ * @title IReadFacet
  * @notice A UX-friendly layer for read operations, especially those that first require refresh()
  *
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
 v */
-interface IFacadeRead {
+interface IReadFacet {
     // === Static Calls ===
 
     /// @return How many RToken `account` can issue given current holdings

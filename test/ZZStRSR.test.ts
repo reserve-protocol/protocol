@@ -12,17 +12,17 @@ import { expectEvents } from '../common/events'
 import {
   ERC20Mock,
   ERC1271Mock,
-  FacadeRead,
   StRSRP0,
   StRSRP1Votes,
   StaticATokenMock,
   IAssetRegistry,
   TestIBackingManager,
   TestIBasketHandler,
+  TestIFacade,
   TestIMain,
   TestIRToken,
   TestIStRSR,
-  CTokenWrapperMock,
+  CTokenMock,
 } from '../typechain'
 import { IConfig, MAX_RATIO, MAX_UNSTAKING_DELAY } from '../common/configuration'
 import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
@@ -70,7 +70,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
   let rToken: TestIRToken
-  let facade: FacadeRead
+  let facade: TestIFacade
   let assetRegistry: IAssetRegistry
 
   // StRSR
@@ -80,7 +80,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3: CTokenWrapperMock
+  let token3: CTokenMock
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: Collateral
@@ -179,9 +179,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
-    )
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
   })
 
   describe('Deployment #fast', () => {

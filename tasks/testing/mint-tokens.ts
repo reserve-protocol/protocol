@@ -112,8 +112,8 @@ task('give-rsr', 'Mints RSR to an address on a tenderly fork')
 
     const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
     await whileImpersonating(hre, rsrWhale, async (signer) => {
-      await rsr.connect(signer).transfer(params.address, fp('100e6'))
+      await rsr.connect(signer).transfer(params.address, fp('1e9'))
     })
 
-    console.log(`100m RSR sent to ${params.address}`)
+    console.log(`1B RSR sent to ${params.address}`)
   })

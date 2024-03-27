@@ -5,8 +5,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IDutchTradeCallee, TradeStatus, DutchTrade, ITrading } from "../trading/DutchTrade.sol";
 
-import "hardhat/console.sol";
-
 contract DutchTradeCallbackReentrantTest is IDutchTradeCallee {
     using SafeERC20 for IERC20;
 
@@ -26,8 +24,6 @@ contract DutchTradeCallbackReentrantTest is IDutchTradeCallee {
         require(msg.sender == address(_currentTrade), "Nope");
 
         IERC20(buyToken).safeTransfer(msg.sender, buyAmount);
-
-        console.log("canSettle", _currentTrade.canSettle());
 
         _trader.settleTrade(_currentTrade.sell());
 

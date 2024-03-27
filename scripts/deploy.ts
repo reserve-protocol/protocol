@@ -25,17 +25,23 @@ async function main() {
   // Part 1/3 of the *overall* deployment process: Deploy all contracts
   // See `confirm.ts` for part 2
 
-  // Phase 1- Implementations
+  // Phase 1 -- Implementations
   const scripts = [
-    'phase1-common/0_setup_deployments.ts',
-    'phase1-common/1_deploy_libraries.ts',
-    'phase1-common/2_deploy_implementations.ts',
-    'phase1-common/3_deploy_rsrAsset.ts',
-    'phase1-common/4_deploy_facade.ts',
-    'phase1-common/5_deploy_deployer.ts',
-    'phase1-common/6_deploy_facadeWrite.ts',
-    'phase1-common/7_deploy_facadeAct.ts',
+    'phase1-core/0_setup_deployments.ts',
+    'phase1-core/1_deploy_libraries.ts',
+    'phase1-core/2_deploy_implementations.ts',
+    'phase1-core/3_deploy_rsrAsset.ts',
+    'phase1-core/4_deploy_facade.ts', // comment this out before deployment to keep old Facade
+    'phase1-core/5_deploy_deployer.ts',
+    'phase1-core/6_deploy_facadeWrite.ts',
   ]
+
+  // =============================================
+
+  // Phase 1.5 -- Facets
+  // To update the existing Facade, add new facets to the below list
+
+  scripts.push('phase1-facade/1_deploy_readFacet.ts', 'phase1-facade/2_deploy_actFacet.ts')
 
   // =============================================
 
@@ -47,12 +53,13 @@ async function main() {
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
       'phase2-assets/2_deploy_collateral.ts',
-      'phase2-assets/collaterals/deploy_compound_v2_collateral.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
       'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_stable_plugin.ts',
+      'phase2-assets/collaterals/deploy_convex_3pool_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_paypool_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_curve_stable_plugin.ts',
@@ -62,9 +69,11 @@ async function main() {
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_pyusd.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdc.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdp.ts',
-      'phase2-assets/collaterals/deploy_sfrax.ts'
+      'phase2-assets/collaterals/deploy_sfrax.ts',
+      'phase2-assets/collaterals/deploy_sfrax_eth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -74,7 +83,7 @@ async function main() {
       'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdbc_collateral.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdbc.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_stargate_usdc_collateral.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )

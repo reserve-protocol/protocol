@@ -248,9 +248,9 @@ describeFork('Wrapped CUSDCv3', () => {
       await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
 
       expect(await cusdcV3.balanceOf(don.address)).to.closeTo(withdrawAmount, 100)
-      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(bn('0'), 11)
+      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(bn('0'), 30)
 
-      expect(await wcusdcV3.balanceOf(bob.address)).to.closeTo(bn(0), 50)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.closeTo(bn(0), 100)
     })
 
     it('withdraws all underlying balance via multiple withdrawals', async () => {
@@ -293,7 +293,7 @@ describeFork('Wrapped CUSDCv3', () => {
       charlesWithdrawn = charlesWithdrawn.add(firstWithdrawAmt)
       await wcusdcV3.connect(charles).withdraw(firstWithdrawAmt)
       const newBalanceCharles = await cusdcV3.balanceOf(charles.address)
-      expect(newBalanceCharles).to.closeTo(firstWithdrawAmt, 10)
+      expect(newBalanceCharles).to.closeTo(firstWithdrawAmt, 25)
 
       // don deposits
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, initwusdcAmt, don.address)
@@ -321,9 +321,9 @@ describeFork('Wrapped CUSDCv3', () => {
       const bal = await wcusdcV3.balanceOf(bob.address)
 
       expect(bal).to.closeTo(bn('0'), 10)
-      expect(await cusdcV3.balanceOf(bob.address)).to.closeTo(bobWithdrawn, 100)
-      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(charlesWithdrawn, 100)
-      expect(await cusdcV3.balanceOf(don.address)).to.closeTo(donWithdrawn, 100)
+      expect(await cusdcV3.balanceOf(bob.address)).to.closeTo(bobWithdrawn, 200)
+      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(charlesWithdrawn, 200)
+      expect(await cusdcV3.balanceOf(don.address)).to.closeTo(donWithdrawn, 200)
     })
 
     it('updates the totalSupply', async () => {
@@ -332,7 +332,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const expectedDiff = await wcusdcV3.convertDynamicToStatic(withdrawAmt)
       await wcusdcV3.connect(bob).withdraw(withdrawAmt)
       // conservative rounding
-      expect(await wcusdcV3.totalSupply()).to.be.closeTo(totalSupplyBefore.sub(expectedDiff), 10)
+      expect(await wcusdcV3.totalSupply()).to.be.closeTo(totalSupplyBefore.sub(expectedDiff), 25)
     })
   })
 

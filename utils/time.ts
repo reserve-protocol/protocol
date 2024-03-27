@@ -42,8 +42,9 @@ export const advanceBlocks = async (hre: HardhatRuntimeEnvironment, blocks: numb
     const newBlockString = blockString.slice(0, 2) + blockString.slice(3)
     blockString = newBlockString
   }
-  await hre.ethers.provider.send('hardhat_mine', [blockString])
-  await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
+
+  await hre.ethers.provider.send('hardhat_mine', [blockString, '0xc'])
+  // await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
 }
 
 export const advanceBlocksTenderly = async (

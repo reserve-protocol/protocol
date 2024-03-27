@@ -9,7 +9,7 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
     {}
 
     /// Reverting claimRewards function
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external pure override {
         revert("claimRewards() error");
     }
