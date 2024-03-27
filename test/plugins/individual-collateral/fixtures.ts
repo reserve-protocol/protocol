@@ -78,6 +78,7 @@ export const getDefaultFixture = async function (salt: string) {
   const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
     let chainId = await getChainId(hre)
     if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
+    if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = 42161
     const { rsr } = await rsrFixture(chainId)
     const { gnosis } = await gnosisFixture()
     if (!networkConfig[chainId]) {
