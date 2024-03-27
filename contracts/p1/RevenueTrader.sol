@@ -56,6 +56,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // solhint-disable-next-line no-empty-blocks
         try this.distributeTokenToBuy() {} catch (bytes memory errData) {
+            // untested:
+            //     OOG pattern tested in other contracts, cost to test here is high
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
         }

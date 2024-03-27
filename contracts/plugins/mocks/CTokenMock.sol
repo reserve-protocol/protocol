@@ -12,7 +12,8 @@ contract CTokenMock is ERC20Mock {
 
     uint256 internal _exchangeRate;
 
-    bool public revertExchangeRate;
+    bool public revertExchangeRateCurrent;
+    bool public revertExchangeRateStored;
 
     IComptroller public immutable comptroller;
 
@@ -32,7 +33,7 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateCurrent() external returns (uint256) {
-        if (revertExchangeRate) {
+        if (revertExchangeRateCurrent) {
             revert("reverting exchange rate current");
         }
         _exchangeRate = _exchangeRate; // just to avoid sol warning
@@ -40,6 +41,9 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateStored() external view returns (uint256) {
+         if (revertExchangeRateStored) {
+            revert("reverting exchange rate stored");
+        }
         return _exchangeRate;
     }
 
@@ -59,7 +63,11 @@ contract CTokenMock is ERC20Mock {
         return fiatcoinRedemptionRate.shiftl(leftShift).mul_toUint(start);
     }
 
-    function setRevertExchangeRate(bool newVal) external {
-        revertExchangeRate = newVal;
+    function setRevertExchangeRateCurrent(bool newVal) external {
+        revertExchangeRateCurrent = newVal;
+    }
+
+    function setRevertExchangeRateStored(bool newVal) external {
+        revertExchangeRateStored = newVal;
     }
 }

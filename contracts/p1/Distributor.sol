@@ -124,10 +124,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = furnaceAddr;
-                if (transferAmt > 0) accountRewards = true;
+                accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
-                if (transferAmt > 0) accountRewards = true;
+                accountRewards = true;
             }
 
             transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });

@@ -28,22 +28,50 @@ contract UnpricedAssetMock is Asset {
     ) Asset(priceTimeout_, chainlinkFeed_, oracleError_, erc20_, maxTradeVolume_, oracleTimeout_) {}
 
     /// tryPrice: mock unpriced by returning (0, FIX_MAX)
-    function tryPrice()
-        external
-        view
-        override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192
-        )
-    {
+    function tryPrice() external view override returns (uint192 low, uint192 high, uint192) {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);
 
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
         uint192 delta = p.mul(oracleError, CEIL);
         return (p - delta, p + delta, 0);
+    }
+
+    function setUnpriced(bool on) external {
+        unpriced = on;
+    }
+}
+
+contract UnpricedFiatCollateralMock is FiatCollateral {
+    using FixLib for uint192;
+    using OracleLib for AggregatorV3Interface;
+
+    bool public unpriced = false;
+
+    // solhint-disable no-empty-blocks
+
+    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+
+    /// tryPrice: mock unpriced by returning (0, FIX_MAX)
+    function tryPrice()
+        external
+        view
+        virtual
+        override
+        returns (uint192 low, uint192 high, uint192 pegPrice)
+    {
+        // If unpriced is marked, return 0, FIX_MAX
+        if (unpriced) return (0, FIX_MAX, 0);
+
+        // {target/ref} = {UoA/ref} / {UoA/target} (1)
+        pegPrice = chainlinkFeed.price(oracleTimeout);
+
+        // {target/ref} = {target/ref} * {1}
+        uint192 err = pegPrice.mul(oracleError, CEIL);
+
+        low = pegPrice - err;
+        high = pegPrice + err;
+        // assert(low <= high); obviously true just by inspection
     }
 
     function setUnpriced(bool on) external {
@@ -62,9 +90,10 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
     // solhint-disable no-empty-blocks
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
-    {}
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding
+    ) AppreciatingFiatCollateral(config, revenueHiding) {}
 
     /// tryPrice: mock unpriced by returning (0, FIX_MAX)
     function tryPrice()
@@ -72,11 +101,7 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
         view
         virtual
         override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
+        returns (uint192 low, uint192 high, uint192 pegPrice)
     {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);
