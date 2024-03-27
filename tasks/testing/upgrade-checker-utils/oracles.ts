@@ -1,7 +1,10 @@
+/* eslint-disable no-empty */
+import { networkConfig } from '../../../common/configuration'
 import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { BigNumber } from 'ethers'
-import { TestIAsset } from '@typechain/index'
+import { AggregatorV3Interface } from '@typechain/index'
+import { ONE_ADDRESS } from '../../../common/constants'
 
 export const overrideOracle = async (
   hre: HardhatRuntimeEnvironment,
@@ -47,33 +50,77 @@ export const pushOraclesForward = async (
   }
 }
 
-const checkOracleExists = async (
-  hre: HardhatRuntimeEnvironment,
-  asset: string,
-  fn: (assetContract: TestIAsset) => Promise<void>
-) => {
-  const assetContract = await hre.ethers.getContractAt('TestIAsset', asset)
-
-  try {
-    await assetContract.chainlinkFeed()
-    console.log(`Chainlink Oracle Found. Processing asset: ${asset}`)
-
-    await fn(assetContract)
-  } catch {
-    console.log(`Chainlink Oracle Missing. Skipping asset: ${asset}`)
-  }
-}
-
 export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: string) => {
-  await checkOracleExists(hre, asset, async (assetContract) => {
-    const realChainlinkFeed = await hre.ethers.getContractAt(
+  // Need to handle all oracle cases, ie targetUnitChainlinkFeed, PoolTokens, etc
+  const updateAnswer = async (chainlinkFeed: AggregatorV3Interface) => {
+    const initPrice = await chainlinkFeed.latestRoundData()
+    const oracle = await overrideOracle(hre, chainlinkFeed.address)
+    await oracle.updateAnswer(initPrice.answer)
+    console.log('✅ updated:', chainlinkFeed.address)
+  }
+
+  // chainlinkFeed
+  try {
+    const assetContract = await hre.ethers.getContractAt('TestIAsset', asset)
+    const feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
       await assetContract.chainlinkFeed()
     )
-    const initPrice = await realChainlinkFeed.latestRoundData()
-    const oracle = await overrideOracle(hre, realChainlinkFeed.address)
-    await oracle.updateAnswer(initPrice.answer)
-  })
+    if (feed.address != ONE_ADDRESS) await updateAnswer(feed)
+  } catch {
+    console.log('chainlinkFeed() missing for asset: ', asset, 'expected for RTokenAsset')
+  }
+
+  // targetUnitChainlinkFeed
+  try {
+    const assetContractNonFiat = await hre.ethers.getContractAt('NonFiatCollateral', asset)
+    const feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractNonFiat.targetUnitChainlinkFeed()
+    )
+    await updateAnswer(feed)
+  } catch {}
+
+  // targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, refPerTokenChainlinkFeed
+  try {
+    const assetContractLido = await hre.ethers.getContractAt('L2LidoStakedEthCollateral', asset)
+    let feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractLido.targetPerRefChainlinkFeed()
+    )
+    await updateAnswer(feed)
+    feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractLido.uoaPerTargetChainlinkFeed()
+    )
+    await updateAnswer(feed)
+    feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractLido.refPerTokenChainlinkFeed()
+    )
+    await updateAnswer(feed)
+  } catch {}
+
+  // targetPerTokChainlinkFeed
+  try {
+    const assetContractReth = await hre.ethers.getContractAt('RethCollateral', asset)
+    const feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractReth.targetPerTokChainlinkFeed()
+    )
+    await updateAnswer(feed)
+  } catch {}
+
+  // TODO do better
+  // Problem: The feeds on PoolTokens are internal immutable. Not in storage nor are there getters.
+  // Workaround solution: hard-code oracles for FRAX for eUSDFRAXBP; USDC is registered as backup
+  if (asset == '0x890FAa00C16EAD6AA76F18A1A7fe9C40838F9122') {
+    const feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      networkConfig['1'].chainlinkFeeds.FRAX!
+    )
+    await updateAnswer(feed)
+  }
 }
 
 export const setOraclePrice = async (
@@ -81,12 +128,11 @@ export const setOraclePrice = async (
   asset: string,
   value: BigNumber
 ) => {
-  await checkOracleExists(hre, asset, async (assetContract) => {
-    const realChainlinkFeed = await hre.ethers.getContractAt(
-      'AggregatorV3Interface',
-      await assetContract.chainlinkFeed()
-    )
-    const oracle = await overrideOracle(hre, realChainlinkFeed.address)
-    await oracle.updateAnswer(value)
-  })
+  const assetContract = await hre.ethers.getContractAt('TestIAsset', asset)
+  const realChainlinkFeed = await hre.ethers.getContractAt(
+    'AggregatorV3Interface',
+    await assetContract.chainlinkFeed()
+  )
+  const oracle = await overrideOracle(hre, realChainlinkFeed.address)
+  await oracle.updateAnswer(value)
 }
