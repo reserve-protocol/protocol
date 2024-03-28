@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { baseL2Chains, networkConfig } from '../../../../common/configuration'
+import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
@@ -14,7 +14,7 @@ import {
 } from '../../common'
 import { priceTimeout, revenueHiding } from '../../utils'
 import { CTokenV3Collateral } from '../../../../typechain'
-import { ContractFactory } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 
 async function main() {
   // ==== Read Configuration ====
@@ -53,9 +53,14 @@ async function main() {
   console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
+  const usdcOracleErrors: { [key: string]: BigNumber } = {
+    '1': fp('0.0025'), // 0.25%
+    '8453': fp('0.003'), // 0.3%
+    '42161': fp('0.001'), // 0.1%
+  }
 
   const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  const usdcOracleError = usdcOracleErrors[chainId]
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
     {
