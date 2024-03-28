@@ -24,7 +24,7 @@ const USDC_NAME = 'USDC'
 const CUSDC_NAME = 'cUSDCv3'
 const USDC_HOLDERS: { [key: string]: string } = {
   '1': '0x0a59649758aa4d66e25f08dd01271e891fe52199',
-  '8453': '0x0a59649758aa4d66e25f08dd01271e891fe52199',
+  '8453': '0xcdac0d6c6c59727a65f871236188350531885c43',
   '42161': '0x2df1c51e09aecf9cacb7bc98cb1742757f163df7',
 }
 const FORK_BLOCKS: { [key: string]: number } = {
