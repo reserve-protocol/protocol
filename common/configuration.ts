@@ -53,6 +53,7 @@ export interface ITokens {
   WETH?: string
   WBTC?: string
   EURT?: string
+  ARB?: string
   RSR?: string
   CRV?: string
   CVX?: string
@@ -513,6 +514,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
   '42161': {
     name: 'arbitrum',
     tokens: {
+      ARB: '0x912ce59144191c1204e64559fe8253a0e49e6548',
       COMP: '0x354A6dA3fcde098F8389cad84b0182725c6C91dE',
       RSR: '0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594',
       USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
@@ -524,6 +526,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       saArbUSDT: '', // TODO our wrapper. remove from deployment script after placing here
     },
     chainlinkFeeds: {
+      ARB: '0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6',
       USDC: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
       USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',

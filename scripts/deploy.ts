@@ -96,7 +96,8 @@ async function main() {
     scripts.push(
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts'
+      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
+      'phase2-assets/assets/deploy_arb.ts'
     )
     // TODO fiat collateral, etc
   }
