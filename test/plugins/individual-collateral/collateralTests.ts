@@ -833,10 +833,10 @@ export default function fn<X extends CollateralFixtureContext>(
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         await pairedERC20.connect(addr1).approve(router.address, MAX_UINT256)
         // Remove collateral from basket
-        await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-4')])
+        await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-3')])
         await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(anyValue, [pairedERC20.address], [fp('1e-4')], false)
+          .withArgs(anyValue, [pairedERC20.address], [fp('1e-3')], false)
         await advanceToTimestamp((await getLatestBlockTimestamp()) + config.warmupPeriod.toNumber())
 
         // Run rebalancing auction
