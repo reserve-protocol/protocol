@@ -29,7 +29,7 @@ const USDC_HOLDERS: { [key: string]: string } = {
 }
 const FORK_BLOCKS: { [key: string]: number } = {
   '1': 15850930,
-  '8453': 4446300,
+  '8453': 12292893,
   '42161': 193157126,
 }
 
