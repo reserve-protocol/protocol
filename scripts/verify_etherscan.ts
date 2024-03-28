@@ -86,7 +86,12 @@ async function main() {
       'assets/verify_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    // TODO: Arbitrum
+    // Arbitrum One
+    scripts.push(
+      'collateral-plugins/verify_aave_v3_usdc.ts',
+      'collateral-plugins/verify_cusdcv3.ts'
+    )
+    // TODO fiat collateral, etc
   }
 
   // Phase 3 - RTokens and Governance
