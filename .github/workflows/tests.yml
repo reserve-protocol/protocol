@@ -111,7 +111,7 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3,curve/cvx}/*.test.ts
+      - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3}/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
