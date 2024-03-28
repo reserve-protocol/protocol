@@ -283,7 +283,7 @@ contract StaticATokenV3LM is
 
     /// @dev Added by Reserve
     function claimRewards() external {
-        address[] memory rewardsList = INCENTIVES_CONTROLLER.getRewardsList();
+        address[] memory rewardsList = INCENTIVES_CONTROLLER.getRewardsByAsset(address(_aToken));
 
         for (uint256 i = 0; i < rewardsList.length; i++) {
             address currentReward = rewardsList[i];
