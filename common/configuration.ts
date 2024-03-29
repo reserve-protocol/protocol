@@ -528,6 +528,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     },
     chainlinkFeeds: {
       ARB: '0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6',
+      COMP: '0xe7C53FFd03Eb6ceF7d208bC4C13446c76d1E5884',
+      DAI: '0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB',
       USDC: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
       USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
