@@ -337,6 +337,7 @@ task('hyusd-q1-2024-test', 'Test deployed hyUSD Proposals').setAction(async (_, 
 
   await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
   await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
   await hre.run('recollateralize', {
     rtoken: RTokenAddress,
     governor: RTokenGovernor,

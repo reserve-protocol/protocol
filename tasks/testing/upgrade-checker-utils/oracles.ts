@@ -32,7 +32,7 @@ export const pushOraclesForward = async (
   rTokenAddress: string,
   extraAssets: string[] = []
 ) => {
-  console.log(`Pushing Oracles forward for RToken ${rTokenAddress}...`)
+  console.log(`🔃 Pushing Oracles forward for RToken: ${rTokenAddress}`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const assetRegistry = await hre.ethers.getContractAt(
@@ -56,7 +56,8 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
     const initPrice = await chainlinkFeed.latestRoundData()
     const oracle = await overrideOracle(hre, chainlinkFeed.address)
     await oracle.updateAnswer(initPrice.answer)
-    console.log('✅ updated:', chainlinkFeed.address)
+
+    console.log('✅ Feed Updated:', chainlinkFeed.address)
   }
 
   // chainlinkFeed
@@ -67,9 +68,7 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
       await assetContract.chainlinkFeed()
     )
     if (feed.address != ONE_ADDRESS) await updateAnswer(feed)
-  } catch {
-    console.log('chainlinkFeed() missing for asset: ', asset, 'expected for RTokenAsset')
-  }
+  } catch {}
 
   // targetUnitChainlinkFeed
   try {
