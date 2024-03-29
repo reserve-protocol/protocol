@@ -91,7 +91,6 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_cusdcv3.ts'
     )
-    // TODO fiat collateral, etc
   }
 
   // Phase 3 - RTokens and Governance
