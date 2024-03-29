@@ -12,9 +12,9 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, revenueHiding } from '../../utils'
+import { getUsdcOracleError, priceTimeout, revenueHiding } from '../../utils'
 import { CTokenV3Collateral } from '../../../../typechain'
-import { BigNumber, ContractFactory } from 'ethers'
+import { ContractFactory } from 'ethers'
 
 async function main() {
   // ==== Read Configuration ====
@@ -53,14 +53,9 @@ async function main() {
   console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
-  const usdcOracleErrors: { [key: string]: BigNumber } = {
-    '1': fp('0.0025'), // 0.25%
-    '8453': fp('0.003'), // 0.3%
-    '42161': fp('0.001'), // 0.1%
-  }
 
   const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = usdcOracleErrors[chainId]
+  const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
     {

@@ -1,5 +1,4 @@
 import hre, { ethers } from 'hardhat'
-import { BigNumber } from 'ethers'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
 import { fp, bn } from '../../../common/numbers'
@@ -8,7 +7,12 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
+import {
+  getUsdcOracleError,
+  priceTimeout,
+  verifyContract,
+  revenueHiding,
+} from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -46,14 +50,8 @@ async function main() {
 
   /********  Verify Collateral - wcUSDCv3  **************************/
 
-  const usdcOracleErrors: { [key: string]: BigNumber } = {
-    '1': fp('0.0025'), // 0.25%
-    '8453': fp('0.003'), // 0.3%
-    '42161': fp('0.001'), // 0.1%
-  }
-
   const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = usdcOracleErrors[chainId]
+  const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   await verifyContract(
     chainId,

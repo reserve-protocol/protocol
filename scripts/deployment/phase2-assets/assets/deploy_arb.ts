@@ -1,5 +1,4 @@
 import fs from 'fs'
-import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
@@ -11,7 +10,7 @@ import {
   IAssetCollDeployments,
   fileExists,
 } from '../../common'
-import { priceTimeout } from '../../utils'
+import { getArbOracleError, priceTimeout } from '../../utils'
 import { Asset } from '../../../../typechain'
 
 // Mainnet + Arbitrum
@@ -39,14 +38,10 @@ async function main() {
 
   const deployedAssets: string[] = []
 
-  const oracleErrors: { [key: string]: BigNumber } = {
-    '1': fp('0.02'), // 2%
-    '42161': fp('0.0005'), // 0.05%
-  }
-  const oracleError = oracleErrors[chainId]
+  const oracleError = getArbOracleError(hre.network.name)
 
   /********  Deploy ARB asset **************************/
-  const { asset: crvAsset } = await hre.run('deploy-asset', {
+  const { asset: arbAsset } = await hre.run('deploy-asset', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ARB,
     oracleError: oracleError.toString(),
@@ -54,11 +49,11 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: '86400', // 24 hr
   })
-  await (<Asset>await ethers.getContractAt('Asset', crvAsset)).refresh()
+  await (<Asset>await ethers.getContractAt('Asset', arbAsset)).refresh()
 
-  assetCollDeployments.assets.ARB = crvAsset
+  assetCollDeployments.assets.ARB = arbAsset
   assetCollDeployments.erc20s.ARB = networkConfig[chainId].tokens.ARB
-  deployedAssets.push(crvAsset.toString())
+  deployedAssets.push(arbAsset.toString())
 
   /**************************************************************/
 
