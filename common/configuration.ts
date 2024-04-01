@@ -172,7 +172,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
       aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
-      saEthUSDC: '0x093cB4f405924a0C468b43209d5E466F1dd0aC7d', // our wrapper
+      saEthUSDC: '0x0aDc69041a2B086f8772aCcE2A754f410F211bed', // our wrapper
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -217,7 +217,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       yvCurveUSDCcrvUSD: '0x7cA00559B978CFde81297849be6151d3ccB408A9',
       pyUSD: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
       aEthPyUSD: '0x0C0d01AbF3e6aDfcA0989eBbA9d6e85dD58EaB1E',
-      saEthPyUSD: '0x8d6E0402A3E3aD1b43575b05905F9468447013cF', // our wrapper
+      saEthPyUSD: '0x1576B2d7ef15a2ebE9C22C8765DD9c1EfeA8797b', // our wrapper
       steakUSDC: '0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB',
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
@@ -474,7 +474,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       cUSDCv3: '0xb125E6687d4313864e53df431d5425969c15Eb2F',
       aBasUSDC: '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB',
-      saBasUSDC: '0x6AfFDe0bA2D1f8fde8da8f296e7EfC991D807515', // our wrapper
+      saBasUSDC: '0x184460704886f9F2A7F3A0c2887680867954dC6E', // our wrapper
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',

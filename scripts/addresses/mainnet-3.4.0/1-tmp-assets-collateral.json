@@ -1,0 +1,11 @@
+{
+  "assets": {},
+  "collateral": {
+    "saEthUSDC": "0x00F820794Bda3fb01E5f159ee1fF7c8409fca5AB",
+    "saEthPyUSD": "0x58a41c87f8C65cf21f961b570540b176e408Cf2E"
+  },
+  "erc20s": {
+    "saEthUSDC": "0x0aDc69041a2B086f8772aCcE2A754f410F211bed",
+    "saEthPyUSD": "0x1576B2d7ef15a2ebE9C22C8765DD9c1EfeA8797b"
+  }
+}
