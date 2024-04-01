@@ -857,8 +857,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
             delayUntilDefault: bn('86400').toString(), // 24h
           },
-          fp('1e-6'),
-          bn('10000e6').toString() // $10k
+          fp('1e-6')
         )
 
         // Register and update collateral
