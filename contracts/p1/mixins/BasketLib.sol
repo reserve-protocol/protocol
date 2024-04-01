@@ -361,6 +361,7 @@ library BasketLibP1 {
         uint192 newPrice; // {UoA/BU}
         for (uint256 i = 0; i < len; ++i) {
             ICollateral coll = assetRegistry.toColl(erc20s[i]); // reverts if unregistered
+            require(coll.status() == CollateralStatus.SOUND, "unsound collateral");
 
             (uint192 low, uint192 high) = coll.price(); // {UoA/tok}
             require(low > 0 && high < FIX_MAX, "invalid price");
