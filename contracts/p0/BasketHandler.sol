@@ -855,7 +855,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192 newP; // {UoA/BU}
         for (uint256 i = 0; i < len; ++i) {
             ICollateral coll = main.assetRegistry().toColl(erc20s[i]); // reverts if unregistered
-            require(coll.status() == CollateralStatus.SOUND, "unsound collateral");
+            require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
 
             (low, high) = coll.price(); // {UoA/tok}
             require(low > 0 && high < FIX_MAX, "invalid price");
