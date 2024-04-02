@@ -44,7 +44,7 @@ async function main() {
         erc20: networkConfig[chainId].tokens.Re7WETH,
         maxTradeVolume: fp('1e6').toString(),
         oracleTimeout: ETH_ORACLE_TIMEOUT.toString(),
-        targetName: hre.ethers.utils.formatBytes32String('USD'),
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: ETH_ORACLE_ERROR.add(fp('0.01')).toString(), // +1% buffer rule
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
