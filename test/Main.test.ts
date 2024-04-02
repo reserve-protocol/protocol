@@ -2136,11 +2136,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('new target weights')
     })
 
-    it('Should normalize price by USD for index RTokens', async () => {
-      // Basket starts out worth $1 and holding USD targets
+    it('Should normalize by price for index RTokens', async () => {
       // Throughout this test the $ value of the RToken should remain
 
-      // Group the 4 USD tokens together
+      // Set initial basket
       await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await indexBH.connect(owner).refreshBasket()
       let [erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
@@ -2193,6 +2192,30 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(erc20s[1]).to.equal(eurToken.address)
       expect(tokAmts[0]).to.equal(fp('0.5'))
       expect(tokAmts[1]).to.equal(fp('0.5'))
+    })
+
+    it('Should not normalize by price when the current basket is unsound', async () => {
+      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await indexBH.connect(owner).refreshBasket()
+      await setOraclePrice(collateral0.address, fp('0.5'))
+      await assetRegistry.refresh()
+      expect(await collateral0.status()).to.equal(CollateralStatus.IFFY)
+      expect(await collateral1.status()).to.equal(CollateralStatus.SOUND)
+      await expect(
+        indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+      ).to.be.revertedWith('unsound basket')
+    })
+
+    it('Should not normalize by price if the new collateral is unsound', async () => {
+      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await indexBH.connect(owner).refreshBasket()
+      await setOraclePrice(collateral1.address, fp('0.5'))
+      await assetRegistry.refresh()
+      expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
+      expect(await collateral1.status()).to.equal(CollateralStatus.IFFY)
+      await expect(
+        indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+      ).to.be.revertedWith('unsound new collateral')
     })
 
     describe('Custom Redemption', () => {
