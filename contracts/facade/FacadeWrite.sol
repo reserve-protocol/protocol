@@ -148,7 +148,8 @@ contract FacadeWrite is IFacadeWrite {
             TimelockController timelock = new TimelockController(
                 govParams.timelockDelay,
                 new address[](0),
-                new address[](0)
+                new address[](0),
+                address(0)
             );
 
             // Deploy Governance contract

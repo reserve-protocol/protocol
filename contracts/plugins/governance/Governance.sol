@@ -34,13 +34,13 @@ contract Governance is
     uint256 public constant ONE_HUNDRED_PERCENT = 1e8; // {micro %}
 
     // solhint-disable-next-line var-name-mixedcase
-    uint256 public immutable MIN_VOTING_DELAY; // {block} equal to ONE_DAY
+    uint256 public constant MIN_VOTING_DELAY = 86400; // {s} ONE_DAY
 
     constructor(
         IStRSRVotes token_,
         TimelockController timelock_,
-        uint256 votingDelay_, // in blocks
-        uint256 votingPeriod_, // in blocks
+        uint256 votingDelay_, // {s}
+        uint256 votingPeriod_, // {s}
         uint256 proposalThresholdAsMicroPercent_, // e.g. 1e4 for 0.01%
         uint256 quorumPercent // e.g 4 for 4%
     )
@@ -50,9 +50,6 @@ contract Governance is
         GovernorVotesQuorumFraction(quorumPercent)
         GovernorTimelockControl(timelock_)
     {
-        MIN_VOTING_DELAY =
-            (ONE_DAY + NetworkConfigLib.blocktime() - 1) /
-            NetworkConfigLib.blocktime(); // ONE_DAY, in blocks
         requireValidVotingDelay(votingDelay_);
     }
 
@@ -132,9 +129,11 @@ contract Governance is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external {
+    ) public override(Governor, IGovernor) returns (uint256) {
         uint256 proposalId = _cancel(targets, values, calldatas, descriptionHash);
         require(!startedInSameEra(proposalId), "same era");
+
+        return proposalId;
     }
 
     function _execute(
@@ -193,7 +192,15 @@ contract Governance is
         return currentEra == pastEra;
     }
 
-    function requireValidVotingDelay(uint256 newVotingDelay) private view {
+    function requireValidVotingDelay(uint256 newVotingDelay) private pure {
         require(newVotingDelay >= MIN_VOTING_DELAY, "invalid votingDelay");
+    }
+
+    function clock() public view override(GovernorVotes, IGovernor) returns (uint48) {
+        return SafeCast.toUint48(block.timestamp);
+    }
+
+    function CLOCK_MODE() public pure override(GovernorVotes, IGovernor) returns (string memory) {
+        return "mode=timestamp";
     }
 }
