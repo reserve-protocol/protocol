@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
@@ -16,12 +16,14 @@ import { bn, fp } from '../common/numbers'
 import {
   ERC20Mock,
   Governance,
+  Governance__factory,
   StRSRP1Votes,
   TestIBackingManager,
   TestIBroker,
   TestIMain,
   TestIStRSR,
   TimelockController,
+  TimelockController__factory,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import { whileImpersonating } from './utils/impersonation'
@@ -53,14 +55,16 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
   let stRSRVotes: StRSRP1Votes
 
   // Factories
-  let GovernorFactory: ContractFactory
-  let TimelockFactory: ContractFactory
+  let GovernorFactory: Governance__factory
+  let TimelockFactory: TimelockController__factory
 
   let initialBal: BigNumber
 
-  const MIN_DELAY = 7 * 60 * 60 * 24 // 7 days
-  const VOTING_DELAY = 7200 // 1 day (in blocks)
-  const VOTING_PERIOD = 21600 // 3 days (in blocks)
+  const ONE_DAY = 86400
+
+  const MIN_DELAY = ONE_DAY * 7 // 7 days
+  const VOTING_DELAY = ONE_DAY // 1 day (in s)
+  const VOTING_PERIOD = ONE_DAY * 3 // 3 days (in s)
   const PROPOSAL_THRESHOLD = 1e6 // 1%
   const QUORUM_PERCENTAGE = 4 // 4%
 
@@ -76,23 +80,21 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     await rsr.connect(owner).mint(addr3.address, initialBal)
 
     // Cast to ERC20Votes contract
-    stRSRVotes = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+    stRSRVotes = await ethers.getContractAt('StRSRP1Votes', stRSR.address)
 
-    // Deploy Tiuelock
+    // Deploy Timelock
     TimelockFactory = await ethers.getContractFactory('TimelockController')
-    timelock = <TimelockController>await TimelockFactory.deploy(MIN_DELAY, [], [])
+    timelock = <TimelockController>await TimelockFactory.deploy(MIN_DELAY, [], [], owner.address)
 
     // Deploy Governor
     GovernorFactory = await ethers.getContractFactory('Governance')
-    governor = <Governance>(
-      await GovernorFactory.deploy(
-        stRSRVotes.address,
-        timelock.address,
-        VOTING_DELAY,
-        VOTING_PERIOD,
-        PROPOSAL_THRESHOLD,
-        QUORUM_PERCENTAGE
-      )
+    governor = await GovernorFactory.deploy(
+      stRSRVotes.address,
+      timelock.address,
+      VOTING_DELAY,
+      VOTING_PERIOD,
+      PROPOSAL_THRESHOLD,
+      QUORUM_PERCENTAGE
     )
 
     // Setup Roles
@@ -373,7 +375,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await stRSRVotes.connect(addr3).stake(stkAmt2)
       await stRSRVotes.connect(addr3).delegate(addr3.address)
 
-      // Check proposer threshold is not enought for caller
+      // Check proposer threshold is not enough for caller
       expect(await governor.getVotes(addr3.address, (await getLatestBlockNumber()) - 1)).to.be.lt(
         PROPOSAL_THRESHOLD
       )
@@ -518,7 +520,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
@@ -737,7 +739,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
@@ -950,7 +952,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([governor.address], [0], [encodedFunctionCall], proposalDescHash)
@@ -1012,7 +1014,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([governor.address], [0], [encodedFunctionCall], proposalDescHash)
