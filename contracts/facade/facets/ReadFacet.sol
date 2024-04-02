@@ -12,6 +12,7 @@ import "../../libraries/Fixed.sol";
 import "../../p1/BasketHandler.sol";
 import "../../p1/RToken.sol";
 import "../../p1/StRSRVotes.sol";
+import "./MaxIssuableFacet.sol";
 
 /**
  * @title ReadFacet
@@ -21,55 +22,10 @@ import "../../p1/StRSRVotes.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ReadFacet is IReadFacet {
+contract ReadFacet is MaxIssuableFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
-
-    /// @return {qRTok} How many RToken `account` can issue given current holdings
-    /// @custom:static-call
-    function maxIssuable(IRToken rToken, address account) external returns (uint256) {
-        (address[] memory erc20s, ) = rToken.main().basketHandler().quote(FIX_ONE, FLOOR);
-        uint256[] memory balances = new uint256[](erc20s.length);
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            balances[i] = IERC20(erc20s[i]).balanceOf(account);
-        }
-        return maxIssuableByAmounts(rToken, balances);
-    }
-
-    /// @param amounts {qTok} Amounts per basket ERC20
-    ///                       Assumes same order as current basket ERC20s given by bh.quote()
-    /// @return {qRTok} How many RToken `account` can issue given current holdings
-    /// @custom:static-call
-    function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
-        public
-        returns (uint256)
-    {
-        IMain main = rToken.main();
-
-        require(!main.frozen(), "frozen");
-
-        // Poke Main
-        main.assetRegistry().refresh();
-
-        // Get basket ERC20s
-        IBasketHandler bh = main.basketHandler();
-        (address[] memory erc20s, uint256[] memory quantities) = bh.quote(FIX_ONE, CEIL);
-
-        // Compute how many baskets we can mint with the collateral amounts
-        uint192 baskets = type(uint192).max;
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            // {BU} = {tok} / {tok/BU}
-            uint192 inBUs = divuu(amounts[i], quantities[i]); // FLOOR
-            baskets = fixMin(baskets, inBUs);
-        }
-
-        // Convert baskets to RToken
-        // {qRTok} = {qRTok/BU} * {qRTok} / {BU}
-        uint256 totalSupply = rToken.totalSupply();
-        if (totalSupply == 0) return baskets;
-        return baskets.muluDivu(rToken.basketsNeeded(), rToken.totalSupply(), FLOOR);
-    }
 
     /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
     ///     of backing tokens to approve.
@@ -298,13 +254,13 @@ contract ReadFacet is IReadFacet {
         RTokenP1 rToken,
         uint256 draftEra,
         address account
-    ) external view returns (Pending[] memory unstakings) {
+    ) external view returns (IReadFacet.Pending[] memory unstakings) {
         StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
         uint256 left = stRSR.firstRemainingDraft(draftEra, account);
         uint256 right = stRSR.draftQueueLen(draftEra, account);
         uint192 draftRate = stRSR.draftRate();
 
-        unstakings = new Pending[](right - left);
+        unstakings = new IReadFacet.Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
             (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(draftEra, account, i + left);
 
@@ -315,7 +271,7 @@ contract ReadFacet is IReadFacet {
             }
 
             // {qRSR} = {qDrafts} / {qDrafts/qRSR}
-            unstakings[i] = Pending(i + left, availableAt, diff.div(draftRate));
+            unstakings[i] = IReadFacet.Pending(i + left, availableAt, diff.div(draftRate));
         }
     }
 
