@@ -45,7 +45,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(),
         oracleTimeout: ETH_ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: ETH_ORACLE_ERROR.add(fp('0.01')).toString(), // +1% buffer rule
+        defaultThreshold: '0', // WETH
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
       fp('1e-6'), // small admin fee uncertainty

@@ -184,7 +184,7 @@ const makeOpts = (
     priceTimeout: PRICE_TIMEOUT,
     oracleTimeout: oracleTimeout,
     oracleError: oracleError,
-    defaultThreshold: oracleError.add(fp('0.01')),
+    defaultThreshold: fp('0'),
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     maxTradeVolume: fp('1e6'),
     revenueHiding: fp('0'),
