@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IBasketHandler.sol";
+import "../../interfaces/IMaxIssuableFacet.sol";
 import "../../interfaces/IRToken.sol";
 import "../../libraries/Fixed.sol";
 
@@ -13,7 +14,7 @@ import "../../libraries/Fixed.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract MaxIssuableFacet {
+contract MaxIssuableFacet is IMaxIssuableFacet {
     using FixLib for uint192;
 
     // === Static Calls ===

@@ -22,7 +22,7 @@ import "./MaxIssuableFacet.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ReadFacet is MaxIssuableFacet {
+contract ReadFacet is MaxIssuableFacet, IReadFacet {
     using FixLib for uint192;
 
     // === Static Calls ===

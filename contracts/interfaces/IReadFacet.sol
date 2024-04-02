@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "../p1/RToken.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
+import "./IMaxIssuableFacet.sol";
 
 /**
  * @title IReadFacet
@@ -11,19 +12,8 @@ import "./IStRSR.sol";
  *
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
 v */
-interface IReadFacet {
+interface IReadFacet is IMaxIssuableFacet {
     // === Static Calls ===
-
-    /// @return How many RToken `account` can issue given current holdings
-    /// @custom:static-call
-    function maxIssuable(IRToken rToken, address account) external returns (uint256);
-
-    /// @param amounts {qTok} The balances of each basket ERC20 to assume
-    /// @return How many RToken can be issued
-    /// @custom:static-call
-    function maxIssuableByAmounts(IRToken rToken, uint256[] memory amounts)
-        external
-        returns (uint256);
 
     /// @return tokens The erc20 needed for the issuance
     /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
