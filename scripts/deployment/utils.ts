@@ -135,6 +135,7 @@ export async function verifyContract(
     // Check to see if already verified
     const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
     if (status != 200 || data['status'] != '1') {
+      console.log(data)
       throw new Error("Can't communicate with Etherscan API")
     }
 
