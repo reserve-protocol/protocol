@@ -33,7 +33,7 @@ import { IRewardable } from "../../../../interfaces/IRewardable.sol";
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * It supports claiming liquidity mining rewards from the Aave system.
  * @author BGD Labs
- * From https://github.com/bgd-labs/static-a-token-v3/blob/b9f6f86b6d89c7407eeb0013af248d3c5f4d09c8/src/StaticATokenLM.sol
+ * From https://github.com/bgd-labs/static-a-token-v3/blob/457adba559ba9c2f1699b937220f2732f9db48f1/src/StaticATokenLM.sol
  * Original source was formally verified
  * https://github.com/bgd-labs/static-a-token-v3/blob/b9f6f86b6d89c7407eeb0013af248d3c5f4d09c8/audits/Formal_Verification_Report_staticAToken.pdf
  * @dev This contract has been further modified by Reserve to include the claimRewards() function. This is the only change.
@@ -168,15 +168,17 @@ contract StaticATokenV3LM is
         }
         // assume if deadline 0 no permit was supplied
         if (permit.deadline != 0) {
-            IERC20Permit(depositToAave ? address(_aTokenUnderlying) : address(_aToken)).permit(
-                depositor,
-                address(this),
-                permit.value,
-                permit.deadline,
-                permit.v,
-                permit.r,
-                permit.s
-            );
+            try
+                IERC20Permit(depositToAave ? address(_aTokenUnderlying) : address(_aToken)).permit(
+                    depositor,
+                    address(this),
+                    permit.value,
+                    permit.deadline,
+                    permit.v,
+                    permit.r,
+                    permit.s
+                )
+            {} catch {}
         }
         (uint256 shares, ) = _deposit(depositor, receiver, 0, assets, referralCode, depositToAave);
         return shares;
@@ -370,6 +372,7 @@ contract StaticATokenV3LM is
     ///@inheritdoc IERC4626
     function maxMint(address) public view virtual returns (uint256) {
         uint256 assets = maxDeposit(address(0));
+        if (assets == type(uint256).max) return type(uint256).max;
         return _convertToShares(assets, Rounding.DOWN);
     }
 
