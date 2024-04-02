@@ -134,12 +134,6 @@ interface ICollateral is IAsset {
 
 // Used only in Testing. Strictly speaking a Collateral does not need to adhere to this interface
 interface TestICollateral is TestIAsset, ICollateral {
-    /// @return {target/ref} The bottom of the peg
-    function pegBottom() external view returns (uint192);
-
-    /// @return {target/ref} The top of the peg
-    function pegTop() external view returns (uint192);
-
     /// @return The epoch timestamp when the collateral will default from IFFY to DISABLED
     function whenDefault() external view returns (uint256);
 

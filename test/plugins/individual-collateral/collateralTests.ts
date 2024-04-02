@@ -131,16 +131,10 @@ export default function fn<X extends CollateralFixtureContext>(
         )
       })
 
-      it('does not allow 0 delayUntilDefault unless defaultThreshold is 0', async () => {
-        const test = await deployCollateral({})
-        const pegBottom = await test.pegBottom()
-        const pegTop = await test.pegTop()
-
-        if (!pegBottom.eq(pegTop)) {
-          await expect(deployCollateral({ delayUntilDefault: 0 })).to.be.revertedWith(
-            'delayUntilDefault zero'
-          )
-        }
+      itChecksNonZeroDefaultThreshold('does not allow 0 delayUntilDefault', async () => {
+        await expect(deployCollateral({ delayUntilDefault: 0 })).to.be.revertedWith(
+          'delayUntilDefault zero'
+        )
       })
 
       itChecksNonZeroDefaultThreshold('does not allow 0 defaultThreshold', async () => {
