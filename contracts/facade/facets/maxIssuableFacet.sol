@@ -2,16 +2,9 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../plugins/trading/DutchTrade.sol";
-import "../../interfaces/IAsset.sol";
-import "../../interfaces/IAssetRegistry.sol";
-import "../../interfaces/IReadFacet.sol";
+import "../../interfaces/IBasketHandler.sol";
 import "../../interfaces/IRToken.sol";
-import "../../interfaces/IStRSR.sol";
 import "../../libraries/Fixed.sol";
-import "../../p1/BasketHandler.sol";
-import "../../p1/RToken.sol";
-import "../../p1/StRSRVotes.sol";
 
 /**
  * @title MaxIssuableFacet
