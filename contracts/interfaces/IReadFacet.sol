@@ -4,7 +4,6 @@ pragma solidity 0.8.19;
 import "../p1/RToken.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
-import "./IMaxIssuableFacet.sol";
 
 /**
  * @title IReadFacet
@@ -12,7 +11,7 @@ import "./IMaxIssuableFacet.sol";
  *
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
 v */
-interface IReadFacet is IMaxIssuableFacet {
+interface IReadFacet {
     // === Static Calls ===
 
     /// @return tokens The erc20 needed for the issuance
