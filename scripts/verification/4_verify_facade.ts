@@ -38,6 +38,14 @@ async function main() {
     [],
     'contracts/facade/facets/ActFacet.sol:ActFacet'
   )
+
+  /** ******************** Verify MaxIssuableFacet ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facets.maxIssuableFacet,
+    [],
+    'contracts/facade/facets/MaxIssuableFacet.sol:MaxIssuableFacet'
+  )
 }
 
 main().catch((error) => {
