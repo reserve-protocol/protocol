@@ -14,7 +14,6 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 
@@ -33,10 +32,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using FixLib for uint192;
 
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable PERIOD; // {s} 1 block based on network
+    uint48 public constant PERIOD = 1; // {s} 1 second
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
-    uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MIN_UNSTAKING_DELAY = 2; // {s} based on network
+    uint48 public constant MAX_UNSTAKING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
@@ -112,11 +111,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint48 public unstakingDelay;
     uint192 public rewardRatio;
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
-
-    constructor() {
-        PERIOD = NetworkConfigLib.blocktime();
-        MIN_UNSTAKING_DELAY = PERIOD * 2;
-    }
 
     function init(
         IMain main_,

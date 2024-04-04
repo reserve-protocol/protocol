@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.so
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "../../interfaces/IStRSRVotes.sol";
-import "../../libraries/NetworkConfigLib.sol";
 
 uint256 constant ONE_DAY = 86400; // {s}
 
@@ -78,7 +77,7 @@ contract Governance is
         uint256 asMicroPercent = super.proposalThreshold(); // {micro %}
 
         // {qStRSR}
-        uint256 pastSupply = token.getPastTotalSupply(NetworkConfigLib.blockNumber() - 1);
+        uint256 pastSupply = token.getPastTotalSupply(clock());
         // max StRSR supply is 1e38
 
         // CEIL to make sure thresholds near 0% don't get rounded down to 0 tokens

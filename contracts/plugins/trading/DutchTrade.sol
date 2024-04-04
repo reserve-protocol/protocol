@@ -4,7 +4,6 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libraries/Fixed.sol";
-import "../../libraries/NetworkConfigLib.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
@@ -95,9 +94,6 @@ contract DutchTrade is ITrade, Versioned {
 
     TradeKind public constant KIND = TradeKind.DUTCH_AUCTION;
 
-    // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
-
     BidType public bidType; // = BidType.NONE
 
     TradeStatus public status; // reentrancy protection
@@ -147,8 +143,6 @@ contract DutchTrade is ITrade, Versioned {
     // ==== Constructor ===
 
     constructor() {
-        ONE_BLOCK = NetworkConfigLib.blocktime();
-
         status = TradeStatus.CLOSED;
     }
 
@@ -168,10 +162,8 @@ contract DutchTrade is ITrade, Versioned {
         TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         assert(
-            address(sell_) != address(0) &&
-                address(buy_) != address(0) &&
-                auctionLength >= 20 * ONE_BLOCK
-        ); // misuse by caller
+            address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 20 * 3
+        );
 
         // Only start dutch auctions under well-defined prices
         require(prices.sellLow != 0 && prices.sellHigh < FIX_MAX / 1000, "bad sell pricing");
@@ -186,7 +178,7 @@ contract DutchTrade is ITrade, Versioned {
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
 
         // Track auction end by time, to generalize to all chains
-        uint48 _startTime = uint48(block.timestamp) + ONE_BLOCK; // can exceed 1 block
+        uint48 _startTime = uint48(block.timestamp) + 1; // cannot fulfill in current block
         startTime = _startTime; // gas-saver
         endTime = _startTime + auctionLength;
 

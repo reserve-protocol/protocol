@@ -8,7 +8,6 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
@@ -23,10 +22,10 @@ contract BrokerP1 is ComponentP1, IBroker {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Clones for address;
 
-    uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
+    uint48 public constant MAX_AUCTION_LENGTH = 60 * 60 * 24 * 7; // {s} max valid duration, 1 week
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 20 blocks, based on network
+    uint48 public constant MIN_AUCTION_LENGTH = 20 * 3; // {s} 60 seconds auction min duration
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;
@@ -69,11 +68,6 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
-    }
 
     // effects: initial parameters are set
     function init(

@@ -11,7 +11,6 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager
@@ -21,11 +20,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_TRADING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
-
-    // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -34,9 +30,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
-    constructor() {
-        ONE_BLOCK = NetworkConfigLib.blocktime();
-    }
+    constructor() {}
 
     function init(
         IMain main_,
@@ -92,7 +86,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         require(
-            _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
+            _msgSender() == address(this) || tradeEnd[kind] + 1 < block.timestamp,
             "already rebalancing"
         );
 

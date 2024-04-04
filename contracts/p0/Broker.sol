@@ -11,7 +11,6 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
 
 // Gnosis: uint96 ~= 7e28
@@ -23,9 +22,9 @@ contract BrokerP0 is ComponentP0, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
-    uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
+    uint48 public constant MAX_AUCTION_LENGTH = 60 * 60 * 24 * 7; // {s} max valid duration, 1 week
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 20 blocks, based on network
+    uint48 public constant MIN_AUCTION_LENGTH = 20 * 3; // {s} 60 seconds auction min duration
 
     // Added for interface compatibility with P1
     ITrade public batchTradeImplementation;
@@ -41,10 +40,6 @@ contract BrokerP0 is ComponentP0, IBroker {
     bool public batchTradeDisabled;
 
     mapping(IERC20Metadata => bool) public dutchTradeDisabled;
-
-    constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
-    }
 
     function init(
         IMain main_,

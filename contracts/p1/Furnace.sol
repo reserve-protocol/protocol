@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "../interfaces/IFurnace.sol";
 import "./mixins/Component.sol";
 
@@ -16,7 +15,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     uint192 public constant MAX_RATIO = 1e14; // {1} 0.01%
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable PERIOD; // {seconds} 1 block based on network
+    uint48 public constant PERIOD = 1; // {s} distribution period
 
     IRToken private rToken;
 
@@ -26,11 +25,6 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // === Cached ===
     uint48 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() ComponentP1() {
-        PERIOD = NetworkConfigLib.blocktime();
-    }
 
     // ==== Invariants ====
     // ratio <= MAX_RATIO = 1e18
