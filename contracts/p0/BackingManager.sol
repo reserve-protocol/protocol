@@ -30,8 +30,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
-    constructor() {}
-
     function init(
         IMain main_,
         uint48 tradingDelay_,

@@ -46,9 +46,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {}
-
     function init(
         IMain main_,
         uint48 tradingDelay_,

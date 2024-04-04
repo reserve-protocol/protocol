@@ -39,7 +39,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint48 public constant PERIOD = 1; // {s} 1 second
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public constant MIN_UNSTAKING_DELAY = 2; // {s} 2 seconds
+    uint48 public constant MIN_UNSTAKING_DELAY = 60 * 2; // {s} 2 minutes
     uint48 public constant MAX_UNSTAKING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
 
