@@ -37,10 +37,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable PERIOD; // {s} 1 block based on network
+    uint48 public constant PERIOD = 1; // {s} 1 second
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
+    uint48 public constant MIN_UNSTAKING_DELAY = 2; // {s} 2 seconds
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
 
@@ -170,10 +170,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // ======================
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() ComponentP1() {
-        PERIOD = NetworkConfigLib.blocktime();
-        MIN_UNSTAKING_DELAY = PERIOD * 2;
-    }
+    constructor() ComponentP1() {}
 
     // init() can only be called once (initializer)
     // ==== Financial State:
