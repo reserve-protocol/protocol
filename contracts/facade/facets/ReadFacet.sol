@@ -22,7 +22,7 @@ import "./MaxIssuableFacet.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ReadFacet is MaxIssuableFacet, IReadFacet {
+contract ReadFacet is MaxIssuableFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
@@ -254,13 +254,13 @@ contract ReadFacet is MaxIssuableFacet, IReadFacet {
         RTokenP1 rToken,
         uint256 draftEra,
         address account
-    ) external view returns (Pending[] memory unstakings) {
+    ) external view returns (IReadFacet.Pending[] memory unstakings) {
         StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
         uint256 left = stRSR.firstRemainingDraft(draftEra, account);
         uint256 right = stRSR.draftQueueLen(draftEra, account);
         uint192 draftRate = stRSR.draftRate();
 
-        unstakings = new Pending[](right - left);
+        unstakings = new IReadFacet.Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
             (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(draftEra, account, i + left);
 
@@ -271,7 +271,7 @@ contract ReadFacet is MaxIssuableFacet, IReadFacet {
             }
 
             // {qRSR} = {qDrafts} / {qDrafts/qRSR}
-            unstakings[i] = Pending(i + left, availableAt, diff.div(draftRate));
+            unstakings[i] = IReadFacet.Pending(i + left, availableAt, diff.div(draftRate));
         }
     }
 
