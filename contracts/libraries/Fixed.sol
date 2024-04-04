@@ -330,7 +330,7 @@ library FixLib {
     }
 
     function sqrt(uint192 x) internal pure returns (uint192) {
-        return _safeWrap(sqrt256(x * FIX_ONE_256));
+        return _safeWrap(sqrt256(x * FIX_ONE_256)); // FLOOR
     }
 
     /// Comparison operators...
