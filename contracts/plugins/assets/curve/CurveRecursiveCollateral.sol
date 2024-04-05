@@ -84,7 +84,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
     function refresh() public virtual override {
         CollateralStatus oldStatus = status();
 
-        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
+        try this.underlyingRefPerTok() returns (uint192) {
             // Instead of ensuring the underlyingRefPerTok is up-only, solely check
             // that the pool's virtual price is up-only. Otherwise this collateral
             // would create default cascades.
@@ -169,6 +169,8 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
 
     // Override this later to implement non-standard recursive pools
     function _anyDepeggedInPool() internal view virtual override returns (bool) {
+        // Assumption: token0 is the reference token; token1 is the RToken
+
         // Check reference token
         try this.tokenPrice(0) returns (uint192 low, uint192 high) {
             // {UoA/tok} = {UoA/tok} + {UoA/tok}

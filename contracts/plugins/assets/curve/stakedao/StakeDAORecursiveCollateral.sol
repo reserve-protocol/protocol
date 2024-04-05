@@ -19,7 +19,7 @@ interface IStakeDAOGauge {
 }
 
 interface IStakeDAOClaimer {
-    function claimRewards(address[] memory gauges) external;
+    function claimRewards(address[] memory gauges, bool claimVeSDT) external;
 }
 
 /**
@@ -37,8 +37,6 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    IERC20Metadata[] public rewardTokens;
-
     IStakeDAOGauge internal immutable gauge;
     IStakeDAOClaimer internal immutable claimer;
 
@@ -52,24 +50,24 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
         IStakeDAOVault vault = IStakeDAOVault(address(config.erc20));
         gauge = vault.liquidityGauge();
         claimer = gauge.claimer();
-
-        uint256 rewardCount = gauge.reward_count();
-        for (uint256 i = 0; i < rewardCount; i++) {
-            rewardTokens.push(gauge.reward_tokens(i));
-        }
     }
 
     /// @custom:delegate-call
     function claimRewards() external override {
-        uint256[] memory bals = new uint256[](rewardTokens.length);
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
+        uint256 count = gauge.reward_count();
+
+        // Save initial bals
+        IERC20Metadata[] memory rewardTokens = new IERC20Metadata[](count);
+        uint256[] memory bals = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            rewardTokens[i] = gauge.reward_tokens(i);
             bals[i] = rewardTokens[i].balanceOf(address(this));
         }
 
         // Do actual claim
         address[] memory gauges = new address[](1);
         gauges[0] = address(gauge);
-        claimer.claimRewards(gauges);
+        claimer.claimRewards(gauges, false);
 
         // Emit balance changes
         for (uint256 i = 0; i < rewardTokens.length; i++) {
