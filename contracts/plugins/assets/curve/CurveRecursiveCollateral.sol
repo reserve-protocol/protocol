@@ -80,15 +80,13 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         // {ref/tok} = quantity of the reference unit token in the pool per vault token
         // the vault is 1:1 with the LP token
 
-        if (lpToken.totalSupply() == 0) return FIX_ONE;
-
         // {lpToken@t=0/lpToken}
         uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
         // this is missing the fact that USDC+ has also appreciated in this time
 
         // {BU/rTok}
         uint192 rTokenRate = divuu(rToken.basketsNeeded(), rToken.totalSupply());
-        // div-by-zero impossible
+        // not worth the gas to protect against div-by-zero
 
         // {ref/tok} = {ref/lpToken} = {lpToken@t=0/lpToken} * {1} * 2{ref/lpToken@t=0}
         return virtualPrice.mul(rTokenRate.sqrt()).mulu(2); // LP token worth twice as much
