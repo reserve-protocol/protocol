@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "../curve/CurveRecursiveCollateral.sol";
+import "../CurveRecursiveCollateral.sol";
 
 interface IStakeDAOVault is IERC20Metadata {
     function token() external view returns (IERC20Metadata);
