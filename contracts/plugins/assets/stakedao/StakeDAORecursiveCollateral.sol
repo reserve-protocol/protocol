@@ -39,7 +39,6 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
 
     IERC20Metadata[] public rewardTokens;
 
-    IStakeDAOVault internal immutable vault; // erc20 with useful typing
     IStakeDAOGauge internal immutable gauge;
     IStakeDAOClaimer internal immutable claimer;
 
@@ -50,7 +49,7 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
     ) CurveRecursiveCollateral(config, revenueHiding, ptConfig) {
-        vault = IStakeDAOVault(address(config.erc20));
+        IStakeDAOVault vault = IStakeDAOVault(address(config.erc20));
         gauge = vault.liquidityGauge();
         claimer = gauge.claimer();
 
