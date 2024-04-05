@@ -75,6 +75,58 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         return (low, high, 0);
     }
 
+    /// Should not revert
+    /// Refresh exchange rates and update default status.
+    /// Have to override to add custom default checks
+    function refresh() public virtual override {
+        CollateralStatus oldStatus = status();
+
+        try this.underlyingRefPerTok() returns (uint192) {
+            // Note: We don't default on refPerTok falling _at all_, since
+            // that would take the LP token out of the basket in response to
+            // _other_ collateral defaulting.
+
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+                // {UoA/tok}, {UoA/tok}, {UoA/tok}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+
+                // Save prices if priced
+                if (high < FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    lastSave = uint48(block.timestamp);
+                } else {
+                    // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
+                    assert(low == 0);
+                }
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
+            }
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.DISABLED);
+        }
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit CollateralStatusChanged(oldStatus, newStatus);
+        }
+    }
+
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         // {ref/tok} = quantity of the reference unit token in the pool per vault token
