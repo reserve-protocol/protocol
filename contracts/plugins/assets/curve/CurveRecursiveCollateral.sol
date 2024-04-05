@@ -16,6 +16,7 @@ import "../OracleLib.sol";
  *
  *    Note:
  *      - The RToken _must_ be the same RToken using this plugin as collateral!
+ *      - The RToken SHOULD have an RSR overcollateralization layer. DO NOT USE WITHOUT RSR!
  *      - The LP token should be worth ~2x the reference token. Do not use with 1x lpTokens.
  *
  * tok = ConvexStakingWrapper or CurveGaugeWrapper
@@ -37,6 +38,8 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         PTConfiguration memory ptConfig
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token1));
+        exposedReferencePrice = _safeWrap(curvePool.get_virtual_price()).mul(revenueShowing);
+        // exposedReferencePrice is re-used to be the LP token's virtual price
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -81,10 +84,24 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
     function refresh() public virtual override {
         CollateralStatus oldStatus = status();
 
-        try this.underlyingRefPerTok() returns (uint192) {
-            // Note: We don't default on refPerTok falling _at all_, since
-            // that would take the LP token out of the basket in response to
-            // _other_ collateral defaulting.
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
+            // Instead of ensuring the underlyingRefPerTok is up-only, solely check
+            // that the pool's virtual price is up-only. Otherwise this collateral
+            // would create default cascades.
+
+            // {ref/tok}
+            uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
+
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = virtualPrice.mul(revenueShowing);
+
+            // uint192(<) is equivalent to Fix.lt
+            if (virtualPrice < exposedReferencePrice) {
+                exposedReferencePrice = virtualPrice;
+                markStatus(CollateralStatus.DISABLED);
+            } else if (hiddenReferencePrice > exposedReferencePrice) {
+                exposedReferencePrice = hiddenReferencePrice;
+            }
 
             // Check for soft default + save prices
             try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
@@ -127,6 +144,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         }
     }
 
+    /// @dev Not up-only! The RToken can devalue its exchange rate peg
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         // {ref/tok} = quantity of the reference unit token in the pool per vault token
@@ -139,6 +157,9 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         // {BU/rTok}
         uint192 rTokenRate = divuu(rToken.basketsNeeded(), rToken.totalSupply());
         // not worth the gas to protect against div-by-zero
+
+        // The rTokenRate is not up-only! We should expect decreases when other
+        // collateral default and there is not enough RSR stake to cover the hole.
 
         // {ref/tok} = {ref/lpToken} = {lpToken@t=0/lpToken} * {1} * 2{ref/lpToken@t=0}
         return virtualPrice.mul(rTokenRate.sqrt()).mulu(2); // LP token worth twice as much
