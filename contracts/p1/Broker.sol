@@ -25,7 +25,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     uint48 public constant MAX_AUCTION_LENGTH = 60 * 60 * 24 * 7; // {s} max valid duration, 1 week
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public constant MIN_AUCTION_LENGTH = 20 * 3; // {s} 60 seconds auction min duration
+    uint48 public constant MIN_AUCTION_LENGTH = 60; // {s} 60 seconds auction min duration
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;

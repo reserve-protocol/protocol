@@ -82,7 +82,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
         main.assetRegistry().refresh();
 
-        // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
+        // DoS prevention:
+        // unless caller is self, require that the next auction is not in same block
         require(
             _msgSender() == address(this) || tradeEnd[kind] + 1 < block.timestamp,
             "already rebalancing"

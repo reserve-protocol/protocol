@@ -29,7 +29,6 @@ import "./mixins/Component.sol";
  *   across non-withdrawing stakes, while when RSR is seized it is seized uniformly from both
  *   stakes that are in the process of being withdrawn and those that are not.
  */
-// solhint-disable max-states-count
 abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -167,9 +166,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6  D18{qStRSR/qRSR}
 
     // ======================
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() ComponentP1() {}
 
     // init() can only be called once (initializer)
     // ==== Financial State:
