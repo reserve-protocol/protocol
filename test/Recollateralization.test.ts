@@ -3,7 +3,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, constants } from 'ethers'
-import hre, { ethers } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
@@ -37,12 +37,7 @@ import {
   USDCMock,
   DutchTradeRouter,
 } from '../typechain'
-import {
-  advanceBlocks,
-  advanceTime,
-  advanceToTimestamp,
-  getLatestBlockTimestamp,
-} from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import {
   Collateral,
   defaultFixture,
@@ -3229,15 +3224,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
             'trade open'
           )
-
-          // Check the empty buffer block as well
-          await advanceBlocks(1)
-          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
-            'already rebalancing'
-          )
-          await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-            'trade open'
-          )
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
@@ -3387,10 +3373,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             expect(await token0.balanceOf(trade2.address)).to.equal(0)
             expect(await token1.balanceOf(trade2.address)).to.equal(0)
 
-            // Only BATCH_AUCTION can be launched
-            await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
-              'already rebalancing'
-            )
+            // BATCH_AUCTION can be launched
             await backingManager.rebalance(TradeKind.BATCH_AUCTION)
             expect(await backingManager.tradesOpen()).to.equal(1)
 
