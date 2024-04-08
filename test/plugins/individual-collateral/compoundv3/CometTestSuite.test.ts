@@ -196,9 +196,9 @@ const deployCollateralCometMockContext = async (
   const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
     await ethers.getContractFactory('CusdcV3WrapperMock')
   )
-  const wcusdcV3Mock = await (<ICusdcV3WrapperMock>(
-    await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
-  ))
+  const wcusdcV3Mock = <ICusdcV3WrapperMock>(
+    ((await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)) as unknown)
+  )
 
   collateralOpts.erc20 = wcusdcV3Mock.address
   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
@@ -210,7 +210,7 @@ const deployCollateralCometMockContext = async (
     chainlinkFeed,
     cusdcV3,
     wcusdcV3: wcusdcV3Mock,
-    wcusdcV3Mock,
+    wcusdcV3Mock: wcusdcV3Mock as unknown as CusdcV3WrapperMock,
     usdc,
     tok: wcusdcV3,
     rewardToken,
@@ -227,7 +227,14 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.tok, user, amount, recipient)
+  await mintWcUSDC(
+    ctx.usdc,
+    ctx.cusdcV3,
+    ctx.tok as unknown as ICusdcV3Wrapper,
+    user,
+    amount,
+    recipient
+  )
 }
 
 const reduceTargetPerRef = async (
@@ -325,6 +332,28 @@ const collateralSpecificStatusTests = () => {
     expect(await collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
   })
 
+  it('enters DISABLED state when refPerTok() decreases', async () => {
+    // Context: Usually this is left to generic suite, but we were having issues with the comet extensions
+    //          on arbitrum as compared to ethereum mainnet, and this was the easiest way around it.
+
+    const { collateral, wcusdcV3Mock } = await deployCollateralCometMockContext({})
+
+    // Check initial state
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+
+    // Should default instantly after 5% drop
+    const currentExchangeRate = await wcusdcV3Mock.exchangeRate()
+    await wcusdcV3Mock.setMockExchangeRate(
+      true,
+      currentExchangeRate.sub(currentExchangeRate.mul(5).div(100))
+    )
+    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+  })
+
   it('should not brick refPerTok() even if _underlyingRefPerTok() reverts', async () => {
     const { collateral, wcusdcV3Mock } = await deployCollateralCometMockContext({})
     await wcusdcV3Mock.setRevertExchangeRate(true)
@@ -357,7 +386,7 @@ const opts = {
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
   itChecksTargetPerRefDefaultUp: it,
-  itChecksRefPerTokDefault: it,
+  itChecksRefPerTokDefault: it.skip, // implemented in this file
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it.skip, // implemented in this file
