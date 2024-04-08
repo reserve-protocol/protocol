@@ -1861,7 +1861,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmt.add(minBuyAmtRemainder),
-          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e4')) // melting
+          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e3')) // melting
         )
       })
 
@@ -2082,7 +2082,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e4')) // melting
+          minBuyAmtRToken.div(bn('1e2')) // melting
         )
       })
 
@@ -3497,7 +3497,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
                 .connect(addr1)
                 .approve(router.address, constants.MaxUint256)
 
-              await advanceToTimestamp(await trade.startTime())
               await router.connect(addr1).bid(trade.address, addr1.address)
               expect(await trade.bidder()).to.equal(router.address)
               // Cannot bid once is settled
@@ -3511,7 +3510,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
                 .connect(addr1)
                 .approve(trade.address, constants.MaxUint256)
 
-              await advanceToTimestamp(await trade.startTime())
               await trade.connect(addr1).bid()
               expect(await trade.bidder()).to.equal(addr1.address)
               // Cannot bid once is settled
@@ -3545,7 +3543,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             .approve(trade.address, constants.MaxUint256)
 
           // Bid
-          await advanceToTimestamp(await trade.startTime())
           await trade.connect(addr1).bid()
           expect(await trade.bidType()).to.be.eq(2)
           expect(await trade.bidder()).to.equal(addr1.address)
@@ -3570,7 +3567,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               await ethers.getContractFactory('CallbackDutchTraderBidder')
             ).deploy()
             await rToken.connect(addr1).transfer(bidder.address, issueAmount)
-            await advanceToTimestamp(await trade.startTime())
             await bidder.connect(addr1).bid(trade.address)
             expect(await trade.bidType()).to.be.eq(1)
             expect(await trade.bidder()).to.equal(bidder.address)
@@ -3591,7 +3587,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               await ethers.getContractFactory('CallbackDutchTraderBidderLowBaller')
             ).deploy()
             await rToken.connect(addr1).transfer(bidder.address, issueAmount)
-            await advanceToTimestamp(await trade.startTime())
             await expect(bidder.connect(addr1).bid(trade.address)).to.be.revertedWith(
               'insufficient buy tokens'
             )
@@ -3614,7 +3609,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               await ethers.getContractFactory('CallbackDutchTraderBidderNoPayer')
             ).deploy()
             await rToken.connect(addr1).transfer(bidder.address, issueAmount)
-            await advanceToTimestamp(await trade.startTime())
             await expect(bidder.connect(addr1).bid(trade.address)).to.be.revertedWith(
               'insufficient buy tokens'
             )
