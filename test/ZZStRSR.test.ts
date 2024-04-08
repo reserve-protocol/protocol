@@ -701,7 +701,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount)) // RSR wasn't returned
     })
 
-    it('Should not allow to cancel unstake if fozen', async () => {
+    it('Should not allow to cancel unstake if frozen', async () => {
       const amount: BigNumber = bn('1000e18')
 
       // Stake
@@ -1167,6 +1167,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 2
         )
 
+        await hre.network.provider.send('evm_setAutomine', [false])
+
         // Send reward RSR -- bn('3e18')
         await rsr.connect(addr1).transfer(stRSR.address, amount3)
         await stRSR.connect(owner).setRewardRatio(bn('1e14')) // handout max ratio
@@ -1174,7 +1176,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Create 2nd withdrawal for user 2 -- should unstake at 1:1 rate
         expect(await stRSR.exchangeRate()).to.equal(fp('1'))
         await stRSR.connect(addr2).unstake(amount3)
-        //expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Mine block
+        await advanceTime(1)
+
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
 
         // Check withdrawals - Nothing available yet
         expect(await stRSR.endIdForWithdraw(addr1.address)).to.equal(0)
@@ -1190,7 +1198,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Calculate new exchange rate ~1.91 -- regression test
         const decayFn = makeDecayFn(await stRSR.rewardRatio())
-        const numRounds = stkWithdrawalDelay / 4 / 12
+        const numRounds = stkWithdrawalDelay / 4
         const rewardHandout = amount3.sub(decayFn(amount3, numRounds))
         const newExchangeRate = amount3.add(rewardHandout).mul(fp('1')).div(amount3).add(1)
         expect(await stRSR.exchangeRate()).to.be.closeTo(newExchangeRate, bn(200))
@@ -2609,7 +2617,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe.only('ERC20Votes', () => {
+  describe('ERC20Votes', () => {
     let stRSRVotes: StRSRP1Votes
 
     beforeEach(async function () {
