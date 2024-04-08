@@ -1430,7 +1430,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(stake)
 
       // Advance to get 1 round of rewards
-      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
@@ -1479,7 +1479,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(stake.div(2))
 
       // Advance to get 1 round of rewards
-      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
@@ -1509,7 +1509,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       let error = bn('2')
       for (let i = 0; i < 100; i++) {
         // Advance to get 1 round of rewards
-        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
 
         // Calculate payout amount, as if closed-form from the beginning
         const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1 + i)) // 1+i rounds
@@ -1539,7 +1539,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(stake)
 
       // Advance to get 100 rounds of rewards
-      await setNextBlockTimestamp(Number(ONE_PERIOD.mul(100).add(await getLatestBlockTimestamp())))
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 100)
 
       // Calculate payout amount as if it were a closed form calculation from start
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 100))
@@ -2270,7 +2270,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.payoutRewards()
 
       // Payout rewards - Advance time - rate will be unsafe
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1200)
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 100)
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       expect(await stRSR.exchangeRate()).to.be.gte(fp('1e6'))
       expect(await stRSR.exchangeRate()).to.be.lte(fp('1e9'))
