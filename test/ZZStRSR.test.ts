@@ -2243,7 +2243,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(owner).transfer(stRSR.address, addAmt1)
 
       // Advance to the end of noop period
-      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
+      await advanceTime(1)
       await stRSR.payoutRewards()
 
       // Calculate payout amount
@@ -2252,7 +2252,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const newRate: BigNumber = fp(stakeAmt.add(addedRSRStake)).div(stakeAmt)
 
       // Payout rewards - Advance to get 1 round of rewards
-      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
       expect(await stRSR.totalSupply()).to.equal(stakeAmt)
@@ -2266,11 +2266,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(owner).transfer(stRSR.address, addAmt2)
 
       // Advance to the end of noop period
-      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
       await stRSR.payoutRewards()
 
       // Payout rewards - Advance time - rate will be unsafe
-      await setNextBlockTimestamp(Number(ONE_PERIOD.mul(100).add(await getLatestBlockTimestamp())))
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1200)
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       expect(await stRSR.exchangeRate()).to.be.gte(fp('1e6'))
       expect(await stRSR.exchangeRate()).to.be.lte(fp('1e9'))
