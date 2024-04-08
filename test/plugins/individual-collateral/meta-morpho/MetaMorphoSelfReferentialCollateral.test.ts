@@ -137,7 +137,13 @@ const makeFiatCollateralTestSuite = (
     Define collateral-specific tests
   */
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const collateralSpecificConstructorTests = () => {}
+  const collateralSpecificConstructorTests = () => {
+    it('does not allow >0 defaultThreshold', async () => {
+      await expect(deployCollateral({ defaultThreshold: bn('1') })).to.be.revertedWith(
+        'defaultThreshold not zero'
+      )
+    })
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificStatusTests = () => {}
