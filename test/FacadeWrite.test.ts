@@ -20,6 +20,7 @@ import {
   OWNER,
   PAUSER,
   ZERO_ADDRESS,
+  ONE_DAY
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
@@ -193,8 +194,8 @@ describe('FacadeWrite contract', () => {
 
     // Set governance params
     govParams = {
-      votingDelay: bn(7200), // 1 day
-      votingPeriod: bn(21600), // 3 days
+      votingDelay:  ONE_DAY, // 1 day
+      votingPeriod: ONE_DAY.mul(3), // 3 days
       proposalThresholdAsMicroPercent: bn(1e6), // 1%
       quorumPercent: bn(4), // 4%
       timelockDelay: bn(60 * 60 * 24), // 1 day

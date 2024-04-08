@@ -7,6 +7,8 @@ export const ONE_ETH = BigNumber.from('1000000000000000000')
 
 export const ONE_PERIOD = BigNumber.from('12')
 
+export const ONE_DAY = BigNumber.from('86400')
+
 export const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1)
 export const MAX_UINT192 = BigNumber.from(2).pow(192).sub(1)
 export const MAX_UINT96 = BigNumber.from(2).pow(96).sub(1)
