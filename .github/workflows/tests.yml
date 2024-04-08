@@ -93,6 +93,34 @@ jobs:
           FORK: 1
           PROTO_IMPL: 1
 
+  plugin-tests-arbitrum:
+    name: 'Plugin Tests (Arbitrum)'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3}/*.test.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          TS_NODE_SKIP_IGNORE: true
+          ARBITRUM_RPC_URL: https://arb-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_ARBITRUM_KEY }}
+          FORK_NETWORK: arbitrum
+          FORK_BLOCK: 194244696
+          FORK: 1
+          PROTO_IMPL: 1
+
   p0-tests:
     name: 'P0 tests'
     runs-on: ubuntu-latest
