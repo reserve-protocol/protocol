@@ -27,15 +27,15 @@ async function main() {
 
   const erc20s: { [key: string]: string } = {
     '1': deployments.erc20s.saEthUSDC!,
-    '8453': deployments.erc20s.saEthUSDC!,
-    '42161': deployments.erc20s.saEthUSDC!,
+    '8453': deployments.erc20s.saBasUSDC!,
+    '42161': deployments.erc20s.saArbUSDCn!,
   }
   const erc20 = await ethers.getContractAt('ERC20Mock', erc20s[chainId])
 
   const collaterals: { [key: string]: string } = {
-    '1': deployments.erc20s.saEthUSDC!,
-    '8453': deployments.erc20s.saEthUSDC!,
-    '42161': deployments.erc20s.saEthUSDC!,
+    '1': deployments.collateral.saEthUSDC!,
+    '8453': deployments.collateral.saBasUSDC!,
+    '42161': deployments.collateral.saArbUSDCn!,
   }
   const collateral = await ethers.getContractAt('AaveV3FiatCollateral', collaterals[chainId])
 

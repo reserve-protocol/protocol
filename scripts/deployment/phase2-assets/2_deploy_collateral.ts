@@ -204,7 +204,7 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
-  /*** AAVE V2 not available in Base L2s */
+  /*** AAVE V2 not available in Base or Arbitrum L2s */
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     /********  Deploy AToken Fiat Collateral - aDAI  **************************/
 
@@ -430,7 +430,7 @@ async function main() {
   const btcOracleError = fp('0.005') // 0.5%
   const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
-  /*** Compound V2 not available in Base L2s */
+  /*** Compound V2 not available in Base or Arbitrum L2s */
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     /********  Deploy CToken Fiat Collateral - cDAI  **************************/
     const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {

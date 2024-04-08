@@ -274,7 +274,7 @@ export const getDaiOracleTimeout = (network: string): string => {
 
 export const getUsdtOracleError = (network: string): BigNumber => {
   if (arbitrumL2Chains.includes(network)) {
-    return fp('0.001') // 0.25% arbitrum
+    return fp('0.001') // 0.1% arbitrum
   } else if (baseL2Chains.includes(network)) {
     return fp('0.003') // 0.3% base
   } else {
