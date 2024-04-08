@@ -5,7 +5,7 @@ export const ONE_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 export const ONE_ETH = BigNumber.from('1000000000000000000')
 
-export const ONE_PERIOD = BigNumber.from('12')
+export const ONE_PERIOD = BigNumber.from('1')
 
 export const ONE_DAY = BigNumber.from('86400')
 
