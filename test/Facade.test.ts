@@ -258,21 +258,33 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return maxIssuable correctly', async () => {
-      // Check values
+      // Regression test
+      // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
+      // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
+      const meltAmt = issueAmount.div(10)
+      const furnaceAddr = await main.furnace()
+      await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
+      await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
+        await rToken.connect(furnaceSigner).melt(meltAmt)
+      })
+
+      // Check values -- must reflect 10% appreciation
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
-        bn('39999999900e18')
+        bn('3.599999991e28')
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('40000000000e18')
+        bn('3.6e28')
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(await rToken.totalSupply())
+      expect(await rToken.totalSupply()).to.equal(0)
+      expect(await rToken.basketsNeeded()).to.equal(0)
 
-      // With 0 baskets needed - Returns correct value
+      // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('40000000000e18')
+        bn('4e28')
       )
     })
 
@@ -283,23 +295,35 @@ describe('Facade + FacadeMonitor contracts', () => {
       const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
       const otherAmounts = await Promise.all(erc20s.map((e) => e.balanceOf(other.address)))
 
-      // Check values
+      // Regression test
+      // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
+      // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
+      const meltAmt = issueAmount.div(10)
+      const furnaceAddr = await main.furnace()
+      await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
+      await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
+        await rToken.connect(furnaceSigner).melt(meltAmt)
+      })
+
+      // Check values -- must reflect 10% appreciation
       expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr1Amounts)).to.equal(
-        bn('39999999900e18')
+        bn('3.599999991e28')
       )
       expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr2Amounts)).to.equal(
-        bn('40000000000e18')
+        bn('3.6e28')
       )
       expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, otherAmounts)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(await rToken.totalSupply())
+      expect(await rToken.totalSupply()).to.equal(0)
+      expect(await rToken.basketsNeeded()).to.equal(0)
       const newAddr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
 
-      // With 0 baskets needed - Returns correct value
+      // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
       expect(
         await facade.callStatic.maxIssuableByAmounts(rToken.address, newAddr2Amounts)
-      ).to.equal(bn('40000000000e18'))
+      ).to.equal(bn('4e28'))
     })
 
     it('Should revert maxIssuable when frozen', async () => {
