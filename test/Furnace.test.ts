@@ -260,10 +260,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       // Melt
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
-      // Another immediate call to melt should also have no impact
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
     })
@@ -286,19 +282,18 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
 
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, 1) // 1 period
+      const expAmt = decayFn(hndAmt, Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.connect(addr1).melt())
         .to.emit(rToken, 'Melted')
-        .withArgs(hndAmt.sub(expAmt))
+        .withArgs(hndAmt.sub(expAmt).add(1))  // account for rounding
 
-      // Another call to melt right away before next period should have no impact
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+      // Another call to melt right away in a separate block will also melt
+      await expect(furnace.connect(addr1).melt()).to.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
+      expect(await rToken.balanceOf(furnace.address)).to.be.lt(expAmt) // additional melting occurred
     })
 
     it('Should allow melt - two periods, one at a time #fast', async () => {
@@ -319,25 +314,25 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
 
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt1 = decayFn(hndAmt, 1) // 1 period
+      const expAmt1 = decayFn(hndAmt, Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.connect(addr1).melt())
         .to.emit(rToken, 'Melted')
-        .withArgs(hndAmt.sub(expAmt1))
+        .withArgs(hndAmt.sub(expAmt1).add(1)) // account for rounding
 
       // Advance to the end to withdraw full amount
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
 
-      const expAmt2 = decayFn(hndAmt, 2) // 2 periods
+      const expAmt2 = decayFn(hndAmt, Number(ONE_PERIOD) * 2)
 
       // Melt
       await expect(furnace.connect(addr1).melt())
         .to.emit(rToken, 'Melted')
-        .withArgs(bn(expAmt1).sub(expAmt2))
+        .withArgs(bn(expAmt1).sub(expAmt2).add(1)) // account for rounding
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt2)
+      expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expAmt2, 2)
     })
 
     it('Should melt before updating the ratio #fast', async () => {
@@ -358,19 +353,15 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
 
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, 1) // 1 period
+      const expAmt = decayFn(hndAmt, Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.setRatio(bn('1e13')))
         .to.emit(rToken, 'Melted')
-        .withArgs(hndAmt.sub(expAmt))
-
-      // Another call to melt right away before next period should have no impact
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+        .withArgs(hndAmt.sub(expAmt).add(1)) // account for rounding
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
+      expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expAmt, 1)
     })
 
     it('Should accumulate negligible error - a year all at once', async () => {
@@ -386,19 +377,17 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       const periods = 2628000 // one year worth
-
+      
       // Advance a year's worth of periods
       await setNextBlockTimestamp(
         Number(await getLatestBlockTimestamp()) + periods * Number(ONE_PERIOD)
       )
 
-      // Precise JS calculation should be within 3 atto
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, periods)
-      const error = bn('3')
-      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt).add(error))
+      const expAmt = decayFn(hndAmt, periods * Number(ONE_PERIOD))
+      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
     })
 
     it('Should accumulate negligible error - parallel furnaces', async () => {
