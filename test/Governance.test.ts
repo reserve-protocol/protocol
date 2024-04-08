@@ -905,13 +905,13 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
     it('Should allow to update GovernorSettings via governance', async () => {
       // Attempt to update if not governance
-      await expect(governor.setVotingDelay(bn(14400))).to.be.revertedWith(
+      await expect(governor.setVotingDelay(bn(172800))).to.be.revertedWith(
         'Governor: onlyGovernance'
       )
 
       // Attempt to update without governance process in place
       await whileImpersonating(timelock.address, async (signer) => {
-        await expect(governor.connect(signer).setVotingDelay(bn(14400))).to.be.reverted
+        await expect(governor.connect(signer).setVotingDelay(bn(172800))).to.be.reverted
       })
 
       // Update votingDelay via proposal
