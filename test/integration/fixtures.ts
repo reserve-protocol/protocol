@@ -632,7 +632,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
+    rewardRatio: bn('89139297916'), // per second. approx half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     withdrawalLeak: fp('0'), // 0%; always refresh
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
