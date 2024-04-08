@@ -16,6 +16,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
     uint48 public constant PERIOD = 1; // {s} distribution period
+    // historical artifact
 
     IRToken private rToken;
 
