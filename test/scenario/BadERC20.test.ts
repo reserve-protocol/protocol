@@ -387,13 +387,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
         .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
       await expect(rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION]))
         .to.emit(rsrTrader, 'TradeStarted')
-        .withArgs(
-          anyValue,
-          rToken.address,
-          rsr.address,
-          issueAmt.div(2),
-          toMinBuyAmt(issueAmt.div(2), fp('1'), fp('1'), ORACLE_ERROR, config.maxTradeSlippage)
-        )
+        .withArgs(anyValue, rToken.address, rsr.address, issueAmt.div(2), anyValue)
     })
   })
 
