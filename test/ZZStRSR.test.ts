@@ -2617,7 +2617,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('ERC20Votes', () => {
+  describeP1('ERC20Votes', () => {
     let stRSRVotes: StRSRP1Votes
 
     beforeEach(async function () {

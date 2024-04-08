@@ -34,7 +34,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // solhint-disable-next-line var-name-mixedcase
     uint48 public constant PERIOD = 1; // {s} 1 second
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public constant MIN_UNSTAKING_DELAY = 2; // {s} based on network
+    uint48 public constant MIN_UNSTAKING_DELAY = 60 * 2; // {s} 2 minutes
     uint48 public constant MAX_UNSTAKING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
