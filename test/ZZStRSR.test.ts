@@ -1430,7 +1430,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(stake)
 
       // Advance to get 1 round of rewards
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
@@ -1479,7 +1479,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(stake.div(2))
 
       // Advance to get 1 round of rewards
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
@@ -1539,7 +1539,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(stake)
 
       // Advance to get 100 rounds of rewards
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 100)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 100)
 
       // Calculate payout amount as if it were a closed form calculation from start
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 100))
@@ -2252,7 +2252,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const newRate: BigNumber = fp(stakeAmt.add(addedRSRStake)).div(stakeAmt)
 
       // Payout rewards - Advance to get 1 round of rewards
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
       expect(await stRSR.totalSupply()).to.equal(stakeAmt)
@@ -2266,11 +2266,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(owner).transfer(stRSR.address, addAmt2)
 
       // Advance to the end of noop period
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 1)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
       await stRSR.payoutRewards()
 
       // Payout rewards - Advance time - rate will be unsafe
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 100)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 100)
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       expect(await stRSR.exchangeRate()).to.be.gte(fp('1e6'))
       expect(await stRSR.exchangeRate()).to.be.lte(fp('1e9'))
@@ -2936,7 +2936,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Check new values - Couting votes for addr2
       currentBlockTimestamp = (await getLatestBlockTimestamp()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(amount1.add(amount2))
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(
+        amount1.add(amount2)
+      )
       expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockTimestamp)).to.equal(amount1)
       expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockTimestamp)).to.equal(amount2)
       expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockTimestamp)).to.equal(0)
@@ -3051,7 +3053,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Check new values - Counting votes for addr3
       currentBlockTimestamp = (await getLatestBlockTimestamp()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(amount1.add(amount2))
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(
+        amount1.add(amount2)
+      )
       expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockTimestamp)).to.equal(amount1)
       expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockTimestamp)).to.equal(0)
       expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockTimestamp)).to.equal(amount2)

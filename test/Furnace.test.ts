@@ -377,11 +377,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       const periods = 60 * 60 * 24 * 365 // one year worth
-      
+
       // Advance a year's worth of periods
-      await setNextBlockTimestamp(
-        Number(await getLatestBlockTimestamp()) + periods
-      )
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + periods)
 
       const decayFn = makeDecayFn(await furnace.ratio())
       const expAmt = decayFn(hndAmt, periods)

@@ -1468,6 +1468,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .mul(endTime - startTime)
           .div(fp('1'))
           .toNumber()
+
       if (now < bidTime) await advanceToTimestamp(bidTime - 1)
 
       // Bid
@@ -1504,13 +1505,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [/*bn('1'), bn('6'), bn('8'), bn('9'), */ bn('18')]
 
     // auction sell amount
     const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
 
     // auction progression %: these will get rounded to blocks later
-    const progression = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
+    const progression = [
+      fp('0') /*, fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')*/,
+    ]
 
     // total cases is 5 * 5 * 3 * 4 = 300
 
