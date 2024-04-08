@@ -3,7 +3,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, constants } from 'ethers'
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
@@ -3241,6 +3241,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
+          // Provide approval to router
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
+
           await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -3251,10 +3255,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           const start = await trade.startTime()
           const end = await trade.endTime()
 
-          // Simulate 30 minutes of blocks, should swap at right price each time
-          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
-          await advanceToTimestamp(start)
           let now = start
           while (now < end) {
             const actual = await trade.connect(addr1).bidAmount(now)
