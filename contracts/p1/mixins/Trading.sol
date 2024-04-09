@@ -3,12 +3,12 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/ITrade.sol";
 import "../../interfaces/ITrading.sol";
 import "../../libraries/Allowance.sol";
 import "../../libraries/Fixed.sol";
+import "../../vendor/oz/Multicall.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 
@@ -17,12 +17,7 @@ import "./RewardableLib.sol";
 ///   changed without breaking <3.0.0 RTokens. The only difference in
 ///   MulticallUpgradeable is the 50 slot storage gap and an empty constructor.
 ///   It should be fine to leave the non-upgradeable Multicall here permanently.
-abstract contract TradingP1 is
-    MulticallUpgradeable,
-    ComponentP1,
-    ReentrancyGuardUpgradeable,
-    ITrading
-{
+abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
