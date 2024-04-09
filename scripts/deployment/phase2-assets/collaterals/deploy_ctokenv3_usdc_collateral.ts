@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { baseL2Chains, networkConfig } from '../../../../common/configuration'
+import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, revenueHiding } from '../../utils'
+import { getUsdcOracleError, priceTimeout, revenueHiding } from '../../utils'
 import { CTokenV3Collateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -55,7 +55,7 @@ async function main() {
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
   const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
     {

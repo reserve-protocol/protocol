@@ -7,7 +7,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, oracleTimeout, verifyContract, combinedError } from '../../deployment/utils'
+import { priceTimeout, verifyContract, combinedError } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -38,7 +38,7 @@ async function main() {
         oracleError: oracleError.toString(),
         erc20: networkConfig[chainId].tokens.sfrxETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+        oracleTimeout: '3600', // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.02').add(oracleError).toString(), // ~2.5%
         delayUntilDefault: bn('86400').toString(), // 24h
