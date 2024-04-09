@@ -226,7 +226,7 @@ contract PoolTokens {
     /// @param index The index of the token: 0, 1, 2, or 3
     /// @return low {UoA/ref_index}
     /// @return high {UoA/ref_index}
-    function tokenPrice(uint8 index) public view returns (uint192 low, uint192 high) {
+    function tokenPrice(uint8 index) public view virtual returns (uint192 low, uint192 high) {
         if (index >= nTokens) revert WrongIndex(nTokens - 1);
 
         // Use only 1 feed if 2nd feed not defined
