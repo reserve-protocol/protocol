@@ -166,6 +166,8 @@ contract FacadeWrite is IFacadeWrite {
             timelock.grantRole(timelock.PROPOSER_ROLE(), governance); // Gov only proposer
             // Set Guardian as canceller, if address(0) then no one can cancel
             timelock.grantRole(timelock.CANCELLER_ROLE(), govRoles.guardian);
+            // Set Governance as canceller to enable killing timelock-stuck proposals
+            timelock.grantRole(timelock.CANCELLER_ROLE(), governance);
             timelock.grantRole(timelock.EXECUTOR_ROLE(), governance); // Gov only executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 
