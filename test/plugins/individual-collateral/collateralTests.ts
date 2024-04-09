@@ -131,7 +131,7 @@ export default function fn<X extends CollateralFixtureContext>(
         )
       })
 
-      it('does not allow missing delayUntilDefault if defaultThreshold > 0', async () => {
+      itChecksNonZeroDefaultThreshold('does not allow 0 delayUntilDefault', async () => {
         await expect(deployCollateral({ delayUntilDefault: 0 })).to.be.revertedWith(
           'delayUntilDefault zero'
         )

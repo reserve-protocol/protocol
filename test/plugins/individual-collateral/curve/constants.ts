@@ -118,6 +118,11 @@ export const crvUSD_USDC_POOL_ID = 182
 export const crvUSD_USDC_HOLDER = '0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1'
 export const crvUSD_USDC_GAUGE = '0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1'
 
+// crvUSD/USDT
+export const crvUSD_USDT = '0x390f3595bCa2Df7d23783dFd126427CCeb997BF4'
+export const crvUSD_USDT_POOL_ID = 179
+export const crvUSD_USDT_HOLDER = '0x4e6bB6B7447B7B2Aa268C16AB87F4Bb48BF57939'
+
 // PayPool
 export const PayPool = '0x383e6b4437b59fff47b619cba855ca29342a8559'
 export const PayPool_POOL_ID = 270

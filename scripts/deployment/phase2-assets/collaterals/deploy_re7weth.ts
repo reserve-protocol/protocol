@@ -61,8 +61,8 @@ async function main() {
         erc20: networkConfig[chainId].tokens.Re7WETH,
         maxTradeVolume: fp('1e6').toString(), // $12m vault
         oracleTimeout: ETH_ORACLE_TIMEOUT.toString(),
-        targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: ETH_ORACLE_ERROR.add(fp('0.01')).toString(), // +1% buffer rule
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: '0', // WETH
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
       fp('1e-6') // small admin fee uncertainty

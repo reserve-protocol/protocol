@@ -112,6 +112,7 @@ export interface IFeeds {
 
 export interface IPools {
   cvxCrvUSDUSDC?: string
+  cvxCrvUSDUSDT?: string
   cvx3Pool?: string
   cvxPayPool?: string
   cvxeUSDFRAXBP?: string
