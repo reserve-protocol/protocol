@@ -92,8 +92,17 @@ async function main() {
       'phase2-assets/assets/deploy_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    // TODO: Arbitrum
+    // Arbitrum One
+    scripts.push(
+      'phase2-assets/1_deploy_assets.ts',
+      'phase2-assets/2_deploy_collateral.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
+      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
+      'phase2-assets/assets/deploy_arb.ts'
+    )
   }
+
   // ===============================================
 
   // Phase 3 - RTokens
