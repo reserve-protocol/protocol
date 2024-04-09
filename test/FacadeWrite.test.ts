@@ -690,6 +690,9 @@ describe('FacadeWrite contract', () => {
           expect(await timelock.hasRole(await timelock.EXECUTOR_ROLE(), governor.address)).to.equal(
             true
           )
+          expect(
+            await timelock.hasRole(await timelock.CANCELLER_ROLE(), governor.address)
+          ).to.equal(true)
         })
 
         it('Should setup owner, freezer and pauser correctly', async () => {
