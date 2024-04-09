@@ -2226,7 +2226,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should reset stakes and perform validations on rate - MIN', async () => {
       const stakeAmt: BigNumber = bn('1000e18')
       const addAmt1: BigNumber = bn('100e18')
-      const addAmt2: BigNumber = bn('10e30')
+      const addAmt2: BigNumber = bn('120e30')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stakeAmt)
@@ -2243,7 +2243,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(owner).transfer(stRSR.address, addAmt1)
 
       // Advance to the end of noop period
-      await advanceTime(1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
       await stRSR.payoutRewards()
 
       // Calculate payout amount
