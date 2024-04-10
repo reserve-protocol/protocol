@@ -1450,7 +1450,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Rebalance should cause backingManager to trade about auctionSellAmt, though not exactly
       await backingManager.setMaxTradeSlippage(bn('0'))
       await backingManager.setMinTradeVolume(bn('0'))
-      await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
       await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
         .to.emit(backingManager, 'TradeStarted')
         .withArgs(anyValue, sellTok.address, buyTok.address, anyValue, anyValue)
@@ -1466,7 +1465,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .mul(endTime - startTime)
           .div(fp('1'))
           .toNumber()
-      let bidAmt = await trade.bidAmount(bidTime)
+      const bidAmt = await trade.bidAmount(bidTime)
 
       // Bid
       const sellAmt = await trade.lot()
@@ -1477,15 +1476,17 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       if (bidTime > (await getLatestBlockTimestamp())) await setNextBlockTimestamp(bidTime)
 
       if (bidType.eq(bn(BidType.CALLBACK))) {
+        await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
+        await setNextBlockTimestamp(await getLatestBlockTimestamp()) // in same block
         await expect(router.connect(addr1).bid(trade.address, addr1.address))
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
         await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+        await setNextBlockTimestamp(await getLatestBlockTimestamp()) // in same block
         await expect(trade.connect(addr1).bid())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, anyValue)
-        bidAmt = await trade.bidAmount(await getLatestBlockTimestamp())
       }
 
       // Check balances
