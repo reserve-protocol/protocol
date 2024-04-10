@@ -39,7 +39,7 @@ contract CurveAppreciatingRTokenCollateral is CurveStableCollateral {
     }
 
     function refresh() public override {
-        assetRegistry.refresh(); // refresh all registered assets
+        assetRegistry.refresh(); // refresh all registered assets in the RToken
         super.refresh(); // already handles all necessary default checks
     }
 
@@ -80,16 +80,38 @@ contract CurveAppreciatingRTokenCollateral is CurveStableCollateral {
     // === Internal ===
 
     function _anyDepeggedInPool() internal view virtual override returns (bool) {
-        // Assumption: token1 is the reference token; token0 is the RToken
+        // Assumption: token0 is the RToken; token1 is the reference token
 
-        // Check reference token
-        try this.tokenPrice(1) returns (uint192 low, uint192 high) {
+        // TODO currently this isn't used, but when it is, check that the logic makes
+        // sense and also that it's worth spending this much gas. two computations
+        // of the RToken's price in refresh() is a lot
+
+        // Check RToken price against reference token, accounting for appreciation
+        try this.tokenPrice(0) returns (uint192 low0, uint192 high0) {
             // {UoA/tok} = {UoA/tok} + {UoA/tok}
-            uint192 mid = (low + high) / 2;
+            uint192 mid0 = (low0 + high0) / 2;
 
-            // If the price is below the default-threshold price, default eventually
-            // uint192(+/-) is the same as Fix.plus/minus
-            if (mid < pegBottom || mid > pegTop) return true;
+            // Remove the appreciation portion of the RToken price
+            // {UoA/ref} = {UoA/tok} * {tok} / {ref}
+            mid0 = mid0.muluDivu(rToken.totalSupply(), rToken.basketsNeeded());
+
+            try this.tokenPrice(1) returns (uint192 low1, uint192 high1) {
+                // {UoA/ref} = {UoA/ref} + {UoA/ref}
+                uint192 mid1 = (low1 + high1) / 2;
+
+                // {target/ref} = {UoA/ref} / {UoA/ref} * {target/ref}
+                uint192 ratio = mid0.div(mid1); // * targetPerRef(), but we know it's 1
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (ratio < pegBottom || ratio > pegTop) return true;
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                // untested:
+                //      pattern validated in other plugins, cost to test is high
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                return true;
+            }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             // untested:
@@ -97,10 +119,6 @@ contract CurveAppreciatingRTokenCollateral is CurveStableCollateral {
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             return true;
         }
-
-        // Ignore the status of the RToken since it can manage itself
-        // Note that decreases in underlyingRefPerTok in excess of revenue hiding
-        // still result in immediate default.
 
         return false;
     }
