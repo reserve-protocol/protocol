@@ -49,7 +49,11 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        pairedAssetRegistry.refresh(); // refresh all registered assets in the paired RToken
+        // solhint-disable-next-line no-empty-blocks
+        try pairedAssetRegistry.refresh() {} catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+        }
 
         CollateralStatus oldStatus = status();
 
