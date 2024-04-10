@@ -1,4 +1,5 @@
 import collateralTests from '../collateralTests'
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import {
   CurveCollateralFixtureContext,
   CurveCollateralOpts,
@@ -267,7 +268,7 @@ const opts = {
   mintCollateralTo,
   itClaimsRewards: it,
   isMetapool: false,
-  resetFork: getResetFork(19626711),
+  resetFork: getResetFork(forkBlockNumber['eth+/eth']),
   collateralName: 'CurveAppreciatingRTokenSelfReferentialCollateral - ConvexStakingWrapper',
 }
 

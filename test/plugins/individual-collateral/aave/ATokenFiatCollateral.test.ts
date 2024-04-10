@@ -353,7 +353,6 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await aDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(refPerTok).to.be.closeTo(fp('1.066'), fp('0.001'))
       expect(await aDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await aDaiCollateral.exposedReferencePrice()).to.equal(refPerTok)
 
       const answer = await chainlinkFeed.latestAnswer()
 

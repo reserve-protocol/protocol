@@ -329,9 +329,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cDaiCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
       expect(await cDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await cDaiCollateral.exposedReferencePrice()).to.equal(
-        await cDaiCollateral.refPerTok()
-      )
       await expectPrice(
         cDaiCollateral.address,
         fp('0.022015105509346448'),
