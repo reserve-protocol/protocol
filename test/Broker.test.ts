@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, constants } from 'ethers'
-import { ethers, upgrades } from 'hardhat'
+import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import {
   MAX_UINT48,
@@ -50,6 +50,7 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
+  advanceBlocks,
   advanceTime,
   advanceToTimestamp,
   getLatestBlockTimestamp,
@@ -1475,19 +1476,18 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       if (bidTime > (await getLatestBlockTimestamp())) await setNextBlockTimestamp(bidTime)
 
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
       if (bidType.eq(bn(BidType.CALLBACK))) {
         await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
-        await setNextBlockTimestamp(await getLatestBlockTimestamp()) // in same block
-        await expect(router.connect(addr1).bid(trade.address, addr1.address))
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+        await router.connect(addr1).bid(trade.address, addr1.address)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
         await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
-        await setNextBlockTimestamp(await getLatestBlockTimestamp()) // in same block
-        await expect(trade.connect(addr1).bid())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, anyValue)
+        await trade.connect(addr1).bid()
       }
+      await advanceBlocks(1)
+      await hre.network.provider.send('evm_setAutomine', [true])
 
       // Check balances
       expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))

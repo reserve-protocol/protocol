@@ -47,7 +47,6 @@ const config: HardhatUserConfig = {
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
-      allowBlocksWithSameTimestamp: true,
     },
     localhost: {
       // network for long-lived mainnet forks
