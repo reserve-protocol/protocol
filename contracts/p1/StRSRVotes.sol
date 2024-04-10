@@ -119,6 +119,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         uint256 low = 0;
         while (low < high) {
             uint256 mid = MathUpgradeable.average(low, high);
+            // `fromBlock` is actually a timestamp {s}
             if (ckpts[mid].fromBlock > timepoint) {
                 high = mid;
             } else {
@@ -232,6 +233,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         oldWeight = pos == 0 ? 0 : ckpts[pos - 1].val;
         newWeight = op(oldWeight, delta);
 
+        // `fromBlock` is actually a timestamp {s}
         if (pos > 0 && ckpts[pos - 1].fromBlock == clock()) {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
