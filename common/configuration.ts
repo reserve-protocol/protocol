@@ -56,6 +56,7 @@ export interface ITokens {
   RSR?: string
   CRV?: string
   CVX?: string
+  ETHPLUS?: string
   ankrETH?: string
   frxETH?: string
   sfrxETH?: string
@@ -198,6 +199,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
       CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
       CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
+      ETHPLUS: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8',
       ankrETH: '0xE95A203B1a91a908F9B9CE46459d101078c2c3cb',
       frxETH: '0x5E8422345238F34275888049021821E8E08CAa1f',
       sfrxETH: '0xac3E018457B222d93114458476f3E3416Abbe38F',
