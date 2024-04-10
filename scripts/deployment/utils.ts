@@ -135,6 +135,7 @@ export async function verifyContract(
     // Check to see if already verified
     const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
     if (status != 200 || data['status'] != '1') {
+      console.log(data)
       throw new Error("Can't communicate with Etherscan API")
     }
 
@@ -229,5 +230,55 @@ export const prompt = async (query: string): Promise<string> => {
     )
   } else {
     return ''
+  }
+}
+
+export const getUsdcOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.001') // 0.1% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    return fp('0.003') // 0.3% base
+  } else {
+    return fp('0.0025') // 0.25% mainnet
+  }
+}
+
+export const getArbOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.0005') // 0.05% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    throw new Error('not a valid chain')
+  } else {
+    return fp('0.02') // 2% mainnet
+  }
+}
+
+export const getDaiOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.001') // 0.1% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    return fp('0.003') // 0.3% base
+  } else {
+    return fp('0.0025') // 0.25% mainnet
+  }
+}
+
+export const getDaiOracleTimeout = (network: string): string => {
+  if (arbitrumL2Chains.includes(network)) {
+    return '86400' // 24 hr
+  } else if (baseL2Chains.includes(network)) {
+    return '86400' // 24 hr
+  } else {
+    return '3600' // 1 hr
+  }
+}
+
+export const getUsdtOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.001') // 0.1% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    return fp('0.003') // 0.3% base
+  } else {
+    return fp('0.0025') // 0.25% mainnet
   }
 }

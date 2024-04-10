@@ -110,6 +110,9 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     // Setup guardian as canceller
     await timelock.grantRole(cancellerRole, guardian.address)
 
+    // Setup governance as canceller
+    await timelock.grantRole(cancellerRole, governor.address)
+
     // Revoke admin role - All changes in Timelock have to go through Governance
     await timelock.revokeRole(adminRole, owner.address)
 
@@ -618,6 +621,64 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
     })
 
+    it('Should allow anyone to cancel if era changes, even if queued on timelock', async () => {
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      const voteWay = 1 // for
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, voteWay)
+      await advanceBlocks(1)
+
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I vote for')
+      await advanceBlocks(1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Queue proposal
+      await governor
+        .connect(addr1)
+        .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+
+      // Force change of era - Perform wipeout
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSRVotes.connect(signer).seizeRSR(stkAmt1.mul(2)))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1'))
+      })
+
+      // Anyone can cancel even if on Timelock already
+      await expect(
+        governor
+          .connect(other)
+          .cancel([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+      )
+        .to.emit(governor, 'ProposalCanceled')
+        .withArgs(proposalId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+    })
+
     it('Should not allow execution of proposal if era changes; guardian can cancel', async () => {
       // Propose
       const proposeTx = await governor
@@ -759,6 +820,90 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       )
       await expect(timelock.connect(owner).cancel(timelockId)).to.be.reverted // even owner can't cancel
       await timelock.connect(guardian).cancel(timelockId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+
+      // Try to execute
+      await expect(
+        governor
+          .connect(addr1)
+          .execute([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+      ).to.be.reverted
+    })
+
+    it('Should be cancellable by governor during timelock delay', async () => {
+      // Check current value
+      expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      const voteWay = 1 // for
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, voteWay)
+      await advanceBlocks(1)
+
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I vote for')
+      await advanceBlocks(1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Finished voting - Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Queue propoal
+      await governor
+        .connect(addr1)
+        .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
+
+      // Advance time required by timelock
+      await advanceTime(MIN_DELAY + 1)
+      await advanceBlocks(1)
+
+      // Should be cancellable by guardian before execute
+      const timelockId = await timelock.hashOperationBatch(
+        [backingManager.address],
+        [0],
+        [encodedFunctionCall],
+        ethers.utils.formatBytes32String(''),
+        proposalDescHash
+      )
+      await expect(timelock.connect(owner).cancel(timelockId)).to.be.reverted // even owner can't cancel
+
+      // Anyone can attempt to cancel via governor (will fail due to era check)
+      await expect(
+        governor
+          .connect(other)
+          .cancel([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+      ).to.be.revertedWith('same era')
+
+      // Governor can cancel proposal directly on Timelock
+      await whileImpersonating(governor.address, async (signer) => {
+        await expect(timelock.connect(signer).cancel(timelockId)).not.be.reverted
+      })
 
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
