@@ -1,14 +1,16 @@
 import collateralTests from '../collateralTests'
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import {
   CurveCollateralFixtureContext,
   CurveMetapoolCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
-import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
+import { makeWeUSDFraxBP, mintWeUSDFraxBP } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
+import { getResetFork } from '../../helpers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -293,7 +295,7 @@ const opts = {
   mintCollateralTo,
   itClaimsRewards: it,
   isMetapool: true,
-  resetFork,
+  resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
   collateralName: 'CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper',
 }
 

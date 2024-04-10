@@ -190,7 +190,7 @@ export const mintWPool = async (
   await cvxWrapper.connect(user).deposit(amount, recipient)
 }
 
-export const resetFork = getResetFork(forkBlockNumber['curve-plugins'])
+export const resetFork = getResetFork(forkBlockNumber['old-curve-plugins'])
 
 export type Numeric = number | bigint
 
