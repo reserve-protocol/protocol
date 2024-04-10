@@ -9,7 +9,7 @@ interface IStRSRVotes is IVotesUpgradeable {
     function currentEra() external view returns (uint256);
 
     /// @return The era at a past block number
-    function getPastEra(uint256 blockNumber) external view returns (uint256);
+    function getPastEra(uint256 timepoint) external view returns (uint256);
 
     /// Stakes an RSR `amount` on the corresponding RToken and allows to delegate
     /// votes from the sender to `delegatee` or self

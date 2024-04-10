@@ -20,6 +20,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
     // In particular, if the value changed during block N, there will be exactly one
     // entry cp with cp.fromBlock = N, and cp.val is the value at the _end_ of that block.
+    // 3.4.0: Even though it says `fromBlock`, it's actually timepoint.
     struct Checkpoint {
         uint48 fromBlock;
         uint224 val;
@@ -106,7 +107,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         return _checkpointsLookup(_eras, timepoint);
     }
 
-    /// Return the value from history `ckpts` that was current for block number `blockNumber`
+    /// Return the value from history `ckpts` that was current for timepoint `timepoint`
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 timepoint)
         private
         view

@@ -84,14 +84,14 @@ contract Governance is
         return (asMicroPercent * pastSupply + (ONE_HUNDRED_PERCENT - 1)) / ONE_HUNDRED_PERCENT;
     }
 
-    function quorum(uint256 blockNumber)
+    function quorum(uint256 timepoint)
         public
         view
         virtual
         override(IGovernor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
-        return super.quorum(blockNumber);
+        return super.quorum(timepoint);
     }
 
     function state(uint256 proposalId)
@@ -167,10 +167,10 @@ contract Governance is
     /// @return {qStRSR} The voting weight the account had at a previous block number
     function _getVotes(
         address account,
-        uint256 blockNumber,
+        uint256 timepoint,
         bytes memory /*params*/
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
-        return token.getPastVotes(account, blockNumber); // {qStRSR}
+        return token.getPastVotes(account, timepoint); // {qStRSR}
     }
 
     function supportsInterface(bytes4 interfaceId)
