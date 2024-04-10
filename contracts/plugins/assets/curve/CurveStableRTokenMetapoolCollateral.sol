@@ -50,9 +50,8 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
     /// Have to override to add custom default checks
     function refresh() public virtual override {
         // solhint-disable-next-line no-empty-blocks
-        try pairedAssetRegistry.refresh() {} catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+        try pairedAssetRegistry.refresh() {} catch {
+            // must allow failure since cannot brick refresh()
         }
 
         CollateralStatus oldStatus = status();
@@ -91,14 +90,20 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
                 }
 
                 // Check RToken status
-                if (!pairedBasketHandler.isReady()) {
+                try pairedBasketHandler.isReady() returns (bool isReady) {
+                    if (!isReady) {
+                        markStatus(CollateralStatus.IFFY);
+                    } else if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+                        // If the price is below the default-threshold price, default eventually
+                        // uint192(+/-) is the same as Fix.plus/minus
+                        markStatus(CollateralStatus.IFFY);
+                    } else {
+                        markStatus(CollateralStatus.SOUND);
+                    }
+                } catch {
+                    // prefer NOT to revert on empty data here: an RToken missing the `isReady()`
+                    // function would error out with empty data just like an OOG error.
                     markStatus(CollateralStatus.IFFY);
-                } else if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
-                    // If the price is below the default-threshold price, default eventually
-                    // uint192(+/-) is the same as Fix.plus/minus
-                    markStatus(CollateralStatus.IFFY);
-                } else {
-                    markStatus(CollateralStatus.SOUND);
                 }
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data

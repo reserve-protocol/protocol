@@ -151,9 +151,6 @@ export const DEFAULT_THRESHOLD = fp('0.02') // 2%
 export const DELAY_UNTIL_DEFAULT = bn('86400')
 export const MAX_TRADE_VOL = fp('1e6')
 
-// export const FORK_BLOCK = 15850930 // TODO delete after confirming all cvx tests still passing
-export const FORK_BLOCK = 16915576
-
 export enum CurvePoolType {
   Plain,
   Lending,

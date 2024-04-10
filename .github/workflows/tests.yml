@@ -69,12 +69,13 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test test/plugins/individual-collateral/[abc]*/**/*.test.ts
+      - run: npx hardhat test ./test/plugins/individual-collateral/[abc]*/**/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
+          PROTO_IMPL: 1
           FORK: 1
 
   plugin-tests-mainnet-2:
@@ -95,12 +96,13 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test test/plugins/individual-collateral/[^abc]*/**/*.test.ts
+      - run: npx hardhat test ./test/plugins/individual-collateral/[^abc]*/**/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
+          PROTO_IMPL: 1
           FORK: 1
 
   plugin-tests-base:

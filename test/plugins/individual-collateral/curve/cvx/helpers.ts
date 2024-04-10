@@ -1,3 +1,4 @@
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import { ethers } from 'hardhat'
 import { BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -23,7 +24,6 @@ import {
   THREE_POOL_CVX_POOL_ID,
   SUSD_POOL,
   SUSD_POOL_CVX_POOL_ID,
-  FORK_BLOCK,
   WBTC,
   WETH,
   TRI_CRYPTO,
@@ -190,7 +190,7 @@ export const mintWPool = async (
   await cvxWrapper.connect(user).deposit(amount, recipient)
 }
 
-export const resetFork = getResetFork(FORK_BLOCK)
+export const resetFork = getResetFork(forkBlockNumber['curve-plugins'])
 
 export type Numeric = number | bigint
 
