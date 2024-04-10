@@ -185,7 +185,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // Check reference token oracles
         for (uint8 i = 0; i < nTokens; i++) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
-                // {target/ref} = {UoA/tok} = {UoA/tok} + {UoA/tok}
+                // {UoA/tok} = {UoA/tok} + {UoA/tok}
                 uint192 mid = (low + high) / 2;
 
                 // If the price is below the default-threshold price, default eventually

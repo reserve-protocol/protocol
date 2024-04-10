@@ -39,8 +39,8 @@ jobs:
       - run: yarn install --immutable
       - run: yarn lint
 
-  plugin-tests-mainnet:
-    name: 'Plugin Tests (Mainnet)'
+  plugin-unit-tests:
+    name: 'Plugin Unit Tests'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -50,6 +50,17 @@ jobs:
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:plugins
+
+  plugin-tests-mainnet-1:
+    name: 'Plugin Tests (Mainnet) - 1/2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
@@ -58,15 +69,42 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn test:plugins:integration
+      - run: npx hardhat test ./test/plugins/individual-collateral/[abc]*/**/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
+          FORK: 1
+
+  plugin-tests-mainnet-2:
+    name: 'Plugin Tests (Mainnet) - 2/2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: npx hardhat test ./test/plugins/individual-collateral/[^abc]*/**/*.test.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          FORK_NETWORK: mainnet
+          FORK: 1
 
   plugin-tests-base:
-    name: 'Plugin Tests (Base)'
+    name: 'Plugin Integration Tests (Base)'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -94,7 +132,7 @@ jobs:
           PROTO_IMPL: 1
 
   plugin-tests-arbitrum:
-    name: 'Plugin Tests (Arbitrum)'
+    name: 'Plugin Integration Tests (Arbitrum)'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
