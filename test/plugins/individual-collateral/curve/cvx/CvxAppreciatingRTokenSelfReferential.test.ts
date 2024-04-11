@@ -49,9 +49,9 @@ const ETHPLUS_ASSET_REGISTRY = '0xf526f058858E4cD060cFDD775077999562b31bE0'
 const ETHPLUS_BASKET_HANDLER = '0x56f40A33e3a3fE2F1614bf82CBeb35987ac10194'
 const ETHPLUS_TIMELOCK = '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B'
 
-export const defaultCvxStableCollateralOpts: CurveCollateralOpts = {
+export const defaultCvxAppreciatingCollateralOpts: CurveCollateralOpts = {
   erc20: ZERO_ADDRESS,
-  targetName: ethers.utils.formatBytes32String('USD'),
+  targetName: ethers.utils.formatBytes32String('ETH'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
   oracleTimeout: WETH_ORACLE_TIMEOUT, // max of oracleTimeouts
@@ -86,7 +86,7 @@ export const deployCollateral = async (
     opts.erc20 = fix.wPool.address
   }
 
-  opts = { ...defaultCvxStableCollateralOpts, ...opts }
+  opts = { ...defaultCvxAppreciatingCollateralOpts, ...opts }
 
   const CvxAppreciatingRTokenSelfReferentialCollateralFactory: ContractFactory =
     await ethers.getContractFactory('CurveAppreciatingRTokenSelfReferentialCollateral')
@@ -129,7 +129,7 @@ const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CurveCollateralOpts = {}
 ): Fixture<CurveCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultCvxStableCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultCvxAppreciatingCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
