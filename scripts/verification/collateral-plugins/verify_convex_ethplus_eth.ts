@@ -40,7 +40,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const ethPlusETHPlugin = await ethers.getContractAt(
-    'CurveStableRTokenMetapoolCollateral',
+    'CurveAppreciatingRTokenSelfReferentialCollateral',
     deployments.collateral.cvxETHPlusETH as string
   )
 

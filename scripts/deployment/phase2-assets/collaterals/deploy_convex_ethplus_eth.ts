@@ -1,5 +1,5 @@
 import fs from 'fs'
-import hre, { ethers } from 'hardhat'
+import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { expect } from 'chai'
@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CurveAppreciatingRTokenFiatCollateral } from '../../../../typechain'
+import { CurveAppreciatingRTokenSelfReferentialCollateral } from '../../../../typechain'
 import { revenueHiding } from '../../utils'
 import {
   CurvePoolType,
@@ -28,7 +28,7 @@ import {
   PRICE_TIMEOUT,
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
-// This file specifically deploys CurveAppreciatingRTokenFiatCollateral Plugin for ETH+/ETH
+// This file specifically deploys CurveAppreciatingRTokenSelfReferentialCollateral Plugin for ETH+/ETH
 
 async function main() {
   // ==== Read Configuration ====
@@ -36,7 +36,7 @@ async function main() {
 
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying CurveAppreciatingRTokenFiatCollateral to network ${hre.network.name} (${chainId})
+  console.log(`Deploying CurveAppreciatingRTokenSelfReferentialCollateral to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
 
   if (!networkConfig[chainId]) {
@@ -58,9 +58,9 @@ async function main() {
   /********  Deploy Convex Appreciating RToken Collateral for ETH+/ETH  **************************/
 
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
-    'CurveAppreciatingRTokenFiatCollateral'
+    'CurveAppreciatingRTokenSelfReferentialCollateral'
   )
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+  const ConvexStakingWrapperFactory = await hre.ethers.getContractFactory('ConvexStakingWrapper')
 
   const wPool = await ConvexStakingWrapperFactory.deploy()
   await wPool.deployed()
@@ -70,11 +70,11 @@ async function main() {
     `Deployed wrapper for Convex Stable ETH+/ETH on ${hre.network.name} (${chainId}): ${wPool.address} `
   )
 
-  const collateral = <CurveAppreciatingRTokenFiatCollateral>(
+  const collateral = <CurveAppreciatingRTokenSelfReferentialCollateral>(
     await CurveStableCollateralFactory.connect(deployer).deploy(
       {
         erc20: wPool.address,
-        targetName: ethers.utils.formatBytes32String('ETH'),
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS,
         oracleError: bn('1'),
