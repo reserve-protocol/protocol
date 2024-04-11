@@ -5,12 +5,15 @@ import {
   CurveCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
+import { expectEvents } from '../../../../../common/events'
+import { overrideOracle } from '../../../../utils/oracles'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
 import { makeWETHPlusETH, mintWETHPlusETH } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
 import { getResetFork } from '../../helpers'
+import { networkConfig } from '../../../../../common/configuration'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -41,6 +44,10 @@ import {
 import { whileImpersonating } from '../../../../utils/impersonation'
 
 type Fixture<T> = () => Promise<T>
+
+const ETHPLUS_ASSET_REGISTRY = '0xf526f058858E4cD060cFDD775077999562b31bE0'
+const ETHPLUS_BASKET_HANDLER = '0x56f40A33e3a3fE2F1614bf82CBeb35987ac10194'
+const ETHPLUS_TIMELOCK = '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B'
 
 export const defaultCvxStableCollateralOpts: CurveCollateralOpts = {
   erc20: ZERO_ADDRESS,
@@ -197,9 +204,9 @@ const collateralSpecificStatusTests = () => {
     )
     const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
-      '0xf526f058858E4cD060cFDD775077999562b31bE0'
+      ETHPLUS_ASSET_REGISTRY
     )
-    await whileImpersonating('0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B', async (signer) => {
+    await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
       await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
     })
 
@@ -238,9 +245,9 @@ const collateralSpecificStatusTests = () => {
     )
     const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
-      '0xf526f058858E4cD060cFDD775077999562b31bE0'
+      ETHPLUS_ASSET_REGISTRY
     )
-    await whileImpersonating('0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B', async (signer) => {
+    await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
       await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
     })
 
@@ -253,6 +260,86 @@ const collateralSpecificStatusTests = () => {
 
     // Stale should be false again
     expect(await mockRTokenAsset.stale()).to.be.false
+  })
+
+  it('Regression test -- becomes IFFY when inner RToken is IFFY', async () => {
+    const [collateral] = await deployCollateral({})
+    const ethplusAssetRegistry = await ethers.getContractAt(
+      'IAssetRegistry',
+      ETHPLUS_ASSET_REGISTRY
+    )
+    const ethplusBasketHandler = await ethers.getContractAt(
+      'IBasketHandler',
+      ETHPLUS_BASKET_HANDLER
+    )
+    const wstETHCollateral = await ethers.getContractAt(
+      'LidoStakedEthCollateral',
+      await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.wstETH!)
+    )
+    const initialPrice = await wstETHCollateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
+    expect(await wstETHCollateral.status()).to.equal(0)
+
+    // De-peg wstETH collateral 20%
+    const targetPerRefFeed = await wstETHCollateral.targetPerRefChainlinkFeed()
+    const targetPerRefOracle = await overrideOracle(targetPerRefFeed)
+    const latestAnswer = await targetPerRefOracle.latestAnswer()
+    await targetPerRefOracle.updateAnswer(latestAnswer.mul(4).div(5))
+
+    // wstETHCollateral + CurveAppreciatingRTokenSelfReferentialCollateral should
+    // become IFFY through the top-level refresh
+    await expectEvents(collateral.refresh(), [
+      {
+        contract: ethplusBasketHandler,
+        name: 'BasketStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+      {
+        contract: wstETHCollateral,
+        name: 'CollateralStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+    ])
+    expect(await wstETHCollateral.status()).to.equal(1)
+    expect(await collateral.status()).to.equal(1)
+    expect(await ethplusBasketHandler.isReady()).to.equal(false)
+
+    // Should remain IFFY for the warmupPeriod even after wstETHCollateral is SOUND
+    await targetPerRefOracle.updateAnswer(latestAnswer)
+    await expectEvents(collateral.refresh(), [
+      {
+        contract: ethplusBasketHandler,
+        name: 'BasketStatusChanged',
+        args: [1, 0],
+        emitted: true,
+      },
+      {
+        contract: wstETHCollateral,
+        name: 'CollateralStatusChanged',
+        args: [1, 0],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        emitted: false,
+      },
+    ])
+    expect(await collateral.status()).to.equal(1)
+
+    // Goes back to SOUND after warmupPeriod
+    await advanceTime(1000)
+    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged').withArgs(1, 0)
+    expect(await collateral.status()).to.equal(0)
   })
 }
 
