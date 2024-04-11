@@ -138,6 +138,7 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
     }
 
     /// @dev Warning: Can revert
+    /// @dev Only works when the RToken is the 0th index token
     /// @param index The index of the token: 0, 1, 2, or 3
     /// @return low {UoA/ref_index}
     /// @return high {UoA/ref_index}
