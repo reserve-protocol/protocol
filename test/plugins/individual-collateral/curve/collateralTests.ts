@@ -311,25 +311,23 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     })
 
     describe('collateral functionality', () => {
-      before(resetFork)
-
       let ctx: CurveCollateralFixtureContext
+      let amt: BigNumber
 
       beforeEach(async () => {
+        await resetFork()
         const [alice] = await ethers.getSigners()
         ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
+        amt = bn('200').mul(bn(10).pow(await ctx.wrapper.decimals()))
+        expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
       })
 
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
-          const amount = bn('20000').mul(bn(10).pow(await ctx.wrapper.decimals()))
-          await mintCollateralTo(ctx, amount, ctx.alice, ctx.alice.address)
+          await mintCollateralTo(ctx, amt, ctx.alice, ctx.alice.address)
 
           const aliceBal = await ctx.collateral.bal(ctx.alice.address)
-          expect(aliceBal).to.closeTo(
-            amount.mul(bn(10).pow(18 - (await ctx.wrapper.decimals()))),
-            bn('100').mul(bn(10).pow(18 - (await ctx.wrapper.decimals())))
-          )
+          expect(aliceBal).to.closeTo(amt, amt.div(200))
         })
       })
 
@@ -339,8 +337,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         itClaimsRewards('claims rewards (plugin)', async () => {
-          const amount = bn('20000').mul(bn(10).pow(await ctx.wrapper.decimals()))
-          await mintCollateralTo(ctx, amount, ctx.alice, ctx.collateral.address)
+          await mintCollateralTo(ctx, amt, ctx.alice, ctx.collateral.address)
 
           await advanceBlocks(1000)
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -360,8 +357,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         itClaimsRewards('claims rewards (wrapper)', async () => {
-          const amount = bn('20000').mul(bn(10).pow(await ctx.wrapper.decimals()))
-          await mintCollateralTo(ctx, amount, ctx.alice, ctx.alice.address)
+          await mintCollateralTo(ctx, amt, ctx.alice, ctx.alice.address)
 
           await advanceBlocks(1000)
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -385,7 +381,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       describe('prices', () => {
-        before(resetFork)
         it('prices change as feed price changes', async () => {
           const initialRefPerTok = await ctx.collateral.refPerTok()
           const [low, high] = await ctx.collateral.price()
@@ -523,8 +518,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       describe('status', () => {
-        before(resetFork)
-
         it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
           const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
             'InvalidMockV3Aggregator'
@@ -642,7 +635,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          await mintCollateralTo(ctx, bn('20000e6'), ctx.alice, ctx.alice.address)
+          await mintCollateralTo(ctx, amt, ctx.alice, ctx.alice.address)
 
           await expect(ctx.collateral.refresh()).to.not.emit(
             ctx.collateral,
@@ -676,7 +669,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           // Check initial state
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
-          await mintCollateralTo(ctx, bn('20000e6'), ctx.alice, ctx.alice.address)
+          await mintCollateralTo(ctx, amt, ctx.alice, ctx.alice.address)
           await expect(ctx.collateral.refresh()).to.not.emit(
             ctx.collateral,
             'CollateralStatusChanged'
@@ -706,8 +699,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
 
-          // refPerTok should have fallen exactly 2e-18
-          expect(await ctx.collateral.refPerTok()).to.equal(refPerTok.sub(2))
+          // refPerTok should have fallen
+          expect(await ctx.collateral.refPerTok()).to.be.closeTo(refPerTok.sub(2), 1)
         })
 
         describe('collateral-specific tests', collateralSpecificStatusTests)

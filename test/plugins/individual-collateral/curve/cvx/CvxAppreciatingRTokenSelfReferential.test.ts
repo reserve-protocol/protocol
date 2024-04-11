@@ -2,13 +2,13 @@ import collateralTests from '../collateralTests'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import {
   CurveCollateralFixtureContext,
-  CurveMetapoolCollateralOpts,
+  CurveCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
 import { expectEvents } from '../../../../../common/events'
 import { overrideOracle } from '../../../../utils/oracles'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
-import { makeWeUSDFraxBP, mintWeUSDFraxBP } from './helpers'
+import { makeWETHPlusETH, mintWETHPlusETH } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
@@ -27,101 +27,94 @@ import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   PRICE_TIMEOUT,
-  eUSD_FRAX_BP,
-  FRAX_BP,
-  FRAX_BP_TOKEN,
+  ETHPLUS_BP_POOL,
+  ETHPLUS_BP_TOKEN,
+  ETHPLUS_ETH_HOLDER,
   CVX,
-  USDC_USD_FEED,
-  USDC_ORACLE_TIMEOUT,
-  USDC_ORACLE_ERROR,
-  FRAX_USD_FEED,
-  FRAX_ORACLE_TIMEOUT,
-  FRAX_ORACLE_ERROR,
+  WETH_USD_FEED,
+  WETH_ORACLE_TIMEOUT,
+  WETH_ORACLE_ERROR,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   RTOKEN_DELAY_UNTIL_DEFAULT,
   CurvePoolType,
   CRV,
-  eUSD_FRAX_HOLDER,
-  eUSD,
+  ETHPLUS,
 } from '../constants'
 import { whileImpersonating } from '../../../../utils/impersonation'
 
-const EUSD_ASSET_REGISTRY = '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
-const EUSD_BASKET_HANDLER = '0x6d309297ddDFeA104A6E89a132e2f05ce3828e07'
-
 type Fixture<T> = () => Promise<T>
 
-export const defaultCvxStableCollateralOpts: CurveMetapoolCollateralOpts = {
+const ETHPLUS_ASSET_REGISTRY = '0xf526f058858E4cD060cFDD775077999562b31bE0'
+const ETHPLUS_BASKET_HANDLER = '0x56f40A33e3a3fE2F1614bf82CBeb35987ac10194'
+const ETHPLUS_TIMELOCK = '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B'
+
+export const defaultCvxAppreciatingCollateralOpts: CurveCollateralOpts = {
   erc20: ZERO_ADDRESS,
-  targetName: ethers.utils.formatBytes32String('USD'),
+  targetName: ethers.utils.formatBytes32String('ETH'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
-  oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+  oracleTimeout: WETH_ORACLE_TIMEOUT, // max of oracleTimeouts
   oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'),
   nTokens: 2,
-  curvePool: FRAX_BP,
-  lpToken: FRAX_BP_TOKEN,
+  curvePool: ETHPLUS_BP_POOL,
+  lpToken: ETHPLUS_BP_TOKEN,
   poolType: CurvePoolType.Plain, // for fraxBP, not the top-level pool
-  feeds: [[FRAX_USD_FEED], [USDC_USD_FEED]],
-  oracleTimeouts: [[FRAX_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
-  oracleErrors: [[FRAX_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
-  metapoolToken: eUSD_FRAX_BP,
-  pairedTokenDefaultThreshold: DEFAULT_THRESHOLD,
+  feeds: [[ONE_ADDRESS], [WETH_USD_FEED]],
+  oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
+  oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
 }
 
 export const deployCollateral = async (
-  opts: CurveMetapoolCollateralOpts = {}
-): Promise<[TestICollateral, CurveMetapoolCollateralOpts]> => {
+  opts: CurveCollateralOpts = {}
+): Promise<[TestICollateral, CurveCollateralOpts]> => {
   if (!opts.erc20 && !opts.feeds) {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    // Substitute all 3 feeds: FRAX, USDC, eUSD
-    const fraxFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const eusdFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const fix = await makeWeUSDFraxBP(eusdFeed)
+    // Substitute both feeds: ETH+, ETH
+    const ethplusFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('3300e8'))
+    const ethFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('3300e8'))
+    const fix = await makeWETHPlusETH(ethplusFeed)
 
-    opts.feeds = [[fraxFeed.address], [usdcFeed.address]]
+    opts.feeds = [[ethplusFeed.address], [ethFeed.address]]
     opts.erc20 = fix.wPool.address
   }
 
-  opts = { ...defaultCvxStableCollateralOpts, ...opts }
+  opts = { ...defaultCvxAppreciatingCollateralOpts, ...opts }
 
-  const CvxStableRTokenMetapoolCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'CurveStableRTokenMetapoolCollateral'
-  )
+  const CvxAppreciatingRTokenSelfReferentialCollateralFactory: ContractFactory =
+    await ethers.getContractFactory('CurveAppreciatingRTokenSelfReferentialCollateral')
 
-  const collateral = <TestICollateral>await CvxStableRTokenMetapoolCollateralFactory.deploy(
-    {
-      erc20: opts.erc20,
-      targetName: opts.targetName,
-      priceTimeout: opts.priceTimeout,
-      chainlinkFeed: opts.chainlinkFeed,
-      oracleError: opts.oracleError,
-      oracleTimeout: opts.oracleTimeout,
-      maxTradeVolume: opts.maxTradeVolume,
-      defaultThreshold: opts.defaultThreshold,
-      delayUntilDefault: opts.delayUntilDefault,
-    },
-    opts.revenueHiding,
-    {
-      nTokens: opts.nTokens,
-      curvePool: opts.curvePool,
-      poolType: opts.poolType,
-      feeds: opts.feeds,
-      oracleTimeouts: opts.oracleTimeouts,
-      oracleErrors: opts.oracleErrors,
-      lpToken: opts.lpToken,
-    },
-    opts.metapoolToken,
-    opts.pairedTokenDefaultThreshold
+  const collateral = <TestICollateral>(
+    await CvxAppreciatingRTokenSelfReferentialCollateralFactory.deploy(
+      {
+        erc20: opts.erc20,
+        targetName: opts.targetName,
+        priceTimeout: opts.priceTimeout,
+        chainlinkFeed: opts.chainlinkFeed,
+        oracleError: opts.oracleError,
+        oracleTimeout: opts.oracleTimeout,
+        maxTradeVolume: opts.maxTradeVolume,
+        defaultThreshold: opts.defaultThreshold,
+        delayUntilDefault: opts.delayUntilDefault,
+      },
+      opts.revenueHiding,
+      {
+        nTokens: opts.nTokens,
+        curvePool: opts.curvePool,
+        poolType: opts.poolType,
+        feeds: opts.feeds,
+        oracleTimeouts: opts.oracleTimeouts,
+        oracleErrors: opts.oracleErrors,
+        lpToken: opts.lpToken,
+      }
+    )
   )
   await collateral.deployed()
 
@@ -134,26 +127,23 @@ export const deployCollateral = async (
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
-  opts: CurveMetapoolCollateralOpts = {}
+  opts: CurveCollateralOpts = {}
 ): Fixture<CurveCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultCvxStableCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultCvxAppreciatingCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    // Substitute all feeds: FRAX, USDC, RToken
-    const fraxFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const eusdFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    // Substitute both feeds: ETH+, ETH
+    const ethplusFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('3300e8'))
+    const ethFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('3300e8'))
+    const fix = await makeWETHPlusETH(ethplusFeed)
 
-    const fix = await makeWeUSDFraxBP(eusdFeed)
-    collateralOpts.feeds = [[fraxFeed.address], [usdcFeed.address]]
-
+    collateralOpts.feeds = [[ethplusFeed.address], [ethFeed.address]]
     collateralOpts.erc20 = fix.wPool.address
     collateralOpts.curvePool = fix.curvePool.address
-    collateralOpts.metapoolToken = fix.metapoolToken.address
 
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts))[0] as unknown)
     const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
@@ -162,12 +152,12 @@ const makeCollateralFixtureContext = (
     return {
       alice,
       collateral,
-      curvePool: fix.metapoolToken,
+      curvePool: fix.curvePool,
       wrapper: fix.wPool,
       rewardTokens: [cvx, crv],
-      chainlinkFeed: usdcFeed,
-      poolTokens: [fix.frax, fix.usdc],
-      feeds: [fraxFeed, usdcFeed, eusdFeed],
+      chainlinkFeed: ethFeed,
+      poolTokens: [fix.ethplus, fix.weth],
+      feeds: [ethFeed, ethplusFeed], // reversed order here. 0th feed is always the one manipulated
     }
   }
 
@@ -184,7 +174,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWeUSDFraxBP(ctx, amount, user, recipient, eUSD_FRAX_HOLDER)
+  await mintWETHPlusETH(ctx, amount, user, recipient, ETHPLUS_ETH_HOLDER)
 }
 
 /*
@@ -192,23 +182,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {
-  it('does not allow empty metaPoolToken', async () => {
-    await expect(deployCollateral({ metapoolToken: ZERO_ADDRESS })).to.be.revertedWith(
-      'metapoolToken address is zero'
-    )
-  })
-
-  it('does not allow invalid pairedTokenDefaultThreshold', async () => {
-    await expect(deployCollateral({ pairedTokenDefaultThreshold: bn(0) })).to.be.revertedWith(
-      'pairedTokenDefaultThreshold out of bounds'
-    )
-
-    await expect(
-      deployCollateral({ pairedTokenDefaultThreshold: bn('1.1e18') })
-    ).to.be.revertedWith('pairedTokenDefaultThreshold out of bounds')
-  })
-}
+const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
@@ -218,22 +192,22 @@ const collateralSpecificStatusTests = () => {
     expect(initialPrice[0]).to.be.gt(0)
     expect(initialPrice[1]).to.be.lt(MAX_UINT192)
 
-    // Swap out eUSD's RTokenAsset with a mock one
+    // Swap out ETHPLUS's RTokenAsset with a mock one
     const AssetMockFactory = await ethers.getContractFactory('AssetMock')
     const mockRTokenAsset = await AssetMockFactory.deploy(
       bn('1'), // unused
       ONE_ADDRESS, // unused
       bn('1'), // unused
-      eUSD,
+      ETHPLUS,
       bn('1'), // unused
       bn('1') // unused
     )
-    const eUSDAssetRegistry = await ethers.getContractAt(
+    const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
-      '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+      ETHPLUS_ASSET_REGISTRY
     )
-    await whileImpersonating('0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c', async (signer) => {
-      await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+    await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
+      await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
     })
 
     // Set RTokenAsset to unpriced
@@ -259,29 +233,29 @@ const collateralSpecificStatusTests = () => {
     expect(initialPrice[0]).to.be.gt(0)
     expect(initialPrice[1]).to.be.lt(MAX_UINT192)
 
-    // Swap out eUSD's RTokenAsset with a mock one
+    // Swap out ETHPLUS's RTokenAsset with a mock one
     const AssetMockFactory = await ethers.getContractFactory('AssetMock')
     const mockRTokenAsset = await AssetMockFactory.deploy(
       bn('1'), // unused
       ONE_ADDRESS, // unused
       bn('1'), // unused
-      eUSD,
+      ETHPLUS,
       bn('1'), // unused
       bn('1') // unused
     )
-    const eUSDAssetRegistry = await ethers.getContractAt(
+    const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
-      '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+      ETHPLUS_ASSET_REGISTRY
     )
-    await whileImpersonating('0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c', async (signer) => {
-      await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+    await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
+      await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
     })
 
     // Set RTokenAsset price to stale
     await mockRTokenAsset.setStale(true)
     expect(await mockRTokenAsset.stale()).to.be.true
 
-    // Refresh CurveStableRTokenMetapoolCollateral
+    // Refresh CurveAppreciatingRTokenSelfReferentialCollateral
     await collateral.refresh()
 
     // Stale should be false again
@@ -290,34 +264,40 @@ const collateralSpecificStatusTests = () => {
 
   it('Regression test -- becomes IFFY when inner RToken is IFFY', async () => {
     const [collateral] = await deployCollateral({})
-    const eusdAssetRegistry = await ethers.getContractAt('IAssetRegistry', EUSD_ASSET_REGISTRY)
-    const eusdBasketHandler = await ethers.getContractAt('IBasketHandler', EUSD_BASKET_HANDLER)
-    const cUSDTCollateral = await ethers.getContractAt(
-      'CTokenFiatCollateral',
-      await eusdAssetRegistry.toAsset(networkConfig['1'].tokens.cUSDT!)
+    const ethplusAssetRegistry = await ethers.getContractAt(
+      'IAssetRegistry',
+      ETHPLUS_ASSET_REGISTRY
     )
-    const initialPrice = await cUSDTCollateral.price()
+    const ethplusBasketHandler = await ethers.getContractAt(
+      'IBasketHandler',
+      ETHPLUS_BASKET_HANDLER
+    )
+    const wstETHCollateral = await ethers.getContractAt(
+      'LidoStakedEthCollateral',
+      await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.wstETH!)
+    )
+    const initialPrice = await wstETHCollateral.price()
     expect(initialPrice[0]).to.be.gt(0)
     expect(initialPrice[1]).to.be.lt(MAX_UINT192)
-    expect(await cUSDTCollateral.status()).to.equal(0)
+    expect(await wstETHCollateral.status()).to.equal(0)
 
-    // De-peg oracle 20%
-    const chainlinkFeed = await cUSDTCollateral.chainlinkFeed()
-    const oracle = await overrideOracle(chainlinkFeed)
-    const latestAnswer = await oracle.latestAnswer()
-    await oracle.updateAnswer(latestAnswer.mul(4).div(5))
+    // De-peg wstETH collateral 20%
+    const targetPerRefFeed = await wstETHCollateral.targetPerRefChainlinkFeed()
+    const targetPerRefOracle = await overrideOracle(targetPerRefFeed)
+    const latestAnswer = await targetPerRefOracle.latestAnswer()
+    await targetPerRefOracle.updateAnswer(latestAnswer.mul(4).div(5))
 
-    // CTokenFiatCollateral + CurveStableRTokenMetapoolCollateral should
+    // wstETHCollateral + CurveAppreciatingRTokenSelfReferentialCollateral should
     // become IFFY through the top-level refresh
     await expectEvents(collateral.refresh(), [
       {
-        contract: eusdBasketHandler,
+        contract: ethplusBasketHandler,
         name: 'BasketStatusChanged',
         args: [0, 1],
         emitted: true,
       },
       {
-        contract: cUSDTCollateral,
+        contract: wstETHCollateral,
         name: 'CollateralStatusChanged',
         args: [0, 1],
         emitted: true,
@@ -329,21 +309,21 @@ const collateralSpecificStatusTests = () => {
         emitted: true,
       },
     ])
-    expect(await cUSDTCollateral.status()).to.equal(1)
+    expect(await wstETHCollateral.status()).to.equal(1)
     expect(await collateral.status()).to.equal(1)
-    expect(await eusdBasketHandler.isReady()).to.equal(false)
+    expect(await ethplusBasketHandler.isReady()).to.equal(false)
 
-    // Should remain IFFY for the warmupPeriod even after cUSDTCollateral is SOUND again
-    await oracle.updateAnswer(latestAnswer)
+    // Should remain IFFY for the warmupPeriod even after wstETHCollateral is SOUND
+    await targetPerRefOracle.updateAnswer(latestAnswer)
     await expectEvents(collateral.refresh(), [
       {
-        contract: eusdBasketHandler,
+        contract: ethplusBasketHandler,
         name: 'BasketStatusChanged',
         args: [1, 0],
         emitted: true,
       },
       {
-        contract: cUSDTCollateral,
+        contract: wstETHCollateral,
         name: 'CollateralStatusChanged',
         args: [1, 0],
         emitted: true,
@@ -374,9 +354,9 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   itClaimsRewards: it,
-  isMetapool: true,
+  isMetapool: false,
   resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
-  collateralName: 'CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper',
+  collateralName: 'CurveAppreciatingRTokenSelfReferentialCollateral - ConvexStakingWrapper',
 }
 
 collateralTests(opts)
