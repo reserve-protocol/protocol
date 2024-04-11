@@ -150,6 +150,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return updatedAt {s} The timestamp of the cache update
     function latestPrice() external returns (uint192 rTokenPrice, uint256 updatedAt) {
         // Situations that require an update, from most common to least common.
+        // untestable:
+        //     basket and trade nonce checks, as first condition will always be true in these cases
         if (
             cachedOracleData.cachedAtTime + ORACLE_TIMEOUT <= block.timestamp || // Cache Timeout
             cachedOracleData.cachedAtNonce != basketHandler.nonce() || // Basket nonce was updated
