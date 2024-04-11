@@ -237,7 +237,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           config.rewardRatio,
           config.withdrawalLeak
         )
-      ).to.be.revertedWith('name empty')
+      ).to.be.reverted
       await expect(
         newStRSR.init(
           main.address,
@@ -247,7 +247,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           config.rewardRatio,
           config.withdrawalLeak
         )
-      ).to.be.revertedWith('symbol empty')
+      ).to.be.reverted
     })
   })
 
@@ -416,7 +416,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         })
       } else if (IMPLEMENTATION == Implementation.P1) {
         await whileImpersonating(ZERO_ADDRESS, async (signer) => {
-          await expect(stRSR.connect(signer).stake(amount)).to.be.revertedWith('zero address mint')
+          await expect(stRSR.connect(signer).stake(amount)).to.be.revertedWith('zero address')
         })
       }
     })
@@ -514,14 +514,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const zero: BigNumber = bn(0)
 
       // Unstake
-      await expect(stRSR.connect(addr1).unstake(zero)).to.be.revertedWith('Cannot withdraw zero')
+      await expect(stRSR.connect(addr1).unstake(zero)).to.be.revertedWith('zero amount')
     })
 
     it('Should not allow to unstake if not enough balance', async () => {
       const amount: BigNumber = bn('1000e18')
 
       // Unstake with no stakes/balance
-      await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('Not enough balance')
+      await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('insufficient balance')
     })
 
     it('Should not unstake if paused', async () => {
@@ -1599,9 +1599,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(zero)).to.be.revertedWith(
-          'Amount cannot be zero'
-        )
+        await expect(stRSR.connect(signer).seizeRSR(zero)).to.be.revertedWith('zero amount')
       })
 
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
@@ -2321,7 +2319,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       //  Perform transfer with user with no stake
       await expect(stRSR.connect(addr2).transfer(addr1.address, amount)).to.be.revertedWith(
-        'transfer amount exceeds balance'
+        'insufficient balance'
       )
 
       // Nothing transferred
@@ -2338,13 +2336,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to send to zero address
       await expect(stRSR.connect(addr1).transfer(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'zero address transfer'
+        'zero address'
       )
 
       // Attempt to send from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).transfer(addr2.address, amount)).to.be.revertedWith(
-          'zero address transfer'
+          'zero address'
         )
       })
 
@@ -2551,13 +2549,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to set allowance to zero address
       await expect(stRSR.connect(addr1).approve(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'zero address approval'
+        'zero address'
       )
 
       // Attempt set allowance from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).approve(addr2.address, amount)).to.be.revertedWith(
-          'zero address approval'
+          'zero address'
         )
       })
 
@@ -2593,7 +2591,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Should not allow to decrease below zero
       await expect(
         stRSR.connect(addr1).decreaseAllowance(addr2.address, amount.add(1))
-      ).to.be.revertedWith('decreased allowance below zero')
+      ).to.be.revertedWith('decrease allowance')
 
       // No changes
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
