@@ -101,7 +101,7 @@ jobs:
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
       # - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Zd-z]*/*.test.ts ./test/plugins/individual-collateral/[D-Zd-z]*/*/*.test.ts
-      - run: 'yarn hardhat test ./test/plugins/individual-collateral/[D-Zd-z]*/**/*.test.ts'
+      - run: yarn hardhat test './test/plugins/individual-collateral/[D-Zd-z]*/**/*.test.ts'
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
