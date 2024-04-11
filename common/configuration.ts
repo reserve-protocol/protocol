@@ -120,6 +120,7 @@ export interface IPools {
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
   cvxMIM3Pool?: string
+  cvxETHPlusETH?: string
   crv3Pool?: string
   crveUSDFRAXBP?: string
   crvTriCrypto?: string

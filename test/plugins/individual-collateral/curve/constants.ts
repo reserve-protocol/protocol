@@ -148,7 +148,7 @@ export const RTOKEN_DELAY_UNTIL_DEFAULT = bn('259200') // 72h
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const DEFAULT_THRESHOLD = fp('0.02') // 2%
-export const DELAY_UNTIL_DEFAULT = bn('86400')
+export const DELAY_UNTIL_DEFAULT = bn('259200') // 72h
 export const MAX_TRADE_VOL = fp('1e6')
 
 export enum CurvePoolType {
