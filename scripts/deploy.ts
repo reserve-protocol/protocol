@@ -94,6 +94,7 @@ async function main() {
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One
     scripts.push(
+      'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
       'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',

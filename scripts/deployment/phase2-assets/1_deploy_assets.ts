@@ -37,7 +37,7 @@ async function main() {
   const deployedAssets: string[] = []
 
   /********  Deploy StkAAVE Asset **************************/
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
