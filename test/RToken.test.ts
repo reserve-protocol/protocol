@@ -2674,7 +2674,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Should not allow to decrease below zero
       await expect(
         rToken.connect(addr1).decreaseAllowance(addr2.address, amount.add(1))
-      ).to.be.revertedWith('ERC20: decrease allowance below zero')
+      ).to.be.revertedWith('ERC20: decreased allowance below zero')
 
       // No changes
       expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount)
