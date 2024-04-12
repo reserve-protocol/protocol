@@ -460,7 +460,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token3.connect(other).approve(rToken.address, issueAmount)
 
       await expect(rToken.connect(other).issue(issueAmount)).to.be.revertedWith(
-        'ERC20: insufficient balance'
+        'ERC20: transfer amount exceeds balance'
       )
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
@@ -2471,7 +2471,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       //  Perform transfer with user with no balance
       await expect(rToken.connect(addr2).transfer(addr1.address, amount)).to.be.revertedWith(
-        'ERC20: insufficient balance'
+        'ERC20: transfer amount exceeds balance'
       )
 
       // Nothing transferred
