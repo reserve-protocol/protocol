@@ -164,7 +164,7 @@ contract Governance is
         return super._executor();
     }
 
-    /// @return {qStRSR} The voting weight the account had at a previous block number
+    /// @return {qStRSR} The voting weight the account had at a previous timepoint
     function _getVotes(
         address account,
         uint256 timepoint,
@@ -185,8 +185,8 @@ contract Governance is
     // === Private ===
 
     function startedInSameEra(uint256 proposalId) private view returns (bool) {
-        uint256 startBlock = proposalSnapshot(proposalId);
-        uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startBlock);
+        uint256 startTimepoint = proposalSnapshot(proposalId);
+        uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startTimepoint);
         uint256 currentEra = IStRSRVotes(address(token)).currentEra();
         return currentEra == pastEra;
     }
