@@ -369,6 +369,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         revenueHiding: REVENUE_HIDING.toString(),
+        referenceERC20Decimals: bn(18).toString(),
         noOutput: true,
       }
     )
