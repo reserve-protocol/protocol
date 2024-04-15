@@ -31,6 +31,8 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
         AggregatorV3Interface targetUnitChainlinkFeed_,
         uint48 targetUnitOracleTimeout_
     ) MorphoFiatCollateral(config, revenueHiding) {
+        require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
+        require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetUnitOracleTimeout_));
