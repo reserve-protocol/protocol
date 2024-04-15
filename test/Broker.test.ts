@@ -49,12 +49,7 @@ import {
   VERSION,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import {
-  advanceTime,
-  advanceToTimestamp,
-  getLatestBlockTimestamp,
-  getLatestBlockNumber,
-} from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
