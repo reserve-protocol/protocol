@@ -38,9 +38,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
 
     /// @custom:delegate-call
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 bal = comp.balanceOf(address(this));
+        uint256 _bal = comp.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - _bal);
     }
 
     function underlyingRefPerTok() public view virtual override returns (uint192) {

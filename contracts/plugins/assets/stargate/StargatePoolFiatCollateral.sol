@@ -42,8 +42,8 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     }
 
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 bal = stg.balanceOf(address(this));
+        uint256 _bal = stg.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(stg, stg.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(stg, stg.balanceOf(address(this)) - _bal);
     }
 }

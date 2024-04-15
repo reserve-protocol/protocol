@@ -48,8 +48,8 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        uint256 bal = morpho.balanceOf(address(this));
+        uint256 _bal = morpho.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - _bal);
     }
 }
