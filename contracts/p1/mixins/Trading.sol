@@ -136,8 +136,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;
-        tradesOpen++;
-        tradesNonce++;
+        ++tradesOpen;
+        ++tradesNonce;
 
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }

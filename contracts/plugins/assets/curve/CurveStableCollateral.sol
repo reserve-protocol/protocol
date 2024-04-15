@@ -183,7 +183,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // Override this later to implement non-stable pools
     function _anyDepeggedInPool() internal view virtual returns (bool) {
         // Check reference token oracles
-        for (uint8 i = 0; i < nTokens; i++) {
+        for (uint8 i = 0; i < nTokens; ++i) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
                 // {UoA/tok} = {UoA/tok} + {UoA/tok}
                 uint192 mid = (low + high) / 2;

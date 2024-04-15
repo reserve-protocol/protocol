@@ -175,7 +175,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         }
 
         uint256 extraCount = IRewardStaking(mainPool).extraRewardsLength();
-        for (uint256 i = 0; i < extraCount; i++) {
+        for (uint256 i = 0; i < extraCount; ++i) {
             address extraPool = IRewardStaking(mainPool).extraRewards(i);
             address extraToken = IRewardStaking(extraPool).rewardToken();
             //from pool 151, extra reward tokens are wrapped
@@ -253,7 +253,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         }
 
         //update user integrals
-        for (uint256 u = 0; u < _accounts.length; u++) {
+        for (uint256 u = 0; u < _accounts.length; ++u) {
             //do not give rewards to address 0
             if (_accounts[u] == address(0)) continue;
             if (_accounts[u] == collateralVault) continue;
@@ -297,7 +297,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         IRewardStaking(convexPool).getReward(address(this), true);
 
         uint256 rewardCount = rewards.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < rewardCount; ++i) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, false);
         }
         emit UserCheckpoint(_accounts[0], _accounts[1]);
@@ -311,7 +311,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         IRewardStaking(convexPool).getReward(address(this), true);
 
         uint256 rewardCount = rewards.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < rewardCount; ++i) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, true);
         }
         emit UserCheckpoint(_accounts[0], _accounts[1]);
@@ -337,7 +337,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         uint256 rewardCount = rewards.length;
         claimable = new EarnedData[](rewardCount);
 
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < rewardCount; ++i) {
             RewardType storage reward = rewards[i];
             if (reward.reward_token == address(0)) {
                 continue;

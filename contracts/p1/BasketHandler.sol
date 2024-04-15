@@ -625,7 +625,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Require that erc20s is a valid collateral array
     function requireValidCollArray(IERC20[] calldata erc20s) private view {
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             require(
                 erc20s[i] != rsr &&
                     erc20s[i] != IERC20(address(rToken)) &&

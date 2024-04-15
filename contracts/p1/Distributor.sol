@@ -131,12 +131,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             }
 
             transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });
-            numTransfers++;
+            ++numTransfers;
         }
         emit RevenueDistributed(erc20, caller, amount);
 
         // == Interactions ==
-        for (uint256 i = 0; i < numTransfers; i++) {
+        for (uint256 i = 0; i < numTransfers; ++i) {
             Transfer memory t = transfers[i];
             IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
         }
