@@ -492,7 +492,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
       ETH: '0x71041dddad3595f9ced3dccfbe3d1f4b0a16bb70', // 0.15%, 20min
-      WBTC: '0xccadc697c55bbb68dc5bcdf8d3cbe83cdd4e071e', // 0.5%, 24hr
+      WBTC: '0xccadc697c55bbb68dc5bcdf8d3cbe83cdd4e071e', // 0.1%, 20min
       USDC: '0x7e860098f58bbfc8648a4311b374b1d669a2bc6b', // 0.3%, 24hr
       USDT: '0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9', // 0.3%, 24hr
       COMP: '0x9dda783de64a9d1a60c49ca761ebe528c35ba428', // 0.5%, 24hr
