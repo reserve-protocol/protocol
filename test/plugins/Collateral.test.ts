@@ -2029,8 +2029,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: 0,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          REVENUE_HIDING,
-          await selfRefToken.decimals()
+          REVENUE_HIDING
         )
       )
       await cTokenSelfReferentialCollateral.refresh()

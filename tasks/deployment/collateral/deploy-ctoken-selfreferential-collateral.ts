@@ -11,7 +11,6 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('revenueHiding', 'Revenue Hiding')
-  .addParam('referenceERC20Decimals', 'Decimals in the reference token')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -34,8 +33,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
           defaultThreshold: 0,
           delayUntilDefault: 0,
         },
-        params.revenueHiding,
-        params.referenceERC20Decimals
+        params.revenueHiding
       )
     )
     await collateral.deployed()

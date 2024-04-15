@@ -1593,8 +1593,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             defaultThreshold: bn('0'),
             delayUntilDefault,
           },
-          REVENUE_HIDING,
-          await weth.decimals()
+          REVENUE_HIDING
         )
 
         // CTokens - Collateral with no price info should revert
@@ -1623,8 +1622,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             defaultThreshold: bn('0'),
             delayUntilDefault,
           },
-          REVENUE_HIDING,
-          await weth.decimals()
+          REVENUE_HIDING
         )
         await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn('1e10'))
         await zeroPriceCtokenSelfReferentialCollateral.refresh()

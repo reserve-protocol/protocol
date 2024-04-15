@@ -345,8 +345,7 @@ export async function collateralFixture(
   const makeCTokenSelfReferentialCollateral = async (
     tokenAddress: string,
     chainlinkAddr: string,
-    targetName: string,
-    referenceERC20Decimals: number
+    targetName: string
   ): Promise<[IERC20Metadata, CTokenSelfReferentialCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
@@ -364,8 +363,7 @@ export async function collateralFixture(
           defaultThreshold: bn(0),
           delayUntilDefault,
         },
-        REVENUE_HIDING,
-        referenceERC20Decimals
+        REVENUE_HIDING
       )
     )
     await coll.refresh()
@@ -499,8 +497,7 @@ export async function collateralFixture(
   const cETH = await makeCTokenSelfReferentialCollateral(
     networkConfig[chainId].tokens.cETH as string,
     networkConfig[chainId].chainlinkFeeds.ETH as string,
-    'ETH',
-    18
+    'ETH'
   )
 
   const eurt = await makeEURFiatCollateral(

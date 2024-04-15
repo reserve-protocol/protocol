@@ -137,8 +137,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         defaultThreshold: bn(0),
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      REVENUE_HIDING,
-      await weth.decimals()
+      REVENUE_HIDING
     )
 
     // Backup

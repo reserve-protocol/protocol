@@ -26,15 +26,13 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     /// @param config.erc20 The CToken itself
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param referenceERC20Decimals_ The number of decimals in the reference token
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding,
-        uint8 referenceERC20Decimals_
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {
         require(config.defaultThreshold == 0, "default threshold not supported");
-        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        referenceERC20Decimals = referenceERC20Decimals_;
+        address referenceERC20 = ICToken(address(config.erc20)).underlying();
+        referenceERC20Decimals = IERC20Metadata(referenceERC20).decimals();
+        require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
         comptroller = ICToken(address(config.erc20)).comptroller();
         comp = IERC20(comptroller.getCompAddress());
     }
