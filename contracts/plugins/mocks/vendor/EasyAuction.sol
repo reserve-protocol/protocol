@@ -865,7 +865,7 @@ library Address {
  * This contract is only required for intermediate, library-like contracts.
  */
 abstract contract Context {
-    function msg.sender internal view virtual returns (address payable) {
+    function _msgSender() internal view virtual returns (address payable) {
         return msg.sender;
     }
 
@@ -896,7 +896,7 @@ abstract contract Ownable is Context {
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
     constructor() internal {
-        address msgSender = msg.sender;
+        address msgSender = _msgSender();
         _owner = msgSender;
         emit OwnershipTransferred(address(0), msgSender);
     }
@@ -912,7 +912,7 @@ abstract contract Ownable is Context {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(_owner == msg.sender, "Ownable: caller is not the owner");
+        require(_owner == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
