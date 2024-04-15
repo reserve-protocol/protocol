@@ -189,8 +189,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 rewardRatio_,
         uint192 withdrawalLeak_
     ) external initializer {
-        require(bytes(name_).length > 0, "name empty");
-        require(bytes(symbol_).length > 0, "symbol empty");
+        require(bytes(name_).length != 0, "name empty");
+        require(bytes(symbol_).length != 0, "symbol empty");
         __Component_init(main_);
         __EIP712_init(name_, VERSION);
         name = name_;
@@ -234,7 +234,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
     function stake(uint256 rsrAmount) public {
-        require(rsrAmount > 0, "Cannot stake zero");
+        require(rsrAmount != 0, "Cannot stake zero");
 
         _payoutRewards();
 
@@ -268,7 +268,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         requireNotTradingPausedOrFrozen();
 
         address account = msg.sender;
-        require(stakeAmount > 0, "Cannot withdraw zero");
+        require(stakeAmount != 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
         _payoutRewards();
@@ -322,7 +322,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // untestable:
         //      firstId will never be zero, due to previous checks against endId
-        uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint192 oldDrafts = firstId != 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
@@ -371,7 +371,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // untestable:
         //      firstId will never be zero, due to previous checks against endId
-        uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint192 oldDrafts = firstId != 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
@@ -435,7 +435,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         requireNotTradingPausedOrFrozen();
 
         require(msg.sender == address(backingManager), "!bm");
-        require(rsrAmount > 0, "Amount cannot be zero");
+        require(rsrAmount != 0, "Amount cannot be zero");
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "seize exceeds balance");
@@ -452,7 +452,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR = stakeRSRToTake;
 
         // update stakeRate, possibly beginning a new stake era
-        if (stakeRSR > 0) {
+        if (stakeRSR != 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
             stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
         }
@@ -467,7 +467,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR += draftRSRToTake;
 
         // update draftRate, possibly beginning a new draft era
-        if (draftRSR > 0) {
+        if (draftRSR != 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
             draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
         }
@@ -662,8 +662,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         index = queue.length;
 
-        uint192 oldDrafts = index > 0 ? queue[index - 1].drafts : 0;
-        uint64 lastAvailableAt = index > 0 ? queue[index - 1].availableAt : 0;
+        uint192 oldDrafts = index != 0 ? queue[index - 1].drafts : 0;
+        uint64 lastAvailableAt = index != 0 ? queue[index - 1].availableAt : 0;
         availableAt = uint64(block.timestamp) + unstakingDelay;
         if (lastAvailableAt > availableAt) {
             availableAt = lastAvailableAt;

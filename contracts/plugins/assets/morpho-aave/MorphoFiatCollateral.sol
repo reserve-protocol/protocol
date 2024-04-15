@@ -29,7 +29,7 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {
         require(address(config.erc20) != address(0), "missing erc20");
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         MorphoTokenisedDeposit vault = MorphoTokenisedDeposit(address(config.erc20));
         morpho = IERC20Metadata(address(vault.rewardToken()));
         oneShare = 10**vault.decimals();

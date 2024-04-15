@@ -4,9 +4,7 @@ pragma solidity 0.8.19;
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IRToken.sol";
@@ -33,9 +31,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
     string public mandate;
-
-    // List of accounts. If issuances[user].length > 0 then (user is in accounts)
-    EnumerableSet.AddressSet internal accounts;
 
     uint192 public basketsNeeded; //  {BU}
 
@@ -272,6 +267,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
+    /// @custom:protected
     function melt(uint256 amount) external exchangeRateIsValidAfter {
         require(msg.sender == address(main.furnace()), "furnace only");
         _burn(msg.sender, amount);

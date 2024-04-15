@@ -220,7 +220,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bool normalize
     ) internal {
         requireGovernanceOnly();
-        require(erc20s.length > 0, "empty basket");
+        require(erc20s.length != 0, "empty basket");
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
@@ -240,7 +240,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // Normalize targetAmts based on UoA value of reference basket
             (uint192 low, uint192 high) = _price(false);
-            assert(low > 0 && high < FIX_MAX); // implied by SOUND status
+            assert(low != 0 && high != FIX_MAX); // implied by SOUND status
             targetAmts = BasketLibP1.normalizeByPrice(
                 assetRegistry,
                 erc20s,

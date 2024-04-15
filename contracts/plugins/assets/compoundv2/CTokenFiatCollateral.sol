@@ -31,10 +31,10 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         address referenceERC20 = ICToken(address(config.erc20)).underlying();
         referenceERC20Decimals = IERC20Metadata(referenceERC20).decimals();
-        require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
+        require(referenceERC20Decimals != 0, "referenceERC20Decimals missing");
         comptroller = ICToken(address(config.erc20)).comptroller();
         comp = IERC20(comptroller.getCompAddress());
     }

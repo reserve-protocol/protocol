@@ -489,7 +489,7 @@ contract StaticATokenV3LM is
 
         uint256 assets = _assets;
         uint256 shares = _shares;
-        if (shares > 0) {
+        if (shares != 0) {
             if (depositToAave) {
                 require(shares <= maxMint(receiver), "ERC4626: mint more than max");
             }
@@ -531,7 +531,7 @@ contract StaticATokenV3LM is
         uint256 assets = _assets;
         uint256 shares = _shares;
 
-        if (shares > 0) {
+        if (shares != 0) {
             if (withdrawFromAave) {
                 require(shares <= maxRedeem(owner), "ERC4626: redeem more than max");
             }
@@ -596,7 +596,7 @@ contract StaticATokenV3LM is
         address rewardToken
     ) internal {
         uint256 balance = balanceOf[user];
-        if (balance > 0) {
+        if (balance != 0) {
             _userRewardsData[user][rewardToken].unclaimedRewards = _getClaimableRewards(
                 user,
                 rewardToken,
@@ -692,7 +692,7 @@ contract StaticATokenV3LM is
                 unclaimedReward = userReward - totalRewardTokenBalance;
                 userReward = totalRewardTokenBalance;
             }
-            if (userReward > 0) {
+            if (userReward != 0) {
                 _userRewardsData[onBehalfOf][rewards[i]].unclaimedRewards = unclaimedReward
                 .toUint128();
                 _userRewardsData[onBehalfOf][rewards[i]]

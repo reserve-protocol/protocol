@@ -302,7 +302,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         uint40 timeDelta = uint40(block.timestamp) - totals.lastAccrualTime;
         uint64 baseSupplyIndex_ = totals.baseSupplyIndex;
         uint64 trackingSupplyIndex_ = totals.trackingSupplyIndex;
-        if (timeDelta > 0) {
+        if (timeDelta != 0) {
             uint256 baseTrackingSupplySpeed = underlyingComet.baseTrackingSupplySpeed();
             uint256 utilization = underlyingComet.getUtilization();
             uint256 supplyRate = underlyingComet.getSupplyRate(utilization);

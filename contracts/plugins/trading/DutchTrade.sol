@@ -207,6 +207,7 @@ contract DutchTrade is ITrade, Versioned {
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid() external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
+        assert(status == TradeStatus.OPEN);
 
         // {buyTok/sellTok}
         uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
@@ -217,9 +218,6 @@ contract DutchTrade is ITrade, Versioned {
         // Mark bidder
         bidder = msg.sender;
         bidType = BidType.TRANSFER;
-
-        // status must begin OPEN
-        assert(status == TradeStatus.OPEN);
 
         // reportViolation if auction cleared in geometric phase
         if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
@@ -245,6 +243,7 @@ contract DutchTrade is ITrade, Versioned {
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
+        assert(status == TradeStatus.OPEN);
 
         // {buyTok/sellTok}
         uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
@@ -255,9 +254,6 @@ contract DutchTrade is ITrade, Versioned {
         // Mark bidder
         bidder = msg.sender;
         bidType = BidType.CALLBACK;
-
-        // status must begin OPEN
-        assert(status == TradeStatus.OPEN);
 
         // reportViolation if auction cleared in geometric phase
         if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {

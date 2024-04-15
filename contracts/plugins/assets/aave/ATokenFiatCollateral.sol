@@ -44,7 +44,7 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
     }
 

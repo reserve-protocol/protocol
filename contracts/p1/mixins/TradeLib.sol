@@ -46,9 +46,9 @@ library TradeLib {
     ) internal view returns (bool notDust, TradeRequest memory req) {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(
-            trade.prices.buyHigh > 0 &&
-                trade.prices.buyHigh < FIX_MAX &&
-                trade.prices.sellLow < FIX_MAX
+            trade.prices.buyHigh != 0 &&
+                trade.prices.buyHigh != FIX_MAX &&
+                trade.prices.sellLow != FIX_MAX
         );
 
         notDust = isEnoughToSell(
@@ -112,10 +112,10 @@ library TradeLib {
         uint192 maxTradeSlippage
     ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(
-            trade.prices.sellLow > 0 &&
-                trade.prices.sellLow < FIX_MAX &&
-                trade.prices.buyHigh > 0 &&
-                trade.prices.buyHigh < FIX_MAX
+            trade.prices.sellLow != 0 &&
+                trade.prices.sellLow != FIX_MAX &&
+                trade.prices.buyHigh != 0 &&
+                trade.prices.buyHigh != FIX_MAX
         );
 
         // Don't buy dust.
@@ -165,7 +165,7 @@ library TradeLib {
     function minTradeSize(uint192 minTradeVolume, uint192 price) private pure returns (uint192) {
         // {tok} = {UoA} / {UoA/tok}
         uint192 size = price == 0 ? FIX_MAX : minTradeVolume.div(price, CEIL);
-        return size > 0 ? size : 1;
+        return size != 0 ? size : 1;
     }
 
     /// Calculates the maximum trade size for a trade pair of tokens
@@ -177,6 +177,6 @@ library TradeLib {
     ) private view returns (uint192) {
         // D18{tok} = D18{UoA} / D18{UoA/tok}
         uint192 size = fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).safeDiv(price, FLOOR);
-        return size > 0 ? size : 1;
+        return size != 0 ? size : 1;
     }
 }

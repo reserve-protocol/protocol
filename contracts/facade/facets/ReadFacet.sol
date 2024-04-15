@@ -53,7 +53,7 @@ contract ReadFacet is MaxIssuableFacet {
         reg.refresh();
 
         // Compute # of baskets to create `amount` qRTok
-        uint192 baskets = (rTok.totalSupply() > 0) // {BU}
+        uint192 baskets = (rTok.totalSupply() != 0) // {BU}
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
             : _safeWrap(amount); // take advantage of RToken having 18 decimals
 
@@ -265,7 +265,7 @@ contract ReadFacet is MaxIssuableFacet {
             (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(draftEra, account, i + left);
 
             uint192 diff = drafts;
-            if (i + left > 0) {
+            if (i + left != 0) {
                 (uint192 prevDrafts, ) = stRSR.draftQueues(draftEra, account, i + left - 1);
                 diff = drafts - prevDrafts;
             }
@@ -367,7 +367,7 @@ contract ReadFacet is MaxIssuableFacet {
         );
 
         (uint192 lowPrice, uint192 highPrice) = rsrAsset.price();
-        if (lowPrice > 0 && highPrice < FIX_MAX) {
+        if (lowPrice != 0 && highPrice != FIX_MAX) {
             // {UoA} = {tok} * {UoA/tok}
             uint192 rsrUoA = rsrBal.mul((lowPrice + highPrice) / 2);
 

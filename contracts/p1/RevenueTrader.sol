@@ -110,12 +110,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         notTradingPausedOrFrozen
     {
         uint256 len = erc20s.length;
-        require(len > 0, "empty erc20s list");
+        require(len != 0, "empty erc20s list");
         require(len == kinds.length, "length mismatch");
         RevenueTotals memory revTotals = distributor.totals();
         require(
-            (tokenToBuy == rsr && revTotals.rsrTotal > 0) ||
-                (address(tokenToBuy) == address(rToken) && revTotals.rTokenTotal > 0),
+            (tokenToBuy == rsr && revTotals.rsrTotal != 0) ||
+                (address(tokenToBuy) == address(rToken) && revTotals.rTokenTotal != 0),
             "zero distribution"
         );
 
@@ -145,7 +145,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // Cache and validate buyHigh
         (uint192 buyLow, uint192 buyHigh) = assetToBuy.price(); // {UoA/tok}
-        require(buyHigh > 0 && buyHigh < FIX_MAX, "buy asset price unknown");
+        require(buyHigh != 0 && buyHigh != FIX_MAX, "buy asset price unknown");
 
         // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
         for (uint256 i = 0; i < len; ++i) {
@@ -153,7 +153,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             if (erc20 == tokenToBuy) continue;
 
             require(address(trades[erc20]) == address(0), "trade open");
-            require(erc20.balanceOf(address(this)) > 0, "0 balance");
+            require(erc20.balanceOf(address(this)) != 0, "0 balance");
 
             IAsset assetToSell = assetRegistry.toAsset(erc20);
             (uint192 sellLow, uint192 sellHigh) = assetToSell.price(); // {UoA/tok}

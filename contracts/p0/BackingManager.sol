@@ -60,7 +60,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
-    /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// Settle a single trade. If the caller is the trade, try rebalance()
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
@@ -246,10 +246,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Private ===
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
-    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
-    function compromiseBasketsNeeded(uint192 wholeBasketsHeld) private {
+    /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
+    function compromiseBasketsNeeded(uint192 basketsHeldBottom) private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
-        main.rToken().setBasketsNeeded(wholeBasketsHeld);
+        main.rToken().setBasketsNeeded(basketsHeldBottom);
         assert(main.basketHandler().fullyCollateralized());
     }
 

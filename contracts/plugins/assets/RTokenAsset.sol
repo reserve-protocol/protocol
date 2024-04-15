@@ -35,7 +35,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
-        require(maxTradeVolume_ > 0, "invalid max trade volume");
+        require(maxTradeVolume_ != 0, "invalid max trade volume");
 
         IMain main = erc20_.main();
         assetRegistry = main.assetRegistry();

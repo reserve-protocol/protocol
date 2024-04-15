@@ -184,7 +184,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         address dst,
         uint256 amount
     ) private {
-        if (src != dst && amount > 0) {
+        if (src != dst && amount != 0) {
             if (src != address(0)) {
                 (uint256 oldWeight, uint256 newWeight) = _writeCheckpoint(
                     _checkpoints[era][src],
@@ -215,7 +215,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         oldWeight = pos == 0 ? 0 : ckpts[pos - 1].val;
         newWeight = op(oldWeight, delta);
 
-        if (pos > 0 && ckpts[pos - 1].fromBlock == NetworkConfigLib.blockNumber()) {
+        if (pos != 0 && ckpts[pos - 1].fromBlock == NetworkConfigLib.blockNumber()) {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(

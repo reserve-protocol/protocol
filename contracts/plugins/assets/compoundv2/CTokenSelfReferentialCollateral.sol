@@ -32,7 +32,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
         require(config.defaultThreshold == 0, "default threshold not supported");
         address referenceERC20 = ICToken(address(config.erc20)).underlying();
         referenceERC20Decimals = IERC20Metadata(referenceERC20).decimals();
-        require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
+        require(referenceERC20Decimals != 0, "referenceERC20Decimals missing");
         comptroller = ICToken(address(config.erc20)).comptroller();
         comp = IERC20(comptroller.getCompAddress());
     }

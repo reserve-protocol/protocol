@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "./vendor/IWSTETH.sol";
 
 /**
  * @title Lido Staked ETH Collateral for L2s (like Base)

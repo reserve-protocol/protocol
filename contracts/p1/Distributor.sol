@@ -98,8 +98,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         {
             RevenueTotals memory revTotals = totals();
             uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
-            if (totalShares > 0) tokensPerShare = amount / totalShares;
-            require(tokensPerShare > 0, "nothing to distribute");
+            if (totalShares != 0) tokensPerShare = amount / totalShares;
+            require(tokensPerShare != 0, "nothing to distribute");
         }
 
         // Evenly distribute revenue tokens per distribution share.
@@ -124,10 +124,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = furnaceAddr;
-                if (transferAmt > 0) accountRewards = true;
+                if (transferAmt != 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
-                if (transferAmt > 0) accountRewards = true;
+                if (transferAmt != 0) accountRewards = true;
             }
 
             transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });
@@ -198,7 +198,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Ensures distribution values are non-zero
     // checks: at least one of its arguments is nonzero
     function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
-        require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
+        require(rTokenDist != 0 || rsrDist != 0, "no distribution defined");
     }
 
     /// Call after upgrade to >= 3.0.0

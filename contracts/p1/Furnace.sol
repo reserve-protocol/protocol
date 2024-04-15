@@ -84,7 +84,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
 
         lastPayout += numPeriods * PERIOD;
         lastPayoutBal = rToken.balanceOf(address(this)) - amount;
-        if (amount > 0) rToken.melt(amount);
+        if (amount != 0) rToken.melt(amount);
     }
 
     /// Ratio setting
