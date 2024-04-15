@@ -114,7 +114,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
     uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
-    uint256 internal constant MAX_BACKUP_ERC20s = 32;
+    uint256 internal constant MAX_BACKUP_ERC20s = 64;
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
     // event. config is only modified by governance through setPrimeBasket and setBackupConfig
