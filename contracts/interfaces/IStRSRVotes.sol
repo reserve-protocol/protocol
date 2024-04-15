@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
 
-interface IStRSRVotes is IVotesUpgradeable {
+interface IStRSRVotes is IVotesUpgradeable, IERC5805Upgradeable {
     /// @return The current era
     function currentEra() external view returns (uint256);
 

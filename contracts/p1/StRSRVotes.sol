@@ -14,7 +14,7 @@ import "./StRSR.sol";
  */
 contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     // A Checkpoint[] is a value history; it faithfully represents the history of value so long
-    // as that value is only ever set by _writeCheckpoint. For any *previous* block number N, the
+    // as that value is only ever set by _writeCheckpoint. For any *previous* timepoint N, the
     // recorded value at the end of block N was cp.val, where cp in the value history is the
     // Checkpoint value with fromBlock maximal such that fromBlock <= N.
 
@@ -29,7 +29,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     bytes32 private constant _DELEGATE_TYPEHASH =
         keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
-    // _delegates[account] is the address of the delegate that `accountt` has specified
+    // _delegates[account] is the address of the delegate that `account` has specified
     mapping(address => address) private _delegates;
 
     // era history
@@ -238,10 +238,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(
-                Checkpoint({
-                    fromBlock: SafeCastUpgradeable.toUint48(clock()),
-                    val: SafeCastUpgradeable.toUint224(newWeight)
-                })
+                Checkpoint({ fromBlock: clock(), val: SafeCastUpgradeable.toUint224(newWeight) })
             );
         }
     }
