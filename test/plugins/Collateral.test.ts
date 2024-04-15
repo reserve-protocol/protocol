@@ -8,7 +8,6 @@ import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constan
 import { bn, fp } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
-  BadERC20,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
@@ -2061,36 +2060,21 @@ describe('Collateral contracts', () => {
     })
 
     it('Should not allow missing reference erc20 decimals', async () => {
-      // Check cToken with decimals = 0 in underlying
-      const token0decimals: BadERC20 = await (
-        await ethers.getContractFactory('BadERC20')
-      ).deploy('Bad ERC20', 'BERC20')
-      await token0decimals.setDecimals(0)
-
-      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-      const vault: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(
-          '0 Decimal Token',
-          '0 Decimal Token',
-          token0decimals.address,
-          compoundMock.address
-        )
-      )
-
       await expect(
         CTokenSelfReferentialFactory.deploy(
           {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: chainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: vault.address,
+            erc20: cSelfRefToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: bn(0),
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          REVENUE_HIDING
+          REVENUE_HIDING,
+          0
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
     })
