@@ -561,6 +561,7 @@ async function main() {
         oracleTimeout: '3600', // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         revenueHiding: revenueHiding.toString(),
+        referenceERC20Decimals: '18',
       }
     )
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', cETHCollateral)
