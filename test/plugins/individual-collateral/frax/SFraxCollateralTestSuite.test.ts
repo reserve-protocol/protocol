@@ -194,7 +194,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it,
   itChecksTargetPerRefDefaultUp: it,
-  itChecksNonZeroDefaultThreshold: it.skip,
+  itChecksNonZeroDefaultThreshold: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it.skip,
