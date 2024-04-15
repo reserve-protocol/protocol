@@ -27,6 +27,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
+    ///                                Has to be passed in because cETH is missing `underlying()`
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
