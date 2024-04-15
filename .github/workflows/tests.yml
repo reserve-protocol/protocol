@@ -27,7 +27,7 @@ jobs:
         env:
           SKIP_PROMPT: 1
 
-  lint:
+  static-analyses:
     name: 'Lint Checks'
     runs-on: ubuntu-latest
     steps:
@@ -38,9 +38,13 @@ jobs:
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn lint
+      - run: pip3 install solc-select slither-analyzer
+      - run: solc-select install 0.8.19
+      - run: solc-select use 0.8.19
+      - run: yarn slither
 
-  plugin-tests-mainnet:
-    name: 'Plugin Tests (Mainnet)'
+  plugin-unit-tests:
+    name: 'Plugin Unit Tests'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -50,6 +54,17 @@ jobs:
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:plugins
+
+  plugin-tests-mainnet-1:
+    name: 'Plugin Integration Tests (Mainnet) - 1/2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
@@ -58,15 +73,44 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn test:plugins:integration
+      - run: yarn hardhat test ./test/plugins/individual-collateral/[A-Ca-c]*/*.test.ts ./test/plugins/individual-collateral/[A-Ca-c]*/*/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
+          PROTO_IMPL: 1
+          FORK: 1
+
+  plugin-tests-mainnet-2:
+    name: 'Plugin Integration Tests (Mainnet) - 2/2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Zd-z]*/*.test.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          FORK_NETWORK: mainnet
+          PROTO_IMPL: 1
+          FORK: 1
 
   plugin-tests-base:
-    name: 'Plugin Tests (Base)'
+    name: 'Plugin Integration Tests (Base)'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -94,7 +138,7 @@ jobs:
           PROTO_IMPL: 1
 
   plugin-tests-arbitrum:
-    name: 'Plugin Tests (Arbitrum)'
+    name: 'Plugin Integration Tests (Arbitrum)'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -242,18 +286,3 @@ jobs:
           FORK_NETWORK: mainnet
           FORK: 1
           PROTO_IMPL: 1
-
-  slither:
-    name: 'Slither'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16.x
-          cache: 'yarn'
-      - run: yarn install --immutable
-      - run: pip3 install solc-select slither-analyzer
-      - run: solc-select install 0.8.19
-      - run: solc-select use 0.8.19
-      - run: yarn slither

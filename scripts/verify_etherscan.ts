@@ -59,6 +59,7 @@ async function main() {
       'collateral-plugins/verify_convex_paypool.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
       'collateral-plugins/verify_convex_stable_rtoken_metapool.ts',
+      'collateral-plugins/verify_convex_ethplus_eth.ts',
       'collateral-plugins/verify_curve_stable.ts',
       'collateral-plugins/verify_curve_stable_metapool.ts',
       'collateral-plugins/verify_curve_stable_rtoken_metapool.ts',
