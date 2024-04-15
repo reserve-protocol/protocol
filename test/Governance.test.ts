@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
@@ -16,16 +16,18 @@ import { bn, fp } from '../common/numbers'
 import {
   ERC20Mock,
   Governance,
+  Governance__factory,
   StRSRP1Votes,
   TestIBackingManager,
   TestIBroker,
   TestIMain,
   TestIStRSR,
   TimelockController,
+  TimelockController__factory,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import { whileImpersonating } from './utils/impersonation'
-import { advanceBlocks, advanceTime, getLatestBlockNumber } from './utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from './utils/time'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -53,14 +55,16 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
   let stRSRVotes: StRSRP1Votes
 
   // Factories
-  let GovernorFactory: ContractFactory
-  let TimelockFactory: ContractFactory
+  let GovernorFactory: Governance__factory
+  let TimelockFactory: TimelockController__factory
 
   let initialBal: BigNumber
 
-  const MIN_DELAY = 7 * 60 * 60 * 24 // 7 days
-  const VOTING_DELAY = 7200 // 1 day (in blocks)
-  const VOTING_PERIOD = 21600 // 3 days (in blocks)
+  const ONE_DAY = 86400
+
+  const MIN_DELAY = ONE_DAY * 7 // 7 days
+  const VOTING_DELAY = ONE_DAY // 1 day (in s)
+  const VOTING_PERIOD = ONE_DAY * 3 // 3 days (in s)
   const PROPOSAL_THRESHOLD = 1e6 // 1%
   const QUORUM_PERCENTAGE = 4 // 4%
 
@@ -76,23 +80,21 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     await rsr.connect(owner).mint(addr3.address, initialBal)
 
     // Cast to ERC20Votes contract
-    stRSRVotes = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+    stRSRVotes = await ethers.getContractAt('StRSRP1Votes', stRSR.address)
 
-    // Deploy Tiuelock
+    // Deploy Timelock
     TimelockFactory = await ethers.getContractFactory('TimelockController')
-    timelock = <TimelockController>await TimelockFactory.deploy(MIN_DELAY, [], [])
+    timelock = <TimelockController>await TimelockFactory.deploy(MIN_DELAY, [], [], owner.address)
 
     // Deploy Governor
     GovernorFactory = await ethers.getContractFactory('Governance')
-    governor = <Governance>(
-      await GovernorFactory.deploy(
-        stRSRVotes.address,
-        timelock.address,
-        VOTING_DELAY,
-        VOTING_PERIOD,
-        PROPOSAL_THRESHOLD,
-        QUORUM_PERCENTAGE
-      )
+    governor = await GovernorFactory.deploy(
+      stRSRVotes.address,
+      timelock.address,
+      VOTING_DELAY,
+      VOTING_PERIOD,
+      PROPOSAL_THRESHOLD,
+      QUORUM_PERCENTAGE
     )
 
     // Setup Roles
@@ -141,7 +143,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // At first with no StRSR supply, these should be 0
       expect(await governor.proposalThreshold()).to.equal(0)
-      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(0)
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(0)
 
       // Other contract addresses
       expect(await governor.timelock()).to.equal(timelock.address)
@@ -163,31 +165,32 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       const stkAmt2: BigNumber = bn('500e18')
 
       // Initially no supply at all
-      let currBlockNumber: number = (await getLatestBlockNumber()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
+      let currentBlockTimestamp: number = (await getLatestBlockTimestamp()) - 1
+
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr1.address, currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr2.address, currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr3.address, currentBlockTimestamp)).to.equal(0)
 
       // Stake some RSR with addr1 - And delegate
       await rsr.connect(addr1).approve(stRSRVotes.address, stkAmt1)
       await stRSRVotes.connect(addr1).stake(stkAmt1)
 
       // Before delegate, should remain 0
-      currBlockNumber = (await getLatestBlockNumber()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
+      currentBlockTimestamp = (await getLatestBlockTimestamp()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr1.address, currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr2.address, currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr3.address, currentBlockTimestamp)).to.equal(0)
       expect(await governor.proposalThreshold()).to.equal(0)
-      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(0)
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(0)
 
       // Now delegate
       await stRSRVotes.connect(addr1).delegate(addr1.address)
       expect(await governor.proposalThreshold()).to.equal(
         stkAmt1.mul(PROPOSAL_THRESHOLD).div(bn('1e8'))
       )
-      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(
         stkAmt1.mul(QUORUM_PERCENTAGE).div(100)
       )
 
@@ -195,11 +198,11 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceBlocks(2)
 
       // Check new values - Owner has their stkAmt1 vote
-      currBlockNumber = (await getLatestBlockNumber()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
-      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
+      currentBlockTimestamp = (await getLatestBlockTimestamp()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr1.address, currentBlockTimestamp)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, currentBlockTimestamp)).to.equal(0)
+      expect(await governor.getVotes(addr3.address, currentBlockTimestamp)).to.equal(0)
 
       // Stake some RSR with addr2, delegate in same transaction
       await rsr.connect(addr2).approve(stRSRVotes.address, stkAmt1)
@@ -209,11 +212,11 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceBlocks(2)
 
       // Check new values - Addr1 and addr2 both have stkAmt1
-      currBlockNumber = (await getLatestBlockNumber()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(stkAmt1.mul(2))
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
+      currentBlockTimestamp = (await getLatestBlockTimestamp()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(stkAmt1.mul(2))
+      expect(await governor.getVotes(addr1.address, currentBlockTimestamp)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, currentBlockTimestamp)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr3.address, currentBlockTimestamp)).to.equal(0)
 
       // Stake a smaller portion of RSR with addr3
       await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt2)
@@ -223,15 +226,15 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance a few blocks
       await advanceBlocks(2)
 
-      currBlockNumber = (await getLatestBlockNumber()) - 1
-      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(
+      currentBlockTimestamp = (await getLatestBlockTimestamp()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockTimestamp)).to.equal(
         stkAmt1.mul(2).add(stkAmt2)
       )
 
       // Everyone has stkAmt1
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(stkAmt2)
+      expect(await governor.getVotes(addr1.address, currentBlockTimestamp)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, currentBlockTimestamp)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr3.address, currentBlockTimestamp)).to.equal(stkAmt2)
     })
 
     it('Should not allow vote manipulation', async () => {
@@ -376,10 +379,10 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await stRSRVotes.connect(addr3).stake(stkAmt2)
       await stRSRVotes.connect(addr3).delegate(addr3.address)
 
-      // Check proposer threshold is not enought for caller
-      expect(await governor.getVotes(addr3.address, (await getLatestBlockNumber()) - 1)).to.be.lt(
-        PROPOSAL_THRESHOLD
-      )
+      // Check proposer threshold is not enough for caller
+      expect(
+        await governor.getVotes(addr3.address, (await getLatestBlockTimestamp()) - 1)
+      ).to.be.lt(PROPOSAL_THRESHOLD)
 
       // Propose will fail
       await expect(
@@ -395,9 +398,9 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Propose will fail again
       await advanceBlocks(5)
 
-      expect(await governor.getVotes(addr3.address, (await getLatestBlockNumber()) - 1)).to.be.gt(
-        PROPOSAL_THRESHOLD
-      )
+      expect(
+        await governor.getVotes(addr3.address, (await getLatestBlockTimestamp()) - 1)
+      ).to.be.gt(PROPOSAL_THRESHOLD)
 
       const proposeTx = await governor
         .connect(addr3)
@@ -503,14 +506,14 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Quorum should be equal to cast votes
       const expectedQuorum = stkAmt1.mul(2).mul(QUORUM_PERCENTAGE).div(100)
-      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(expectedQuorum)
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(expectedQuorum)
 
       voteWay = 2 // abstain
       await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I abstain')
       await advanceBlocks(1)
 
       // Quorum should be equal to sum of abstain + for votes
-      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(expectedQuorum)
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(expectedQuorum)
 
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
@@ -521,7 +524,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
@@ -798,7 +801,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
@@ -935,7 +938,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time to start voting
       await advanceBlocks(VOTING_DELAY + 1)
 
-      const snapshotBlock1 = (await getLatestBlockNumber()) - 1
+      const snapshotBlock1 = (await getLatestBlockTimestamp()) - 1
 
       // Change Rate (decrease by 50%) - should only impact the new proposal
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -973,7 +976,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time to start voting 2nd proposal
       await advanceBlocks(VOTING_DELAY + 1)
 
-      const snapshotBlock2 = (await getLatestBlockNumber()) - 1
+      const snapshotBlock2 = (await getLatestBlockTimestamp()) - 1
 
       // Check proposal states
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
@@ -1047,13 +1050,13 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
     it('Should allow to update GovernorSettings via governance', async () => {
       // Attempt to update if not governance
-      await expect(governor.setVotingDelay(bn(14400))).to.be.revertedWith(
+      await expect(governor.setVotingDelay(bn(172800))).to.be.revertedWith(
         'Governor: onlyGovernance'
       )
 
       // Attempt to update without governance process in place
       await whileImpersonating(timelock.address, async (signer) => {
-        await expect(governor.connect(signer).setVotingDelay(bn(14400))).to.be.reverted
+        await expect(governor.connect(signer).setVotingDelay(bn(172800))).to.be.reverted
       })
 
       // Update votingDelay via proposal
@@ -1095,7 +1098,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([governor.address], [0], [encodedFunctionCall], proposalDescHash)
@@ -1157,7 +1160,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue propoal
+      // Queue proposal
       await governor
         .connect(addr1)
         .queue([governor.address], [0], [encodedFunctionCall], proposalDescHash)

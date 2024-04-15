@@ -28,7 +28,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
-    uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
+    uint48 public constant MAX_WARMUP_PERIOD = 60 * 60 * 24 * 365; // {s} 1 year
     uint256 internal constant MAX_BACKUP_ERC20S = 64;
 
     // Peer components

@@ -3,11 +3,11 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../../interfaces/ITrade.sol";
 import "../../interfaces/ITrading.sol";
 import "../../libraries/Allowance.sol";
 import "../../libraries/Fixed.sol";
+import "../../vendor/oz/Multicall.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 

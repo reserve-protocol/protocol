@@ -738,7 +738,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #1 -  Will be processed
       const issueAmount1: BigNumber = bn('100e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount1)
 
       // Check issuance throttle updated
@@ -751,7 +751,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #2 - Should be processed
       const issueAmount2: BigNumber = bn('400e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount2)
 
       // Check issuance throttle updated, previous issuance recharged
@@ -765,7 +765,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #3 - Should be processed
       const issueAmount3: BigNumber = bn('50000e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount3)
 
       // Check issuance throttle updated - Previous issuances recharged
@@ -780,7 +780,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #4 - Should be processed
       const issueAmount4: BigNumber = bn('100000e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount4)
 
       // Check issuance throttle updated - we got the 3.3K from the recharge
@@ -812,7 +812,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #1 -  Will be processed
       const issueAmount1: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount1)
 
       // Check issuance throttle updated
@@ -831,7 +831,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #2 - Will be processed
       const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount2)
 
       // Check new issuance available - al consumed
@@ -860,7 +860,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issuance #3 - Should be allowed, does not exceed supply restriction
       const issueAmount3: BigNumber = bn('50000e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount3)
 
       // Check issuance throttle updated - Previous issuances recharged
@@ -1487,7 +1487,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Redeem #1 -  Will be processed
           redeemAmount = fp('10000')
-          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
           await rToken.connect(addr1).redeem(redeemAmount)
 
           // Check redemption throttle updated
@@ -2303,7 +2303,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Redeem #1 -  Will be processed
           redeemAmount = fp('10000')
-          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
           await rToken.connect(addr1).redeem(redeemAmount)
 
           // Check redemption throttle updated

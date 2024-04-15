@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
 import "../interfaces/IStRSRVotes.sol";
 import "./StRSR.sol";
 
@@ -11,14 +12,15 @@ import "./StRSR.sol";
  * @notice StRSRP1Votes is an extension of StRSRP1 that makes it IVotesUpgradeable.
  *   It is heavily based on OZ's ERC20VotesUpgradeable
  */
-contract StRSRP1Votes is StRSRP1, IStRSRVotes {
+contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     // A Checkpoint[] is a value history; it faithfully represents the history of value so long
-    // as that value is only ever set by _writeCheckpoint. For any *previous* block number N, the
+    // as that value is only ever set by _writeCheckpoint. For any *previous* timepoint N, the
     // recorded value at the end of block N was cp.val, where cp in the value history is the
     // Checkpoint value with fromBlock maximal such that fromBlock <= N.
 
     // In particular, if the value changed during block N, there will be exactly one
     // entry cp with cp.fromBlock = N, and cp.val is the value at the _end_ of that block.
+    // 3.4.0: Even though it says `fromBlock`, it's actually timepoint.
     struct Checkpoint {
         uint48 fromBlock;
         uint224 val;
@@ -27,7 +29,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     bytes32 private constant _DELEGATE_TYPEHASH =
         keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
-    // _delegates[account] is the address of the delegate that `accountt` has specified
+    // _delegates[account] is the address of the delegate that `account` has specified
     mapping(address => address) private _delegates;
 
     // era history
@@ -52,6 +54,18 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         _writeCheckpoint(_eras, _add, 1);
     }
 
+    function clock() public view returns (uint48) {
+        return SafeCastUpgradeable.toUint48(block.timestamp);
+    }
+
+    /**
+     * @dev Description of the clock
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public pure returns (string memory) {
+        return "mode=timestamp";
+    }
+
     function currentEra() external view returns (uint256) {
         return era;
     }
@@ -73,36 +87,40 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         return pos == 0 ? 0 : _checkpoints[era][account][pos - 1].val;
     }
 
-    function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < NetworkConfigLib.blockNumber(), "ERC20Votes: block not yet mined");
-        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
-        return _checkpointsLookup(_checkpoints[pastEra][account], blockNumber);
+    function getPastVotes(address account, uint256 timepoint) public view returns (uint256) {
+        require(timepoint < block.timestamp, "ERC20Votes: future lookup");
+
+        uint256 pastEra = _checkpointsLookup(_eras, timepoint);
+        return _checkpointsLookup(_checkpoints[pastEra][account], timepoint);
     }
 
-    function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < NetworkConfigLib.blockNumber(), "ERC20Votes: block not yet mined");
-        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
-        return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], blockNumber);
+    function getPastTotalSupply(uint256 timepoint) public view returns (uint256) {
+        require(timepoint < block.timestamp, "ERC20Votes: future lookup");
+
+        uint256 pastEra = _checkpointsLookup(_eras, timepoint);
+        return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], timepoint);
     }
 
-    function getPastEra(uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < NetworkConfigLib.blockNumber(), "ERC20Votes: block not yet mined");
-        return _checkpointsLookup(_eras, blockNumber);
+    function getPastEra(uint256 timepoint) public view returns (uint256) {
+        require(timepoint < block.timestamp, "ERC20Votes: future lookup");
+
+        return _checkpointsLookup(_eras, timepoint);
     }
 
-    /// Return the value from history `ckpts` that was current for block number `blockNumber`
-    function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)
+    /// Return the value from history `ckpts` that was current for timepoint `timepoint`
+    function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 timepoint)
         private
         view
         returns (uint256)
     {
         // We run a binary search to set `high` to the index of the earliest checkpoint
-        // taken after blockNumber, or ckpts.length if no checkpoint was taken after blockNumber
+        // taken after timepoint, or ckpts.length if no checkpoint was taken after timepoint
         uint256 high = ckpts.length;
         uint256 low = 0;
         while (low < high) {
             uint256 mid = MathUpgradeable.average(low, high);
-            if (ckpts[mid].fromBlock > blockNumber) {
+            // `fromBlock` is a timepoint
+            if (ckpts[mid].fromBlock > timepoint) {
                 high = mid;
             } else {
                 low = mid + 1;
@@ -214,14 +232,12 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         oldWeight = pos == 0 ? 0 : ckpts[pos - 1].val;
         newWeight = op(oldWeight, delta);
 
-        if (pos != 0 && ckpts[pos - 1].fromBlock == NetworkConfigLib.blockNumber()) {
+        // `fromBlock` is a timepoint
+        if (pos != 0 && ckpts[pos - 1].fromBlock == clock()) {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(
-                Checkpoint({
-                    fromBlock: SafeCastUpgradeable.toUint48(NetworkConfigLib.blockNumber()),
-                    val: SafeCastUpgradeable.toUint224(newWeight)
-                })
+                Checkpoint({ fromBlock: clock(), val: SafeCastUpgradeable.toUint224(newWeight) })
             );
         }
     }
