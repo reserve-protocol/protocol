@@ -238,10 +238,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(
-                Checkpoint({
-                    fromBlock: SafeCastUpgradeable.toUint48(clock()),
-                    val: SafeCastUpgradeable.toUint224(newWeight)
-                })
+                Checkpoint({ fromBlock: clock(), val: SafeCastUpgradeable.toUint224(newWeight) })
             );
         }
     }
