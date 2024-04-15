@@ -47,20 +47,18 @@ contract StargateLPStakingMock is IStargateLPStaking {
     function updatePool(uint256 pid) external override {}
 
     function deposit(uint256 pid, uint256 amount) external override {
-        address sender = msg.sender;
         IERC20 pool = _poolInfo[pid].lpToken;
-        pool.transferFrom(sender, address(this), amount);
-        _emitUserRewards(pid, sender);
-        poolToUserBalance[pid][sender] += amount;
+        pool.transferFrom(msg.sender, address(this), amount);
+        _emitUserRewards(pid, msg.sender);
+        poolToUserBalance[pid][msg.sender] += amount;
     }
 
     function withdraw(uint256 pid, uint256 amount) external override {
-        address sender = msg.sender;
-        require(amount <= poolToUserBalance[pid][sender]);
+        require(amount <= poolToUserBalance[pid][msg.sender]);
         IERC20 pool = _poolInfo[pid].lpToken;
-        pool.transfer(sender, amount);
-        _emitUserRewards(pid, sender);
-        poolToUserBalance[pid][sender] -= amount;
+        pool.transfer(msg.sender, amount);
+        _emitUserRewards(pid, msg.sender);
+        poolToUserBalance[pid][msg.sender] -= amount;
     }
 
     function emergencyWithdraw(uint256 pid) external override {

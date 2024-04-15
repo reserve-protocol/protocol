@@ -105,7 +105,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @param kind TradeKind.DUTCH_AUeCTION or TradeKind.BATCH_AUCTION
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @return trade The trade contract created
     /// @custom:interaction Assumption: Caller is nonReentrant
     // checks:

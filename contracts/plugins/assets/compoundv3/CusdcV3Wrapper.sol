@@ -191,8 +191,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     /// @param src The account to claim from
     /// @param dst The address to send claimed rewards to
     function claimTo(address src, address dst) public {
-        address sender = msg.sender;
-        if (!hasPermission(src, sender)) revert Unauthorized();
+        if (!hasPermission(src, msg.sender)) revert Unauthorized();
 
         accrueAccount(src);
         uint256 claimed = rewardsClaimed[src];

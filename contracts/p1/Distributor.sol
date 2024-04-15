@@ -90,8 +90,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     function distribute(IERC20 erc20, uint256 amount) external {
         // Intentionally do not check notTradingPausedOrFrozen, since handled by caller
 
-        address caller = msg.sender;
-        require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
+        require(msg.sender == rsrTrader || msg.sender == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
@@ -133,12 +132,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });
             ++numTransfers;
         }
-        emit RevenueDistributed(erc20, caller, amount);
+        emit RevenueDistributed(erc20, msg.sender, amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; ++i) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
+            IERC20Upgradeable(address(erc20)).safeTransferFrom(msg.sender, t.addrTo, t.amount);
         }
 
         // Perform reward accounting

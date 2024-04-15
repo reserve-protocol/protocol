@@ -186,6 +186,7 @@ async function main() {
         delayUntilDefault: '0',
       },
       revenueHiding.toString(),
+      '18',
     ],
     'contracts/plugins/assets/compoundv2/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral'
   )

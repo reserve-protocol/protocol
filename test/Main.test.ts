@@ -2862,18 +2862,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid collateral')
     })
 
-    it('Should not allow to set more backup ERC20s than MAX_BACKUP_ERC20s', async () => {
+    it('Should not allow to set more backup ERC20s than MAX_BACKUP_ERC20S', async () => {
       const erc20s = []
-      for (let i = 0; i < 32; i++) erc20s.push(ONE_ADDRESS)
+      for (let i = 0; i < 64; i++) erc20s.push(ONE_ADDRESS)
 
-      // Should succeed at 32
+      // Should succeed at 64
       await expect(
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
       ).to.not.be.revertedWith('erc20s too large')
 
-      // Should fail at 33
+      // Should fail at 65
       erc20s.push(ONE_ADDRESS)
       await expect(
         basketHandler
@@ -2881,18 +2881,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
       ).to.be.revertedWith('erc20s too large')
 
-      // Should succeed at 32
+      // Should succeed at 64
       await expect(
         basketHandler
           .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(32), [])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(64), [])
       ).to.not.be.revertedWith('max too large')
 
-      // Should fail at 33
+      // Should fail at 65
       await expect(
         basketHandler
           .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(33), [])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(65), [])
       ).to.be.revertedWith('max too large')
     })
 

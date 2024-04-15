@@ -111,8 +111,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
 
-        address issuer = msg.sender; // OK to save: it can't be changed in reentrant runs
-
         // Ensure basket is ready, SOUND and not in warmup period
         require(basketHandler.isReady(), "basket not ready");
         uint256 supply = totalSupply();
@@ -133,7 +131,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192 amtBaskets = supply != 0
             ? basketsNeeded.muluDivu(amount, supply, CEIL)
             : _safeWrap(amount);
-        emit Issuance(issuer, recipient, amount, amtBaskets);
+        emit Issuance(msg.sender, recipient, amount, amtBaskets);
 
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
             amtBaskets,
@@ -145,7 +143,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
-                issuer,
+                msg.sender,
                 address(backingManager),
                 deposits[i]
             );

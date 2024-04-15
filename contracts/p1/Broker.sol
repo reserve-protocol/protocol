@@ -119,19 +119,18 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        address caller = msg.sender;
         require(
-            caller == address(backingManager) ||
-                caller == address(rsrTrader) ||
-                caller == address(rTokenTrader),
+            msg.sender == address(backingManager) ||
+                msg.sender == address(rsrTrader) ||
+                msg.sender == address(rTokenTrader),
             "only traders"
         );
 
         // Must be updated when new TradeKinds are created
         if (kind == TradeKind.BATCH_AUCTION) {
-            return newBatchAuction(req, caller);
+            return newBatchAuction(req, msg.sender);
         }
-        return newDutchAuction(req, prices, ITrading(caller));
+        return newDutchAuction(req, prices, ITrading(msg.sender));
     }
 
     /// Disable the broker until re-enabled by governance

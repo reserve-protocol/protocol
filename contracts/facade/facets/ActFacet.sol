@@ -51,7 +51,7 @@ contract ActFacet is IActFacet, Multicall {
 
         // if 2.1.0, distribute tokenToBuy
         bytes1 majorVersion = bytes(revenueTrader.version())[0];
-        if (toSettle.length != 0 && (majorVersion == bytes1("2") || majorVersion == bytes1("1"))) {
+        if (toSettle.length > 0 && (majorVersion == bytes1("2") || majorVersion == bytes1("1"))) {
             address(revenueTrader).functionCall(
                 abi.encodeWithSignature("manageToken(address)", revenueTrader.tokenToBuy())
             );
@@ -172,7 +172,7 @@ contract ActFacet is IActFacet, Multicall {
         IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
 
         // Settle any settle-able open trades
-        if (bm.tradesOpen() != 0) {
+        if (bm.tradesOpen() > 0) {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 ITrade trade = bm.trades(erc20s[i]);
                 if (address(trade) != address(0) && trade.canSettle()) {
