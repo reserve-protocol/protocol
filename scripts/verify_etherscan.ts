@@ -59,6 +59,7 @@ async function main() {
       'collateral-plugins/verify_convex_paypool.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
       'collateral-plugins/verify_convex_stable_rtoken_metapool.ts',
+      'collateral-plugins/verify_convex_ethplus_eth.ts',
       'collateral-plugins/verify_curve_stable.ts',
       'collateral-plugins/verify_curve_stable_metapool.ts',
       'collateral-plugins/verify_curve_stable_rtoken_metapool.ts',
@@ -86,7 +87,11 @@ async function main() {
       'assets/verify_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    // TODO: Arbitrum
+    // Arbitrum One
+    scripts.push(
+      'collateral-plugins/verify_aave_v3_usdc.ts',
+      'collateral-plugins/verify_cusdcv3.ts'
+    )
   }
 
   // Phase 3 - RTokens and Governance

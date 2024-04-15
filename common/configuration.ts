@@ -31,6 +31,10 @@ export interface ITokens {
   saEthUSDC?: string
   aBasUSDC?: string
   saBasUSDC?: string
+  aArbUSDCn?: string
+  saArbUSDCn?: string
+  aArbUSDT?: string
+  saArbUSDT?: string
   aWETHv3?: string
   acbETHv3?: string
   cDAI?: string
@@ -49,9 +53,11 @@ export interface ITokens {
   WETH?: string
   WBTC?: string
   EURT?: string
+  ARB?: string
   RSR?: string
   CRV?: string
   CVX?: string
+  ETHPLUS?: string
   ankrETH?: string
   frxETH?: string
   sfrxETH?: string
@@ -108,11 +114,13 @@ export interface IFeeds {
 
 export interface IPools {
   cvxCrvUSDUSDC?: string
+  cvxCrvUSDUSDT?: string
   cvx3Pool?: string
   cvxPayPool?: string
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
   cvxMIM3Pool?: string
+  cvxETHPlusETH?: string
   crv3Pool?: string
   crveUSDFRAXBP?: string
   crvTriCrypto?: string
@@ -194,6 +202,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
       CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
       CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
+      ETHPLUS: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8',
       ankrETH: '0xE95A203B1a91a908F9B9CE46459d101078c2c3cb',
       frxETH: '0x5E8422345238F34275888049021821E8E08CAa1f',
       sfrxETH: '0xac3E018457B222d93114458476f3E3416Abbe38F',
@@ -509,12 +518,33 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
   '42161': {
     name: 'arbitrum',
     tokens: {
+      ARB: '0x912ce59144191c1204e64559fe8253a0e49e6548',
+      DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
+      COMP: '0x354A6dA3fcde098F8389cad84b0182725c6C91dE',
       RSR: '0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594',
+      USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
+      USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
+      cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
+      saArbUSDCn: '', // TODO our wrapper. remove from deployment script after placing here
+      aArbUSDT: '0x6ab707aca953edaefbc4fd23ba73294241490620',
+      saArbUSDT: '', // TODO our wrapper. remove from deployment script after placing here
     },
     chainlinkFeeds: {
+      ARB: '0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6',
+      COMP: '0xe7C53FFd03Eb6ceF7d208bC4C13446c76d1E5884',
+      DAI: '0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB',
+      USDC: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
+      USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
     },
     GNOSIS_EASY_AUCTION: '0xcD033976a011F41D2AB6ef47984041568F818E73', // our deployment
+    COMET_REWARDS: '0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae',
+    COMET_CONFIGURATOR: '0xb21b06D71c75973babdE35b49fFDAc3F82Ad3775',
+    COMET_PROXY_ADMIN: '0xD10b40fF1D92e2267D099Da3509253D9Da4D715e',
+    COMET_EXT: '0x1B2E88cC7365d90e7E81392432482925BD8437E9',
+    AAVE_V3_POOL: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
+    AAVE_V3_INCENTIVES_CONTROLLER: '0x929EC64c34a17401F460460D4B9390518E5B473e',
   },
   '421614': {
     name: 'arbitrum-sepolia',

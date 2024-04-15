@@ -8,7 +8,14 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../deployment/common'
-import { combinedError, priceTimeout, revenueHiding, verifyContract } from '../deployment/utils'
+import {
+  combinedError,
+  getDaiOracleError,
+  getDaiOracleTimeout,
+  priceTimeout,
+  revenueHiding,
+  verifyContract,
+} from '../deployment/utils'
 import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
@@ -28,8 +35,8 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Fiat Collateral - DAI  **************************/
-  const daiOracleTimeout = baseL2Chains.includes(hre.network.name) ? 86400 : 3600 // 24 hr (Base) or 1 hour
-  const daiOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  const daiOracleTimeout = getDaiOracleTimeout(hre.network.name)
+  const daiOracleError = getDaiOracleError(hre.network.name)
 
   await verifyContract(
     chainId,

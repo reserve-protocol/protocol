@@ -7,21 +7,19 @@ import {
   PYUSD_MAX_TRADE_VOLUME,
   PYUSD_ORACLE_TIMEOUT,
   PYUSD_ORACLE_ERROR,
-  USDC_MAINNET_MAX_TRADE_VOLUME,
-  USDC_MAINNET_ORACLE_TIMEOUT,
-  USDC_MAINNET_ORACLE_ERROR,
+  USDC_ARBITRUM_MAX_TRADE_VOLUME,
+  USDC_ARBITRUM_ORACLE_TIMEOUT,
+  USDC_ARBITRUM_ORACLE_ERROR,
+  USDT_ARBITRUM_MAX_TRADE_VOLUME,
+  USDT_ARBITRUM_ORACLE_TIMEOUT,
+  USDT_ARBITRUM_ORACLE_ERROR,
   USDC_BASE_MAX_TRADE_VOLUME,
   USDC_BASE_ORACLE_TIMEOUT,
   USDC_BASE_ORACLE_ERROR,
+  USDC_MAINNET_MAX_TRADE_VOLUME,
+  USDC_MAINNET_ORACLE_TIMEOUT,
+  USDC_MAINNET_ORACLE_ERROR,
 } from './constants'
-
-/*
- ** Static AToken Factory for Aave V3
- ** Mainnet: 0x411D79b8cC43384FDE66CaBf9b6a17180c842511
- ** --> https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol#L86
- ** Base: 0x940F9a5d5F9ED264990D0eaee1F3DD60B4Cb9A22
- ** --> https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L78
- */
 
 // Mainnet - USDC
 makeTests(
@@ -92,5 +90,55 @@ makeTests(
     whaleTokenHolder: '0xCFFAd3200574698b78f32232aa9D63eABD290703',
     forkBlock: 19270000,
     targetNetwork: 'mainnet',
+  }
+)
+
+// Arbitrum - USDC
+makeTests(
+  {
+    priceTimeout: PRICE_TIMEOUT,
+    chainlinkFeed: networkConfig[42161].chainlinkFeeds['USDC']!,
+    oracleError: USDC_ARBITRUM_ORACLE_ERROR,
+    erc20: '', // to be set
+    maxTradeVolume: USDC_ARBITRUM_MAX_TRADE_VOLUME,
+    oracleTimeout: USDC_ARBITRUM_ORACLE_TIMEOUT,
+    targetName: ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.01').add(USDC_ARBITRUM_ORACLE_ERROR),
+    delayUntilDefault: bn('86400'),
+  },
+  {
+    testName: 'USDC - Arbitrum',
+    aaveIncentivesController: networkConfig[42161].AAVE_V3_INCENTIVES_CONTROLLER!,
+    aavePool: networkConfig[42161].AAVE_V3_POOL!,
+    aToken: networkConfig[42161].tokens['aArbUSDCn']!,
+    whaleTokenHolder: '0x47c031236e19d024b42f8ae6780e44a573170703',
+    forkBlock: 193157126,
+    targetNetwork: 'arbitrum',
+    toleranceDivisor: bn('1e8'), // 1 part in 100 million
+  }
+)
+
+// Arbitrum - USDT
+makeTests(
+  {
+    priceTimeout: PRICE_TIMEOUT,
+    chainlinkFeed: networkConfig[42161].chainlinkFeeds['USDT']!,
+    oracleError: USDT_ARBITRUM_ORACLE_ERROR,
+    erc20: '', // to be set
+    maxTradeVolume: USDT_ARBITRUM_MAX_TRADE_VOLUME,
+    oracleTimeout: USDT_ARBITRUM_ORACLE_TIMEOUT,
+    targetName: ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.01').add(USDT_ARBITRUM_ORACLE_ERROR),
+    delayUntilDefault: bn('86400'),
+  },
+  {
+    testName: 'USDT - Arbitrum',
+    aaveIncentivesController: networkConfig[42161].AAVE_V3_INCENTIVES_CONTROLLER!,
+    aavePool: networkConfig[42161].AAVE_V3_POOL!,
+    aToken: networkConfig[42161].tokens['aArbUSDT']!,
+    whaleTokenHolder: '0xf977814e90da44bfa03b6295a0616a897441acec',
+    forkBlock: 193157126,
+    targetNetwork: 'arbitrum',
+    toleranceDivisor: bn('1e8'), // 1 part in 100 million
   }
 )

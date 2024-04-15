@@ -74,6 +74,8 @@ export const RSR = networkConfig['1'].tokens.RSR!
 export const CRV = networkConfig['1'].tokens.CRV!
 export const CVX = networkConfig['1'].tokens.CVX!
 
+export const ETHPLUS = networkConfig['1'].tokens.ETHPLUS!
+
 // 3pool - USDC, USDT, DAI
 export const THREE_POOL = '0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7'
 export const THREE_POOL_TOKEN = '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490'
@@ -106,6 +108,13 @@ export const eUSD_FRAX_BP_POOL_ID = 156
 export const eUSD_FRAX_HOLDER = '0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784'
 export const eUSD_GAUGE = '0x8605dc0c339a2e7e85eea043bd29d42da2c6d784'
 
+// ETH+ + ETH
+export const ETHPLUS_BP_POOL = '0x7fb53345f1b21ab5d9510adb38f7d3590be6364b'
+export const ETHPLUS_BP_TOKEN = '0xe8a5677171c87fcb65b76957f2852515b404c7b1'
+export const ETHPLUS_BP_POOL_ID = 185
+export const ETHPLUS_ETH_HOLDER = '0x298bf7b80a6343214634aF16EB41Bb5B9fC6A1F1'
+export const ETHPLUS_GAUGE = '0x298bf7b80a6343214634af16eb41bb5b9fc6a1f1'
+
 // MIM + 3pool
 export const MIM_THREE_POOL = '0x5a6A4D54456819380173272A5E8E9B9904BdF41B'
 export const MIM_THREE_POOL_POOL_ID = 40
@@ -117,6 +126,11 @@ export const crvUSD_USDC = '0x4dece678ceceb27446b35c672dc7d61f30bad69e'
 export const crvUSD_USDC_POOL_ID = 182
 export const crvUSD_USDC_HOLDER = '0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1'
 export const crvUSD_USDC_GAUGE = '0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1'
+
+// crvUSD/USDT
+export const crvUSD_USDT = '0x390f3595bCa2Df7d23783dFd126427CCeb997BF4'
+export const crvUSD_USDT_POOL_ID = 179
+export const crvUSD_USDT_HOLDER = '0x4e6bB6B7447B7B2Aa268C16AB87F4Bb48BF57939'
 
 // PayPool
 export const PayPool = '0x383e6b4437b59fff47b619cba855ca29342a8559'
@@ -134,11 +148,8 @@ export const RTOKEN_DELAY_UNTIL_DEFAULT = bn('259200') // 72h
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const DEFAULT_THRESHOLD = fp('0.02') // 2%
-export const DELAY_UNTIL_DEFAULT = bn('86400')
+export const DELAY_UNTIL_DEFAULT = bn('259200') // 72h
 export const MAX_TRADE_VOL = fp('1e6')
-
-// export const FORK_BLOCK = 15850930 // TODO delete after confirming all cvx tests still passing
-export const FORK_BLOCK = 16915576
 
 export enum CurvePoolType {
   Plain,

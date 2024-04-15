@@ -576,9 +576,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             fp('0.001')
           )
           expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
 
           await expectPrice(
             ctkInf.cTokenCollateral.address,
@@ -677,10 +674,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           expect(await atkInf.aTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.095'))
 
           expect(await atkInf.aTokenCollateral.targetPerRef()).to.equal(fp('1'))
-          expect(await atkInf.aTokenCollateral.exposedReferencePrice()).to.be.closeTo(
-            await atkInf.aTokenCollateral.refPerTok(),
-            fp('0.000005')
-          )
 
           await expectPrice(
             atkInf.aTokenCollateral.address,
@@ -826,10 +819,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           )
           expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
 
-          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
-
           // close to $633 usd
           await expectPrice(
             ctkInf.cTokenCollateral.address,
@@ -946,9 +935,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             fp('0.001')
           )
           expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
 
           await expectPrice(
             ctkInf.cTokenCollateral.address,

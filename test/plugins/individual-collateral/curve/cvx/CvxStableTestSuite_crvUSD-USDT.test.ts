@@ -4,10 +4,11 @@ import {
   CurveCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
-import { mintWPool, makeW3PoolStable, resetFork } from './helpers'
+import { mintWPool } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
+  CurvePoolMock,
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -15,19 +16,12 @@ import {
 } from '../../../../../typechain'
 import { bn } from '../../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../../common/constants'
-import { whileImpersonating } from '../../../../utils/impersonation'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   PRICE_TIMEOUT,
-  THREE_POOL,
-  THREE_POOL_TOKEN,
-  DAI_USD_FEED,
-  DAI_ORACLE_TIMEOUT,
-  DAI_ORACLE_ERROR,
-  USDC_USD_FEED,
-  USDC_ORACLE_TIMEOUT,
-  USDC_ORACLE_ERROR,
+  CRV,
+  CVX,
   USDT_USD_FEED,
   USDT_ORACLE_TIMEOUT,
   USDT_ORACLE_ERROR,
@@ -35,33 +29,37 @@ import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   CurvePoolType,
-  CRV,
-  THREE_POOL_HOLDER,
-  TRI_CRYPTO_TOKEN,
-  TRI_CRYPTO_GAUGE,
-  TRI_CRYPTO_HOLDER,
+  crvUSD_USD_FEED,
+  crvUSD_USDT,
+  crvUSD_ORACLE_TIMEOUT,
+  crvUSD_ORACLE_ERROR,
+  crvUSD_USDT_HOLDER,
+  crvUSD_USDT_POOL_ID,
+  USDT,
+  crvUSD,
 } from '../constants'
+import { getResetFork } from '../../helpers'
 
 type Fixture<T> = () => Promise<T>
 
-export const defaultCrvStableCollateralOpts: CurveCollateralOpts = {
+export const defaultCvxStableCollateralOpts: CurveCollateralOpts = {
   erc20: ZERO_ADDRESS,
   targetName: ethers.utils.formatBytes32String('USD'),
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: DAI_USD_FEED, // unused but cannot be zero
-  oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+  chainlinkFeed: crvUSD_USD_FEED, // unused but cannot be zero
+  oracleTimeout: USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
   oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'),
-  nTokens: 3,
-  curvePool: THREE_POOL,
-  lpToken: THREE_POOL_TOKEN,
+  nTokens: 2,
+  curvePool: crvUSD_USDT,
+  lpToken: crvUSD_USDT,
   poolType: CurvePoolType.Plain,
-  feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
-  oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
-  oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
+  feeds: [[USDT_USD_FEED], [crvUSD_USD_FEED]],
+  oracleTimeouts: [[USDT_ORACLE_TIMEOUT], [crvUSD_ORACLE_TIMEOUT]],
+  oracleErrors: [[USDT_ORACLE_ERROR], [crvUSD_ORACLE_ERROR]],
 }
 
 export const deployCollateral = async (
@@ -72,23 +70,25 @@ export const deployCollateral = async (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    // Substitute all 3 feeds: DAI, USDC, USDT
-    const daiFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    // Substitute feeds
     const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const fix = await makeW3PoolStable()
+    const crvUSDFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
 
-    opts.feeds = [[daiFeed.address], [usdcFeed.address], [usdtFeed.address]]
-    opts.erc20 = fix.wrapper.address
+    const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+    const wrapper = await wrapperFactory.deploy()
+    await wrapper.initialize(crvUSD_USDT_POOL_ID)
+
+    opts.feeds = [[usdtFeed.address], [crvUSDFeed.address]]
+    opts.erc20 = wrapper.address
   }
 
-  opts = { ...defaultCrvStableCollateralOpts, ...opts }
+  opts = { ...defaultCvxStableCollateralOpts, ...opts }
 
-  const CrvStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
+  const CvxStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CurveStableCollateral'
   )
 
-  const collateral = <TestICollateral>await CrvStableCollateralFactory.deploy(
+  const collateral = <TestICollateral>await CvxStableCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -124,34 +124,51 @@ const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CurveCollateralOpts = {}
 ): Fixture<CurveCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultCrvStableCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultCvxStableCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    // Substitute all 3 feeds: DAI, USDC, USDT
-    const daiFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    // Substitute feeds
     const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    collateralOpts.feeds = [[daiFeed.address], [usdcFeed.address], [usdtFeed.address]]
+    const crvUSDFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    collateralOpts.feeds = [[usdtFeed.address], [crvUSDFeed.address]]
 
-    const fix = await makeW3PoolStable()
+    // Use mock curvePool seeded with initial balances
+    const CurvePoolMockFactory = await ethers.getContractFactory('CurvePoolMock')
+    const realCurvePool = <CurvePoolMock>await ethers.getContractAt('CurvePoolMock', crvUSD_USDT)
+    const curvePool = <CurvePoolMock>(
+      await CurvePoolMockFactory.deploy(
+        [await realCurvePool.balances(0), await realCurvePool.balances(1)],
+        [await realCurvePool.coins(0), await realCurvePool.coins(1)]
+      )
+    )
+    await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-    collateralOpts.erc20 = fix.wrapper.address
-    collateralOpts.curvePool = fix.curvePool.address
+    // Deploy Wrapper
+    const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+    const wrapper = await wrapperFactory.deploy()
+    await wrapper.initialize(crvUSD_USDT_POOL_ID)
+
+    collateralOpts.erc20 = wrapper.address
+    collateralOpts.curvePool = curvePool.address
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts))[0] as unknown)
+    const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
     const crv = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV)
 
     return {
       alice,
       collateral,
-      curvePool: fix.curvePool,
-      wrapper: fix.wrapper,
-      rewardTokens: [crv],
-      poolTokens: [fix.dai, fix.usdc, fix.usdt],
-      feeds: [daiFeed, usdcFeed, usdtFeed],
+      curvePool: curvePool,
+      wrapper: wrapper,
+      rewardTokens: [cvx, crv],
+      poolTokens: [
+        await ethers.getContractAt('ERC20Mock', USDT),
+        await ethers.getContractAt('ERC20Mock', crvUSD),
+      ],
+      feeds: [usdtFeed, crvUSDFeed],
     }
   }
 
@@ -168,7 +185,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWPool(ctx, amount, user, recipient, THREE_POOL_HOLDER)
+  await mintWPool(ctx, amount, user, recipient, crvUSD_USDT_HOLDER)
 }
 
 /*
@@ -179,43 +196,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
 const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {
-  it('wrapper allows to deposit and withdraw', async () => {
-    const [alice] = await ethers.getSigners()
-
-    // Deploy Wrapper
-    const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
-    const wrapper = await wrapperFactory.deploy(
-      TRI_CRYPTO_TOKEN,
-      'Wrapped Curve.fi USD-BTC-ETH',
-      'wcrv3crypto',
-      CRV,
-      TRI_CRYPTO_GAUGE
-    )
-
-    const amount = bn('20000').mul(bn(10).pow(await wrapper.decimals()))
-
-    const lpToken = await ethers.getContractAt(
-      '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-      await wrapper.underlying()
-    )
-    await whileImpersonating(TRI_CRYPTO_HOLDER, async (signer) => {
-      await lpToken.connect(signer).transfer(alice.address, amount)
-    })
-
-    // Initial Balance
-    expect(await lpToken.balanceOf(alice.address)).to.equal(amount)
-
-    // Deposit
-    await lpToken.connect(alice).approve(wrapper.address, amount)
-    await wrapper.connect(alice).deposit(amount, alice.address)
-    expect(await lpToken.balanceOf(alice.address)).to.equal(0)
-
-    // Withdraw
-    await wrapper.connect(alice).withdraw(amount, alice.address)
-    expect(await lpToken.balanceOf(alice.address)).to.equal(amount)
-  })
-}
+const collateralSpecificStatusTests = () => {}
 
 /*
   Run the test suite
@@ -227,10 +208,14 @@ const opts = {
   collateralSpecificStatusTests,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
+  itChecksRefPerTokDefault: it,
+  itHasRevenueHiding: it,
   itClaimsRewards: it,
   isMetapool: false,
-  resetFork,
-  collateralName: 'CurveStableCollateral - CurveGaugeWrapper',
+  resetFork: getResetFork(19564899),
+  collateralName: 'CurveStableCollateral - ConvexStakingWrapper (crvUSD/USDT)',
 }
 
 collateralTests(opts)
