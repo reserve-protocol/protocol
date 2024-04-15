@@ -22,8 +22,10 @@ library AllowanceLib {
         IERC20ApproveOnly token = IERC20ApproveOnly(tokenAddress);
 
         // 1. Set initial allowance to 0
-        token.approve(spender, 0);
-        require(token.allowance(address(this), spender) == 0, "allowance not 0");
+        if (token.allowance(address(this), spender) != 0) {
+            token.approve(spender, 0);
+            require(token.allowance(address(this), spender) == 0, "allowance not 0");
+        }
 
         if (value == 0) return;
 
