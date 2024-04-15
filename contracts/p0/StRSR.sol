@@ -153,7 +153,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @dev Staking continues while paused, without reward handouts
     /// @custom:interaction
     function stake(uint256 rsrAmount) external {
-        address account = _msgSender();
+        address account = msg.sender;
         require(rsrAmount > 0, "Cannot stake zero");
 
         _payoutRewards();
@@ -179,7 +179,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
     function unstake(uint256 stakeAmount) external notTradingPausedOrFrozen {
-        address account = _msgSender();
+        address account = msg.sender;
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
 
@@ -247,7 +247,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function cancelUnstake(uint256 endId) external notFrozen {
-        address account = _msgSender();
+        address account = msg.sender;
 
         // Call state keepers
         _payoutRewards();
@@ -310,7 +310,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
     function seizeRSR(uint256 rsrAmount) external notTradingPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "!bm");
+        require(msg.sender == address(main.backingManager()), "!bm");
         require(rsrAmount > 0, "Amount cannot be zero");
         main.poke();
 
@@ -365,7 +365,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
+        main.rsr().safeTransfer(msg.sender, seizedRSR);
     }
 
     function bankruptStakers() internal returns (uint256 seizedRSR) {
@@ -450,7 +450,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function transfer(address to, uint256 amount) external returns (bool) {
-        _transfer(_msgSender(), to, amount);
+        _transfer(msg.sender, to, amount);
         return true;
     }
 
@@ -480,7 +480,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function approve(address spender, uint256 amount) public returns (bool) {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -489,19 +489,19 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address to,
         uint256 amount
     ) public returns (bool) {
-        _spendAllowance(from, _msgSender(), amount);
+        _spendAllowance(from, msg.sender, amount);
         _transfer(from, to, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
-        address owner = _msgSender();
+        address owner = msg.sender;
         _approve(owner, spender, allowances[owner][spender] + addedValue);
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
-        address owner = _msgSender();
+        address owner = msg.sender;
         uint256 currentAllowance = allowances[owner][spender];
         require(currentAllowance >= subtractedValue, "decreased allowance below zero");
         unchecked {

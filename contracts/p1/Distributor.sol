@@ -90,7 +90,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     function distribute(IERC20 erc20, uint256 amount) external {
         // Intentionally do not check notTradingPausedOrFrozen, since handled by caller
 
-        address caller = _msgSender();
+        address caller = msg.sender;
         require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken

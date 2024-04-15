@@ -97,7 +97,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         trade = super.settleTrade(sell); // nonReentrant
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
-        if (_msgSender() == address(trade)) {
+        if (msg.sender == address(trade)) {
             // solhint-disable-next-line no-empty-blocks
             try this.rebalance(trade.KIND()) {} catch (bytes memory errData) {
                 // prevent MEV searchers from providing less gas on purpose by reverting if OOG
@@ -122,7 +122,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         require(
-            _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
+            msg.sender == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
             "already rebalancing"
         );
 

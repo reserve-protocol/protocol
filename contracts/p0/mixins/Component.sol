@@ -41,7 +41,7 @@ abstract contract ComponentP0 is Versioned, Initializable, ContextUpgradeable, I
     }
 
     modifier governance() {
-        require(main.hasRole(OWNER, _msgSender()), "governance only");
+        require(main.hasRole(OWNER, msg.sender), "governance only");
         _;
     }
 }

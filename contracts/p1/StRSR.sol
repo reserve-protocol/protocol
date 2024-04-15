@@ -239,10 +239,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _payoutRewards();
 
         // Mint new stakes
-        mintStakes(_msgSender(), rsrAmount);
+        mintStakes(msg.sender, rsrAmount);
 
         // == Interactions ==
-        IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransferFrom(msg.sender, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
@@ -267,7 +267,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function unstake(uint256 stakeAmount) external {
         requireNotTradingPausedOrFrozen();
 
-        address account = _msgSender();
+        address account = msg.sender;
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
@@ -354,7 +354,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:interaction CEI
     function cancelUnstake(uint256 endId) external {
         requireNotFrozen();
-        address account = _msgSender();
+        address account = msg.sender;
 
         // We specifically allow unstaking when under collateralized
         // require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
@@ -434,7 +434,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external {
         requireNotTradingPausedOrFrozen();
 
-        require(_msgSender() == address(backingManager), "!bm");
+        require(msg.sender == address(backingManager), "!bm");
         require(rsrAmount > 0, "Amount cannot be zero");
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
@@ -483,7 +483,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
-        IERC20Upgradeable(address(rsr)).safeTransfer(_msgSender(), seizedRSR);
+        IERC20Upgradeable(address(rsr)).safeTransfer(msg.sender, seizedRSR);
     }
 
     /// @custom:governance
@@ -779,7 +779,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     function transfer(address to, uint256 amount) public returns (bool) {
-        address owner = _msgSender();
+        address owner = msg.sender;
         _transfer(owner, to, amount);
         return true;
     }
@@ -789,7 +789,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * `transferFrom`. This is semantically equivalent to an infinite approval.
      */
     function approve(address spender, uint256 amount) public returns (bool) {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -802,19 +802,19 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256 amount
     ) public returns (bool) {
-        _spendAllowance(from, _msgSender(), amount);
+        _spendAllowance(from, msg.sender, amount);
         _transfer(from, to, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
-        address owner = _msgSender();
+        address owner = msg.sender;
         _approve(owner, spender, _allowances[era][owner][spender] + addedValue);
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
-        address owner = _msgSender();
+        address owner = msg.sender;
         uint256 currentAllowance = _allowances[era][owner][spender];
         require(currentAllowance >= subtractedValue, "decreased allowance below zero");
         unchecked {

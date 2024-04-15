@@ -53,8 +53,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
         IERC20 rsr = main.rsr();
 
         require(
-            _msgSender() == address(main.rsrTrader()) ||
-                _msgSender() == address(main.rTokenTrader()),
+            msg.sender == address(main.rsrTrader()) || msg.sender == address(main.rTokenTrader()),
             "RevenueTraders only"
         );
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
@@ -88,9 +87,9 @@ contract DistributorP0 is ComponentP0, IDistributor {
                 addrTo = address(main.stRSR());
                 if (transferAmt > 0) accountRewards = true;
             }
-            erc20.safeTransferFrom(_msgSender(), addrTo, transferAmt);
+            erc20.safeTransferFrom(msg.sender, addrTo, transferAmt);
         }
-        emit RevenueDistributed(erc20, _msgSender(), amount);
+        emit RevenueDistributed(erc20, msg.sender, amount);
 
         // Perform reward accounting
         if (accountRewards) {

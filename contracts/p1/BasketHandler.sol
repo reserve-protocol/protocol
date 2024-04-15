@@ -128,7 +128,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // checks: caller is assetRegistry
     // effects: disabled' = true
     function disableBasket() external {
-        require(_msgSender() == address(assetRegistry), "asset registry only");
+        require(msg.sender == address(assetRegistry), "asset registry only");
 
         uint256 len = basket.erc20s.length;
         uint192[] memory refAmts = new uint192[](len);
@@ -152,7 +152,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         assetRegistry.refresh();
 
         require(
-            main.hasRole(OWNER, _msgSender()) ||
+            main.hasRole(OWNER, msg.sender) ||
                 (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );

@@ -92,7 +92,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
     function issue(uint256 amount) public {
-        issueTo(_msgSender(), amount);
+        issueTo(msg.sender, amount);
     }
 
     /// Issue an RToken on the current basket, to a particular recipient
@@ -111,7 +111,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
 
-        address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
+        address issuer = msg.sender; // OK to save: it can't be changed in reentrant runs
 
         // Ensure basket is ready, SOUND and not in warmup period
         require(basketHandler.isReady(), "basket not ready");
@@ -156,7 +156,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction CEI
     function redeem(uint256 amount) external {
-        redeemTo(_msgSender(), amount);
+        redeemTo(msg.sender, amount);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
@@ -185,7 +185,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Checks and Effects ==
 
         require(amount > 0, "Cannot redeem zero");
-        require(amount <= balanceOf(_msgSender()), "insufficient balance");
+        require(amount <= balanceOf(msg.sender), "insufficient balance");
         require(basketHandler.fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
 
@@ -196,8 +196,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
 
         // {BU}
-        uint192 baskets = _scaleDown(_msgSender(), amount);
-        emit Redemption(_msgSender(), recipient, amount, baskets);
+        uint192 baskets = _scaleDown(msg.sender, amount);
+        emit Redemption(msg.sender, recipient, amount, baskets);
 
         (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
@@ -256,7 +256,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Checks and Effects ==
 
         require(amount > 0, "Cannot redeem zero");
-        require(amount <= balanceOf(_msgSender()), "insufficient balance");
+        require(amount <= balanceOf(msg.sender), "insufficient balance");
         uint256 portionsSum;
         for (uint256 i = 0; i < portions.length; ++i) {
             portionsSum += portions[i];
@@ -270,8 +270,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
 
         // {BU}
-        uint192 baskets = _scaleDown(_msgSender(), amount);
-        emit Redemption(_msgSender(), recipient, amount, baskets);
+        uint192 baskets = _scaleDown(msg.sender, amount);
+        emit Redemption(msg.sender, recipient, amount, baskets);
 
         // === Get basket redemption amounts ===
 
@@ -346,7 +346,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   basketsNeeded' = basketsNeeded + baskets
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function mint(uint192 baskets) external {
-        require(_msgSender() == address(backingManager), "not backing manager");
+        require(msg.sender == address(backingManager), "not backing manager");
         _scaleUp(address(backingManager), baskets, totalSupply());
     }
 
@@ -360,8 +360,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // BU exchange rate cannot decrease
     // BU exchange rate CAN increase, but we already trust furnace to do this slowly
     function melt(uint256 amtRToken) external {
-        require(_msgSender() == address(furnace), "furnace only");
-        _burn(_msgSender(), amtRToken);
+        require(msg.sender == address(furnace), "furnace only");
+        _burn(msg.sender, amtRToken);
         emit Melted(amtRToken);
     }
 
@@ -376,8 +376,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   basketsNeeded' = basketsNeeded - baskets
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function dissolve(uint256 amount) external {
-        require(_msgSender() == address(backingManager), "not backing manager");
-        _scaleDown(_msgSender(), amount);
+        require(msg.sender == address(backingManager), "not backing manager");
+        _scaleDown(msg.sender, amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -385,7 +385,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // checks: caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
     function setBasketsNeeded(uint192 basketsNeeded_) external notTradingPausedOrFrozen {
-        require(_msgSender() == address(backingManager), "not backing manager");
+        require(msg.sender == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
 

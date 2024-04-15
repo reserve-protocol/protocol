@@ -112,7 +112,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     }
 
     function delegate(address delegatee) public {
-        _delegate(_msgSender(), delegatee);
+        _delegate(msg.sender, delegatee);
     }
 
     function delegateBySig(
@@ -138,7 +138,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     /// votes from the sender to `delegatee` or self
     function stakeAndDelegate(uint256 rsrAmount, address delegatee) external {
         stake(rsrAmount);
-        address msgSender = _msgSender();
+        address msgSender = msg.sender;
         address currentDelegate = delegates(msgSender);
 
         if (delegatee == address(0) && currentDelegate == address(0)) {

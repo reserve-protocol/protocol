@@ -119,7 +119,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        address caller = _msgSender();
+        address caller = msg.sender;
         require(
             caller == address(backingManager) ||
                 caller == address(rsrTrader) ||
@@ -139,8 +139,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     // checks: caller is a Trade this contract cloned
     // effects: disabled' = true
     function reportViolation() external {
-        require(trades[_msgSender()], "unrecognized trade contract");
-        ITrade trade = ITrade(_msgSender());
+        require(trades[msg.sender], "unrecognized trade contract");
+        ITrade trade = ITrade(msg.sender);
         TradeKind kind = trade.KIND();
 
         if (kind == TradeKind.BATCH_AUCTION) {
