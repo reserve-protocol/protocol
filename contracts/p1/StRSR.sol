@@ -231,10 +231,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _payoutRewards();
 
         // Mint new stakes
-        mintStakes(msg.sender, rsrAmount);
+        address caller = _msgSender();
+        mintStakes(caller, rsrAmount);
 
         // == Interactions ==
-        IERC20Upgradeable(address(rsr)).safeTransferFrom(msg.sender, address(this), rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransferFrom(caller, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
@@ -259,15 +260,16 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function unstake(uint256 stakeAmount) external {
         requireNotTradingPausedOrFrozen();
 
+        address account = _msgSender();
         require(stakeAmount != 0, "zero amount");
-        require(stakes[era][msg.sender] >= stakeAmount, "insufficient balance");
+        require(stakes[era][account] >= stakeAmount, "insufficient balance");
 
         _payoutRewards();
 
         // ==== Compute changes to stakes and RSR accounting
         // rsrAmount: how many RSR to move from the stake pool to the draft pool
         // pick rsrAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
-        _burn(msg.sender, stakeAmount);
+        _burn(account, stakeAmount);
 
         // newStakeRSR: {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
         uint256 newStakeRSR = (FIX_ONE_256 * totalStakes + (stakeRate - 1)) / stakeRate;
@@ -275,8 +277,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         stakeRSR = newStakeRSR;
 
         // Create draft
-        (uint256 index, uint64 availableAt) = pushDraft(msg.sender, rsrAmount);
-        emit UnstakingStarted(index, draftEra, msg.sender, rsrAmount, stakeAmount, availableAt);
+        (uint256 index, uint64 availableAt) = pushDraft(account, rsrAmount);
+        emit UnstakingStarted(index, draftEra, account, rsrAmount, stakeAmount, availableAt);
     }
 
     /// Complete an account's unstaking; callable by anyone
@@ -345,13 +347,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:interaction CEI
     function cancelUnstake(uint256 endId) external {
         requireNotFrozen();
+        address account = _msgSender();
 
         // We specifically allow unstaking when under collateralized
         // require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
         // require(basketHandler.isReady(), "basket not ready");
 
-        uint256 firstId = firstRemainingDraft[draftEra][msg.sender];
-        CumulativeDraft[] storage queue = draftQueues[draftEra][msg.sender];
+        uint256 firstId = firstRemainingDraft[draftEra][account];
+        CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         if (endId == 0 || firstId >= endId) return;
 
         require(endId <= queue.length, "index out-of-bounds");
@@ -365,7 +368,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
-        firstRemainingDraft[draftEra][msg.sender] = endId;
+        firstRemainingDraft[draftEra][account] = endId;
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
@@ -381,10 +384,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // ==== Transfer RSR from the draft pool
         totalDrafts = newTotalDrafts;
         draftRSR = newDraftRSR;
-        emit UnstakingCancelled(firstId, endId, draftEra, msg.sender, rsrAmount);
+        emit UnstakingCancelled(firstId, endId, draftEra, account, rsrAmount);
 
         // Mint new stakes
-        mintStakes(msg.sender, rsrAmount);
+        mintStakes(account, rsrAmount);
     }
 
     /// @param rsrAmount {qRSR}
@@ -424,7 +427,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external {
         requireNotTradingPausedOrFrozen();
 
-        require(msg.sender == address(backingManager), "!bm");
+        address caller = _msgSender();
+        require(caller == address(backingManager), "!bm");
         require(rsrAmount != 0, "zero amount");
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
@@ -473,7 +477,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
-        IERC20Upgradeable(address(rsr)).safeTransfer(msg.sender, seizedRSR);
+        IERC20Upgradeable(address(rsr)).safeTransfer(caller, seizedRSR);
     }
 
     /// @custom:governance
@@ -769,7 +773,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     function transfer(address to, uint256 amount) public returns (bool) {
-        _transfer(msg.sender, to, amount);
+        _transfer(_msgSender(), to, amount);
         return true;
     }
 
@@ -778,7 +782,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * `transferFrom`. This is semantically equivalent to an infinite approval.
      */
     function approve(address spender, uint256 amount) public returns (bool) {
-        _approve(msg.sender, spender, amount);
+        _approve(_msgSender(), spender, amount);
         return true;
     }
 
@@ -791,21 +795,23 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256 amount
     ) public returns (bool) {
-        _spendAllowance(from, msg.sender, amount);
+        _spendAllowance(from, _msgSender(), amount);
         _transfer(from, to, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
-        _approve(msg.sender, spender, _allowances[era][msg.sender][spender] + addedValue);
+        address owner = _msgSender();
+        _approve(owner, spender, _allowances[era][owner][spender] + addedValue);
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
-        uint256 currentAllowance = _allowances[era][msg.sender][spender];
+        address owner = _msgSender();
+        uint256 currentAllowance = _allowances[era][owner][spender];
         require(currentAllowance >= subtractedValue, "decrease allowance");
         unchecked {
-            _approve(msg.sender, spender, currentAllowance - subtractedValue);
+            _approve(owner, spender, currentAllowance - subtractedValue);
         }
 
         return true;

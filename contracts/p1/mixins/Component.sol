@@ -54,7 +54,7 @@ abstract contract ComponentP1 is
     }
 
     modifier governance() {
-        require(main.hasRole(OWNER, msg.sender), "governance only");
+        require(main.hasRole(OWNER, _msgSender()), "governance only");
         _;
     }
 

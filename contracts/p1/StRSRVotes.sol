@@ -130,7 +130,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     }
 
     function delegate(address delegatee) public {
-        _delegate(msg.sender, delegatee);
+        _delegate(_msgSender(), delegatee);
     }
 
     function delegateBySig(
@@ -156,14 +156,15 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     /// votes from the sender to `delegatee` or self
     function stakeAndDelegate(uint256 rsrAmount, address delegatee) external {
         stake(rsrAmount);
-        address currentDelegate = delegates(msg.sender);
+        address caller = _msgSender();
+        address currentDelegate = delegates(caller);
 
         if (delegatee == address(0) && currentDelegate == address(0)) {
             // Delegate to self if no delegate defined and no delegatee provided
-            _delegate(msg.sender, msg.sender);
+            _delegate(caller, caller);
         } else if (delegatee != address(0) && currentDelegate != delegatee) {
             // Delegate to delegatee if provided and different than current delegate
-            _delegate(msg.sender, delegatee);
+            _delegate(caller, delegatee);
         }
     }
 

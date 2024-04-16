@@ -113,18 +113,20 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
+        address caller = _msgSender();
+
         require(
-            msg.sender == address(backingManager) ||
-                msg.sender == address(rsrTrader) ||
-                msg.sender == address(rTokenTrader),
+            caller == address(backingManager) ||
+                caller == address(rsrTrader) ||
+                caller == address(rTokenTrader),
             "only traders"
         );
 
         // Must be updated when new TradeKinds are created
         if (kind == TradeKind.BATCH_AUCTION) {
-            return newBatchAuction(req, msg.sender);
+            return newBatchAuction(req, caller);
         }
-        return newDutchAuction(req, prices, ITrading(msg.sender));
+        return newDutchAuction(req, prices, ITrading(caller));
     }
 
     /// Disable the broker until re-enabled by governance
@@ -132,8 +134,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     // checks: caller is a Trade this contract cloned
     // effects: disabled' = true
     function reportViolation() external {
-        require(trades[msg.sender], "unrecognized trade contract");
-        ITrade trade = ITrade(msg.sender);
+        require(trades[_msgSender()], "unrecognized trade contract");
+        ITrade trade = ITrade(_msgSender());
         TradeKind kind = trade.KIND();
 
         if (kind == TradeKind.BATCH_AUCTION) {
