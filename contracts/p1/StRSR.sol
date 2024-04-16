@@ -589,7 +589,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //     rewards_N = rewards_0 * (1-payoutRatio) ^ N
     //     payout = rewards_N - rewards_0 = rewards_0 * (1 - (1-payoutRatio)^N)
     function _payoutRewards() internal {
-        if (block.timestamp < payoutLastPaid) return;
+        if (block.timestamp < payoutLastPaid + 1) return;
         uint48 numPeriods = uint48(block.timestamp) - payoutLastPaid;
 
         uint192 initRate = exchangeRate();
