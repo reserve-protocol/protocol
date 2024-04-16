@@ -235,8 +235,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             );
         } else if (normalize && config.erc20s.length != 0) {
             // Confirm reference basket is SOUND
-            assetRegistry.refresh();
-            require(status() == CollateralStatus.SOUND, "unsound basket");
+            assetRegistry.refresh(); // will set lastStatus
+            require(lastStatus == CollateralStatus.SOUND, "unsound basket");
 
             // Normalize targetAmts based on UoA value of reference basket
             (uint192 low, uint192 high) = _price(false);
