@@ -635,7 +635,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
-    // ==== FacadeRead views ====
+    // ==== ReadFacet views ====
     // Not used in-protocol; helpful for reconstructing state
 
     /// Get a reference basket in today's collateral tokens, by nonce

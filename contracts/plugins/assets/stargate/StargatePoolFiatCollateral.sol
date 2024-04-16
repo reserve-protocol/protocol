@@ -17,6 +17,9 @@ import "./StargateRewardableWrapper.sol";
 contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     IStargatePool private immutable pool;
 
+    IERC20 private immutable stg;
+
+    /// @param config.erc20 StargateRewardableWrapper
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     // solhint-disable no-empty-blocks
     constructor(CollateralConfig memory config, uint192 revenueHiding)
@@ -24,6 +27,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
         pool = StargateRewardableWrapper(address(config.erc20)).pool();
+        stg = StargateRewardableWrapper(address(config.erc20)).rewardToken();
     }
 
     /// @return _rate {ref/tok} Quantity of whole reference units per whole collateral tokens
@@ -38,6 +42,8 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     }
 
     function claimRewards() external override(Asset, IRewardable) {
-        StargateRewardableWrapper(address(erc20)).claimRewards();
+        uint256 bal = stg.balanceOf(address(this));
+        IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(stg, stg.balanceOf(address(this)) - bal);
     }
 }

@@ -3,13 +3,14 @@ import { ONE_PERIOD, TradeKind } from '#/common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber, ContractFactory } from 'ethers'
 import { formatEther } from 'ethers/lib/utils'
-import { advanceTime } from '#/utils/time'
+import { advanceBlocks, advanceTime } from '#/utils/time'
 import { fp } from '#/common/numbers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { callAndGetNextTrade, runBatchTrade, runDutchTrade } from './trades'
 import { CollateralStatus } from '#/common/constants'
-import { FacadeAct } from '@typechain/FacadeAct'
-import { FacadeRead } from '@typechain/FacadeRead'
+import { ActFacet } from '@typechain/ActFacet'
+import { ReadFacet } from '@typechain/ReadFacet'
+import { pushOraclesForward } from '../upgrade-checker-utils/oracles'
 
 type Balances = { [key: string]: BigNumber }
 
@@ -44,8 +45,15 @@ export const redeemRTokens = async (
     'BasketHandlerP1',
     await main.basketHandler()
   )
+  const assetRegistry = await hre.ethers.getContractAt(
+    'AssetRegistryP1',
+    await main.assetRegistry()
+  )
 
-  const redeemQuote = await basketHandler.quote(redeemAmount, 0)
+  await assetRegistry.refresh()
+  const basketsNeeded = await rToken.basketsNeeded()
+  const totalSupply = await rToken.totalSupply()
+  const redeemQuote = await basketHandler.quote(redeemAmount.mul(basketsNeeded).div(totalSupply), 0)
   const expectedTokens = redeemQuote.erc20s
   const expectedBalances: Balances = {}
   let log = ''
@@ -91,9 +99,9 @@ export const customRedeemRTokens = async (
   console.log(`\nCustom Redeeming ${formatEther(redeemAmount)}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
 
-  const FacadeReadFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeRead')
-  const facadeRead = <FacadeRead>await FacadeReadFactory.deploy()
-  const redeemQuote = await facadeRead.callStatic.redeemCustom(
+  const ReadFacetFactory: ContractFactory = await hre.ethers.getContractFactory('ReadFacet')
+  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+  const redeemQuote = await readFacet.callStatic.redeemCustom(
     rToken.address,
     redeemAmount,
     [basketNonce],
@@ -118,7 +126,7 @@ export const customRedeemRTokens = async (
     [basketNonce],
     [fp('1')],
     expectedTokens,
-    expectedQuantities.map((q) => q.mul(99).div(100))
+    expectedQuantities.map((q: BigNumber) => q.mul(99).div(100))
   )
   const postRedeemRTokenBal = await rToken.balanceOf(user.address)
   const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
@@ -158,7 +166,8 @@ export const recollateralize = async (
 }
 
 const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
-  console.log(`\n\n* * * * * Recollateralizing (Batch) RToken ${rtokenAddress}...`)
+  console.log(`* * * * * Recollateralizing (Batch) RToken ${rtokenAddress}...`)
+
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const backingManager = await hre.ethers.getContractAt(
@@ -170,9 +179,9 @@ const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     await main.basketHandler()
   )
 
-  // Deploy FacadeAct
-  const FacadeActFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeAct')
-  const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
+  // Deploy ActFacet
+  const FacadeActFactory: ContractFactory = await hre.ethers.getContractFactory('ActFacet')
+  const facadeAct = <ActFacet>await FacadeActFactory.deploy()
 
   // Move post trading delay
   await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
@@ -211,7 +220,10 @@ const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
 }
 
 const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
-  console.log(`\n\n* * * * * Recollateralizing (Dutch) RToken ${rtokenAddress}...`)
+  console.log('*')
+  console.log(`* * * * * Recollateralizing RToken (Dutch): ${rtokenAddress}...`)
+  console.log('*')
+
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
 
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -224,11 +236,8 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     await main.basketHandler()
   )
 
-  // Move post trading delay
-  await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
-
   let tradesRemain = false
-  let sellToken: string = ''
+  let sellToken = ''
 
   const [newTradeCreated, initialSellToken] = await callAndGetNextTrade(
     backingManager.rebalance(TradeKind.DUTCH_AUCTION),
@@ -239,9 +248,12 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     tradesRemain = true
     sellToken = initialSellToken
 
-    while (tradesRemain) {
+    for (let i = 0; tradesRemain; i++) {
+      // every other trade, push oracles forward (some oracles have 3600s timeout)
+      if (i % 2 == 1) await pushOraclesForward(hre, rtokenAddress, [])
       ;[tradesRemain, sellToken] = await runDutchTrade(hre, backingManager, sellToken)
-      await advanceTime(hre, ONE_PERIOD.toString())
+
+      await advanceBlocks(hre, 1)
     }
   }
 

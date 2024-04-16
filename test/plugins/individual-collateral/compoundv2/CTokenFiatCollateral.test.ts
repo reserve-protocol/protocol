@@ -55,10 +55,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  CTokenWrapper,
-  CTokenWrapperMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
@@ -68,6 +65,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIDeployer,
+  TestIFacade,
   TestIMain,
   TestIRToken,
 } from '../../../../typechain'
@@ -108,7 +106,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // Tokens/Assets
   let dai: ERC20Mock
   let cDai: CTokenMock
-  let cDaiVault: CTokenWrapper
   let cDaiCollateral: CTokenFiatCollateral
   let compToken: ERC20Mock
   let compAsset: Asset
@@ -125,7 +122,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let basketHandler: TestIBasketHandler
 
   let deployer: TestIDeployer
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
   let govParams: IGovParams
@@ -159,6 +156,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       amtRate: fp('1e6'), // 1M RToken
       pctRate: fp('0.05'), // 5%
     },
+    reweightable: false,
   }
 
   const defaultThreshold = fp('0.01') // 1%
@@ -222,16 +220,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
     )
 
-    const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-    cDaiVault = <CTokenWrapper>(
-      await cDaiVaultFactory.deploy(
-        cDai.address,
-        'cDAI RToken Vault',
-        'rv_cDAI',
-        comptroller.address
-      )
-    )
-
     // Deploy cDai collateral plugin
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
     cDaiCollateral = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
@@ -239,7 +227,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
         oracleError: ORACLE_ERROR,
-        erc20: cDaiVault.address,
+        erc20: cDai.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -255,11 +243,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     await whileImpersonating(holderCDAI, async (cdaiSigner) => {
       await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8))
     })
-
-    const initialBalcDai = await cDai.balanceOf(addr1.address)
-
-    await cDai.connect(addr1).approve(cDaiVault.address, initialBalcDai)
-    await cDaiVault.connect(addr1).deposit(initialBalcDai, addr1.address)
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -341,9 +324,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // cDAI (CTokenFiatCollateral)
       expect(await cDaiCollateral.isCollateral()).to.equal(true)
       expect(await cDaiCollateral.referenceERC20Decimals()).to.equal(await dai.decimals())
-      expect(await cDaiCollateral.erc20()).to.equal(cDaiVault.address)
+      expect(await cDaiCollateral.erc20()).to.equal(cDai.address)
       expect(await cDai.decimals()).to.equal(8)
-      expect(await cDaiVault.decimals()).to.equal(8)
       expect(await cDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cDaiCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
       expect(await cDaiCollateral.targetPerRef()).to.equal(fp('1'))
@@ -359,18 +341,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ) // close to $0.022 cents
 
       // Check claim data
-      await expect(cDaiVault.claimRewards())
-        .to.emit(cDaiVault, 'RewardsClaimed')
-        .withArgs(compToken.address, anyValue)
-
       await expect(cDaiCollateral.claimRewards())
-        .to.emit(cDaiVault, 'RewardsClaimed')
+        .to.emit(cDaiCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, anyValue)
       expect(await cDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Exchange rate
-      await cDaiVault.exchangeRateCurrent()
-      expect(await cDaiVault.exchangeRateStored()).to.equal(await cDaiVault.exchangeRateStored())
+      await cDai.exchangeRateCurrent()
+      expect(await cDai.exchangeRateStored()).to.equal(await cDai.exchangeRateStored())
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
@@ -383,7 +361,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
       expect(ERC20s[2]).to.equal(compToken.address)
-      expect(ERC20s[3]).to.equal(cDaiVault.address)
+      expect(ERC20s[3]).to.equal(cDai.address)
       expect(ERC20s.length).to.eql(4)
 
       // Assets
@@ -401,7 +379,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(cDaiVault.address)
+      expect(backing[0]).to.equal(cDai.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -412,7 +390,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await advanceTime(3600)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       await expectRTokenPrice(
@@ -427,7 +405,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
-      // Comptroller
       await expect(
         CTokenCollateralFactory.deploy(
           {
@@ -451,15 +428,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).deploy('Bad ERC20', 'BERC20')
       await token0decimals.setDecimals(0)
 
-      const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-        'CTokenWrapperMock'
-      )
-      const vault: CTokenWrapperMock = <CTokenWrapperMock>(
-        await CTokenWrapperMockFactory.deploy(
+      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+      const vault: CTokenMock = <CTokenMock>(
+        await CTokenMockFactory.deploy(
           '0 Decimal Token',
           '0 Decimal Token',
           token0decimals.address,
-          compToken.address,
           comptroller.address
         )
       )
@@ -488,7 +462,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
             oracleError: ORACLE_ERROR,
-            erc20: cDaiVault.address,
+            erc20: cDai.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -509,7 +483,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       await advanceTime(3600)
 
@@ -520,7 +494,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
+      const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
 
       // Check rates and prices
       const [cDaiPriceLow1, cDaiPriceHigh1] = await cDaiCollateral.price() // ~ 0.022015 cents
@@ -614,16 +588,13 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
+      const newBalanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
       expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
-        bn('150663e8'),
-        bn('5e7')
-      ) // ~= 4962.8 usd in value
+      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn('150663e8'), bn('5e7')) // ~= 4962.8 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -645,7 +616,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await expectEvents(backingManager.claimRewards(), [
         {
-          contract: cDaiVault,
+          contract: backingManager,
           name: 'RewardsClaimed',
           args: [compToken.address, anyValue],
           emitted: true,
@@ -656,7 +627,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Provide approvals for issuances
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       await advanceTime(3600)
 
@@ -673,7 +644,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(8000)
 
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(cDaiVault, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Check rewards both in COMP and stkAAVE
       const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
@@ -684,7 +655,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(3600)
 
       // Get additional rewards
-      await expect(backingManager.claimRewards()).to.emit(cDaiVault, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
 
@@ -716,7 +687,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
-          erc20: cDaiVault.address,
+          erc20: cDai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
@@ -741,7 +712,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
-          erc20: cDaiVault.address,
+          erc20: cDai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
@@ -835,20 +806,10 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
       const symbol = await cDai.symbol()
       const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address, comptroller.address)
       )
       // Set initial exchange rate to the new cDai Mock
       await cDaiMock.setExchangeRate(fp('0.02'))
-
-      const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-      const cDaiMockVault = <CTokenWrapper>(
-        await cDaiVaultFactory.deploy(
-          cDaiMock.address,
-          'cDAI Mock RToken Vault',
-          'rv_mock_cDAI',
-          comptroller.address
-        )
-      )
 
       // Redeploy plugin using the new cDai mock
       const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
@@ -858,7 +819,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
-          erc20: cDaiMockVault.address,
+          erc20: cDaiMock.address,
           maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
           oracleTimeout: await cDaiCollateral.oracleTimeout(),
           targetName: await cDaiCollateral.targetName(),
@@ -886,70 +847,101 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
+    context('with reverting CToken mock', () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-      const symbol = await cDai.symbol()
-      const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
-      )
+      let cDaiMock: CTokenMock
+      let newCDaiCollateral: CTokenFiatCollateral
 
-      const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-      const cDaiMockVault = <CTokenWrapper>(
-        await cDaiVaultFactory.deploy(
-          cDaiMock.address,
-          'cDAI Mock RToken Vault',
-          'rv_mock_cDAI',
-          comptroller.address
+      beforeEach(async () => {
+        const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+        const symbol = await cDai.symbol()
+        cDaiMock = <CTokenMock>(
+          await CTokenMockFactory.deploy(
+            symbol + ' Token',
+            symbol,
+            dai.address,
+            comptroller.address
+          )
         )
-      )
 
-      // Redeploy plugin using the new cDai mock
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
-          oracleError: ORACLE_ERROR,
-          erc20: cDaiMockVault.address,
-          maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
-          oracleTimeout: await cDaiCollateral.oracleTimeout(),
-          targetName: await cDaiCollateral.targetName(),
-          defaultThreshold,
-          delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
-        },
-        REVENUE_HIDING
-      )
-      await newCDaiCollateral.refresh()
+        // Redeploy plugin using the new cDai mock
+        newCDaiCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cDaiMock.address,
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+        await newCDaiCollateral.refresh()
+      })
 
-      // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
-      await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
-      const [currLow, currHigh] = await newCDaiCollateral.price()
-      const currRate = await cDaiMockVault.exchangeRateStored()
+      it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
+        // Check initial state
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+        await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+        const [currLow, currHigh] = await newCDaiCollateral.price()
+        const currRate = await cDaiMock.exchangeRateStored()
 
-      // Make exchangeRateCurrent() revert
-      await cDaiMock.setRevertExchangeRate(true)
+        // Make exchangeRateCurrent() revert
+        await cDaiMock.setRevertExchangeRateCurrent(true)
 
-      // Force updates - Should set to DISABLED
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+        // Force updates - Should set to DISABLED
+        await expect(newCDaiCollateral.refresh())
+          .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+        expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
-      // Exchange rate stored is still accessible
-      expect(await cDaiMockVault.exchangeRateStored()).to.equal(currRate)
+        // Exchange rate stored is still accessible
+        expect(await cDaiMock.exchangeRateStored()).to.equal(currRate)
 
-      // Price remains the same
-      await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await newCDaiCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
+        // Price remains the same
+        await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+        const [newLow, newHigh] = await newCDaiCollateral.price()
+        expect(newLow).to.equal(currLow)
+        expect(newHigh).to.equal(currHigh)
+      })
+
+      it('Enters DISABLED state when underlyingRefPerTok() reverts', async () => {
+        // Check initial state
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+        await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+        const [currLow, currHigh] = await newCDaiCollateral.price()
+        const currRate = await cDaiMock.exchangeRateStored()
+
+        // Make exchangeRateStored() revert
+        await cDaiMock.setRevertExchangeRateStored(true)
+        await expect(cDaiMock.exchangeRateStored()).to.be.reverted
+        await expect(newCDaiCollateral.underlyingRefPerTok()).to.be.reverted
+
+        // Force updates - Should set to DISABLED
+        await expect(newCDaiCollateral.refresh())
+          .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+        expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+        // Price remains the same
+        await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+        const [newLow, newHigh] = await newCDaiCollateral.price()
+        expect(newLow).to.equal(currLow)
+        expect(newHigh).to.equal(currHigh)
+      })
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -1108,20 +1100,15 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
         const symbol = await cDai.symbol()
         const cDaiMock: CTokenMock = <CTokenMock>(
-          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
-        )
-        // Set initial exchange rate to the new cDai Mock
-        await cDaiMock.setExchangeRate(fp('0.02'))
-
-        const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-        cDaiVault = <CTokenWrapper>(
-          await cDaiVaultFactory.deploy(
-            cDaiMock.address,
-            'cDAI RToken Vault',
-            'rv_cDAI',
+          await CTokenMockFactory.deploy(
+            symbol + ' Token',
+            symbol,
+            dai.address,
             comptroller.address
           )
         )
+        // Set initial exchange rate to the new cDai Mock
+        await cDaiMock.setExchangeRate(fp('0.02'))
 
         // Redeploy plugin using the new cDai mock
         const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
@@ -1131,7 +1118,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cDaiVault.address,
+            erc20: cDaiMock.address,
             maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
             oracleTimeout: await cDaiCollateral.oracleTimeout(),
             targetName: await cDaiCollateral.targetName(),
@@ -1146,13 +1133,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await cDaiMock.setExchangeRate(fp('0.019'))
         await snapshotGasCost(newCDaiCollateral.refresh())
         await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
-      })
-    })
-
-    context('ERC20', () => {
-      it('transfer', async () => {
-        await snapshotGasCost(cDaiVault.connect(addr1).transfer(cDaiCollateral.address, bn('1')))
-        await snapshotGasCost(cDaiVault.connect(addr1).transfer(cDaiCollateral.address, bn('1')))
       })
     })
   })

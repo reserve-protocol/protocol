@@ -37,9 +37,8 @@ import {
   BasketHandlerP1,
   CTokenFiatCollateral,
   DutchTrade,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -56,6 +55,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -120,7 +120,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenWrapperMock
+  let token3: CTokenMock
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
   let collateral0: FiatCollateral
@@ -141,7 +141,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -185,7 +185,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenWrapperMock>erc20s[collateral.indexOf(basket[3])]
+    token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     backupToken1 = erc20s[2] // USDT
     backupCollateral1 = <FiatCollateral>collateral[2]
@@ -2193,6 +2193,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(erc20s[1]).to.equal(eurToken.address)
       expect(tokAmts[0]).to.equal(fp('0.5'))
       expect(tokAmts[1]).to.equal(fp('0.5'))
+    })
+
+    it('Should handle unpriced asset in normalization', async () => {
+      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await indexBH.connect(owner).refreshBasket()
+
+      // Set Token0 to unpriced - stale oracle
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
+      await expectUnpriced(collateral0.address)
+
+      // Attempt to add EURO, basket is not SOUND
+      await expect(
+        indexBH
+          .connect(owner)
+          .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
+      ).to.be.revertedWith('unsound basket')
     })
 
     describe('Custom Redemption', () => {
