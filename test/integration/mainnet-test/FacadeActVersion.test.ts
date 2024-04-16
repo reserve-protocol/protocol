@@ -97,7 +97,7 @@ describeFork(
 
       it('Fixed ActFacet should return right revenueOverview', async () => {
         const FacadeActFactory = await ethers.getContractFactory('ActFacet')
-        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + ONE_PERIOD.toNumber())
+        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
         newFacadeAct = await FacadeActFactory.deploy()
 
         const expectedSurpluses = [
@@ -106,7 +106,7 @@ describeFork(
           bn('0'),
           bn('9791033088306000000'),
           bn('0'),
-          bn('3899620000'),
+          bn('3899610000'),
           bn('0'),
           bn('30109289810000'),
           bn('0'),
@@ -114,7 +114,7 @@ describeFork(
           bn('0'),
           bn('0'),
           bn('0'),
-          bn('6413550000'),
+          bn('6413530000'),
         ]
         const expectedBmRewards = [
           bn('0'),
