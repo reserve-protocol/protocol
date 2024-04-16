@@ -35,7 +35,6 @@ import {
   TestICToken,
   TestIRToken,
   USDCMock,
-  CTokenWrapper,
   StaticATokenV3LM,
   CusdcV3Wrapper,
   CometInterface,
@@ -89,7 +88,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let fUsdc: TestICToken
   let weth: IWETH
   let cDai: TestICToken
-  let cDaiVault: CTokenWrapper
   let cusdcV3: CometInterface
   let daiCollateral: FiatCollateral
   let aDaiCollateral: ATokenFiatCollateral
@@ -153,8 +151,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
-      cDaiVault = <CTokenWrapper>erc20s[6] // cDAI
-      cDai = <TestICToken>await ethers.getContractAt('TestICToken', await cDaiVault.underlying()) // cDAI
       stataDai = <StaticATokenLM>erc20s[10] // static aDAI
 
       // Get plain aTokens
@@ -198,6 +194,10 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractAt('CometInterface', networkConfig[chainId].tokens.cUSDCv3 || '')
       )
 
+      cDai = <TestICToken>(
+        await ethers.getContractAt('TestICToken', networkConfig[chainId].tokens.cDAI || '')
+      )
+
       sUsdc = <IStargatePool>(
         await ethers.getContractAt('IStargatePool', networkConfig[chainId].tokens.sUSDC || '')
       )
@@ -229,8 +229,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Fund user with cDAI
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
-        await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
-        await cDaiVault.connect(addr1).deposit(toBNDecimals(initialBal, 8).mul(100), addr1.address)
       })
 
       // Fund user with cUSDCV3
@@ -676,14 +674,12 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       beforeEach(async () => {
         // Setup basket
-        await basketHandler.connect(owner).setPrimeBasket([cDaiVault.address], [fp('1')])
+        await basketHandler.connect(owner).setPrimeBasket([cDai.address], [fp('1')])
         await basketHandler.connect(owner).refreshBasket()
         await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Provide approvals
-        await cDaiVault
-          .connect(addr1)
-          .approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+        await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
         // Advance time significantly - Recharge throttle
         await advanceTime(100000)
@@ -724,17 +720,16 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await facadeMonitor.backingReedemable(
             rToken.address,
             CollPluginType.COMPOUND_V2,
-            cDaiVault.address
+            cDai.address
           )
         ).to.equal(fp('1'))
 
         // Confirm all can be redeemed
         expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
-        const bmBalanceAmt = await cDaiVault.balanceOf(backingManager.address)
+        const bmBalanceAmt = await cDai.balanceOf(backingManager.address)
         await whileImpersonating(backingManager.address, async (bmSigner) => {
-          await cDaiVault.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+          await cDai.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
         })
-        await cDaiVault.connect(addr2).withdraw(bmBalanceAmt, addr2.address)
         expect(await cDai.balanceOf(addr2.address)).to.equal(bmBalanceAmt)
 
         await expect(cDai.connect(addr2).redeem(bmBalanceAmt)).to.not.be.reverted
@@ -748,7 +743,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await facadeMonitor.backingReedemable(
             rToken.address,
             CollPluginType.COMPOUND_V2,
-            cDaiVault.address
+            cDai.address
           )
         ).to.equal(fp('1'))
 
@@ -760,7 +755,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await facadeMonitor.backingReedemable(
             rToken.address,
             CollPluginType.COMPOUND_V2,
-            cDaiVault.address
+            cDai.address
           )
         ).to.be.closeTo(fp('0.80'), fp('0.01'))
 
@@ -773,17 +768,16 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await facadeMonitor.backingReedemable(
             rToken.address,
             CollPluginType.COMPOUND_V2,
-            cDaiVault.address
+            cDai.address
           )
         ).to.be.closeTo(fp('0.40'), fp('0.01'))
 
         // Confirm we cannot redeem full balance
         expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
-        const bmBalanceAmt = await cDaiVault.balanceOf(backingManager.address)
+        const bmBalanceAmt = await cDai.balanceOf(backingManager.address)
         await whileImpersonating(backingManager.address, async (bmSigner) => {
-          await cDaiVault.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+          await cDai.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
         })
-        await cDaiVault.connect(addr2).withdraw(bmBalanceAmt, addr2.address)
         await expect(cDai.connect(addr2).redeem(bmBalanceAmt)).to.be.reverted
         expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
 
@@ -797,7 +791,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await facadeMonitor.backingReedemable(
             rToken.address,
             CollPluginType.COMPOUND_V2,
-            cDaiVault.address
+            cDai.address
           )
         ).to.equal(fp('1'))
 
@@ -808,17 +802,16 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await facadeMonitor.backingReedemable(
             rToken.address,
             CollPluginType.COMPOUND_V2,
-            cDaiVault.address
+            cDai.address
           )
         ).to.be.closeTo(fp('0'), fp('0.01'))
 
         // Confirm we cannot redeem anything, not even 1%
         expect(await dai.balanceOf(addr2.address)).to.equal(bn(0))
-        const bmBalanceAmt = await cDaiVault.balanceOf(backingManager.address)
+        const bmBalanceAmt = await cDai.balanceOf(backingManager.address)
         await whileImpersonating(backingManager.address, async (bmSigner) => {
-          await cDaiVault.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
+          await cDai.connect(bmSigner).transfer(addr2.address, bmBalanceAmt)
         })
-        await cDaiVault.connect(addr2).withdraw(bmBalanceAmt, addr2.address)
         expect(await cDai.balanceOf(addr2.address)).to.equal(bmBalanceAmt)
 
         await expect(cDai.connect(addr2).redeem((await cDai.balanceOf(addr2.address)).div(100))).to
@@ -864,8 +857,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
             delayUntilDefault: bn('86400').toString(), // 24h
           },
-          fp('1e-6'),
-          bn('10000e6').toString() // $10k
+          fp('1e-6')
         )
 
         // Register and update collateral
@@ -1205,7 +1197,6 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         maUSDC = await MorphoTokenisedDepositFactory.deploy({
           morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
           morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-          rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
           underlyingERC20: networkConfig[chainId].tokens.USDC!,
           poolToken: networkConfig[chainId].tokens.aUSDC!,
           rewardToken: networkConfig[chainId].tokens.MORPHO!,

@@ -51,8 +51,6 @@ OR
 
 (2) Call `bidWithCallback(bytes memory)` from a calling contract that adheres to the `IDutchTradeCallee` interface. It should contain a function `dutchTradeCallback(address buyToken,uint256 buyAmount,bytes calldata data) external;` that transfers `bidAmount` buy tokens. This method will be called by the `DutchTrade` as a callback after the trade has been resolved. See `plugins/mocks/DutchTradeRouter.sol` for an example.
 
-Make sure calling contract implements the `IDutchTradeCallee` interface. It contains a single method function `dutchTradeCallbac(address buyToken,uint256 buyAmount,bytes calldata data) external;`. This method will be called by the `DutchTrade` as a callback after calling `bidWithCallback` and before the trade has been resolved. The trader is expected to pay for the trade during the callback. See `DutchTradeRouter.sol` for an example.
-
 1. Call `status()` view; the auction is ongoing if return value is 1
 2. Call `lot()` to see the number of tokens being sold
 3. Call `bidAmount()` to see the number of tokens required to buy the lot, at various block numbers

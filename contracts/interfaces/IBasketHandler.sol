@@ -97,7 +97,7 @@ interface IBasketHandler is IComponent {
     /// @custom:interaction
     function refreshBasket() external;
 
-    /// Track the basket status changes
+    /// Track basket status and collateralization changes
     /// @custom:refresher
     function trackStatus() external;
 
@@ -175,6 +175,8 @@ interface IBasketHandler is IComponent {
 }
 
 interface TestIBasketHandler is IBasketHandler {
+    function lastCollateralized() external view returns (uint48);
+
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;

@@ -183,8 +183,8 @@ export const mintWPool = async (
     await lpToken.connect(signer).transfer(user.address, amount)
   })
 
-  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
-  await ctx.wrapper.connect(user).deposit(amount, recipient)
+  await lpToken.connect(user).approve(cvxWrapper.address, amount)
+  await cvxWrapper.connect(user).deposit(amount, recipient)
 }
 
 export const resetFork = getResetFork(FORK_BLOCK)

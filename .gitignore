@@ -41,3 +41,6 @@ scripts/playground.ts
 # tenderly deployment/verification artifacts
 deployments/
 backtests/
+
+# output files
+output.log

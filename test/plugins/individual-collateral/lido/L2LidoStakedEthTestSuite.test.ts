@@ -57,8 +57,8 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
-  oracleTimeout: BASE_FEEDS_TIMEOUT.ETH_USD, // ignored
+  chainlinkFeed: BASE_PRICE_FEEDS.stETH_ETH, // ignored
+  oracleTimeout: BASE_FEEDS_TIMEOUT.stETH_ETH, // ignored
   oracleError: BASE_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,

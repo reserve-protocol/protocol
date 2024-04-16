@@ -29,13 +29,13 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenSelfReferentialCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   DeployerP0,
   DeployerP1,
   DutchTrade,
-  FacadeRead,
-  FacadeAct,
+  ReadFacet,
+  ActFacet,
   FacadeMonitor,
   FacadeTest,
   DistributorP1,
@@ -58,6 +58,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -93,7 +94,7 @@ export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 // This will have to be updated on each release
-export const VERSION = '3.2.0'
+export const VERSION = '3.3.0'
 
 export type Collateral =
   | FiatCollateral
@@ -165,7 +166,6 @@ async function gnosisFixture(): Promise<GnosisFixture> {
 }
 
 async function collateralFixture(
-  compToken: ERC20Mock,
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
   config: IConfig
@@ -173,9 +173,7 @@ async function collateralFixture(
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
-  const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-    'CTokenWrapperMock'
-  )
+  const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
@@ -248,15 +246,13 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
-    chainlinkAddr: string,
-    compToken: ERC20Mock
-  ): Promise<[CTokenWrapperMock, CTokenFiatCollateral]> => {
-    const erc20: CTokenWrapperMock = <CTokenWrapperMock>(
-      await CTokenWrapperMockFactory.deploy(
+    chainlinkAddr: string
+  ): Promise<[CTokenMock, CTokenFiatCollateral]> => {
+    const erc20: CTokenMock = <CTokenMock>(
+      await CTokenMockFactory.deploy(
         symbol + ' Token',
         symbol,
         referenceERC20.address,
-        compToken.address,
         comptroller.address
       )
     )
@@ -311,19 +307,9 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed(), compToken)
-  const cusdc = await makeCTokenCollateral(
-    'cUSDC',
-    usdc[0],
-    await usdc[1].chainlinkFeed(),
-    compToken
-  )
-  const cusdt = await makeCTokenCollateral(
-    'cUSDT',
-    usdt[0],
-    await usdt[1].chainlinkFeed(),
-    compToken
-  )
+  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed())
+  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], await usdc[1].chainlinkFeed())
+  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], await usdt[1].chainlinkFeed())
   const adai = await makeATokenCollateral('aDAI', dai[0], await dai[1].chainlinkFeed(), aaveToken)
   const ausdc = await makeATokenCollateral(
     'aUSDC',
@@ -422,8 +408,9 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
   stRSR: TestIStRSR
-  facade: FacadeRead
-  facadeAct: FacadeAct
+  facade: TestIFacade
+  readFacet: ReadFacet
+  actFacet: ActFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -491,14 +478,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
-
-  // Deploy FacadeRead
-  const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
-  const facade = <FacadeRead>await FacadeReadFactory.deploy()
-
-  // Deploy FacadeAct
-  const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
-  const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -708,7 +687,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts, bySymbol } = await collateralFixture(
-    compToken,
     compoundMock,
     aaveToken,
     config
@@ -753,6 +731,26 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
   await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
+  // Deploy Facade
+  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+
+  // Save ReadFacet to Facade
+  const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
+  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+  await facade.save(
+    readFacet.address,
+    Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
+  )
+
+  // Save ActFacet to Facade
+  const ActFacetFactory: ContractFactory = await ethers.getContractFactory('ActFacet')
+  const actFacet = <ActFacet>await ActFacetFactory.deploy()
+  await facade.save(
+    actFacet.address,
+    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -782,7 +780,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     gnosis,
     easyAuction,
     facade,
-    facadeAct,
+    readFacet,
+    actFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,

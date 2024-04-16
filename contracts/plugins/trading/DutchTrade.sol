@@ -8,6 +8,22 @@ import "../../libraries/NetworkConfigLib.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
+import "../../mixins/Versioned.sol";
+
+interface IDutchTradeCallee {
+    function dutchTradeCallback(
+        address buyToken,
+        // {qBuyTok}
+        uint256 buyAmount,
+        bytes calldata data
+    ) external;
+}
+
+enum BidType {
+    NONE,
+    CALLBACK,
+    TRANSFER
+}
 
 interface IDutchTradeCallee {
     function dutchTradeCallback(
@@ -83,7 +99,7 @@ uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
  * 3. Wait until the desired block is reached (hopefully not in the first 20% of the auction)
  * 4. Call bid()
  */
-contract DutchTrade is ITrade {
+contract DutchTrade is ITrade, Versioned {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 

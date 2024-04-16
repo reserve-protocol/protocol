@@ -14,6 +14,7 @@ import { advanceTime } from '../utils/time'
 import { bn, fp } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
+  ActFacet,
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
@@ -33,8 +34,6 @@ import {
   EasyAuction,
   ERC20Mock,
   EURFiatCollateral,
-  FacadeRead,
-  FacadeAct,
   FacadeTest,
   FiatCollateral,
   FurnaceP1,
@@ -43,6 +42,7 @@ import {
   IERC20Metadata,
   MainP1,
   NonFiatCollateral,
+  ReadFacet,
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
@@ -54,6 +54,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -154,7 +155,6 @@ interface CollateralFixture {
 }
 
 export async function collateralFixture(
-  comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   config: IConfig
 ): Promise<CollateralFixture> {
@@ -162,8 +162,6 @@ export async function collateralFixture(
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
-
-  const CTokenWrapperFactory = await ethers.getContractFactory('CTokenWrapper')
 
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
@@ -213,18 +211,12 @@ export async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenWrapperFactory.deploy(
-      erc20.address,
-      `${await erc20.name()} Vault`,
-      `${await erc20.symbol()}-VAULT`,
-      comptroller.address
-    )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkAddr,
         oracleError: ORACLE_ERROR,
-        erc20: vault.address,
+        erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -234,7 +226,7 @@ export async function collateralFixture(
       REVENUE_HIDING
     )
     await coll.refresh()
-    return [vault, coll]
+    return [erc20, coll]
   }
 
   const makeATokenCollateral = async (
@@ -309,18 +301,12 @@ export async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenWrapperFactory.deploy(
-      erc20.address,
-      `${await erc20.name()} Vault`,
-      `${await erc20.symbol()}-VAULT`,
-      comptroller.address
-    )
     const coll = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: referenceUnitOracleAddr,
         oracleError: ORACLE_ERROR,
-        erc20: vault.address,
+        erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String(targetName),
@@ -332,7 +318,7 @@ export async function collateralFixture(
       REVENUE_HIDING
     )
     await coll.refresh()
-    return [vault, coll]
+    return [erc20, coll]
   }
 
   const makeSelfReferentialCollateral = async (
@@ -365,19 +351,13 @@ export async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenWrapperFactory.deploy(
-      erc20.address,
-      `${await erc20.name()} Vault`,
-      `${await erc20.symbol()}-VAULT`,
-      comptroller.address
-    )
     const coll = <CTokenSelfReferentialCollateral>(
       await CTokenSelfReferentialCollateralFactory.deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: chainlinkAddr,
           oracleError: ORACLE_ERROR,
-          erc20: vault.address,
+          erc20: erc20.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String(targetName),
@@ -389,7 +369,7 @@ export async function collateralFixture(
       )
     )
     await coll.refresh()
-    return [vault, coll]
+    return [erc20, coll]
   }
 
   const makeEURFiatCollateral = async (
@@ -608,8 +588,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
   stRSR: TestIStRSR
-  facade: FacadeRead
-  facadeAct: FacadeAct
+  facade: TestIFacade
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -678,13 +657,25 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     AAVE_V2_DATA_PROVIDER_ADDR: networkConfig[chainId].AAVE_DATA_PROVIDER ?? ZERO_ADDRESS,
   }
 
-  // Deploy FacadeRead
-  const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
-  const facade = <FacadeRead>await FacadeReadFactory.deploy()
+  // Deploy Facade
+  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
 
-  // Deploy FacadeAct
-  const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
-  const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
+  // Save ReadFacet to Facade
+  const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
+  const readFacet = <ReadFacet>await ReadFacetFactory.deploy()
+  await facade.save(
+    readFacet.address,
+    Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
+  )
+
+  // Save ActFacet to Facade
+  const ActFacetFactory: ContractFactory = await ethers.getContractFactory('ActFacet')
+  const actFacet = <ActFacet>await ActFacetFactory.deploy()
+  await facade.save(
+    actFacet.address,
+    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+  )
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -876,7 +867,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    compoundMock,
     aaveMock,
     config
   )
@@ -947,7 +937,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     broker,
     easyAuction,
     facade,
-    facadeAct,
     facadeTest,
     facadeMonitor,
     rsrTrader,

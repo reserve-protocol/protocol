@@ -13,12 +13,6 @@ interface IEmaPriceOracleStableSwap {
 }
 
 /**
- * ************************************************************
- * WARNING: this plugin is not ready to be used in Production
- * ************************************************************
- */
-
-/**
  * @title SFraxEthCollateral
  * @notice Collateral plugin for Frax-ETH,
  * tok = sfrxETH

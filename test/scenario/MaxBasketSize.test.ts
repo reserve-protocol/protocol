@@ -10,12 +10,12 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
+  TestIFacade,
   TestIStRSR,
   MockV3Aggregator,
   StaticATokenMock,
@@ -65,7 +65,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: TestIBasketHandler
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
@@ -211,11 +211,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     return atoken
   }
 
-  const makeCToken = async (tokenName: string): Promise<CTokenWrapperMock> => {
+  const makeCToken = async (tokenName: string): Promise<CTokenMock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenWrapperMock'
-    )
+    const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     )
@@ -224,12 +222,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
     )
 
-    const ctoken: CTokenWrapperMock = <CTokenWrapperMock>(
-      await CTokenWrapperMockFactory.deploy(
+    const ctoken: CTokenMock = <CTokenMock>(
+      await CTokenMockFactory.deploy(
         'c' + tokenName,
         `${'c' + tokenName} symbol`,
         erc20.address,
-        compToken.address,
         compoundMock.address
       )
     )
@@ -491,7 +488,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await assetRegistry.toColl(backing[0])
       )
       for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {
-        const erc20 = await ethers.getContractAt('CTokenWrapperMock', backing[i])
+        const erc20 = await ethers.getContractAt('CTokenMock', backing[i])
         // Decrease rate to cause default in Ctoken
         await erc20.setExchangeRate(fp('0.8'))
 

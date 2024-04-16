@@ -159,16 +159,41 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         trackStatus();
     }
 
-    /// Track basket status changes if they ocurred
+    /// Track basket status and collateralization changes
     // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
     /// @custom:refresher
     function trackStatus() public {
+        // Historical context: This is not the ideal naming for this function but it allowed
+        // reweightable RTokens introduced in 3.2.0 to be a minor update as opposed to major
+
         CollateralStatus currentStatus = status();
         if (currentStatus != lastStatus) {
             emit BasketStatusChanged(lastStatus, currentStatus);
             lastStatus = currentStatus;
             lastStatusTimestamp = uint48(block.timestamp);
         }
+
+        // Invalidate old nonces if fully collateralized
+        if (reweightable && nonce > lastCollateralized && fullyCollateralized()) {
+            emit LastCollateralizedChanged(lastCollateralized, nonce);
+            lastCollateralized = nonce;
+        }
+    }
+
+    /// Set the prime basket
+    /// @param erc20s The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        _setPrimeBasket(erc20s, targetAmts, true);
+    }
+
+    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
+    /// @param erc20s The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
+    function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        _setPrimeBasket(erc20s, targetAmts, false);
     }
 
     /// Track when last collateralized
@@ -478,9 +503,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 basketNonces[i] >= lastCollateralized && basketNonces[i] <= nonce,
                 "invalid basketNonce"
             );
-            Basket storage b = basketHistory[basketNonces[i]];
+            // Known limitation: During an ongoing rebalance it may possible to redeem
+            // on a previous basket nonce for _more_ UoA value than the current basket.
+            // This can only occur for index RTokens, and the risk has been mitigated
+            // by updating `lastCollateralized` on every assetRegistry.refresh().
 
             // Add-in refAmts contribution from historical basket
+            Basket storage b = basketHistory[basketNonces[i]];
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 // untestable:
                 //     previous baskets erc20s do not contain the zero address
@@ -630,7 +659,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
-    // ==== FacadeRead views ====
+    // ==== ReadFacet views ====
     // Not used in-protocol; helpful for reconstructing state
 
     /// Get a reference basket in today's collateral tokens, by nonce
@@ -714,6 +743,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * BasketHandler uses 58 slots, not 50.
      */
-    uint256[28] private __gap;
+    uint256[36] private __gap;
 }

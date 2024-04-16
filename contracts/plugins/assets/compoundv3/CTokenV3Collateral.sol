@@ -22,27 +22,25 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    IERC20 public immutable rewardERC20;
     IComet public immutable comet;
-    uint256 public immutable reservesThresholdIffy; // {qUSDC}
     uint8 public immutable cometDecimals;
+    IERC20 private immutable comp;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding,
-        uint256 reservesThresholdIffy_
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
-        rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
+        comp = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
-        reservesThresholdIffy = reservesThresholdIffy_;
         cometDecimals = comet.decimals();
     }
 
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external override(Asset, IRewardable) {
+        uint256 bal = comp.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
     }
 
     function underlyingRefPerTok() public view virtual override returns (uint192) {
@@ -72,41 +70,34 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                 exposedReferencePrice = hiddenReferencePrice;
             }
 
-            int256 cometReserves = comet.getReserves();
-            if (cometReserves < 0) {
-                markStatus(CollateralStatus.DISABLED);
-            } else if (uint256(cometReserves) < reservesThresholdIffy) {
-                markStatus(CollateralStatus.IFFY);
-            } else {
-                // Check for soft default + save prices
-                try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
-                    // {UoA/tok}, {UoA/tok}, {target/ref}
-                    // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+                // {UoA/tok}, {UoA/tok}, {target/ref}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-                    // Save prices if priced
-                    if (high < FIX_MAX) {
-                        savedLowPrice = low;
-                        savedHighPrice = high;
-                        lastSave = uint48(block.timestamp);
-                    } else {
-                        // must be unpriced
-                        // untested:
-                        //      validated in other plugins, cost to test here is high
-                        assert(low == 0);
-                    }
-
-                    // If the price is below the default-threshold price, default eventually
-                    // uint192(+/-) is the same as Fix.plus/minus
-                    if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
-                        markStatus(CollateralStatus.IFFY);
-                    } else {
-                        markStatus(CollateralStatus.SOUND);
-                    }
-                } catch (bytes memory errData) {
-                    // see: docs/solidity-style.md#Catching-Empty-Data
-                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                    markStatus(CollateralStatus.IFFY);
+                // Save prices if priced
+                if (high < FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    lastSave = uint48(block.timestamp);
+                } else {
+                    // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
+                    assert(low == 0);
                 }
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data

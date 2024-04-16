@@ -124,10 +124,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
             if (addrTo == FURNACE) {
                 addrTo = furnaceAddr;
-                if (transferAmt > 0) accountRewards = true;
+                accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
-                if (transferAmt > 0) accountRewards = true;
+                accountRewards = true;
             }
 
             transfers[numTransfers] = Transfer({ addrTo: addrTo, amount: transferAmt });
@@ -215,6 +215,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * Distributor uses 53 slots, not 50.
      */
     uint256[41] private __gap;
 }

@@ -8,11 +8,11 @@ import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constan
 import { bn, fp } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
+  BadERC20,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
   CTokenMock,
-  CTokenWrapperMock,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
@@ -72,7 +72,7 @@ describe('Collateral contracts', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenWrapperMock
+  let cToken: CTokenMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
 
@@ -133,9 +133,7 @@ describe('Collateral contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
-    cToken = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await cTokenCollateral.erc20())
-    )
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
 
     await token.connect(owner).mint(owner.address, amt)
     await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
@@ -241,7 +239,7 @@ describe('Collateral contracts', () => {
       )
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenCollateral.claimRewards())
-        .to.emit(cToken, 'RewardsClaimed')
+        .to.emit(cTokenCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
   })
@@ -403,6 +401,41 @@ describe('Collateral contracts', () => {
           REVENUE_HIDING
         )
       ).to.be.revertedWith('delayUntilDefault too long')
+    })
+
+    it('Should not allow missing referenceERC20Decimals', async () => {
+      // CTokenFiatCollateral with decimals = 0 in underlying
+      const token0decimals: BadERC20 = await (
+        await ethers.getContractFactory('BadERC20')
+      ).deploy('Bad ERC20', 'BERC20')
+      await token0decimals.setDecimals(0)
+
+      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+      const cToken0Dec: CTokenMock = <CTokenMock>(
+        await CTokenMockFactory.deploy(
+          '0 Decimal Token',
+          '0 Decimal Token',
+          token0decimals.address,
+          compoundMock.address
+        )
+      )
+
+      await expect(
+        CTokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cToken0Dec.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('referenceERC20Decimals missing')
     })
 
     it('Should not allow out of range oracle error', async () => {
@@ -819,6 +852,57 @@ describe('Collateral contracts', () => {
       expect(await unpricedAppFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
     })
 
+    it('Should not save prices if try/price returns unpriced - Fiat Collateral', async () => {
+      const UnpricedFiatFactory = await ethers.getContractFactory('UnpricedFiatCollateralMock')
+      const unpricedFiatCollateral: UnpricedFiatCollateralMock = <UnpricedFiatCollateralMock>(
+        await UnpricedFiatFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await tokenCollateral.chainlinkFeed(), // reuse - mock
+          oracleError: ORACLE_ERROR,
+          erc20: token.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      )
+
+      // Save prices
+      await unpricedFiatCollateral.refresh()
+
+      // Check initial prices
+      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(unpricedFiatCollateral.address, fp('1'), ORACLE_ERROR, true)
+      let [lowPrice, highPrice] = await unpricedFiatCollateral.price()
+      expect(await unpricedFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedFiatCollateral.lastSave()).to.be.equal(currBlockTimestamp)
+
+      // Refresh saved prices
+      await unpricedFiatCollateral.refresh()
+
+      // Check values remain but timestamp was updated
+      await expectPrice(unpricedFiatCollateral.address, fp('1'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await unpricedFiatCollateral.price()
+      expect(await unpricedFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await unpricedFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
+
+      // Set as unpriced so it returns 0,FIX MAX in try/price
+      await unpricedFiatCollateral.setUnpriced(true)
+
+      // Check that now is unpriced
+      await expectUnpriced(unpricedFiatCollateral.address)
+
+      // Refreshing would not save the new rates
+      await unpricedFiatCollateral.refresh()
+      expect(await unpricedFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
+    })
+
     it('lotPrice (deprecated) is equal to price()', async () => {
       for (const coll of [tokenCollateral, usdcCollateral, aTokenCollateral, cTokenCollateral]) {
         const lotPrice = await coll.lotPrice()
@@ -978,6 +1062,9 @@ describe('Collateral contracts', () => {
           .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
         expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+        // Refresh is a noop if DISABLED
+        await expect(coll.refresh()).to.not.emit(coll, 'CollateralStatusChanged')
       }
     })
 
@@ -1021,10 +1108,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenCollateral.refresh())
@@ -1043,6 +1127,43 @@ describe('Collateral contracts', () => {
       const [newLow, newHigh] = await cTokenCollateral.price()
       expect(newLow).to.equal(currLow)
       expect(newHigh).to.equal(currHigh)
+
+      // Refresh is a noop if already DISABLED
+      await expect(cTokenCollateral.refresh()).to.not.emit(
+        cTokenCollateral,
+        'CollateralStatusChanged'
+      )
+    })
+
+    it('CTokens - Enters DISABLED state when underlyingRefPerTok reverts', async () => {
+      const [currLow, currHigh] = await cTokenCollateral.price()
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Make cToken revert on underlyingRefPerTok
+      await cToken.setRevertExchangeRateStored(true)
+      await expect(cToken.exchangeRateStored()).to.be.reverted
+      await expect(cTokenCollateral.underlyingRefPerTok()).to.be.reverted
+
+      // Refresh - should not revert - Sets DISABLED
+      await expect(cTokenCollateral.refresh())
+        .to.emit(cTokenCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Price remains the same
+      await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await cTokenCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
+
+      // Refresh is a noop if already DISABLED
+      await expect(cTokenCollateral.refresh()).to.not.emit(
+        cTokenCollateral,
+        'CollateralStatusChanged'
+      )
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - Fiat', async () => {
@@ -1445,7 +1566,7 @@ describe('Collateral contracts', () => {
     let CTokenNonFiatFactory: ContractFactory
     let cTokenNonFiatCollateral: CTokenNonFiatCollateral
     let nonFiatToken: ERC20Mock
-    let cNonFiatTokenVault: CTokenWrapperMock
+    let cNonFiatToken: CTokenMock
     let targetUnitOracle: MockV3Aggregator
     let referenceUnitOracle: MockV3Aggregator
 
@@ -1461,15 +1582,9 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
       )
       // cToken
-      cNonFiatTokenVault = await (
-        await ethers.getContractFactory('CTokenWrapperMock')
-      ).deploy(
-        'cWBTC Token',
-        'cWBTC',
-        nonFiatToken.address,
-        compToken.address,
-        compoundMock.address
-      )
+      cNonFiatToken = await (
+        await ethers.getContractFactory('CTokenMock')
+      ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address, compoundMock.address)
 
       CTokenNonFiatFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 
@@ -1478,7 +1593,7 @@ describe('Collateral contracts', () => {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
-          erc20: cNonFiatTokenVault.address,
+          erc20: cNonFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1492,7 +1607,7 @@ describe('Collateral contracts', () => {
       await cTokenNonFiatCollateral.refresh()
 
       // Mint some tokens
-      await cNonFiatTokenVault.connect(owner).mint(owner.address, amt.div(bn('1e10')))
+      await cNonFiatToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
     })
 
     it('Should not allow missing delayUntilDefault', async () => {
@@ -1502,7 +1617,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1523,7 +1638,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1544,7 +1659,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: ZERO_ADDRESS,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1565,7 +1680,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1586,7 +1701,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1607,7 +1722,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1629,8 +1744,8 @@ describe('Collateral contracts', () => {
       )
       expect(await cTokenNonFiatCollateral.chainlinkFeed()).to.equal(referenceUnitOracle.address)
       expect(await cTokenNonFiatCollateral.referenceERC20Decimals()).to.equal(18)
-      expect(await cTokenNonFiatCollateral.erc20()).to.equal(cNonFiatTokenVault.address)
-      expect(await cNonFiatTokenVault.decimals()).to.equal(8)
+      expect(await cTokenNonFiatCollateral.erc20()).to.equal(cNonFiatToken.address)
+      expect(await cNonFiatToken.decimals()).to.equal(8)
       expect(await cTokenNonFiatCollateral.targetName()).to.equal(
         ethers.utils.formatBytes32String('BTC')
       )
@@ -1654,7 +1769,7 @@ describe('Collateral contracts', () => {
 
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true) // 0.02 of 20k
       await expect(cTokenNonFiatCollateral.claimRewards())
-        .to.emit(cNonFiatTokenVault, 'RewardsClaimed')
+        .to.emit(cTokenNonFiatCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
 
@@ -1664,7 +1779,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Increase rate to double
-      await cNonFiatTokenVault.setExchangeRate(fp(2))
+      await cNonFiatToken.setExchangeRate(fp(2))
       await cTokenNonFiatCollateral.refresh()
 
       // RefPerTok also doubles in this case
@@ -1720,17 +1835,14 @@ describe('Collateral contracts', () => {
     })
 
     it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cNonFiatTokenVault.exchangeRateStored()
+      const currRate = await cNonFiatToken.exchangeRateStored()
       const [currLow, currHigh] = await cTokenNonFiatCollateral.price()
 
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cNonFiatTokenVault.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cNonFiatToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenNonFiatCollateral.refresh())
@@ -1742,77 +1854,19 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Exchange rate stored is still accessible
-      expect(await cNonFiatTokenVault.exchangeRateStored()).to.equal(currRate)
+      expect(await cNonFiatToken.exchangeRateStored()).to.equal(currRate)
 
       // Price remains the same
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
       const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
       expect(newLow).to.equal(currLow)
       expect(newHigh).to.equal(currHigh)
-    })
 
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cNonFiatTokenVault.exchangeRateStored()
-      const [currLow, currHigh] = await cTokenNonFiatCollateral.price()
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-
-      // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cNonFiatTokenVault.underlying())
+      // Refresh is a noop if DISABLED
+      await expect(cTokenNonFiatCollateral.refresh()).to.not.emit(
+        cTokenNonFiatCollateral,
+        'CollateralStatusChanged'
       )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
-
-      // Refresh - should not revert - Sets DISABLED
-      await expect(cTokenNonFiatCollateral.refresh())
-        .to.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Exchange rate stored is still accessible
-      expect(await cNonFiatTokenVault.exchangeRateStored()).to.equal(currRate)
-
-      // Price remains the same
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
-    })
-
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cNonFiatTokenVault.exchangeRateStored()
-      const [currLow, currHigh] = await cTokenNonFiatCollateral.price()
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-
-      // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cNonFiatTokenVault.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
-
-      // Refresh - should not revert - Sets DISABLED
-      await expect(cTokenNonFiatCollateral.refresh())
-        .to.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Exchange rate stored is still accessible
-      expect(await cNonFiatTokenVault.exchangeRateStored()).to.equal(currRate)
-
-      // Price remains the same
-      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
@@ -1826,7 +1880,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
+            erc20: cNonFiatToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1855,7 +1909,7 @@ describe('Collateral contracts', () => {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
-          erc20: cNonFiatTokenVault.address,
+          erc20: cNonFiatToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
@@ -2028,7 +2082,7 @@ describe('Collateral contracts', () => {
     let CTokenSelfReferentialFactory: ContractFactory
     let cTokenSelfReferentialCollateral: CTokenSelfReferentialCollateral
     let selfRefToken: WETH9
-    let cSelfRefToken: CTokenWrapperMock
+    let cSelfRefToken: CTokenMock
     let chainlinkFeed: MockV3Aggregator
 
     beforeEach(async () => {
@@ -2039,8 +2093,8 @@ describe('Collateral contracts', () => {
 
       // cToken Self Ref
       cSelfRefToken = await (
-        await ethers.getContractFactory('CTokenWrapperMock')
-      ).deploy('cETH Token', 'cETH', selfRefToken.address, compToken.address, compoundMock.address)
+        await ethers.getContractFactory('CTokenMock')
+      ).deploy('cETH Token', 'cETH', selfRefToken.address, compoundMock.address)
 
       CTokenSelfReferentialFactory = await ethers.getContractFactory(
         'CTokenSelfReferentialCollateral'
@@ -2156,7 +2210,7 @@ describe('Collateral contracts', () => {
 
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenSelfReferentialCollateral.claimRewards())
-        .to.emit(cSelfRefToken, 'RewardsClaimed')
+        .to.emit(cTokenSelfReferentialCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
 
@@ -2212,10 +2266,7 @@ describe('Collateral contracts', () => {
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
+      await cSelfRefToken.setRevertExchangeRateCurrent(true)
 
       // Refresh - should not revert - Sets DISABLED
       await expect(cTokenSelfReferentialCollateral.refresh())
@@ -2234,70 +2285,12 @@ describe('Collateral contracts', () => {
       const [newLow, newHigh] = await cTokenSelfReferentialCollateral.price()
       expect(newLow).to.equal(currLow)
       expect(newHigh).to.equal(currHigh)
-    })
 
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cSelfRefToken.exchangeRateStored()
-      const [currLow, currHigh] = await cTokenSelfReferentialCollateral.price()
-
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
-
-      // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
+      // Refresh is a noop if DISABLED
+      await expect(cTokenSelfReferentialCollateral.refresh()).to.not.emit(
+        cTokenSelfReferentialCollateral,
+        'CollateralStatusChanged'
       )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
-
-      // Refresh - should not revert - Sets DISABLED
-      await expect(cTokenSelfReferentialCollateral.refresh())
-        .to.emit(cTokenSelfReferentialCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Exchange rate stored is still accessible
-      expect(await cSelfRefToken.exchangeRateStored()).to.equal(currRate)
-
-      // Price remains the same
-      await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await cTokenSelfReferentialCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
-    })
-
-    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      const currRate = await cSelfRefToken.exchangeRateStored()
-      const [currLow, currHigh] = await cTokenSelfReferentialCollateral.price()
-
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
-
-      // Make cToken revert on exchangeRateCurrent()
-      const cTokenErc20Mock = <CTokenMock>(
-        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
-      )
-      await cTokenErc20Mock.setRevertExchangeRate(true)
-
-      // Refresh - should not revert - Sets DISABLED
-      await expect(cTokenSelfReferentialCollateral.refresh())
-        .to.emit(cTokenSelfReferentialCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Exchange rate stored is still accessible
-      expect(await cSelfRefToken.exchangeRateStored()).to.equal(currRate)
-
-      // Price remains the same
-      await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
-      const [newLow, newHigh] = await cTokenSelfReferentialCollateral.price()
-      expect(newLow).to.equal(currLow)
-      expect(newHigh).to.equal(currHigh)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {

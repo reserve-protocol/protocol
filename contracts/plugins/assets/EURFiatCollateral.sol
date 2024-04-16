@@ -55,6 +55,8 @@ contract EURFiatCollateral is FiatCollateral {
         uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
 
         // div-by-zero later
+        // untestable:
+        //      calls to price() on the feed never return zero if using OracleLib
         if (pricePerTarget == 0) {
             return (0, FIX_MAX, 0);
         }
