@@ -231,6 +231,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * AssetRegistry uses 52 slots, not 50.
      */
     uint256[46] private __gap;
 }

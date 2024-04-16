@@ -48,15 +48,33 @@ interface IBasketHandler is IComponent {
     /// @param newStatus The new basket status
     event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
+    /// Emitted when the last basket nonce available for redemption is changed
+    /// @param oldVal The old value of lastCollateralized
+    /// @param newVal The new value of lastCollateralized
+    event LastCollateralizedChanged(uint48 oldVal, uint48 newVal);
+
     // Initialization
-    function init(IMain main_, uint48 warmupPeriod_) external;
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external;
 
     /// Set the prime basket
+    /// For an index RToken (reweightable = true), use forceSetPrimeBasket to skip normalization
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     ///                   required range: 1e9 values; absolute range irrelevant.
     /// @custom:governance
-    function setPrimeBasket(IERC20[] memory erc20s, uint192[] memory targetAmts) external;
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external;
+
+    /// Set the prime basket without normalizing targetAmts by the UoA of the current basket
+    /// Works the same as setPrimeBasket for non-index RTokens (reweightable = false)
+    /// @param erc20s The collateral tokens for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    ///                   required range: 1e9 values; absolute range irrelevant.
+    /// @custom:governance
+    function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
@@ -79,7 +97,7 @@ interface IBasketHandler is IComponent {
     /// @custom:interaction
     function refreshBasket() external;
 
-    /// Track the basket status changes
+    /// Track basket status and collateralization changes
     /// @custom:refresher
     function trackStatus() external;
 
@@ -153,6 +171,8 @@ interface IBasketHandler is IComponent {
 }
 
 interface TestIBasketHandler is IBasketHandler {
+    function lastCollateralized() external view returns (uint48);
+
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;

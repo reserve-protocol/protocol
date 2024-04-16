@@ -7,7 +7,13 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
-import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from './fixtures'
+import {
+  DefaultFixture,
+  Fixture,
+  getDefaultFixture,
+  ORACLE_TIMEOUT,
+  ORACLE_TIMEOUT_BUFFER,
+} from './fixtures'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { whileImpersonating } from '../../utils/impersonation'
 import { IGovParams, IGovRoles, IRTokenSetup, networkConfig } from '../../../common/configuration'
@@ -78,11 +84,13 @@ export default function fn<X extends CollateralFixtureContext>(
     getExpectedPrice,
     itClaimsRewards,
     itChecksTargetPerRefDefault,
+    itChecksTargetPerRefDefaultUp,
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
     itChecksNonZeroDefaultThreshold,
     itHasRevenueHiding,
     itIsPricedByPeg,
+    itHasOracleRefPerTok,
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
@@ -223,6 +231,18 @@ export default function fn<X extends CollateralFixtureContext>(
       describe('prices', () => {
         before(resetFork) // important for getting prices/refPerToks to behave predictably
 
+        it('enters IFFY state when price becomes stale', async () => {
+          const decayDelay = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceBlocks(decayDelay / 12)
+          await collateral.refresh()
+          expect(await collateral.status()).to.not.equal(CollateralStatus.SOUND)
+          if (!itHasOracleRefPerTok) {
+            // if an oracle isn't involved in refPerTok, then it should disable slowly
+            expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          }
+        })
+
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
@@ -330,9 +350,9 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
           // After oracle timeout decay begins
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(1 + oracleTimeout / 12)
+          const decayDelay = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + decayDelay)
+          await advanceBlocks(1 + decayDelay / 12)
           await collateral.refresh()
           await expectDecayedPrice(collateral.address)
 
@@ -356,32 +376,33 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itHasRevenueHiding('does revenue hiding correctly', async () => {
-          ctx.collateral = await deployCollateral({
+          const tempCtx = await makeCollateralFixtureContext(alice, {
             erc20: ctx.tok.address,
             revenueHiding: fp('0.01'),
-          })
+          })()
+          // ctx.collateral = await deployCollateral()
 
           // Should remain SOUND after a 1% decrease
-          let refPerTok = await ctx.collateral.refPerTok()
-          await reduceRefPerTok(ctx, 1) // 1% decrease
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          let refPerTok = await tempCtx.collateral.refPerTok()
+          await reduceRefPerTok(tempCtx, 1) // 1% decrease
+          await tempCtx.collateral.refresh()
+          expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.SOUND)
 
           // refPerTok should be unchanged
-          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+          expect(await tempCtx.collateral.refPerTok()).to.be.closeTo(
             refPerTok,
             refPerTok.div(bn('1e3'))
           ) // within 1-part-in-1-thousand
 
           // Should become DISABLED if drops more than that
-          refPerTok = await ctx.collateral.refPerTok()
-          await reduceRefPerTok(ctx, 1) // another 1% decrease
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+          refPerTok = await tempCtx.collateral.refPerTok()
+          await reduceRefPerTok(tempCtx, 1) // another 1% decrease
+          await tempCtx.collateral.refresh()
+          expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.DISABLED)
 
           // refPerTok should have fallen 1%
           refPerTok = refPerTok.sub(refPerTok.div(100))
-          expect(await ctx.collateral.refPerTok()).to.be.closeTo(
+          expect(await tempCtx.collateral.refPerTok()).to.be.closeTo(
             refPerTok,
             refPerTok.div(bn('1e3'))
           ) // within 1-part-in-1-thousand
@@ -411,14 +432,6 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
         })
 
-        it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(oracleTimeout / 12)
-          await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-        })
-
         it('decays price over priceTimeout period', async () => {
           await collateral.refresh()
           const savedLow = await collateral.savedLowPrice()
@@ -428,7 +441,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(p[0]).to.equal(savedLow)
           expect(p[1]).to.equal(savedHigh)
 
-          await advanceTime(await collateral.oracleTimeout())
+          await advanceTime((await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await collateral.priceTimeout()
@@ -453,6 +466,8 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('status', () => {
+        before(resetFork)
+
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -489,7 +504,7 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         )
 
-        itChecksTargetPerRefDefault(
+        itChecksTargetPerRefDefaultUp(
           'enters IFFY state when target-per-ref depegs above high threshold',
           async () => {
             const delayUntilDefault = await collateral.delayUntilDefault()
@@ -603,14 +618,16 @@ export default function fn<X extends CollateralFixtureContext>(
           })
 
           it('after oracle timeout', async () => {
-            const oracleTimeout = await collateral.oracleTimeout()
+            const oracleTimeout = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
             await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
             await advanceBlocks(oracleTimeout / 12)
           })
 
           it('after full price timeout', async () => {
             await advanceTime(
-              (await collateral.priceTimeout()) + (await collateral.oracleTimeout())
+              ORACLE_TIMEOUT_BUFFER +
+                (await collateral.priceTimeout()) +
+                (await collateral.maxOracleTimeout())
             )
             const p = await collateral.price()
             expect(p[0]).to.equal(0)
@@ -692,6 +709,7 @@ export default function fn<X extends CollateralFixtureContext>(
           amtRate: fp('1e6'), // 1M RToken
           pctRate: fp('0.05'), // 5%
         },
+        reweightable: false,
       }
 
       interface IntegrationFixture {
@@ -833,6 +851,8 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       it('rebalances out of the collateral', async () => {
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await pairedERC20.connect(addr1).approve(router.address, MAX_UINT256)
         // Remove collateral from basket
         await basketHandler.connect(owner).setPrimeBasket([pairedERC20.address], [fp('1e-4')])
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -855,12 +875,18 @@ export default function fn<X extends CollateralFixtureContext>(
         await pairedERC20.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
         const pairedBal = await pairedERC20.balanceOf(backingManager.address)
-        await expect(trade.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
+
+        await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
+          backingManager,
+          'TradeSettled'
+        )
         expect(await pairedERC20.balanceOf(backingManager.address)).to.be.gt(pairedBal)
         expect(await backingManager.tradesOpen()).to.equal(0)
       })
 
       it('forwards revenue and sells in a revenue auction', async () => {
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await rToken.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
         const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
         await mintCollateralTo(
@@ -886,7 +912,11 @@ export default function fn<X extends CollateralFixtureContext>(
         const buyAmt = await trade.bidAmount(await trade.endBlock())
         await rToken.connect(addr1).approve(trade.address, buyAmt)
         await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
-        await expect(trade.connect(addr1).bid()).to.emit(rTokenTrader, 'TradeSettled')
+
+        await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
+          rTokenTrader,
+          'TradeSettled'
+        )
         expect(await rTokenTrader.tradesOpen()).to.equal(0)
       })
 
@@ -922,9 +952,9 @@ export default function fn<X extends CollateralFixtureContext>(
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: chainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: erc20.address,
-            maxTradeVolume: MAX_UINT192,
             oracleTimeout: ORACLE_TIMEOUT,
+            maxTradeVolume: MAX_UINT192,
+            erc20: erc20.address,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold: fp('0.01'), // 1%
             delayUntilDefault: bn('86400'), // 24h,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CollateralConfig, MorphoFiatCollateral } from "./MorphoFiatCollateral.sol";
 import { FixLib, CEIL } from "../../../libraries/Fixed.sol";
 import { OracleLib } from "../OracleLib.sol";
@@ -32,6 +33,7 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
     ) MorphoFiatCollateral(config, revenueHiding) {
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetUnitOracleTimeout_));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -52,7 +54,7 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 p = targetUnitChainlinkFeed.price(targetUnitOracleTimeout).mul(pegPrice).mul(
-            _underlyingRefPerTok()
+            underlyingRefPerTok()
         );
         uint192 err = p.mul(oracleError, CEIL);
 

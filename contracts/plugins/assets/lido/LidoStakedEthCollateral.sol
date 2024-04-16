@@ -33,12 +33,14 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         AggregatorV3Interface _targetPerRefChainlinkFeed,
         uint48 _targetPerRefChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
+
         require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
-        require(_targetPerRefChainlinkTimeout > 0, "targetPerRefChainlinkTimeout zero");
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(_targetPerRefChainlinkTimeout != 0, "targetPerRefChainlinkTimeout zero");
 
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
         targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
+        maxOracleTimeout = uint48(Math.max(maxOracleTimeout, targetPerRefChainlinkTimeout));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -59,7 +61,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
@@ -68,8 +70,9 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rate = IWSTETH(address(erc20)).stEthPerToken();
+
         return _safeWrap(rate);
     }
 }

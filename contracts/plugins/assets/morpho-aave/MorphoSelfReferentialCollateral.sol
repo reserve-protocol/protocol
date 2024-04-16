@@ -50,7 +50,7 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
         )
     {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         low = p - err;
@@ -61,7 +61,7 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals);
     }
 }

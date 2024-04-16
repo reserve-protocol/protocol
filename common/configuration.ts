@@ -88,6 +88,8 @@ export interface IFeeds {
   stETHUSD?: string
   wstETHstETHexr?: string
   cbETHETHexr?: string
+  ETHUSD?: string
+  wstETHstETH?: string
 }
 
 export interface IPools {
@@ -124,6 +126,7 @@ interface INetworkConfig {
   AAVE_V3_INCENTIVES_CONTROLLER?: string
   AAVE_V3_POOL?: string
   STARGATE_STAKING_CONTRACT?: string
+  CURVE_POOL_WETH_FRXETH?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -220,6 +223,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
+      frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -240,6 +244,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
+    CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
   },
   '1': {
     name: 'mainnet',
@@ -345,6 +350,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
+    CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
   },
   '3': {
     name: 'tenderly',
@@ -445,6 +451,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
+    CURVE_POOL_WETH_FRXETH: '0xa1F8A6807c402E4A15ef4EBa36528A3FED24E577',
   },
   '5': {
     name: 'goerli',
@@ -548,6 +555,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
+      wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
     },
     chainlinkFeeds: {
@@ -562,6 +570,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETHstETHexr: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24hr
       cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
       STG: '0x63Af8341b62E683B87bB540896bF283D96B4D385',
+      stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
+      ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
+      wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
@@ -596,6 +607,7 @@ export interface IConfig {
   unstakingDelay: BigNumber
   withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
+  reweightable: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber

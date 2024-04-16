@@ -1,8 +1,68 @@
 # Changelog
 
+# 3.2.0
+
+This release makes bidding in dutch auctions easier for MEV searchers and gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.
+
+## Upgrade Steps
+
+Upgrade BasketHandler, BackingManager, and Distributor.
+
+Call `broker.setDutchTradeImplementation(newGnosisTrade)` with the new `DutchTrade` contract address.
+
+If this is the first upgrade to a >= 3.0.0 token, call `*.cacheComponents()` on all components.
+
+For plugins, upgrade all plugins that contain an appreciating asset (not FiatCollateral. AppreciatingFiatCollateral etc) OR contain multiple oracle feeds.
+
+## Core Protocol Contracts
+
+New governance param added: `reweightable`
+
+- `BackingManager`
+  - Track basket nonce last collateralized at end of `settleTrade()`
+- `BasketHandler` [+1 slot]
+  - Restrict `redeemCustom()` to nonces after `lastCollateralized`
+  - New `LastCollateralizedChanged()` event -- track to determine earliest basket nonce to use for `redeemCustom()`
+  - Add concept of a reweightable basket: a basket that can have its target amounts (once grouped by target unit) changed
+  - Add `reweightable()` view
+  - Add `forceSetPrimeBasket()` to allow setting a new prime basket without normalizing by USD value
+  - Alter `setPrimeBasket()` to enforce basket normalization for reweightable RTokens
+- `BackingManager`
+  - Minor gas optimization
+- `Deployer`
+  - New boolean field `reweightable` added to `IDeployer.DeploymentParams`
+- `Distributor`
+  - Minor gas optimization
+
+## Plugins
+
+### Assets
+
+- frax-eth: Add new `sFrxETH` plugin that leverages a curve EMA
+- stargate: Continue transfers of wrapper tokens if stargate rewards break
+- All plugins with variable refPerTok(): do not revert refresh() when underlying protocol reverts
+- All plugins with multiple chainlink feeds will now timeout over the maximum of the feeds' timeouts
+- Add ORACLE_TIMEOUT_BUFFER to all usages of chainlink feeds
+
+### Facades
+
+- `FacadeRead`
+  - Use avg prices instead of low prices in `backingOverview()` and `basketBreakdown()`
+
+### Trading
+
+- `DutchTrade`
+
+  - Add new `bidTradeCallback()` function to allow payment of tokens at the _end_ of the tx, removing need for flash loans. Example of how-to-use in `contracts/plugins/mocks/DutchTradeRouter.sol`
+
+  ### Facades
+
+  - `FacadeRead`
+    - Add `maxIssuableByAmounts()` function to provide an estimation independent of account balances
+
 # 3.1.0
 
-### Upgrade Steps -- Required
+## Upgrade Steps
 
 Upgrade all core contracts and _all_ assets. Most ERC20s do not need to be upgraded. Use `Deployer.deployRTokenAsset()` to create a new `RTokenAsset` instance. This asset should be swapped too.
 
@@ -16,7 +76,7 @@ Then, call `Broker.cacheComponents()`.
 
 Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
 
-### Core Protocol Contracts
+## Core Protocol Contracts
 
 - `BackingManager` [+2 slots]
   - Replace use of `lotPrice()` with `price()` everywhere
@@ -48,7 +108,7 @@ Finally, call `Broker.setBatchTradeImplementation(newGnosisTrade)`.
   - Use correct era in `UnstakingStarted` event
   - Expose `draftEra` via `getDraftEra()` view
 
-### Facades
+## Facades
 
 - `FacadeMonitor`
   - Add `batchAuctionsDisabled()` view

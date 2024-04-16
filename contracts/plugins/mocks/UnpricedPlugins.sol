@@ -85,7 +85,7 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
         pegPrice = chainlinkFeed.price(oracleTimeout);
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 p = pegPrice.mul(_underlyingRefPerTok());
+        uint192 p = pegPrice.mul(underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         low = p - err;
@@ -94,7 +94,7 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
     }
 
     /// Mock function, required but not used in tests
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function underlyingRefPerTok() public view override returns (uint192) {
         return mockRefPerTok;
     }
 

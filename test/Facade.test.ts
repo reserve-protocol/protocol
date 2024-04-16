@@ -49,7 +49,7 @@ import {
   IMPLEMENTATION,
   defaultFixture,
   ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './fixtures'
 import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
@@ -205,10 +205,10 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
       expect(erc20s[3]).to.equal(cTokenVault.address)
-      expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[0]).to.equal(fp('0.25'))
+      expect(breakdown[1]).to.equal(fp('0.25'))
+      expect(breakdown[2]).to.equal(fp('0.25'))
+      expect(breakdown[3]).to.equal(fp('0.25'))
       expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -256,6 +256,32 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       )
     })
 
+    it('Should return maxIssuableByAmounts correctly', async () => {
+      const [erc20Addrs] = await basketHandler.quote(fp('1'), 0)
+      const erc20s = await Promise.all(erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a)))
+      const addr1Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr1.address)))
+      const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
+      const otherAmounts = await Promise.all(erc20s.map((e) => e.balanceOf(other.address)))
+
+      // Check values
+      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr1Amounts)).to.equal(
+        bn('39999999900e18')
+      )
+      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr2Amounts)).to.equal(
+        bn('40000000000e18')
+      )
+      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, otherAmounts)).to.equal(0)
+
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount)
+      const newAddr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
+
+      // With 0 baskets needed - Returns correct value
+      expect(
+        await facade.callStatic.maxIssuableByAmounts(rToken.address, newAddr2Amounts)
+      ).to.equal(bn('40000000000e18'))
+    })
+
     it('Should revert maxIssuable when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.be.revertedWith(
@@ -284,7 +310,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
     it('Should handle UNPRICED when returning issuable quantities', async () => {
       // Set unpriced assets, should return UoA = 0
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
@@ -495,7 +521,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
 
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(tokenAsset.address, bn('1e8'))
       await setOraclePrice(usdcAsset.address, bn('1e8'))
       await assetRegistry.refresh()
@@ -523,7 +549,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(tokenAsset.address, bn('1e8'))
       await setOraclePrice(usdcAsset.address, bn('1e8'))
       await assetRegistry.refresh()
@@ -579,7 +605,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
 
       await setOraclePrice(usdcAsset.address, bn('0'))
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(tokenAsset.address, bn('1e8'))
       await setOraclePrice(rsrAsset.address, bn('1e8'))
       await assetRegistry.refresh()
@@ -913,7 +939,7 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       )
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
-      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
       await setOraclePrice(usdcAsset.address, bn('1e8'))
       await assetRegistry.refresh()
       await main.connect(owner).pauseTrading()
@@ -934,6 +960,24 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
+    it('Should return basketBreakdown correctly for tokens with different oracleErrors', async () => {
+      const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+      const largeErrDai = await FiatCollateralFactory.deploy({
+        priceTimeout: await tokenAsset.priceTimeout(),
+        chainlinkFeed: await tokenAsset.chainlinkFeed(),
+        oracleError: ORACLE_ERROR.mul(4),
+        erc20: await tokenAsset.erc20(),
+        maxTradeVolume: await tokenAsset.maxTradeVolume(),
+        oracleTimeout: await tokenAsset.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'),
+        delayUntilDefault: await tokenAsset.delayUntilDefault(),
+      })
+      await assetRegistry.swapRegistered(largeErrDai.address)
+      await basketHandler.connect(owner).refreshBasket()
+      await expectValidBasketBreakdown(rToken) // should still be 25/25/25/25 split
     })
 
     it('Should return totalAssetValue correctly - FacadeTest', async () => {
@@ -966,30 +1010,39 @@ describe('FacadeRead + FacadeAct + FacadeMonitor contracts', () => {
       })
 
       it('Should return pending unstakings', async () => {
-        // Bump draftEra by seizing RSR when the withdrawal queue is empty
-        await rsr.connect(owner).mint(stRSRP1.address, 1)
-        await whileImpersonating(backingManager.address, async (signer) => {
-          await stRSRP1.connect(signer).seizeRSR(1)
-        })
-        const draftEra = await stRSRP1.getDraftEra()
-        expect(draftEra).to.equal(2)
-
         // Stake
         const unstakeAmount = bn('10000e18')
-        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(10))
-        await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(10))
-        await stRSRP1.connect(addr1).stake(unstakeAmount.mul(10))
+        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(20))
+        await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(20))
+        await stRSRP1.connect(addr1).stake(unstakeAmount.mul(20))
 
-        await stRSRP1.connect(addr1).unstake(unstakeAmount)
-        await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
+        // Bump draftEra by seizing half the RSR when the withdrawal queue is empty
+        let draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(1)
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await stRSRP1.connect(signer).seizeRSR(unstakeAmount.mul(10)) // seize half
+        })
+        draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(2) // era bumps because queue is empty
+
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(4)) // eventually 75% StRSR/RSR depreciation
+
+        // Bump draftEra by seizing half the RSR when the queue is empty
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await stRSRP1.connect(signer).seizeRSR(unstakeAmount.mul(5)) // seize half, again
+        })
+        draftEra = await stRSRP1.getDraftEra()
+        expect(draftEra).to.equal(2) // no era bump
+
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.mul(4).add(1)) // test rounding
 
         const pendings = await facade.pendingUnstakings(rToken.address, draftEra, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
-        expect(pendings[0][2]).to.eql(unstakeAmount) // amount
+        expect(pendings[0][2]).to.eql(unstakeAmount) // RSR amount, not draft amount
 
         expect(pendings[1][0]).to.eql(bn(1)) // index
-        expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
+        expect(pendings[1][2]).to.eql(unstakeAmount) // RSR amount, not draft amount
       })
 
       it('Should return prime basket', async () => {

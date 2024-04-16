@@ -1,0 +1,34 @@
+{
+  "prerequisites": {
+    "RSR": "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
+    "RSR_FEED": "0x759bBC1be8F90eE6457C44abc7d443842a976d02",
+    "GNOSIS_EASY_AUCTION": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101"
+  },
+  "tradingLib": "",
+  "basketLib": "",
+  "facadeRead": "",
+  "facadeAct": "",
+  "facadeWriteLib": "",
+  "facadeWrite": "",
+  "deployer": "",
+  "rsrAsset": "",
+  "implementations": {
+    "main": "",
+    "trading": {
+      "gnosisTrade": "",
+      "dutchTrade": "0xa3f994235a3b42f71e5F8Aba9A4190e47cd34eE8"
+    },
+    "components": {
+      "assetRegistry": "",
+      "backingManager": "",
+      "basketHandler": "",
+      "broker": "",
+      "distributor": "",
+      "furnace": "",
+      "rsrTrader": "",
+      "rTokenTrader": "",
+      "rToken": "",
+      "stRSR": ""
+    }
+  }
+}

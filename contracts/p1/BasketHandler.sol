@@ -38,7 +38,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     IStRSR private stRSR;
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
-    // event. config is only modified by governance through setPrimeBakset and setBackupConfig
+    // event. config is only modified by governance through setPrimeBasket and setBackupConfig
     BasketConfig private config;
 
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
@@ -76,8 +76,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
-    // Effectively local variable of `requireConstantConfigTargets()`
+    // Effectively local variable of `BasketLibP1.requireConstantConfigTargets()`
     EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
+
+    // ===
+    // Added in 3.2.0
+
+    // Whether the total weights of the target basket can be changed
+    bool public reweightable; // immutable after init
+
+    uint48 public lastCollateralized; // {basketNonce} most recent full collateralization
 
     // ===
 
@@ -91,7 +99,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // if basket.erc20s is empty then disabled == true
 
     // BasketHandler.init() just leaves the BasketHandler state zeroed
-    function init(IMain main_, uint48 warmupPeriod_) external initializer {
+    function init(
+        IMain main_,
+        uint48 warmupPeriod_,
+        bool reweightable_
+    ) external initializer {
         __Component_init(main_);
 
         assetRegistry = main_.assetRegistry();
@@ -101,6 +113,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         stRSR = main_.stRSR();
 
         setWarmupPeriod(warmupPeriod_);
+        reweightable = reweightable_; // immutable thereafter
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -147,21 +160,47 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         trackStatus();
     }
 
-    /// Track basket status changes if they ocurred
+    /// Track basket status and collateralization changes
     // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
     /// @custom:refresher
     function trackStatus() public {
+        // Historical context: This is not the ideal naming for this function but it allowed
+        // reweightable RTokens introduced in 3.2.0 to be a minor update as opposed to major
+
         CollateralStatus currentStatus = status();
         if (currentStatus != lastStatus) {
             emit BasketStatusChanged(lastStatus, currentStatus);
             lastStatus = currentStatus;
             lastStatusTimestamp = uint48(block.timestamp);
         }
+
+        // Invalidate old nonces if fully collateralized
+        if (reweightable && nonce > lastCollateralized && fullyCollateralized()) {
+            emit LastCollateralizedChanged(lastCollateralized, nonce);
+            lastCollateralized = nonce;
+        }
+    }
+
+    /// Set the prime basket
+    /// @param erc20s The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        _setPrimeBasket(erc20s, targetAmts, true);
+    }
+
+    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
+    /// @param erc20s The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
+    function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        _setPrimeBasket(erc20s, targetAmts, false);
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @param normalize True iff targetAmts should be normalized by UoA to the reference basket
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -174,16 +213,40 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
-    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts)
-        external
-        governance
-    {
+    function _setPrimeBasket(
+        IERC20[] calldata erc20s,
+        uint192[] memory targetAmts,
+        bool normalize
+    ) internal {
+        requireGovernanceOnly();
         require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
-        // If this isn't initial setup, require targets remain constant
-        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
+        if (!reweightable && config.erc20s.length != 0) {
+            // Require targets remain constant
+            BasketLibP1.requireConstantConfigTargets(
+                assetRegistry,
+                config,
+                _targetAmts,
+                erc20s,
+                targetAmts
+            );
+        } else if (normalize && config.erc20s.length != 0) {
+            // Confirm reference basket is SOUND
+            assetRegistry.refresh();
+            require(status() == CollateralStatus.SOUND, "unsound basket");
+
+            // Normalize targetAmts based on UoA value of reference basket
+            (uint192 low, uint192 high) = _price(false);
+            assert(low > 0 && high < FIX_MAX); // implied by SOUND status
+            targetAmts = BasketLibP1.normalizeByPrice(
+                assetRegistry,
+                erc20s,
+                targetAmts,
+                (low + high + 1) / 2
+            );
+        }
 
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
@@ -224,7 +287,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] calldata erc20s
-    ) external governance {
+    ) external {
+        requireGovernanceOnly();
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -241,7 +305,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return Whether this contract owns enough collateral to cover rToken.basketsNeeded() BUs
     /// ie, whether the protocol is currently fully collateralized
-    function fullyCollateralized() external view returns (bool) {
+    function fullyCollateralized() public view returns (bool) {
         BasketRange memory held = basketsHeldBy(address(backingManager));
         return held.bottom >= rToken.basketsNeeded();
     }
@@ -410,10 +474,17 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
-            require(basketNonces[i] <= nonce, "invalid basketNonce");
-            Basket storage b = basketHistory[basketNonces[i]];
+            require(
+                basketNonces[i] >= lastCollateralized && basketNonces[i] <= nonce,
+                "invalid basketNonce"
+            );
+            // Known limitation: During an ongoing rebalance it may possible to redeem
+            // on a previous basket nonce for _more_ UoA value than the current basket.
+            // This can only occur for index RTokens, and the risk has been mitigated
+            // by updating `lastCollateralized` on every assetRegistry.refresh().
 
             // Add-in refAmts contribution from historical basket
+            Basket storage b = basketHistory[basketNonces[i]];
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 // untestable:
                 //     previous baskets erc20s do not contain the zero address
@@ -507,13 +578,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // === Governance Setters ===
 
     /// @custom:governance
-    function setWarmupPeriod(uint48 val) public governance {
+    function setWarmupPeriod(uint48 val) public {
+        requireGovernanceOnly();
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
     }
 
     // === Private ===
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireGovernanceOnly() private governance {}
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     function _switchBasket() private {
@@ -542,35 +618,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
-    }
-
-    /// Require that newERC20s and newTargetAmts preserve the current config targets
-    function requireConstantConfigTargets(
-        IERC20[] calldata newERC20s,
-        uint192[] calldata newTargetAmts
-    ) private {
-        // Populate _targetAmts mapping with old basket config
-        uint256 len = config.erc20s.length;
-        for (uint256 i = 0; i < len; ++i) {
-            IERC20 erc20 = config.erc20s[i];
-            bytes32 targetName = config.targetNames[erc20];
-            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            _targetAmts.set(
-                targetName,
-                contains ? amt + config.targetAmts[erc20] : config.targetAmts[erc20]
-            );
-        }
-
-        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
-        len = newERC20s.length;
-        for (uint256 i = 0; i < len; ++i) {
-            bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
-            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new target weights");
-            if (amt > newTargetAmts[i]) _targetAmts.set(targetName, amt - newTargetAmts[i]);
-            else _targetAmts.remove(targetName);
-        }
-        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Require that erc20s is a valid collateral array
@@ -672,6 +719,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     *
+     * BasketHandler uses 58 slots, not 50.
      */
-    uint256[37] private __gap;
+    uint256[36] private __gap;
 }

@@ -211,6 +211,7 @@ const opts = {
   getExpectedPrice,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,

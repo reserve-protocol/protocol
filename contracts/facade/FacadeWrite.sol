@@ -77,7 +77,7 @@ contract FacadeWrite is IFacadeWrite {
             }
 
             // Set basket
-            basketHandler.setPrimeBasket(basketERC20s, setup.weights);
+            basketHandler.forceSetPrimeBasket(basketERC20s, setup.weights);
             basketHandler.refreshBasket();
         }
 
