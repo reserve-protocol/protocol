@@ -218,5 +218,5 @@ contract DistributorP1 is ComponentP1, IDistributor {
      *
      * Distributor uses 53 slots, not 50.
      */
-    uint256[41] private __gap;
+    uint256[44] private __gap;
 }

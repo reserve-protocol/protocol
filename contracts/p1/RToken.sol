@@ -531,5 +531,5 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
      *
      * RToken uses 56 slots, not 50.
      */
-    uint256[36] private __gap;
+    uint256[42] private __gap;
 }
