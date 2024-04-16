@@ -40,6 +40,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // config is the basket configuration, from which basket will be computed in a basket-switch
     // event. config is only modified by governance through setPrimeBakset and setBackupConfig
     BasketConfig internal config;
+
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
     // basket is the current basket.
     Basket internal basket;
@@ -175,32 +176,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Invalidate old nonces if fully collateralized
         if (reweightable && nonce > lastCollateralized && fullyCollateralized()) {
-            emit LastCollateralizedChanged(lastCollateralized, nonce);
-            lastCollateralized = nonce;
-        }
-    }
-
-    /// Set the prime basket
-    /// @param erc20s The collateral for the new prime basket
-    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @custom:governance
-    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
-        _setPrimeBasket(erc20s, targetAmts, true);
-    }
-
-    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
-    /// @param erc20s The collateral for the new prime basket
-    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @custom:governance
-    function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
-        _setPrimeBasket(erc20s, targetAmts, false);
-    }
-
-    /// Track when last collateralized
-    // effects: lastCollateralized' = nonce if nonce > lastCollateralized && fullyCapitalized
-    /// @custom:refresher
-    function trackCollateralization() external {
-        if (nonce > lastCollateralized && fullyCollateralized()) {
             emit LastCollateralizedChanged(lastCollateralized, nonce);
             lastCollateralized = nonce;
         }

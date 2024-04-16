@@ -25,21 +25,6 @@ enum BidType {
     TRANSFER
 }
 
-interface IDutchTradeCallee {
-    function dutchTradeCallback(
-        address buyToken,
-        // {qBuyTok}
-        uint256 buyAmount,
-        bytes calldata data
-    ) external;
-}
-
-enum BidType {
-    NONE,
-    CALLBACK,
-    TRANSFER
-}
-
 // A dutch auction in 4 parts:
 //   1.  0% -  20%: Geometric decay from 1000x the bestPrice to ~1.5x the bestPrice
 //   2. 20% -  45%: Linear decay from ~1.5x the bestPrice to the bestPrice

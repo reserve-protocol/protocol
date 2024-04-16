@@ -234,5 +234,5 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
      *
      * AssetRegistry uses 52 slots, not 50.
      */
-    uint256[44] private __gap;
+    uint256[46] private __gap;
 }

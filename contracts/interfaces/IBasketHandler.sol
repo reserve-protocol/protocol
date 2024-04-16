@@ -101,10 +101,6 @@ interface IBasketHandler is IComponent {
     /// @custom:refresher
     function trackStatus() external;
 
-    /// Track when last collateralized
-    /// @custom:refresher
-    function trackCollateralization() external;
-
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCollateralized() external view returns (bool);
 

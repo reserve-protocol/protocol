@@ -17,6 +17,7 @@ import "./mixins/RecollateralizationLib.sol";
  * @notice The backing manager holds + manages the backing for an RToken
  */
 
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
@@ -106,8 +107,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
-
-        basketHandler.trackCollateralization();
     }
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
