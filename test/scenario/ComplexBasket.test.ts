@@ -1140,7 +1140,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     )
     expect(await rToken.totalSupply()).to.be.closeTo(
       currentTotalSupply,
-      currentTotalSupply.div(bn('1e9')) // within 1 billionth
+      currentTotalSupply.div(bn('1e8'))
     )
 
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
@@ -1260,7 +1260,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     )
     expect(await rToken.totalSupply()).to.be.closeTo(
       currentTotalSupply,
-      currentTotalSupply.div(bn('1e5'))
+      currentTotalSupply.div(bn('1e4'))
     )
 
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace

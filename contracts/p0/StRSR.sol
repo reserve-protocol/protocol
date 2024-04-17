@@ -14,7 +14,6 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 
@@ -33,10 +32,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using FixLib for uint192;
 
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable PERIOD; // {s} 1 block based on network
+    uint48 public constant PERIOD = 1; // {s} 1 second
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
-    uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MIN_UNSTAKING_DELAY = 60 * 2; // {s} 2 minutes
+    uint48 public constant MAX_UNSTAKING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
@@ -113,11 +112,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint192 public rewardRatio;
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
-    constructor() {
-        PERIOD = NetworkConfigLib.blocktime();
-        MIN_UNSTAKING_DELAY = PERIOD * 2;
-    }
-
     function init(
         IMain main_,
         string memory name_,
@@ -180,8 +174,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @custom:interaction
     function unstake(uint256 stakeAmount) external notTradingPausedOrFrozen {
         address account = _msgSender();
-        require(stakeAmount > 0, "Cannot withdraw zero");
-        require(balances[account] >= stakeAmount, "Not enough balance");
+        require(stakeAmount > 0, "zero amount");
+        require(balances[account] >= stakeAmount, "insufficient balance");
 
         // Call state keepers
         _payoutRewards();
@@ -311,7 +305,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @custom:protected
     function seizeRSR(uint256 rsrAmount) external notTradingPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "!bm");
-        require(rsrAmount > 0, "Amount cannot be zero");
+        require(rsrAmount > 0, "zero amount");
         main.poke();
 
         uint192 initialExchangeRate = exchangeRate();
@@ -459,13 +453,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address to,
         uint256 amount
     ) private {
-        require(from != address(0), "zero address transfer");
-        require(to != address(0), "zero address transfer");
+        require(from != address(0), "zero address");
+        require(to != address(0), "zero address");
         require(to != address(this), "transfer to self");
 
         uint256 fromBalance = balances[from];
 
-        require(fromBalance >= amount, "transfer amount exceeds balance");
+        require(fromBalance >= amount, "insufficient balance");
 
         unchecked {
             balances[from] = fromBalance - amount;
@@ -503,7 +497,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         address owner = _msgSender();
         uint256 currentAllowance = allowances[owner][spender];
-        require(currentAllowance >= subtractedValue, "decreased allowance below zero");
+        require(currentAllowance >= subtractedValue, "decrease allowance");
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
@@ -516,8 +510,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address spender,
         uint256 amount
     ) private {
-        require(owner != address(0), "zero address approval");
-        require(spender != address(0), "zero address approval");
+        require(owner != address(0), "zero address");
+        require(spender != address(0), "zero address");
 
         allowances[owner][spender] = amount;
 

@@ -37,12 +37,7 @@ import {
   USDCMock,
   DutchTradeRouter,
 } from '../typechain'
-import {
-  advanceBlocks,
-  advanceTime,
-  advanceToTimestamp,
-  getLatestBlockTimestamp,
-} from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import {
   Collateral,
   defaultFixture,
@@ -3229,18 +3224,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
             'trade open'
           )
-
-          // Check the empty buffer block as well
-          await advanceBlocks(1)
-          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
-            'already rebalancing'
-          )
-          await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-            'trade open'
-          )
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
+          // Provide approval to router
+          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
+
           await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -3251,10 +3241,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           const start = await trade.startTime()
           const end = await trade.endTime()
 
-          // Simulate 30 minutes of blocks, should swap at right price each time
-          const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
-          await advanceToTimestamp(start)
           let now = start
           while (now < end) {
             const actual = await trade.connect(addr1).bidAmount(now)
@@ -3387,10 +3373,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             expect(await token0.balanceOf(trade2.address)).to.equal(0)
             expect(await token1.balanceOf(trade2.address)).to.equal(0)
 
-            // Only BATCH_AUCTION can be launched
-            await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
-              'already rebalancing'
-            )
+            // BATCH_AUCTION can be launched
             await backingManager.rebalance(TradeKind.BATCH_AUCTION)
             expect(await backingManager.tradesOpen()).to.equal(1)
 

@@ -8,7 +8,6 @@ import "../interfaces/IBackingManager.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Trading.sol";
 import "./mixins/RecollateralizationLib.sol";
 
@@ -22,10 +21,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
-
     // Cache of peer components
     IAssetRegistry private assetRegistry;
     IBasketHandler private basketHandler;
@@ -35,7 +30,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IStRSR private stRSR;
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
-    uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_TRADING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
@@ -50,11 +45,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        ONE_BLOCK = NetworkConfigLib.blocktime();
-    }
 
     function init(
         IMain main_,
@@ -120,9 +110,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Refresh ==
         assetRegistry.refresh();
 
-        // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
+        // DoS prevention:
+        // unless caller is self, require that the next auction is not in same block
         require(
-            _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
+            _msgSender() == address(this) || tradeEnd[kind] + 1 < block.timestamp,
             "already rebalancing"
         );
 

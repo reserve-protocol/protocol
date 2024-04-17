@@ -4,6 +4,12 @@
 
 ## Upgrade Steps
 
+TODO
+
+Must-do: Upgrade Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s.
+
+Should-do: Set Governance as Timelock CANCELLER_ROLE
+
 ## Core Protocol Contracts
 
 ## Plugins

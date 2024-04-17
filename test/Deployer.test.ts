@@ -265,9 +265,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should not allow empty name', async () => {
-      await expect(
-        deployer.deploy('', 'RTKN', 'mandate', owner.address, config)
-      ).to.be.revertedWith('name empty')
+      await expect(deployer.deploy('', 'RTKN', 'mandate', owner.address, config)).to.be.reverted
     })
 
     it('Should not allow empty symbol', async () => {

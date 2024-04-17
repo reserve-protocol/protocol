@@ -6,8 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IDutchTradeCallee, TradeStatus, DutchTrade } from "../trading/DutchTrade.sol";
 import { IMain } from "../../interfaces/IMain.sol";
 
-import { NetworkConfigLib } from "../../libraries/NetworkConfigLib.sol";
-
 /** @title DutchTradeRouter
  * @notice Utility contract for placing bids on DutchTrade auctions
  */
