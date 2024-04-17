@@ -1231,7 +1231,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issuance #2 - Consume all throttle
       const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount2)
 
       // Check new issuance available - all consumed
@@ -1289,7 +1289,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issue full throttle
       const issueAmount1: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount1)
 
       // Check redemption throttles updated
@@ -1308,7 +1308,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issuance #2 - Full throttle again - will be processed
       const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount2)
 
       // Check new issuance available - all consumed
@@ -1336,7 +1336,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issuance #3 - Should be allowed, does not exceed supply restriction
       const issueAmount3: BigNumber = bn('100000e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount3)
 
       // Check issuance throttle updated - Previous issuances recharged
@@ -1371,7 +1371,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       const issueAmount4: BigNumber = fp('105800')
       // Issuance #4 - almost all available
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount4)
 
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
