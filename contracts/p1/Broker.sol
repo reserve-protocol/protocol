@@ -13,9 +13,6 @@ import "./mixins/Component.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
 
-// Gnosis: uint96 ~= 7e28
-uint256 constant GNOSIS_MAX_TOKENS = 7e28;
-
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP1 is ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
