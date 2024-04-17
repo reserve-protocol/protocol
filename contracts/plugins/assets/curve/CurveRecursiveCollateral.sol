@@ -38,8 +38,9 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         PTConfiguration memory ptConfig
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token1));
+
+        // {ref/tok} LP token's virtual price
         exposedReferencePrice = _safeWrap(curvePool.get_virtual_price()).mul(revenueShowing);
-        // exposedReferencePrice is re-used to be the LP token's virtual price
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -62,19 +63,17 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         // This pricing method is MEV-resistant, but only gives a lower-bound
         // for the value of the LP token collateral. It could be that the pool is
         // very imbalanced, in which case the LP token could be worth more than this
-        // method says it is if you can redeem the LP before any further swaps occur.
+        // method says it is.
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 price = chainlinkFeed.price(oracleTimeout).mul(underlyingRefPerTok());
+        // Get reference token price
+        (uint192 refLow, uint192 refHigh) = this.tokenPrice(0); // reference token
 
-        // {UoA/tok} = {UoA/tok} * {1}
-        uint192 err = price.mul(oracleError, CEIL);
+        // Multiply by the underlyingRefPerTok()
+        uint192 rate = underlyingRefPerTok();
+        low = refLow.mul(rate, FLOOR);
+        high = refHigh.mul(rate, CEIL);
 
-        // we'll overwrite these later...
-        low = price - err;
-        high = price + err;
-        // assert(low <= high); // obviously true by inspection
-
+        assert(low <= high); // not obviously true by inspection
         return (low, high, 0);
     }
 
@@ -187,7 +186,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
             return true;
         }
 
-        // Ignore the status of the RToken since it can manage itself
+        // Ignore the status of the RToken to prevent circularity
 
         return false;
     }

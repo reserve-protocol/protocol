@@ -40,6 +40,8 @@ import {
   ETHPLUS,
   ETHPLUS_BP_POOL,
   ETHPLUS_BP_POOL_ID,
+  ETHPLUS_ASSET_REGISTRY,
+  ETHPLUS_TIMELOCK,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
 
@@ -371,11 +373,8 @@ export const makeWETHPlusETH = async (
     fp('1e6'),
     bn('1e1')
   )
-  const ethplusAssetRegistry = await ethers.getContractAt(
-    'IAssetRegistry',
-    '0xf526f058858E4cD060cFDD775077999562b31bE0'
-  )
-  await whileImpersonating('0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B', async (signer) => {
+  const ethplusAssetRegistry = await ethers.getContractAt('IAssetRegistry', ETHPLUS_ASSET_REGISTRY)
+  await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
     await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
   })
 
@@ -383,7 +382,7 @@ export const makeWETHPlusETH = async (
   const ethplus = await ethers.getContractAt('ERC20Mock', ETHPLUS)
   const weth = await ethers.getContractAt('ERC20Mock', WETH)
 
-  // Get real fraxBP pool
+  // Get real ETH+ pool
   const realCurvePool = await ethers.getContractAt('ICurvePool', ETHPLUS_BP_POOL)
 
   // Use mock curvePool seeded with initial balances
@@ -398,8 +397,6 @@ export const makeWETHPlusETH = async (
   const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
   const wPool = await wrapperFactory.deploy()
   await wPool.initialize(ETHPLUS_BP_POOL_ID)
-
-  // Ensure ETH+ isReady()
   return { ethplus, weth, curvePool, wPool }
 }
 
