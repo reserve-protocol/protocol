@@ -43,7 +43,7 @@ The `rewardRatio` is the fraction of the current reward amount that should be ha
 
 Default value: `573038343750` = a half life of 14 days.
 
-Mainnet reasonable range: 1e10 to 1e13
+Reasonable range: 1e10 to 1e13
 
 To calculate: `ln(2) / (60*60*24*desired_days_in_half_life)`, and then multiply by 1e18.
 
