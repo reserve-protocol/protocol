@@ -26,7 +26,7 @@ const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const BASE_RPC_URL = useEnv('BASE_RPC_URL')
-const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
+const MNEMONIC = useEnv('MNEMONIC') || 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
@@ -54,6 +54,7 @@ const config: HardhatUserConfig = {
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
+      timeout: 0,
     },
     goerli: {
       chainId: 5,
@@ -116,10 +117,6 @@ const config: HardhatUserConfig = {
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
         version: '0.6.12',
-        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
-      },
-      'contracts/facade/FacadeRead.sol': {
-        version: '0.8.19',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
     },

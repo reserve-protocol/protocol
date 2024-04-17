@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
+import "../assets/compoundv2/ICToken.sol";
 import "./ERC20Mock.sol";
 
 contract CTokenMock is ERC20Mock {
@@ -11,15 +12,20 @@ contract CTokenMock is ERC20Mock {
 
     uint256 internal _exchangeRate;
 
-    bool public revertExchangeRate;
+    bool public revertExchangeRateCurrent;
+    bool public revertExchangeRateStored;
+
+    IComptroller public immutable comptroller;
 
     constructor(
         string memory name,
         string memory symbol,
-        address underlyingToken
+        address underlyingToken,
+        IComptroller _comptroller
     ) ERC20Mock(name, symbol) {
         _underlyingToken = underlyingToken;
         _exchangeRate = _toExchangeRate(FIX_ONE);
+        comptroller = _comptroller;
     }
 
     function decimals() public pure override returns (uint8) {
@@ -27,7 +33,7 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateCurrent() external returns (uint256) {
-        if (revertExchangeRate) {
+        if (revertExchangeRateCurrent) {
             revert("reverting exchange rate current");
         }
         _exchangeRate = _exchangeRate; // just to avoid sol warning
@@ -35,6 +41,9 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateStored() external view returns (uint256) {
+         if (revertExchangeRateStored) {
+            revert("reverting exchange rate stored");
+        }
         return _exchangeRate;
     }
 
@@ -54,7 +63,11 @@ contract CTokenMock is ERC20Mock {
         return fiatcoinRedemptionRate.shiftl(leftShift).mul_toUint(start);
     }
 
-    function setRevertExchangeRate(bool newVal) external {
-        revertExchangeRate = newVal;
+    function setRevertExchangeRateCurrent(bool newVal) external {
+        revertExchangeRateCurrent = newVal;
+    }
+
+    function setRevertExchangeRateStored(bool newVal) external {
+        revertExchangeRateStored = newVal;
     }
 }

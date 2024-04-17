@@ -5,8 +5,8 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
-import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../../deployment/common'
-import { priceTimeout, validateImplementations } from '../../deployment/utils'
+import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
+import { priceTimeout, validateImplementations } from '../utils'
 import { Asset } from '../../../typechain'
 
 let rsrAsset: Asset

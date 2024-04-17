@@ -26,7 +26,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
   FiatCollateral,
   GnosisMock,
@@ -72,7 +72,7 @@ describe('Assets contracts #fast', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenWrapperMock
+  let cToken: CTokenMock
 
   // Assets
   let collateral0: FiatCollateral
@@ -140,9 +140,7 @@ describe('Assets contracts #fast', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    cToken = <CTokenWrapperMock>(
-      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
-    )
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
@@ -466,6 +464,70 @@ describe('Assets contracts #fast', () => {
       await expect(rTokenAsset.price()).to.be.reverted
     })
 
+    it('Should return latestPrice() for RTokenAsset correctly', async () => {
+      // Confirm current price $1
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
+
+      // Latest Price returns current price
+      let rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.equal(fp('1'))
+      expect(rTokenPriceInfo.updatedAt).to.be.lte(await getLatestBlockTimestamp())
+
+      // Perform actual call to cache data
+      await rTokenAsset.latestPrice()
+      let latestUpdate = await getLatestBlockTimestamp()
+
+      // Calling again is noop
+      await rTokenAsset.latestPrice()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.equal(fp('1'))
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // did not refresh again
+
+      // Will refresh if basket changes
+      await basketHandler
+        .connect(wallet)
+        .setPrimeBasket([token.address, usdc.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(wallet).refreshBasket()
+
+      // Perform actual call and check values
+      await rTokenAsset.latestPrice()
+      latestUpdate = await getLatestBlockTimestamp()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.be.closeTo(fp('1'), fp('0.01')) // remains close
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // refreshed
+
+      // Perform trade (changes trade nonce)
+      await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+
+      // Perform actual call and check values
+      await rTokenAsset.latestPrice()
+      latestUpdate = await getLatestBlockTimestamp()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.be.closeTo(fp('1'), fp('0.01')) // remains close
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // refreshed
+
+      // Calling again is noop
+      await rTokenAsset.latestPrice()
+
+      // Settle trade
+      await advanceTime(config.batchAuctionLength.add(100).toString())
+      await rTokenAsset.latestPrice() // update cache
+      await backingManager.settleTrade(aToken.address)
+
+      // Perform actual call and check values
+      await rTokenAsset.latestPrice()
+      latestUpdate = await getLatestBlockTimestamp()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.be.closeTo(fp('1'), fp('0.01')) // remains close
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // refreshed
+    })
+
     it('Regression test -- Should handle unpriced collateral for RTokenAsset', async () => {
       // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
 
@@ -493,6 +555,124 @@ describe('Assets contracts #fast', () => {
 
       // Check RToken is unpriced
       await expectUnpriced(rTokenAsset.address)
+
+      // Oracle price update should revert
+      await expect(rTokenAsset.forceUpdatePrice()).to.be.revertedWith('invalid price')
+    })
+
+    it('Regression test -- RTokenAsset.refresh() should refresh everything', async () => {
+      // AssetRegistry should refresh
+      const lastRefreshed = await assetRegistry.lastRefresh()
+      await rTokenAsset.refresh()
+      expect(await assetRegistry.lastRefresh()).to.be.gt(lastRefreshed)
+
+      // Furnace should melt
+      const lastPayout = await furnace.lastPayout()
+      await advanceTime(12)
+      await rTokenAsset.refresh()
+      expect(await furnace.lastPayout()).to.be.gt(lastPayout)
+
+      // Should clear oracle cache
+      await rTokenAsset.forceUpdatePrice()
+      let [, cachedAtTime] = await rTokenAsset.cachedOracleData()
+      expect(cachedAtTime).to.be.gt(0)
+      await rTokenAsset.refresh()
+      ;[, cachedAtTime] = await rTokenAsset.cachedOracleData()
+      expect(cachedAtTime).to.eq(0)
+    })
+
+    it('Should handle tokens being out on trade for RTokenAsset', async () => {
+      const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+      await usdc.connect(wallet).approve(router.address, constants.MaxUint256)
+      // Summary:
+      // - Run a dutch auction that does not fill
+      // - Run a batch auction that fills for partial volume
+      // - Run a dutch auction that fills for full volume
+
+      const low0 = fp('0.99')
+      const low1 = bn('975344098811881188') // after a 50% basket change
+      const low2 = bn('975343128415841584') // after batch auction at half volume
+      const low3 = bn('975560049627103964') // after dutch auction at full volume
+
+      // Price should be [$0.99, $1.01] to start
+      await expectExactPrice(rTokenAsset.address, [low0, fp('1.01')])
+
+      // After 50% basket change, expected trading should decrease the lower price to ~$0.9753
+      // Upper price remains $1.01 because of uncertainty around how trading will go
+      await basketHandler
+        .connect(wallet)
+        .setPrimeBasket([token.address, usdc.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(wallet).refreshBasket()
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // After launching a trade token price should not change
+      // Regression -- I've confirmed the lower price drops to ~$0.7352 when not tracking balances out on trade
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Settling trade without bidding should not change price
+      let trade = await ethers.getContractAt(
+        'DutchTrade',
+        await backingManager.trades(aToken.address)
+      )
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()))
+      await expect(backingManager.settleTrade(aToken.address)).to.emit(
+        backingManager,
+        'TradeSettled'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Launching the trade a second time, this time Batch Auction, should not change price
+      await setNextBlockTimestamp((await trade.endTime()) + 13)
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
+
+      // Bid in Gnosis for half volume at even prices
+      const t = await getTrade(backingManager, aToken.address)
+      const sellAmt = (await t.initBal()).div(2) // half volume
+      await token.connect(wallet).approve(gnosis.address, sellAmt)
+      await gnosis.placeBid(0, {
+        bidder: wallet.address,
+        sellAmount: sellAmt,
+        buyAmount: sellAmt,
+      })
+      await advanceTime(config.batchAuctionLength.toNumber())
+      await expect(backingManager.settleTrade(aToken.address)).not.to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      await expectExactPrice(rTokenAsset.address, [low2, fp('1.01')])
+
+      // Starting a 3rd auction should not change balances
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      await expectExactPrice(rTokenAsset.address, [low2, fp('1.01')])
+
+      // Settle 3rd auction for full volume
+      trade = await ethers.getContractAt('DutchTrade', await backingManager.trades(cToken.address))
+      const buyAmt = await trade.bidAmount(await trade.endBlock())
+      await usdc.approve(trade.address, buyAmt)
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+
+      await expect(router.bid(trade.address, await router.signer.getAddress())).to.emit(
+        backingManager,
+        'TradeSettled'
+      )
+      expect(await backingManager.tradesOpen()).to.equal(1) // launches another trade!
+      await expectExactPrice(rTokenAsset.address, [low3, bn('1007427552565834095')]) // high end starts to fall
     })
 
     it('Regression test -- RTokenAsset.refresh() should refresh everything', async () => {
@@ -758,6 +938,31 @@ describe('Assets contracts #fast', () => {
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidRSRAsset.price()).to.be.reverted
       await expect(invalidRSRAsset.refresh()).to.be.reverted
+    })
+
+    it('Bubbles error up if Chainlink feed reverts for explicit reason', async () => {
+      // Applies to all collateral as well
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidRSRAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          invalidChainlinkFeed.address,
+          ORACLE_ERROR,
+          rsr.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+
+      // Reverting with reason
+      await invalidChainlinkFeed.setRevertWithExplicitError(true)
+      await expect(invalidRSRAsset.tryPrice()).to.be.revertedWith('oracle explicit error')
     })
 
     it('Should handle price decay correctly', async () => {

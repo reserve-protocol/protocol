@@ -155,6 +155,7 @@ contract BrokerP1 is ComponentP1, IBroker {
                 dutchTradeDisabled[buy] = true;
             }
         } else {
+            // untestable: trade kind is either BATCH or DUTCH
             revert("unrecognized trade kind");
         }
     }

@@ -1,4 +1,4 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
@@ -37,9 +37,8 @@ import {
   BasketHandlerP1,
   CTokenFiatCollateral,
   DutchTrade,
-  CTokenWrapperMock,
+  CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -56,6 +55,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -120,7 +120,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenWrapperMock
+  let token3: CTokenMock
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
   let collateral0: FiatCollateral
@@ -141,7 +141,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let facade: FacadeRead
+  let facade: TestIFacade
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -185,7 +185,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenWrapperMock>erc20s[collateral.indexOf(basket[3])]
+    token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     backupToken1 = erc20s[2] // USDT
     backupCollateral1 = <FiatCollateral>collateral[2]
@@ -2195,6 +2195,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(tokAmts[1]).to.equal(fp('0.5'))
     })
 
+    it('Should handle unpriced asset in normalization', async () => {
+      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await indexBH.connect(owner).refreshBasket()
+
+      // Set Token0 to unpriced - stale oracle
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
+      await expectUnpriced(collateral0.address)
+
+      // Attempt to add EURO, basket is not SOUND
+      await expect(
+        indexBH
+          .connect(owner)
+          .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
+      ).to.be.revertedWith('unsound basket')
+    })
+
     describe('Custom Redemption', () => {
       const issueAmount = fp('10000')
       let usdcChainlink: MockV3Aggregator
@@ -2210,9 +2226,25 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           await collateral0.chainlinkFeed()
         )
 
+        // Swap-in indexBH
+        await setStorageAt(main.address, 204, indexBH.address)
+        if (IMPLEMENTATION == Implementation.P1) {
+          await setStorageAt(rToken.address, 355, indexBH.address)
+          await setStorageAt(backingManager.address, 302, indexBH.address)
+          await setStorageAt(assetRegistry.address, 201, indexBH.address)
+        }
+        await indexBH
+          .connect(owner)
+          .forceSetPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+        await indexBH.refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
         // register backups
         await assetRegistry.connect(owner).register(backupCollateral1.address)
-        await basketHandler
+        await indexBH
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
         await assetRegistry.connect(owner).register(backupCollateral2.address)
@@ -2244,7 +2276,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const portions = [fp('1')]
         const amount = fp('10000')
         await expect(
-          basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+          indexBH.quoteCustomRedemption(basketNonces, portions, amount)
         ).to.be.revertedWith('bad portions len')
       })
 
@@ -2255,8 +2287,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1]
         const portions = [fp('1')]
         const amount = fp('10000')
-        const baseline = await basketHandler.quote(amount, RoundingMode.FLOOR)
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        const baseline = await indexBH.quote(amount, RoundingMode.FLOOR)
+        const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
         expectEqualArrays(quote.erc20s, baseline.erc20s)
         expectEqualArrays(quote.quantities, baseline.quantities)
 
@@ -2304,16 +2336,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectDelta(balsBefore, baseline.quantities, balsAfter)
       })
 
-      it('Should correctly quote a custom redemption across 2 baskets after default', async () => {
+      it('Should- correctly quote a custom redemption across 2 baskets after default', async () => {
         /*
           Setup
         */
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
-        await basketHandler.refreshBasket()
+        await indexBH.refreshBasket()
         await advanceTime(Number(config.warmupPeriod) + 1)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
+        expect(await indexBH.fullyCollateralized()).to.equal(false)
 
         /*
           Test Quote
@@ -2321,7 +2353,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1, 2]
         const portions = [fp('0.5'), fp('0.5')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(5)
         expect(quote.quantities.length).equal(5)
@@ -2356,9 +2388,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         /*
           Test Custom Redemption
         */
-        const balsBefore = await getBalances(addr1.address, expectedTokens)
-
-        // rToken is undercollateralized, no backupToken1. should fail
+        // Should not be able to redeemCustom on old nonce, but not because of invalid nonce
         await expect(
           rToken
             .connect(addr1)
@@ -2374,19 +2404,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         // send enough backupToken1 to BackingManager to recollateralize and process redemption correctly
         await backupToken1.mint(backingManager.address, issueAmount)
+        expect(await indexBH.fullyCollateralized()).to.equal(true)
 
-        await rToken
-          .connect(addr1)
-          .redeemCustom(
-            addr1.address,
-            amount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
-        const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
+        // Now should not be able to redeem because of invalid old nonce
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).to.be.revertedWith('invalid basketNonce')
       })
 
       it('Repeating basket nonces should not be exploitable', async () => {
@@ -2407,8 +2439,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('0.1'),
         ]
         const amount = fp('10000')
-        const baseline = await basketHandler.quote(amount, RoundingMode.FLOOR)
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        const baseline = await indexBH.quote(amount, RoundingMode.FLOOR)
+        const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
         expectEqualArrays(quote.erc20s, baseline.erc20s)
         expectEqualArrays(quote.quantities, baseline.quantities)
 
@@ -2438,7 +2470,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           Setup
         */
         // add 2nd token to backup config
-        await basketHandler
+        await indexBH
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             backupToken1.address,
@@ -2447,10 +2479,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
-        await basketHandler.refreshBasket()
+        await indexBH.refreshBasket()
         await advanceTime(Number(config.warmupPeriod) + 1)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
+        expect(await indexBH.fullyCollateralized()).to.equal(false)
 
         /*
           Test Quote
@@ -2458,7 +2490,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1, 2]
         const portions = [fp('0.2'), fp('0.8')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(6)
         expect(quote.quantities.length).equal(6)
@@ -2497,10 +2529,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         /*
           Test Custom Redemption
         */
-        const balsBefore = await getBalances(addr1.address, expectedTokens)
-        await backupToken1.mint(backingManager.address, issueAmount)
-
-        // rToken is undercollateralized, no backupToken2. should fail
+        // Should not be able to redeem, but not because of invalid nonce
         await expect(
           rToken
             .connect(addr1)
@@ -2515,30 +2544,33 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         ).revertedWith('redemption below minimum')
 
         // send enough backupToken2 to BackingManager to recollateralize and process redemption correctly
+        await backupToken1.mint(backingManager.address, issueAmount)
         await backupToken2.mint(backingManager.address, issueAmount)
+        expect(await indexBH.fullyCollateralized()).to.equal(true)
 
-        await rToken
-          .connect(addr1)
-          .redeemCustom(
-            addr1.address,
-            amount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
-        const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
+        // Now should not be able to redeem because of invalid old nonce
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).to.be.revertedWith('invalid basketNonce')
       })
 
       it('Should correctly quote historical redemption with almost all assets unregistered', async () => {
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
-        await basketHandler.refreshBasket()
+        await indexBH.refreshBasket()
         await advanceTime(Number(config.warmupPeriod) + 1)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
+        expect(await indexBH.fullyCollateralized()).to.equal(false)
 
         // Unregister everything except token0
         const erc20s = await assetRegistry.erc20s()
@@ -2554,7 +2586,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1]
         const portions = [fp('1')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(1)
         expect(quote.quantities.length).equal(1)
@@ -2600,10 +2632,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
-        await basketHandler.refreshBasket()
+        await indexBH.refreshBasket()
         await advanceTime(Number(config.warmupPeriod) + 1)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
+        expect(await indexBH.fullyCollateralized()).to.equal(false)
 
         // Swap collateral for asset in previous basket
         const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
@@ -2626,7 +2658,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1]
         const portions = [fp('1')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(3)
         expect(quote.quantities.length).equal(3)
@@ -2654,7 +2686,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           Test Custom Redemption - Should behave as if token is not registered
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
-        await backupToken1.mint(backingManager.address, issueAmount)
+        await backupToken1.mint(backingManager.address, issueAmount.div(2))
 
         // rToken redemption
         await expect(
@@ -2676,7 +2708,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       itP1('Should return historical basket correctly', async () => {
         const bskHandlerP1: BasketHandlerP1 = <BasketHandlerP1>(
-          await ethers.getContractAt('BasketHandlerP1', basketHandler.address)
+          await ethers.getContractAt('BasketHandlerP1', indexBH.address)
         )
 
         // Returns the current prime basket
@@ -2692,7 +2724,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         }
 
         // add 2nd token to backup config
-        await basketHandler
+        await indexBH
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             backupToken1.address,
@@ -2701,10 +2733,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
-        await basketHandler.refreshBasket()
+        await indexBH.refreshBasket()
         await advanceTime(Number(config.warmupPeriod) + 1)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
+        expect(await indexBH.fullyCollateralized()).to.equal(false)
 
         // Get basket for current nonce
         ;[erc20s, quantities] = await bskHandlerP1.getHistoricalBasket(2)

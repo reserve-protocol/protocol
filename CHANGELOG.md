@@ -1,5 +1,59 @@
 # Changelog
 
+# 3.3.0
+
+This release improves how collateral plugins price LP tokens and moves reward claiming out to the asset plugin level.
+
+## Upgrade Steps
+
+Swapout all collateral plugins with appreciation.
+
+All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken, as well as aave-v3 USDC/USDCbC for canonical wrappers.
+
+### Core Protocol Contracts
+
+- `BackingManager` + `RevenueTrader`
+  - Change `claimRewards()` to delegatecall to the list of registered plugins
+
+## Plugins
+
+### Assets
+
+- aave-v3
+  - On mainnet: switch from one-off USDC wrapper to canonical USDC wrapper
+  - On base: switch from one-off USDbC wrapper to canonical USDC wrapper
+- compound-v2
+  - Remove `CTokenWrapper`
+  - Add reward claiming logic to `claimRewards()`
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- compound-v3
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- curve
+  - Make `price()` more resistant to manipulation by MEV
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- convex
+  - Make `price()` more resistant to manipulation by MEV
+  - Emit `RewardsClaimed` event during `claimRewards()`
+  - Add new `crvUSD-USDC` plugin
+- morpho-aave
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- stargate
+  - Emit `RewardsClaimed` event during `claimRewards()`
+- yearn-v2
+  - Make `price()` more resistant to manipulation by MEV
+
+### Trading
+
+- `GnosisTrade`
+  - Add `version()` getter
+- `DutchTrade`
+  - Add `version()` getter
+
+### Facades
+
+- `FacadeMonitor.sol`
+  - Update compound-v2 implemention to deal with with-wrappper and without-wrapper cases
+
 # 3.2.0
 
 This release makes bidding in dutch auctions easier for MEV searchers and gives new RTokens being deployed the option to enable a variable target basket, or to be "reweightable". An RToken that is not reweightable cannot have its target basket changed in terms of quantities of target units.

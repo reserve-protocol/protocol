@@ -94,6 +94,10 @@ contract GnosisTradeMock is ITrade {
     function _msgSender() internal view virtual returns (address) {
         return main.translateAddr(msg.sender);
     }
+
+    function version() public pure virtual override returns (string memory) {
+        return "3.3.0";
+    }
 }
 
 enum SettlingMode {

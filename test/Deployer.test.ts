@@ -9,7 +9,6 @@ import { bn } from '../common/numbers'
 import {
   Asset,
   ERC20Mock,
-  FacadeRead,
   GnosisMock,
   IAssetRegistry,
   RTokenAsset,
@@ -18,6 +17,7 @@ import {
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
+  TestIFacade,
   TestIFurnace,
   TestIMain,
   TestIRevenueTrader,
@@ -48,7 +48,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   // Market / Facade
   let gnosis: GnosisMock
   let broker: TestIBroker
-  let facade: FacadeRead
+  let facade: TestIFacade
 
   // Core contracts
   let rToken: TestIRToken

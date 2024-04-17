@@ -7,6 +7,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import "contracts/plugins/assets/erc20/RewardableERC20.sol";
 import "../curve/PoolTokens.sol";
 
 /**
@@ -15,6 +16,7 @@ import "../curve/PoolTokens.sol";
  *  whether this LP token ends up staked in Curve, Convex, Frax, or somewhere else.
  *  Each token in the pool can have between 1 and 2 oracles per each token.
  *  Stable means only like-kind pools.
+ *  Works for both CurveGaugeWrapper and ConvexStakingWrapper.
  *
  * tok = ConvexStakingWrapper(stablePlainPool)
  * ref = stablePlainPool pool invariant
@@ -28,8 +30,14 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    // I don't love hard-coding these, but I prefer it to dynamically reading from either
+    // a CurveGaugeWrapper or ConvexStakingWrapper. If we ever use this contract
+    // on something other than mainnet we'll have to change this.
+    IERC20 public constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    IERC20 public constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
-    /// @dev config.erc20 should be a RewardableERC20
+    /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
@@ -42,7 +50,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
-    /// @dev Override this when pricing is more complicated than just a single oracle
+    /// @dev Override this when pricing is more complicated than just a single pool
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return {target/ref} Unused. Always 0
@@ -57,6 +65,24 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             uint192
         )
     {
+        // Assumption: the pool is balanced
+        //
+        // This pricing method returns a MINIMUM when the pool is balanced.
+        // It IS possible to interact with the protocol within a sandwich to manipulate
+        // LP token price upwards.
+        //
+        // However:
+        //    - Lots of manipulation is required;
+        //        (StableSwap pools are not price sensitive until the edge of the curve)
+        //    - The DutchTrade pricing curve accounts for small/medium amounts of manipulation
+        //    - The manipulator is under competition in auctions, so cannot guarantee they
+        //        are the beneficiary of the manipulation.
+        //
+        // To be more MEV-resistant requires not using spot balances at all, which means one-of:
+        //   1. A moving average metric (unavailable in the cases we care about)
+        //   2. Mapping oracle prices to expected pool balances using precise knowledge about
+        //      the shape of the trading curve. (maybe we can do this in the future)
+
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
@@ -136,9 +162,15 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
+    /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
+        // Plugin can be used with either Curve or Convex wrappers
+        // Here I prefer omitting any wrapper-specific logic at the cost of an additional event
+        uint256 crvBal = CRV.balanceOf(address(this));
+        uint256 cvxBal = CVX.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(CRV, CRV.balanceOf(address(this)) - crvBal);
+        emit RewardsClaimed(CVX, CVX.balanceOf(address(this)) - cvxBal);
     }
 
     // === Internal ===

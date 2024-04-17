@@ -48,6 +48,15 @@ async function main() {
     deployments.collateral.cvxeUSDFRAXBP as string
   )
 
+  /********  Verify ConvexStakingWrapper  **************************/
+
+  await verifyContract(
+    chainId,
+    await eUSDPlugin.erc20(),
+    [],
+    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
+  )
+
   /********  Verify eUSD/fraxBP plugin  **************************/
   await verifyContract(
     chainId,

@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 // prettier-ignore
 contract CometMock {
-    int256 internal _reserves;
     address public externalDelegate;
 
     struct TotalsBasic {
@@ -27,17 +26,8 @@ contract CometMock {
         uint8 _reserved;
     }
 
-    constructor(int256 reserves_, address delegate) {
-        _reserves = reserves_;
+    constructor(address delegate) {
         externalDelegate = delegate;
-    }
-
-    function setReserves(int256 amount) external {
-        _reserves = amount;
-    }
-
-    function getReserves() public view returns (int256) {
-        return _reserves;
     }
 
     // solhint-disable-next-line no-empty-blocks

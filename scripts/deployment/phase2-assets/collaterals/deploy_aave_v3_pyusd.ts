@@ -14,8 +14,13 @@ import {
 import { bn, fp } from '#/common/numbers'
 import { AaveV3FiatCollateral } from '../../../../typechain'
 import { priceTimeout, revenueHiding } from '../../utils'
+import {
+  PYUSD_MAX_TRADE_VOLUME,
+  PYUSD_ORACLE_TIMEOUT,
+  PYUSD_ORACLE_ERROR,
+} from '../../../../test/plugins/individual-collateral/aave-v3/constants'
 
-// This file specifically deploys Aave V3 USDC collateral
+// This file specifically deploys Aave V3 pyUSD collateral on Mainnet
 
 async function main() {
   // ==== Read Configuration ====
@@ -30,9 +35,9 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  // Only exists on Base L2
-  if (!baseL2Chains.includes(hre.network.name)) {
-    throw new Error(`Invalid network ${hre.network.name} - only available on Base`)
+  // Only exists on Mainnet
+  if (baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - only available on Mainnet`)
   }
 
   // Get phase1 deployment
@@ -47,9 +52,11 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Aave V3 USDbC wrapper  **************************/
-
+  const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
   const StaticATokenFactory = await hre.ethers.getContractFactory('StaticATokenV3LM')
+
+  /********  Deploy Aave V3 pyUSD ERC20  **************************/
+
   const erc20 = await StaticATokenFactory.deploy(
     networkConfig[chainId].AAVE_V3_POOL!,
     networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
@@ -57,44 +64,39 @@ async function main() {
   await erc20.deployed()
   await (
     await erc20.initialize(
-      networkConfig[chainId].tokens.aBasUSDbC!,
-      'Static Aave Base USDbC',
-      'saBasUSDbC'
+      networkConfig[chainId].tokens.aEthPyUSD!,
+      'Static Aave Ethereum pyUSD',
+      'saEthPyUSD'
     )
   ).wait()
 
-  console.log(
-    `Deployed wrapper for Aave V3 USDbC on ${hre.network.name} (${chainId}): ${erc20.address} `
-  )
+  /********  Deploy Aave V3 pyUSD collateral plugin  **************************/
 
-  /********  Deploy Aave V3 USDbC collateral plugin  **************************/
-
-  const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
   const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout,
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-      oracleError: fp('0.003'), // 3%
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.pyUSD!,
+      oracleError: PYUSD_ORACLE_ERROR,
       erc20: erc20.address,
-      maxTradeVolume: fp('1e6'),
-      oracleTimeout: '86400', // 24 hr
+      maxTradeVolume: PYUSD_MAX_TRADE_VOLUME,
+      oracleTimeout: PYUSD_ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.013'),
+      defaultThreshold: fp('0.01').add(PYUSD_ORACLE_ERROR),
       delayUntilDefault: bn('86400'),
     },
     revenueHiding
   )
-
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
-    `Deployed Aave V3 USDbC collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Aave V3 pyUSD collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.collateral.aBasUSDbC = collateral.address
-  assetCollDeployments.erc20s.aBasUSDbC = erc20.address
+  assetCollDeployments.erc20s.saEthPyUSD = erc20.address
+  assetCollDeployments.collateral.saEthPyUSD = collateral.address
+  assetCollDeployments.erc20s.saEthPyUSD = networkConfig[chainId].tokens.saEthPyUSD!
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
