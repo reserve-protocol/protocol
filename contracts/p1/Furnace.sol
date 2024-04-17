@@ -13,10 +13,6 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
     uint192 public constant MAX_RATIO = 1e14; // {1} 0.01%
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    // solhint-disable-next-line var-name-mixedcase
-    uint48 public constant PERIOD = 1; // {s} distribution period
-    // historical artifact
 
     IRToken private rToken;
 
@@ -61,23 +57,23 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // let numPeriods = number of whole periods that have passed since `lastPayout`
     //     payoutAmount = RToken.balanceOf(this) * (1 - (1-ratio)**N) from [furnace-payout-formula]
     // effects:
-    //   lastPayout' = lastPayout + numPeriods * PERIOD (end of last pay period)
+    //   lastPayout' = lastPayout + numPeriods (end of last pay period)
     //   lastPayoutBal' = rToken.balanceOf'(this) (balance now == at end of pay leriod)
     // actions:
     //   rToken.melt(payoutAmount), paying payoutAmount to RToken holders
 
     function melt() public {
-        if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
+        if (uint48(block.timestamp) < uint64(lastPayout + 1)) return;
 
         // # of whole periods that have passed since lastPayout
-        uint48 numPeriods = uint48((block.timestamp) - lastPayout) / PERIOD;
+        uint48 numPeriods = uint48((block.timestamp) - lastPayout);
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         uint256 amount = payoutRatio.mulu_toUint(lastPayoutBal);
 
-        lastPayout += numPeriods * PERIOD;
+        lastPayout += numPeriods;
         lastPayoutBal = rToken.balanceOf(address(this)) - amount;
         if (amount > 0) rToken.melt(amount);
     }
