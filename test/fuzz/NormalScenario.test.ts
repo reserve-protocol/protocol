@@ -60,7 +60,7 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     await advanceBlocks(warmupPeriod / 12)
   }
 
-  ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
   scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
   main = await ConAt('MainP1Fuzz', await scenario.main())
   comp = await componentsOf(main)
@@ -272,27 +272,68 @@ const scenarioSpecificTests = () => {
 
       expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
     })
-  })
 
-  it('sends rtoken donations to the backing manager', async () => {
-    const tokenAddr = await main.someToken(0)
-    const token = await ConAt('ERC20Fuzz', tokenAddr)
-    const amt = fp('10')
-    const bmBalBefore = await token.balanceOf(comp.backingManager.address)
-    const rTokBalBefore = await token.balanceOf(comp.rToken.address)
-    await token.connect(alice).transfer(comp.rToken.address, amt)
-    await scenario.monetizeDonations(0)
-    const bmBalAFter = await token.balanceOf(comp.backingManager.address)
-    const rTokBalAfter = await token.balanceOf(comp.rToken.address)
-    expect(rTokBalAfter).to.equal(0)
-    expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
+    it('sends rtoken donations to the backing manager', async () => {
+      const tokenAddr = await main.someToken(0)
+      const token = await ConAt('ERC20Fuzz', tokenAddr)
+      const amt = fp('10')
+      const bmBalBefore = await token.balanceOf(comp.backingManager.address)
+      const rTokBalBefore = await token.balanceOf(comp.rToken.address)
+      await token.connect(alice).transfer(comp.rToken.address, amt)
+      await scenario.monetizeDonations(0)
+      const bmBalAFter = await token.balanceOf(comp.backingManager.address)
+      const rTokBalAfter = await token.balanceOf(comp.rToken.address)
+      expect(rTokBalAfter).to.equal(0)
+      expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
+    })
+
+    it('rate falling after all RTokens are redeemed or melted - rate resets to 1:1 peg', async () => {
+      await warmup()
+      await scenario.connect(alice).issueTo(604799, 47)
+      await advanceTime(327047)
+      await advanceBlocks(23076)
+      await scenario.connect(alice).setFurnaceRatio(18248413350069832992807152334633706987539065233203193224088588905331626303174n)
+      await advanceTime(72098)
+      await advanceBlocks(290)
+      await scenario.connect(alice).payRTokenProfits()
+      await advanceTime(122492)
+      await advanceBlocks(967)
+      await advanceTime(436402)
+      await advanceBlocks(39250)
+      await advanceTime(603284)
+      await advanceBlocks(31565)
+      await advanceTime(516218)
+      await advanceBlocks(35733)
+      await advanceTime(350417)
+      await advanceBlocks(34610)
+      await advanceTime(152267)
+      await advanceBlocks(255)
+      await advanceTime(429839)
+      await advanceBlocks(40578)
+      await scenario.connect(alice).payRSRProfits()
+      await advanceTime(263005)
+      await advanceBlocks(8805)
+      await advanceTime(458483)
+      await advanceBlocks(23119)
+      await scenario.connect(alice).saveRates()
+      await advanceTime(196550)
+      await advanceBlocks(28586)
+      await advanceTime(527990)
+      await advanceBlocks(13610)
+      await advanceTime(569993)
+      await advanceBlocks(49950)
+      await advanceTime(444311)
+      await advanceBlocks(150)
+      await scenario.connect(alice).payRTokenProfits() // all is melted
+      expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
+    })
   })
-}
+  }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
-  f: createFixture,
-  testType: 'Normal',
-  scenarioSpecificTests,
-}
+    f: createFixture,
+    testType: 'Normal',
+    scenarioSpecificTests,
+  }
 
-fuzzTests(context)
+  fuzzTests(context)
