@@ -45,6 +45,7 @@ contract DeployerRegistry is IDeployerRegistry, Ownable {
     /// Unregister by version
     function unregister(string calldata version) external onlyOwner {
         emit DeploymentUnregistered(version, deployments[version]);
+        if (latestDeployment == deployments[version]) latestDeployment = IDeployer(address(0));
         deployments[version] = IDeployer(address(0));
     }
 }

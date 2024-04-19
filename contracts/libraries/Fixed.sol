@@ -166,7 +166,7 @@ function _divrnd(
             result++;
         }
     } else {
-        if (numerator % divisor > 0) {
+        if (numerator % divisor != 0) {
             result++;
         }
     }
@@ -595,7 +595,7 @@ library FixLib {
 
             // Apply rounding
             if (rounding == CEIL) {
-                if (mm > 0) result_256 += 1;
+                if (mm != 0) result_256 += 1;
             } else if (rounding == ROUND) {
                 if (mm > ((c_256 - 1) / 2)) result_256 += 1;
             }
@@ -658,7 +658,7 @@ function mulDiv256(
 
     uint256 mm = mulmod(x, y, z);
     if (rounding == CEIL) {
-        if (mm > 0) result += 1;
+        if (mm != 0) result += 1;
     } else {
         if (mm > ((z - 1) / 2)) result += 1; // z should be z-1
     }

@@ -21,7 +21,7 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
     }
 
     // solhint-enable no-empty-blocks

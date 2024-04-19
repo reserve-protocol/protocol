@@ -357,7 +357,7 @@ contract StaticATokenLM is
         uint256 amountToBurn;
 
         uint256 currentRate = rate();
-        if (staticAmount > 0) {
+        if (staticAmount != 0) {
             amountToBurn = (staticAmount > userBalance) ? userBalance : staticAmount;
             amountToWithdraw = _staticToDynamicAmount(amountToBurn, currentRate);
         } else {
@@ -453,13 +453,13 @@ contract StaticATokenLM is
         );
         uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshlyClaimed);
         uint256 rewardsAccrued = lifetimeRewards.sub(_lifetimeRewards).wadToRay();
-        if (supply > 0 && rewardsAccrued > 0) {
+        if (supply != 0 && rewardsAccrued != 0) {
             _accRewardsPerToken = _accRewardsPerToken.add(
                 (rewardsAccrued).rayDivNoRounding(supply.wadToRay())
             );
         }
 
-        if (rewardsAccrued > 0) {
+        if (rewardsAccrued != 0) {
             _lifetimeRewards = lifetimeRewards;
         }
 
@@ -497,7 +497,7 @@ contract StaticATokenLM is
         if (reward > totBal) {
             reward = totBal;
         }
-        if (reward > 0) {
+        if (reward != 0) {
             _unclaimedRewards[onBehalfOf] = 0;
             _updateUserSnapshotRewardsPerToken(onBehalfOf);
             REWARD_TOKEN.safeTransfer(receiver, reward);
@@ -565,7 +565,7 @@ contract StaticATokenLM is
      */
     function _updateUser(address user) internal {
         uint256 balance = balanceOf(user);
-        if (balance > 0) {
+        if (balance != 0) {
             uint256 pending = _getPendingRewards(user, balance, false);
             _unclaimedRewards[user] = _unclaimedRewards[user].add(pending);
         }

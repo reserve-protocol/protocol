@@ -156,15 +156,15 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     /// votes from the sender to `delegatee` or self
     function stakeAndDelegate(uint256 rsrAmount, address delegatee) external {
         stake(rsrAmount);
-        address msgSender = _msgSender();
-        address currentDelegate = delegates(msgSender);
+        address caller = _msgSender();
+        address currentDelegate = delegates(caller);
 
         if (delegatee == address(0) && currentDelegate == address(0)) {
             // Delegate to self if no delegate defined and no delegatee provided
-            _delegate(msgSender, msgSender);
+            _delegate(caller, caller);
         } else if (delegatee != address(0) && currentDelegate != delegatee) {
             // Delegate to delegatee if provided and different than current delegate
-            _delegate(msgSender, delegatee);
+            _delegate(caller, delegatee);
         }
     }
 
@@ -202,7 +202,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         address dst,
         uint256 amount
     ) private {
-        if (src != dst && amount > 0) {
+        if (src != dst && amount != 0) {
             if (src != address(0)) {
                 (uint256 oldWeight, uint256 newWeight) = _writeCheckpoint(
                     _checkpoints[era][src],
@@ -234,7 +234,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         newWeight = op(oldWeight, delta);
 
         // `fromBlock` is a timepoint
-        if (pos > 0 && ckpts[pos - 1].fromBlock == clock()) {
+        if (pos != 0 && ckpts[pos - 1].fromBlock == clock()) {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(

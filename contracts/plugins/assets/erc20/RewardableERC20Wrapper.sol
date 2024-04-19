@@ -44,7 +44,7 @@ abstract contract RewardableERC20Wrapper is RewardableERC20 {
 
     /// Deposit the underlying token and optionally take an action such as staking in a gauge
     function deposit(uint256 _amount, address _to) external virtual {
-        if (_amount > 0) {
+        if (_amount != 0) {
             _mint(_to, _amount); // does balance checkpointing
             underlying.safeTransferFrom(msg.sender, address(this), _amount);
             _afterDeposit(_amount, _to);
@@ -55,7 +55,7 @@ abstract contract RewardableERC20Wrapper is RewardableERC20 {
 
     /// Withdraw the underlying token and optionally take an action such as staking in a gauge
     function withdraw(uint256 _amount, address _to) external virtual {
-        if (_amount > 0) {
+        if (_amount != 0) {
             _burn(msg.sender, _amount); // does balance checkpointing
             _beforeWithdraw(_amount, _to);
             underlying.safeTransfer(_to, _amount);

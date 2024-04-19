@@ -503,10 +503,17 @@ export async function collateralFixture(
     18
   )
 
+  // EURT chainlink feed dead, use mock
+  const FeedFactory = await ethers.getContractFactory('MockV3Aggregator')
+  const eurFeed = await ethers.getContractAt(
+    'MockV3Aggregator',
+    networkConfig[chainId].chainlinkFeeds.EUR!
+  )
+  const feed = await FeedFactory.deploy(8, await eurFeed.latestAnswer())
   const eurt = await makeEURFiatCollateral(
-    networkConfig[chainId].tokens.EURT as string,
-    networkConfig[chainId].chainlinkFeeds.EURT as string,
-    networkConfig[chainId].chainlinkFeeds.EUR as string,
+    networkConfig[chainId].tokens.EURT!,
+    feed.address,
+    networkConfig[chainId].chainlinkFeeds.EUR!,
     'EUR'
   )
 

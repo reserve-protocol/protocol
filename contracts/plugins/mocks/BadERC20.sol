@@ -53,11 +53,10 @@ contract BadERC20 is ERC20Mock {
     }
 
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
-        if (censored[owner] || censored[to]) revert("censored");
+        if (censored[msg.sender] || censored[to]) revert("censored");
         uint256 fee = transferFee.mulu_toUint(amount, CEIL);
-        _transfer(owner, to, amount - fee);
-        _burn(owner, fee);
+        _transfer(msg.sender, to, amount - fee);
+        _burn(msg.sender, fee);
         return true;
     }
 
@@ -66,9 +65,8 @@ contract BadERC20 is ERC20Mock {
         address to,
         uint256 amount
     ) public virtual override returns (bool) {
-        address spender = _msgSender();
         if (censored[from] || censored[to]) revert("censored");
-        _spendAllowance(from, spender, amount);
+        _spendAllowance(from, msg.sender, amount);
         uint256 fee = transferFee.mulu_toUint(amount, CEIL);
         _transfer(from, to, amount - fee);
         _burn(from, fee);

@@ -34,7 +34,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
         uint192 revenueHiding,
         address curvePoolEmaPriceOracleAddress
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
 
         CURVE_POOL_EMA_PRICE_ORACLE = curvePoolEmaPriceOracleAddress;
     }

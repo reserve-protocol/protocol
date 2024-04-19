@@ -26,20 +26,20 @@ contract FacadeWrite is IFacadeWrite {
         returns (address)
     {
         // Perform validations
-        require(setup.primaryBasket.length > 0, "no collateral");
+        require(setup.primaryBasket.length != 0, "no collateral");
         require(setup.primaryBasket.length == setup.weights.length, "invalid length");
 
         // Validate backups
         for (uint256 i = 0; i < setup.backups.length; ++i) {
-            require(setup.backups[i].backupCollateral.length > 0, "no backup collateral");
+            require(setup.backups[i].backupCollateral.length != 0, "no backup collateral");
         }
 
         // Validate beneficiaries
         for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
             require(
                 setup.beneficiaries[i].beneficiary != address(0) &&
-                    (setup.beneficiaries[i].revShare.rTokenDist > 0 ||
-                        setup.beneficiaries[i].revShare.rsrDist > 0),
+                    (setup.beneficiaries[i].revShare.rTokenDist != 0 ||
+                        setup.beneficiaries[i].revShare.rsrDist != 0),
                 "beneficiary revShare mismatch"
             );
         }
