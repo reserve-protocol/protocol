@@ -29,7 +29,7 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {
         require(address(config.erc20) != address(0), "missing erc20");
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         MorphoTokenisedDeposit vault = MorphoTokenisedDeposit(address(config.erc20));
         morpho = IERC20Metadata(address(vault.rewardToken()));
         oneShare = 10**vault.decimals();
@@ -48,8 +48,8 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        uint256 bal = morpho.balanceOf(address(this));
+        uint256 _bal = morpho.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - _bal);
     }
 }

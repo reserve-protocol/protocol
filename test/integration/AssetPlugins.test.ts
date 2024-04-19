@@ -973,8 +973,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             eurFiatTokenDecimals: 6,
             eurFiatTokenAddress: networkConfig[chainId].tokens.EURT || '',
             eurFiatTokenCollateral: eurtCollateral,
-            targetPrice: fp('1.07025'), // approx price EUR-USD June 6, 2022
-            refPrice: fp('1.073'), // approx price EURT-USD June 6, 2022
+            targetPrice: fp('1.07025'), // mimic ref price
+            refPrice: fp('1.07025'), // approx price EURT-USD June 6, 2022
             targetName: 'EUR',
           },
         ]
@@ -2168,7 +2168,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectPrice(cETHCollateral.address, cETHPrice, ORACLE_ERROR, true, bn('1e5'))
 
         // EURT
-        const eurPrice = fp('1.073') // approx price EUR-USD June 6, 2022
+        const eurPrice = fp('1.07025') // approx price EURT-USD June 6, 2022
         await expectPrice(eurtCollateral.address, eurPrice, ORACLE_ERROR, true, bn('1e5')) // ref price approx 1.07
 
         // Aproximate total price of Basket in USD

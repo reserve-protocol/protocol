@@ -53,7 +53,6 @@ task('mint-tokens', 'Mints all the tokens to an address')
       'COMP',
       'WETH',
       'WBTC',
-      'EURT',
       'RSR',
     ]
 

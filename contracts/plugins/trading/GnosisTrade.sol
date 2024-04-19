@@ -201,8 +201,8 @@ contract GnosisTrade is ITrade, Versioned {
         // the trades recorded by the IDO contracts and on our side.
         boughtAmt = buy.balanceOf(address(this));
 
-        if (sellBal > 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
-        if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
+        if (sellBal != 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
+        if (boughtAmt != 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
         // Check clearing prices
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;

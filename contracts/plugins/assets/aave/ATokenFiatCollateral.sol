@@ -44,7 +44,7 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
     }
 
@@ -59,8 +59,8 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @custom:delegate-call
     function claimRewards() external virtual override(Asset, IRewardable) {
-        uint256 bal = stkAAVE.balanceOf(address(this));
+        uint256 _bal = stkAAVE.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(stkAAVE, stkAAVE.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(stkAAVE, stkAAVE.balanceOf(address(this)) - _bal);
     }
 }

@@ -114,6 +114,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradePrices memory prices
     ) external returns (ITrade) {
         address caller = _msgSender();
+
         require(
             caller == address(backingManager) ||
                 caller == address(rsrTrader) ||
@@ -227,7 +228,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
         require(!batchTradeDisabled, "batch auctions disabled");
-        require(batchAuctionLength > 0, "batch auctions not enabled");
+        require(batchAuctionLength != 0, "batch auctions not enabled");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
 
@@ -259,7 +260,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
             "dutch auctions disabled for token pair"
         );
-        require(dutchAuctionLength > 0, "dutch auctions not enabled");
+        require(dutchAuctionLength != 0, "dutch auctions not enabled");
         require(
             priceNotDecayed(req.sell) && priceNotDecayed(req.buy),
             "dutch auctions require live prices"
