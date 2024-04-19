@@ -2287,6 +2287,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
         ).to.be.revertedWith('unsound new collateral')
       })
+
+      it('Should handle unpriced asset in normalization', async () => {
+        await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+        await indexBH.connect(owner).refreshBasket()
+
+        // Set Token0 to unpriced - stale oracle
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
+        await expectUnpriced(collateral0.address)
+
+        // Attempt to add EURO, basket is not SOUND
+        await expect(
+          indexBH
+            .connect(owner)
+            .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
+        ).to.be.revertedWith('unsound basket')
+      })
     })
 
     describe('Custom Redemption', () => {
