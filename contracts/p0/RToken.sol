@@ -80,7 +80,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
     function issue(uint256 amount) public {
-        issueTo(msg.sender, amount);
+        issueTo(_msgSender(), amount);
     }
 
     /// Issue an RToken on the current basket, to a particular recipient
@@ -111,7 +111,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
 
-        address issuer = msg.sender;
+        address issuer = _msgSender();
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(main.backingManager()), deposits[i]);
         }
@@ -124,7 +124,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
     function redeem(uint256 amount) external {
-        redeemTo(msg.sender, amount);
+        redeemTo(_msgSender(), amount);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
@@ -136,7 +136,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         main.poke();
 
         require(amount > 0, "Cannot redeem zero");
-        require(amount <= balanceOf(msg.sender), "insufficient balance");
+        require(amount <= balanceOf(_msgSender()), "insufficient balance");
         require(main.basketHandler().fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
 
@@ -145,8 +145,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on overuse
 
         // {BU}
-        uint192 baskets = _scaleDown(msg.sender, amount);
-        emit Redemption(msg.sender, recipient, amount, baskets);
+        uint192 baskets = _scaleDown(_msgSender(), amount);
+        emit Redemption(_msgSender(), recipient, amount, baskets);
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             baskets,
@@ -183,7 +183,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         uint256[] memory minAmounts
     ) external notFrozen exchangeRateIsValidAfter {
         require(amount > 0, "Cannot redeem zero");
-        require(amount <= balanceOf(msg.sender), "insufficient balance");
+        require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
         // Call collective state keepers.
         main.poke();
@@ -195,8 +195,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on overuse
 
         // {BU}
-        uint192 basketsRedeemed = _scaleDown(msg.sender, amount);
-        emit Redemption(msg.sender, recipient, amount, basketsRedeemed);
+        uint192 basketsRedeemed = _scaleDown(_msgSender(), amount);
+        emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
         // === Get basket redemption amounts ===
 
@@ -261,7 +261,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param baskets {BU} The number of baskets to mint RToken for
     /// @custom:protected
     function mint(uint192 baskets) external exchangeRateIsValidAfter {
-        require(msg.sender == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         _scaleUp(address(main.backingManager()), baskets);
     }
 
@@ -269,8 +269,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The amount to be melted
     /// @custom:protected
     function melt(uint256 amount) external exchangeRateIsValidAfter {
-        require(msg.sender == address(main.furnace()), "furnace only");
-        _burn(msg.sender, amount);
+        require(_msgSender() == address(main.furnace()), "furnace only");
+        _burn(_msgSender(), amount);
         emit Melted(amount);
     }
 
@@ -279,8 +279,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok}
     /// @custom:protected
     function dissolve(uint256 amount) external exchangeRateIsValidAfter {
-        require(msg.sender == address(main.backingManager()), "not backing manager");
-        _scaleDown(msg.sender, amount);
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        _scaleDown(_msgSender(), amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -290,7 +290,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         notTradingPausedOrFrozen
         exchangeRateIsValidAfter
     {
-        require(msg.sender == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(totalSupply() > 0, "0 supply");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;

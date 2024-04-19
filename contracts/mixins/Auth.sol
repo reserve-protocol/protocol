@@ -74,7 +74,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         _setRoleAdmin(LONG_FREEZER, OWNER);
         _setRoleAdmin(PAUSER, OWNER);
 
-        _grantRole(OWNER, msg.sender);
+        _grantRole(OWNER, _msgSender());
 
         setShortFreeze(shortFreeze_);
         setLongFreeze(longFreeze_);
@@ -123,7 +123,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // - after, caller does not have the SHORT_FREEZER role
     function freezeShort() external onlyRole(SHORT_FREEZER) {
         // Revoke short freezer role after one use
-        _revokeRole(SHORT_FREEZER, msg.sender);
+        _revokeRole(SHORT_FREEZER, _msgSender());
         freezeUntil(uint48(block.timestamp) + shortFreeze);
     }
 
@@ -137,10 +137,10 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // - longFreezes'[caller] = longFreezes[caller] - 1
     // - if longFreezes'[caller] == 0 then caller loses the LONG_FREEZER role
     function freezeLong() external onlyRole(LONG_FREEZER) {
-        longFreezes[msg.sender] -= 1; // reverts on underflow
+        longFreezes[_msgSender()] -= 1; // reverts on underflow
 
         // Revoke on 0 charges as a cleanup step
-        if (longFreezes[msg.sender] == 0) _revokeRole(LONG_FREEZER, msg.sender);
+        if (longFreezes[_msgSender()] == 0) _revokeRole(LONG_FREEZER, _msgSender());
         freezeUntil(uint48(block.timestamp) + longFreeze);
     }
 

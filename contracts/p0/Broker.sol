@@ -68,7 +68,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     ) external returns (ITrade) {
         assert(req.sellAmount > 0);
 
-        address caller = msg.sender;
+        address caller = _msgSender();
         require(
             caller == address(main.backingManager()) ||
                 caller == address(main.rsrTrader()) ||
@@ -88,8 +88,8 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
     function reportViolation() external {
-        require(trades[msg.sender], "unrecognized trade contract");
-        ITrade trade = ITrade(msg.sender);
+        require(trades[_msgSender()], "unrecognized trade contract");
+        ITrade trade = ITrade(_msgSender());
         TradeKind kind = trade.KIND();
 
         if (kind == TradeKind.BATCH_AUCTION) {

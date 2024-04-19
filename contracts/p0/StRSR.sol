@@ -147,7 +147,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @dev Staking continues while paused, without reward handouts
     /// @custom:interaction
     function stake(uint256 rsrAmount) external {
-        address account = msg.sender;
+        address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
         _payoutRewards();
@@ -241,7 +241,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function cancelUnstake(uint256 endId) external notFrozen {
-        address account = msg.sender;
+        address account = _msgSender();
 
         // Call state keepers
         _payoutRewards();
@@ -359,7 +359,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
-        main.rsr().safeTransfer(msg.sender, seizedRSR);
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
     function bankruptStakers() internal returns (uint256 seizedRSR) {
@@ -444,7 +444,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function transfer(address to, uint256 amount) external returns (bool) {
-        _transfer(msg.sender, to, amount);
+        _transfer(_msgSender(), to, amount);
         return true;
     }
 
@@ -474,7 +474,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function approve(address spender, uint256 amount) public returns (bool) {
-        _approve(msg.sender, spender, amount);
+        _approve(_msgSender(), spender, amount);
         return true;
     }
 
@@ -483,19 +483,19 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address to,
         uint256 amount
     ) public returns (bool) {
-        _spendAllowance(from, msg.sender, amount);
+        _spendAllowance(from, _msgSender(), amount);
         _transfer(from, to, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
-        address owner = msg.sender;
+        address owner = _msgSender();
         _approve(owner, spender, allowances[owner][spender] + addedValue);
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
-        address owner = msg.sender;
+        address owner = _msgSender();
         uint256 currentAllowance = allowances[owner][spender];
         require(currentAllowance >= subtractedValue, "decrease allowance");
         unchecked {
