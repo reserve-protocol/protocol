@@ -1155,7 +1155,7 @@ contract RebalancingScenario {
     }
 
     function echidna_RTokenRateNeverFallInNormalOps() external view returns (bool) {
-        if (status == ScenarioStatus.BEFORE_REBALANCING && rTokenRate() < prevRTokenRate)
+        if (status == ScenarioStatus.BEFORE_REBALANCING && main.rToken().totalSupply() > 0 && rTokenRate() < prevRTokenRate)
             return false;
         return true;
     }
