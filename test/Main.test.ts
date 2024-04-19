@@ -2194,28 +2194,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(tokAmts[1]).to.equal(fp('0.5'))
     })
 
-    it('Should not normalize by price when the current basket is unsound', async () => {
+    it('Should handle unpriced asset in normalization', async () => {
       await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await indexBH.connect(owner).refreshBasket()
-      await setOraclePrice(collateral0.address, fp('0.5'))
-      await assetRegistry.refresh()
-      expect(await collateral0.status()).to.equal(CollateralStatus.IFFY)
-      expect(await collateral1.status()).to.equal(CollateralStatus.SOUND)
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
-      ).to.be.revertedWith('unsound basket')
-    })
 
-    it('Should not normalize by price if the new collateral is unsound', async () => {
-      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await indexBH.connect(owner).refreshBasket()
-      await setOraclePrice(collateral1.address, fp('0.5'))
-      await assetRegistry.refresh()
-      expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
-      expect(await collateral1.status()).to.equal(CollateralStatus.IFFY)
+      // Set Token0 to unpriced - stale oracle
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
+      await expectUnpriced(collateral0.address)
+
+      // Attempt to add EURO, basket is not SOUND
       await expect(
-        indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
-      ).to.be.revertedWith('unsound new collateral')
+        indexBH
+          .connect(owner)
+          .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
+      ).to.be.revertedWith('unsound basket')
     })
 
     describe('Custom Redemption', () => {

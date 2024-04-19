@@ -10,6 +10,7 @@ import { callAndGetNextTrade, runBatchTrade, runDutchTrade } from './trades'
 import { CollateralStatus } from '#/common/constants'
 import { ActFacet } from '@typechain/ActFacet'
 import { ReadFacet } from '@typechain/ReadFacet'
+import { pushOraclesForward } from '../upgrade-checker-utils/oracles'
 
 type Balances = { [key: string]: BigNumber }
 
@@ -44,8 +45,15 @@ export const redeemRTokens = async (
     'BasketHandlerP1',
     await main.basketHandler()
   )
+  const assetRegistry = await hre.ethers.getContractAt(
+    'AssetRegistryP1',
+    await main.assetRegistry()
+  )
 
-  const redeemQuote = await basketHandler.quote(redeemAmount, 0)
+  await assetRegistry.refresh()
+  const basketsNeeded = await rToken.basketsNeeded()
+  const totalSupply = await rToken.totalSupply()
+  const redeemQuote = await basketHandler.quote(redeemAmount.mul(basketsNeeded).div(totalSupply), 0)
   const expectedTokens = redeemQuote.erc20s
   const expectedBalances: Balances = {}
   let log = ''
@@ -240,7 +248,9 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     tradesRemain = true
     sellToken = initialSellToken
 
-    while (tradesRemain) {
+    for (let i = 0; tradesRemain; i++) {
+      // every other trade, push oracles forward (some oracles have 3600s timeout)
+      if (i % 2 == 1) await pushOraclesForward(hre, rtokenAddress, [])
       ;[tradesRemain, sellToken] = await runDutchTrade(hre, backingManager, sellToken)
 
       await advanceBlocks(hre, 1)

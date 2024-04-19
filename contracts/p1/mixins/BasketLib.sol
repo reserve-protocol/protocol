@@ -364,6 +364,8 @@ library BasketLibP1 {
             require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
 
             (uint192 low, uint192 high) = coll.price(); // {UoA/tok}
+            // untestable:
+            //      this function is only called if basket is SOUND
             require(low > 0 && high < FIX_MAX, "invalid price");
 
             // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
