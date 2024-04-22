@@ -3,7 +3,7 @@ import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
 import { networkConfig } from '../../../common/configuration'
 import {
-  advanceBlocks,
+  advanceToTimestamp,
   advanceTime,
   getLatestBlockNumber,
   getLatestBlockTimestamp,
@@ -111,8 +111,8 @@ export const runDutchTrade = async (
     `Running Dutch Trade: Selling ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
   )
 
-  const endBlock = await trade.endBlock()
-  const [tester] = await hre.ethers.getSigners()
+  const endTime = await trade.endTime()
+  const whaleAddr = whales[buyTokenAddress.toLowerCase()]
 
   // Bid near 1:1 point, which occurs at the 70% mark
   const toAdvance = endBlock
@@ -126,7 +126,7 @@ export const runDutchTrade = async (
   await getTokens(hre, buyTokenAddress, buyAmount, tester.address)
 
   const buyToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-  await buyToken.connect(tester).approve(router.address, MAX_UINT256)
+  await buyToken.connect(whaleAddr).approve(router.address, MAX_UINT256)
 
   // Bid
   ;[tradesRemain, newSellToken] = await callAndGetNextTrade(
@@ -139,7 +139,7 @@ export const runDutchTrade = async (
     TradeStatus[await trade.status()],
     await trade.canSettle(),
     await trade.bidder(),
-    tester.address
+    whaleAddr
   )
 
   if (

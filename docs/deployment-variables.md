@@ -39,13 +39,13 @@ Mainnet reasonable range: 1e22 to 1e27.
 
 Dimension: `{1}`
 
-The `rewardRatio` is the fraction of the current reward amount that should be handed out per block.
+The `rewardRatio` is the fraction of the current reward amount that should be handed out per second.
 
-Default value: `6876460100000` = a half life of 14 days.
+Default value: `573038343750` = a half life of 14 days.
 
-Mainnet reasonable range: 1e12 to 1e14
+Reasonable range: 1e10 to 1e13
 
-To calculate: `ln(2) / (60*60*24*desired_days_in_half_life/12)`, and then multiply by 1e18.
+To calculate: `ln(2) / (60*60*24*desired_days_in_half_life)`, and then multiply by 1e18.
 
 ### `unstakingDelay`
 

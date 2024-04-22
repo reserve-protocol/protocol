@@ -203,6 +203,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
+  const swapBasketHandlerIn = async (bh: TestIBasketHandler) => {
+    await setStorageAt(main.address, 204, bh.address)
+    if (IMPLEMENTATION == Implementation.P1) {
+      await setStorageAt(rToken.address, 355, bh.address)
+      await setStorageAt(backingManager.address, 302, bh.address)
+      await setStorageAt(assetRegistry.address, 201, bh.address)
+    }
+  }
+
   describe('Deployment #fast', () => {
     it('Should setup Main correctly', async () => {
       // Auth roles
@@ -1732,483 +1741,568 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await assetRegistry.connect(owner).register(eurColl.address)
     })
 
-    it('Should not allow to set prime Basket if not OWNER', async () => {
-      await expect(
-        indexBH.connect(other).setPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('governance only')
-      await expect(
-        basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('governance only')
-      await expect(
-        indexBH.connect(other).forceSetPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('governance only')
-      await expect(
-        basketHandler.connect(other).forceSetPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('governance only')
-    })
-
-    it('Should not allow to set prime Basket with invalid length', async () => {
-      await expect(indexBH.connect(owner).setPrimeBasket([token0.address], [])).to.be.revertedWith(
-        'len mismatch'
-      )
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([token0.address], [])
-      ).to.be.revertedWith('len mismatch')
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([token0.address], [])
-      ).to.be.revertedWith('len mismatch')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [])
-      ).to.be.revertedWith('len mismatch')
-    })
-
-    it('Should not allow to set prime Basket with non-collateral tokens', async () => {
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
-      ).to.be.revertedWith('erc20 is not collateral')
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
-      ).to.be.revertedWith('erc20 is not collateral')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([compToken.address], [fp('1')])
-      ).to.be.revertedWith('erc20 is not collateral')
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([compToken.address], [fp('1')])
-      ).to.be.revertedWith('erc20 is not collateral')
-    })
-
-    it('Should not allow to set prime Basket with duplicate ERC20s', async () => {
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
-      ).to.be.revertedWith('contains duplicates')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
-      ).to.be.revertedWith('contains duplicates')
-      await expect(
-        indexBH
-          .connect(owner)
-          .forceSetPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
-      ).to.be.revertedWith('contains duplicates')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .forceSetPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
-      ).to.be.revertedWith('contains duplicates')
-    })
-
-    it('Should not allow to set prime Basket with 0 address tokens', async () => {
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-    })
-
-    it('Should not allow to set prime Basket with stRSR', async () => {
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-    })
-
-    it('Should not allow to bypass MAX_TARGET_AMT', async () => {
-      // not possible on non-fresh basketHandler
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-      ).to.be.revertedWith('invalid target amount; too large')
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-      ).to.be.revertedWith('invalid target amount; too large')
-    })
-
-    it('Should not allow to increase prime Basket weights', async () => {
-      // not possible on indexBH
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
-      ).to.be.revertedWith('new target weights')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [fp('1').add(1)])
-      ).to.be.revertedWith('new target weights')
-    })
-
-    it('Should not allow to decrease prime Basket weights', async () => {
-      // not possible on indexBH
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
-      ).to.be.revertedWith('missing target weights')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [fp('1').sub(1)])
-      ).to.be.revertedWith('missing target weights')
-    })
-
-    it('Should not allow to set prime Basket with an empty basket', async () => {
-      await expect(indexBH.connect(owner).setPrimeBasket([], [])).to.be.revertedWith('empty basket')
-      await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
-        'empty basket'
-      )
-      await expect(indexBH.connect(owner).forceSetPrimeBasket([], [])).to.be.revertedWith(
-        'empty basket'
-      )
-      await expect(basketHandler.connect(owner).forceSetPrimeBasket([], [])).to.be.revertedWith(
-        'empty basket'
-      )
-    })
-
-    it('Should not allow to set prime Basket with a zero amount', async () => {
-      await expect(indexBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
-        'invalid target amount; must be nonzero'
-      )
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('missing target weights')
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('invalid target amount; must be nonzero')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('missing target weights')
-
-      // for non-reweightable baskets, also try setting a zero amount as the *original* basket
-      const newBH = await newBasketHandler()
-      await newBH.init(main.address, config.warmupPeriod, false)
-      await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
-        'invalid target amount; must be nonzero'
-      )
-      await expect(
-        newBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('invalid target amount; must be nonzero')
-    })
-
-    it('Should be able to set exactly same basket', async () => {
-      await basketHandler
-        .connect(owner)
-        .setPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-        )
-      await basketHandler
-        .connect(owner)
-        .forceSetPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-        )
-
-      await indexBH
-        .connect(owner)
-        .forceSetPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-        )
-      await indexBH
-        .connect(owner)
-        .forceSetPrimeBasket(
-          [token0.address, token1.address, token2.address, token3.address],
-          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-        )
-    })
-
-    it('Should be able to set prime basket multiple times', async () => {
-      // basketHandler
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket([token0.address, token3.address], [fp('0.5'), fp('0.5')])
-      )
-        .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs(
-          [token0.address, token3.address],
-          [fp('0.5'), fp('0.5')],
-          [ethers.utils.formatBytes32String('USD')]
-        )
-
-      await expect(basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')]))
-        .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-
-      await expect(basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')]))
-        .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-
-      await expect(basketHandler.connect(owner).forceSetPrimeBasket([token1.address], [fp('1')]))
-        .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-
-      await expect(basketHandler.connect(owner).forceSetPrimeBasket([token2.address], [fp('1')]))
-        .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-
-      // indexBH
-      await expect(
-        indexBH
-          .connect(owner)
-          .setPrimeBasket([token0.address, token3.address], [fp('0.5'), fp('0.5')])
-      )
-        .to.emit(indexBH, 'PrimeBasketSet')
-        .withArgs(
-          [token0.address, token3.address],
-          [fp('0.5'), fp('0.5')],
-          [ethers.utils.formatBytes32String('USD')]
-        )
-      await indexBH.connect(owner).refreshBasket()
-
-      await expect(indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')]))
-        .to.emit(indexBH, 'PrimeBasketSet')
-        .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-      await indexBH.connect(owner).refreshBasket()
-
-      await expect(indexBH.connect(owner).setPrimeBasket([token2.address], [fp('1')]))
-        .to.emit(indexBH, 'PrimeBasketSet')
-        .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-      await indexBH.connect(owner).refreshBasket()
-
-      await expect(indexBH.connect(owner).forceSetPrimeBasket([token1.address], [fp('1')]))
-        .to.emit(indexBH, 'PrimeBasketSet')
-        .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-
-      await expect(indexBH.connect(owner).forceSetPrimeBasket([token2.address], [fp('1')]))
-        .to.emit(indexBH, 'PrimeBasketSet')
-        .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-    })
-
-    it('Should not allow to set prime Basket as superset of old basket', async () => {
-      await assetRegistry.connect(owner).register(backupCollateral1.address)
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket(
-            [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
-          )
-      ).to.be.revertedWith('new target weights')
-
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket(
-            [token0.address, token1.address, token2.address, token3.address, eurToken.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
-          )
-      ).to.be.revertedWith('new target weights')
-
-      await expect(
-        basketHandler
-          .connect(owner)
-          .forceSetPrimeBasket(
-            [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
-          )
-      ).to.be.revertedWith('new target weights')
-    })
-
-    it('Should not allow to set prime Basket as subset of old basket', async () => {
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket(
-            [token0.address, token1.address, token2.address, token3.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
-          )
-      ).to.be.revertedWith('missing target weights')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket(
-            [token0.address, token1.address, token2.address],
-            [fp('0.25'), fp('0.25'), fp('0.25')]
-          )
-      ).to.be.revertedWith('missing target weights')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .forceSetPrimeBasket(
-            [token0.address, token1.address, token2.address, token3.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
-          )
-      ).to.be.revertedWith('missing target weights')
-    })
-
-    it('Should not allow to change target unit in old basket', async () => {
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket(
-            [token0.address, token1.address, token2.address, eurToken.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-          )
-      ).to.be.revertedWith('new target weights')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .forceSetPrimeBasket(
-            [token0.address, token1.address, token2.address, eurToken.address],
-            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
-          )
-      ).to.be.revertedWith('new target weights')
-    })
-
-    it('Should not allow to set prime Basket with RSR/RToken', async () => {
-      await expect(
-        indexBH.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-
-      await expect(
-        indexBH
-          .connect(owner)
-          .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('invalid collateral')
-
-      await expect(
-        indexBH.connect(owner).forceSetPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler.connect(owner).forceSetPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
-
-      await expect(
-        indexBH
-          .connect(owner)
-          .forceSetPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('invalid collateral')
-      await expect(
-        basketHandler
-          .connect(owner)
-          .forceSetPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('invalid collateral')
-    })
-
-    it('Should revert if target has been changed in asset registry', async () => {
-      // Swap registered asset for NEW_TARGET target
-      const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
-      const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: await collateral0.chainlinkFeed(),
-        oracleError: ORACLE_ERROR,
-        erc20: await collateral0.erc20(),
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('NEW_TARGET'),
-        defaultThreshold: fp('0.01'),
-        delayUntilDefault: await collateral0.delayUntilDefault(),
+    context('Non-index BasketHandler', () => {
+      beforeEach(async () => {
+        await swapBasketHandlerIn(basketHandler)
       })
-      await assetRegistry.connect(owner).swapRegistered(coll.address)
 
-      // Should revert
-      await expect(
-        basketHandler
+      it('Should not allow to set prime Basket if not OWNER', async () => {
+        await expect(
+          basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
+        ).to.be.revertedWith('governance only')
+        await expect(
+          basketHandler.connect(other).forceSetPrimeBasket([token0.address], [fp('1')])
+        ).to.be.revertedWith('governance only')
+      })
+
+      it('Should not allow to set prime Basket with invalid length', async () => {
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([token0.address], [])
+        ).to.be.revertedWith('len mismatch')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [])
+        ).to.be.revertedWith('len mismatch')
+      })
+
+      it('Should not allow to set prime Basket with non-collateral tokens', async () => {
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
+        ).to.be.revertedWith('erc20 is not collateral')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([compToken.address], [fp('1')])
+        ).to.be.revertedWith('erc20 is not collateral')
+      })
+
+      it('Should not allow to set prime Basket with duplicate ERC20s', async () => {
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
+        ).to.be.revertedWith('contains duplicates')
+        await expect(
+          basketHandler
+            .connect(owner)
+            .forceSetPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
+        ).to.be.revertedWith('contains duplicates')
+      })
+
+      it('Should not allow to set prime Basket with 0 address tokens', async () => {
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([ZERO_ADDRESS], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+      })
+
+      it('Should not allow to set prime Basket with stRSR', async () => {
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([stRSR.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+      })
+
+      it('Should not allow to increase prime Basket weights', async () => {
+        // not possible on indexBH
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
+        ).to.be.revertedWith('new target weights')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [fp('1').add(1)])
+        ).to.be.revertedWith('new target weights')
+      })
+
+      it('Should not allow to decrease prime Basket weights', async () => {
+        // not possible on indexBH
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
+        ).to.be.revertedWith('missing target weights')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [fp('1').sub(1)])
+        ).to.be.revertedWith('missing target weights')
+      })
+
+      it('Should not allow to set prime Basket with an empty basket', async () => {
+        await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
+          'empty basket'
+        )
+        await expect(basketHandler.connect(owner).forceSetPrimeBasket([], [])).to.be.revertedWith(
+          'empty basket'
+        )
+      })
+
+      it('Should not allow to set prime Basket with a zero amount', async () => {
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
+        ).to.be.revertedWith('missing target weights')
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [0])
+        ).to.be.revertedWith('missing target weights')
+
+        // for non-reweightable baskets, also try setting a zero amount as the *original* basket
+        const newBH = await newBasketHandler()
+        await newBH.init(main.address, config.warmupPeriod, false)
+        await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
+          'invalid target amount; must be nonzero'
+        )
+        await expect(
+          newBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
+        ).to.be.revertedWith('invalid target amount; must be nonzero')
+      })
+
+      it('Should be able to set exactly same basket', async () => {
+        await basketHandler
           .connect(owner)
           .setPrimeBasket(
             [token0.address, token1.address, token2.address, token3.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('new target weights')
-      await expect(
-        basketHandler
+        await basketHandler
           .connect(owner)
           .forceSetPrimeBasket(
             [token0.address, token1.address, token2.address, token3.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('new target weights')
+      })
+
+      it('Should be able to set prime basket multiple times', async () => {
+        // basketHandler
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket([token0.address, token3.address], [fp('0.5'), fp('0.5')])
+        )
+          .to.emit(basketHandler, 'PrimeBasketSet')
+          .withArgs(
+            [token0.address, token3.address],
+            [fp('0.5'), fp('0.5')],
+            [ethers.utils.formatBytes32String('USD')]
+          )
+
+        await expect(basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')]))
+          .to.emit(basketHandler, 'PrimeBasketSet')
+          .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+
+        await expect(basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')]))
+          .to.emit(basketHandler, 'PrimeBasketSet')
+          .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+
+        await expect(basketHandler.connect(owner).forceSetPrimeBasket([token1.address], [fp('1')]))
+          .to.emit(basketHandler, 'PrimeBasketSet')
+          .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+
+        await expect(basketHandler.connect(owner).forceSetPrimeBasket([token2.address], [fp('1')]))
+          .to.emit(basketHandler, 'PrimeBasketSet')
+          .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+      })
+
+      it('Should not allow to set prime Basket as superset of old basket', async () => {
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket(
+              [
+                token0.address,
+                token1.address,
+                token2.address,
+                token3.address,
+                backupToken1.address,
+              ],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+            )
+        ).to.be.revertedWith('new target weights')
+
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket(
+              [token0.address, token1.address, token2.address, token3.address, eurToken.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+            )
+        ).to.be.revertedWith('new target weights')
+
+        await expect(
+          basketHandler
+            .connect(owner)
+            .forceSetPrimeBasket(
+              [
+                token0.address,
+                token1.address,
+                token2.address,
+                token3.address,
+                backupToken1.address,
+              ],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+            )
+        ).to.be.revertedWith('new target weights')
+      })
+
+      it('Should not allow to set prime Basket as subset of old basket', async () => {
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket(
+              [token0.address, token1.address, token2.address, token3.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
+            )
+        ).to.be.revertedWith('missing target weights')
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket(
+              [token0.address, token1.address, token2.address],
+              [fp('0.25'), fp('0.25'), fp('0.25')]
+            )
+        ).to.be.revertedWith('missing target weights')
+        await expect(
+          basketHandler
+            .connect(owner)
+            .forceSetPrimeBasket(
+              [token0.address, token1.address, token2.address, token3.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
+            )
+        ).to.be.revertedWith('missing target weights')
+      })
+
+      it('Should not allow to change target unit in old basket', async () => {
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket(
+              [token0.address, token1.address, token2.address, eurToken.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+            )
+        ).to.be.revertedWith('new target weights')
+        await expect(
+          basketHandler
+            .connect(owner)
+            .forceSetPrimeBasket(
+              [token0.address, token1.address, token2.address, eurToken.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+            )
+        ).to.be.revertedWith('new target weights')
+      })
+
+      it('Should not allow to set prime Basket with RSR/RToken', async () => {
+        await expect(
+          basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+        ).to.be.revertedWith('invalid collateral')
+
+        await expect(
+          basketHandler.connect(owner).forceSetPrimeBasket([rsr.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+
+        await expect(
+          basketHandler
+            .connect(owner)
+            .forceSetPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+        ).to.be.revertedWith('invalid collateral')
+      })
+
+      it('Should revert if target has been changed in asset registry', async () => {
+        // Swap registered asset for NEW_TARGET target
+        const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+        const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral0.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('NEW_TARGET'),
+          defaultThreshold: fp('0.01'),
+          delayUntilDefault: await collateral0.delayUntilDefault(),
+        })
+        await assetRegistry.connect(owner).swapRegistered(coll.address)
+
+        // Should revert
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setPrimeBasket(
+              [token0.address, token1.address, token2.address, token3.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+            )
+        ).to.be.revertedWith('new target weights')
+        await expect(
+          basketHandler
+            .connect(owner)
+            .forceSetPrimeBasket(
+              [token0.address, token1.address, token2.address, token3.address],
+              [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+            )
+        ).to.be.revertedWith('new target weights')
+      })
     })
 
-    it('Should normalize price by USD for index RTokens', async () => {
-      // Basket starts out worth $1 and holding USD targets
-      // Throughout this test the $ value of the RToken should remain
+    context('Index BasketHandler', () => {
+      beforeEach(async () => {
+        await swapBasketHandlerIn(indexBH)
+      })
 
-      // Group the 4 USD tokens together
-      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await indexBH.connect(owner).refreshBasket()
-      let [erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
-      expect(erc20s.length).to.equal(1)
-      expect(tokAmts[0]).to.equal(fp('1'))
+      it('Should not allow to set prime Basket if not OWNER', async () => {
+        await expect(
+          indexBH.connect(other).setPrimeBasket([token0.address], [fp('1')])
+        ).to.be.revertedWith('governance only')
+        await expect(
+          indexBH.connect(other).forceSetPrimeBasket([token0.address], [fp('1')])
+        ).to.be.revertedWith('governance only')
+      })
 
-      // Add EURO into the basket as a pure addition, changing price to $0.80 in USD and $0.20 in EURO
-      await indexBH
-        .connect(owner)
-        .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
-      await indexBH.connect(owner).refreshBasket()
-      ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
-      expect(erc20s.length).to.equal(2)
-      expect(erc20s[0]).to.equal(token0.address)
-      expect(erc20s[1]).to.equal(eurToken.address)
-      expect(tokAmts[0]).to.equal(fp('0.8'))
-      expect(tokAmts[1]).to.equal(fp('0.2'))
+      it('Should not allow to set prime Basket with invalid length', async () => {
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token0.address], [])
+        ).to.be.revertedWith('len mismatch')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([token0.address], [])
+        ).to.be.revertedWith('len mismatch')
+      })
 
-      // Remove USD from the basket entirely, changing price to $1 in EURO
-      await indexBH.connect(owner).setPrimeBasket([eurToken.address], [fp('1000')])
-      await indexBH.connect(owner).refreshBasket()
-      ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
-      expect(erc20s.length).to.equal(1)
-      expect(erc20s[0]).to.equal(eurToken.address)
-      expect(tokAmts[0]).to.equal(fp('1')) // still $1!
+      it('Should not allow to set prime Basket with non-collateral tokens', async () => {
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
+        ).to.be.revertedWith('erc20 is not collateral')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([compToken.address], [fp('1')])
+        ).to.be.revertedWith('erc20 is not collateral')
+      })
 
-      // No change by simply resizing the basket
-      await indexBH.connect(owner).setPrimeBasket([eurToken.address], [fp('0.000001')])
-      await indexBH.connect(owner).refreshBasket()
-      ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
-      expect(erc20s.length).to.equal(1)
-      expect(erc20s[0]).to.equal(eurToken.address)
-      expect(tokAmts[0]).to.equal(fp('1')) // still $1!
+      it('Should not allow to set prime Basket with duplicate ERC20s', async () => {
+        await expect(
+          indexBH
+            .connect(owner)
+            .setPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
+        ).to.be.revertedWith('contains duplicates')
+        await expect(
+          indexBH
+            .connect(owner)
+            .forceSetPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
+        ).to.be.revertedWith('contains duplicates')
+      })
 
-      // Not refreshing the basket in between should still allow a consecutive setPrimeBasket
-      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
-      expect(erc20s.length).to.equal(1)
-      expect(erc20s[0]).to.equal(eurToken.address) // not token0 yet
-      expect(tokAmts[0]).to.equal(fp('1'))
-      await indexBH
-        .connect(owner)
-        .setPrimeBasket([token0.address, eurToken.address], [fp('0.25'), fp('0.25')])
-      await indexBH.connect(owner).refreshBasket()
+      it('Should not allow to set prime Basket with 0 address tokens', async () => {
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([ZERO_ADDRESS], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+      })
 
-      // $0.50 USD / $0.50 EURO by the end
-      ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
-      expect(erc20s.length).to.equal(2)
-      expect(erc20s[0]).to.equal(token0.address)
-      expect(erc20s[1]).to.equal(eurToken.address)
-      expect(tokAmts[0]).to.equal(fp('0.5'))
-      expect(tokAmts[1]).to.equal(fp('0.5'))
-    })
+      it('Should not allow to set prime Basket with stRSR', async () => {
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([stRSR.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+      })
 
-    it('Should handle unpriced asset in normalization', async () => {
-      await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await indexBH.connect(owner).refreshBasket()
+      it('Should not allow to bypass MAX_TARGET_AMT', async () => {
+        // not possible on non-fresh basketHandler
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
+        ).to.be.revertedWith('invalid target amount; too large')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
+        ).to.be.revertedWith('invalid target amount; too large')
+      })
 
-      // Set Token0 to unpriced - stale oracle
-      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
-      await expectUnpriced(collateral0.address)
+      it('Should not allow to set prime Basket with an empty basket', async () => {
+        await expect(indexBH.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
+          'empty basket'
+        )
+        await expect(indexBH.connect(owner).forceSetPrimeBasket([], [])).to.be.revertedWith(
+          'empty basket'
+        )
+      })
 
-      // Attempt to add EURO, basket is not SOUND
-      await expect(
-        indexBH
+      it('Should not allow to set prime Basket with a zero amount', async () => {
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token0.address], [0])
+        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
+        ).to.be.revertedWith('invalid target amount; must be nonzero')
+      })
+
+      it('Should be able to set exactly same basket', async () => {
+        await indexBH
+          .connect(owner)
+          .forceSetPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+        await indexBH
+          .connect(owner)
+          .forceSetPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      })
+
+      it('Should be able to set prime basket multiple times', async () => {
+        // indexBH
+        await expect(
+          indexBH
+            .connect(owner)
+            .setPrimeBasket([token0.address, token3.address], [fp('0.5'), fp('0.5')])
+        )
+          .to.emit(indexBH, 'PrimeBasketSet')
+          .withArgs(
+            [token0.address, token3.address],
+            [fp('0.5'), fp('0.5')],
+            [ethers.utils.formatBytes32String('USD')]
+          )
+        await indexBH.connect(owner).refreshBasket()
+
+        await expect(indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')]))
+          .to.emit(indexBH, 'PrimeBasketSet')
+          .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+        await indexBH.connect(owner).refreshBasket()
+
+        await expect(indexBH.connect(owner).setPrimeBasket([token2.address], [fp('1')]))
+          .to.emit(indexBH, 'PrimeBasketSet')
+          .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+        await indexBH.connect(owner).refreshBasket()
+
+        await expect(indexBH.connect(owner).forceSetPrimeBasket([token1.address], [fp('1')]))
+          .to.emit(indexBH, 'PrimeBasketSet')
+          .withArgs([token1.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+
+        await expect(indexBH.connect(owner).forceSetPrimeBasket([token2.address], [fp('1')]))
+          .to.emit(indexBH, 'PrimeBasketSet')
+          .withArgs([token2.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+      })
+
+      it('Should not allow to set prime Basket with RSR/RToken', async () => {
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+
+        await expect(
+          indexBH
+            .connect(owner)
+            .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+        ).to.be.revertedWith('invalid collateral')
+
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([rsr.address], [fp('1')])
+        ).to.be.revertedWith('invalid collateral')
+
+        await expect(
+          indexBH
+            .connect(owner)
+            .forceSetPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+        ).to.be.revertedWith('invalid collateral')
+      })
+
+      it('Should normalize by price for index RTokens', async () => {
+        // Throughout this test the $ value of the RToken should remain
+
+        // Set initial basket
+        await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+        await indexBH.connect(owner).refreshBasket()
+        let [erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        expect(erc20s.length).to.equal(1)
+        expect(tokAmts[0]).to.equal(fp('1'))
+
+        // Add EURO into the basket as a pure addition, changing price to $0.80 in USD and $0.20 in EURO
+        await indexBH
           .connect(owner)
           .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
-      ).to.be.revertedWith('unsound basket')
+        await indexBH.connect(owner).refreshBasket()
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        expect(erc20s.length).to.equal(2)
+        expect(erc20s[0]).to.equal(token0.address)
+        expect(erc20s[1]).to.equal(eurToken.address)
+        expect(tokAmts[0]).to.equal(fp('0.8'))
+        expect(tokAmts[1]).to.equal(fp('0.2'))
+
+        // Remove USD from the basket entirely, changing price to $1 in EURO
+        await indexBH.connect(owner).setPrimeBasket([eurToken.address], [fp('1000')])
+        await indexBH.connect(owner).refreshBasket()
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        expect(erc20s.length).to.equal(1)
+        expect(erc20s[0]).to.equal(eurToken.address)
+        expect(tokAmts[0]).to.equal(fp('1')) // still $1!
+
+        // No change by simply resizing the basket
+        await indexBH.connect(owner).setPrimeBasket([eurToken.address], [fp('0.000001')])
+        await indexBH.connect(owner).refreshBasket()
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        expect(erc20s.length).to.equal(1)
+        expect(erc20s[0]).to.equal(eurToken.address)
+        expect(tokAmts[0]).to.equal(fp('1')) // still $1!
+
+        // Not refreshing the basket in between should still allow a consecutive setPrimeBasket
+        await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        expect(erc20s.length).to.equal(1)
+        expect(erc20s[0]).to.equal(eurToken.address) // not token0 yet
+        expect(tokAmts[0]).to.equal(fp('1'))
+        await indexBH
+          .connect(owner)
+          .setPrimeBasket([token0.address, eurToken.address], [fp('0.25'), fp('0.25')])
+        await indexBH.connect(owner).refreshBasket()
+
+        // $0.50 USD / $0.50 EURO by the end
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        expect(erc20s.length).to.equal(2)
+        expect(erc20s[0]).to.equal(token0.address)
+        expect(erc20s[1]).to.equal(eurToken.address)
+        expect(tokAmts[0]).to.equal(fp('0.5'))
+        expect(tokAmts[1]).to.equal(fp('0.5'))
+      })
+
+      it('Should not normalize by price when the current basket is unpriced', async () => {
+        await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+        await indexBH.connect(owner).refreshBasket()
+
+        // Set Token0 to unpriced - stale oracle
+        await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
+        await expectUnpriced(collateral0.address)
+
+        // Attempt to add EURO, basket is not SOUND
+        await expect(
+          indexBH
+            .connect(owner)
+            .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
+        ).to.be.revertedWith('unsound basket')
+      })
+
+      it('Should not normalize by price when the current basket is unsound', async () => {
+        await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+        await indexBH.connect(owner).refreshBasket()
+        await setOraclePrice(collateral0.address, fp('0.5'))
+        await assetRegistry.refresh()
+        expect(await collateral0.status()).to.equal(CollateralStatus.IFFY)
+        expect(await collateral1.status()).to.equal(CollateralStatus.SOUND)
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        ).to.be.revertedWith('unsound basket')
+      })
+
+      it('Should not normalize by price if the new collateral is unsound', async () => {
+        await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+        await indexBH.connect(owner).refreshBasket()
+        await setOraclePrice(collateral1.address, fp('0.5'))
+        await assetRegistry.refresh()
+        expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
+        expect(await collateral1.status()).to.equal(CollateralStatus.IFFY)
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        ).to.be.revertedWith('unsound new collateral')
+      })
     })
 
     describe('Custom Redemption', () => {
@@ -2227,12 +2321,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         )
 
         // Swap-in indexBH
-        await setStorageAt(main.address, 204, indexBH.address)
-        if (IMPLEMENTATION == Implementation.P1) {
-          await setStorageAt(rToken.address, 355, indexBH.address)
-          await setStorageAt(backingManager.address, 302, indexBH.address)
-          await setStorageAt(assetRegistry.address, 201, indexBH.address)
-        }
+        await swapBasketHandlerIn(indexBH)
         await indexBH
           .connect(owner)
           .forceSetPrimeBasket(
@@ -2853,6 +2942,40 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
       ).to.be.revertedWith('invalid collateral')
+    })
+
+    it('Should not allow to set more backup ERC20s than MAX_BACKUP_ERC20S', async () => {
+      const erc20s = []
+      for (let i = 0; i < 64; i++) erc20s.push(ONE_ADDRESS)
+
+      // Should succeed at 64
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
+      ).to.not.be.revertedWith('erc20s too large')
+
+      // Should fail at 65
+      erc20s.push(ONE_ADDRESS)
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
+      ).to.be.revertedWith('erc20s too large')
+
+      // Should succeed at 64
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(64), [])
+      ).to.not.be.revertedWith('max too large')
+
+      // Should fail at 65
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(65), [])
+      ).to.be.revertedWith('max too large')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {

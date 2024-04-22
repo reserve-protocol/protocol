@@ -175,7 +175,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         }
 
         uint256 extraCount = IRewardStaking(mainPool).extraRewardsLength();
-        for (uint256 i = 0; i < extraCount; i++) {
+        for (uint256 i = 0; i < extraCount; ++i) {
             address extraPool = IRewardStaking(mainPool).extraRewards(i);
             address extraToken = IRewardStaking(extraPool).rewardToken();
             //from pool 151, extra reward tokens are wrapped
@@ -246,14 +246,14 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
 
         //check that balance increased and update integral
-        if (_supply > 0 && bal > reward.reward_remaining) {
+        if (_supply != 0 && bal > reward.reward_remaining) {
             reward.reward_integral =
                 reward.reward_integral +
                 (bal.sub(reward.reward_remaining).mul(1e20).div(_supply));
         }
 
         //update user integrals
-        for (uint256 u = 0; u < _accounts.length; u++) {
+        for (uint256 u = 0; u < _accounts.length; ++u) {
             //do not give rewards to address 0
             if (_accounts[u] == address(0)) continue;
             if (_accounts[u] == collateralVault) continue;
@@ -265,7 +265,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
                     uint256 receiveable = reward.claimable_reward[_accounts[u]].add(
                         _balances[u].mul(reward.reward_integral.sub(userI)).div(1e20)
                     );
-                    if (receiveable > 0) {
+                    if (receiveable != 0) {
                         reward.claimable_reward[_accounts[u]] = 0;
                         //cheat for gas savings by transfering to the second index in accounts list
                         //if claiming only the 0 index will update so 1 index can hold forwarding info
@@ -297,7 +297,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         IRewardStaking(convexPool).getReward(address(this), true);
 
         uint256 rewardCount = rewards.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < rewardCount; ++i) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, false);
         }
         emit UserCheckpoint(_accounts[0], _accounts[1]);
@@ -311,7 +311,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         IRewardStaking(convexPool).getReward(address(this), true);
 
         uint256 rewardCount = rewards.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < rewardCount; ++i) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, true);
         }
         emit UserCheckpoint(_accounts[0], _accounts[1]);
@@ -337,7 +337,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         uint256 rewardCount = rewards.length;
         claimable = new EarnedData[](rewardCount);
 
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < rewardCount; ++i) {
             RewardType storage reward = rewards[i];
             if (reward.reward_token == address(0)) {
                 continue;
@@ -389,7 +389,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     function deposit(uint256 _amount, address _to) external {
         //dont need to call checkpoint since _mint() will
 
-        if (_amount > 0) {
+        if (_amount != 0) {
             _mint(_to, _amount);
             IERC20(curveToken).safeTransferFrom(msg.sender, address(this), _amount);
             IConvexDeposits(convexBooster).deposit(convexPoolId, _amount, true);
@@ -402,7 +402,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     function stake(uint256 _amount, address _to) external {
         //dont need to call checkpoint since _mint() will
 
-        if (_amount > 0) {
+        if (_amount != 0) {
             _mint(_to, _amount);
             IERC20(convexToken).safeTransferFrom(msg.sender, address(this), _amount);
             IRewardStaking(convexPool).stake(_amount);
@@ -415,7 +415,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     function withdraw(uint256 _amount) external {
         //dont need to call checkpoint since _burn() will
 
-        if (_amount > 0) {
+        if (_amount != 0) {
             _burn(msg.sender, _amount);
             IRewardStaking(convexPool).withdraw(_amount, false);
             IERC20(convexToken).safeTransfer(msg.sender, _amount);
@@ -428,7 +428,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     function withdrawAndUnwrap(uint256 _amount) external {
         //dont need to call checkpoint since _burn() will
 
-        if (_amount > 0) {
+        if (_amount != 0) {
             _burn(msg.sender, _amount);
             IRewardStaking(convexPool).withdrawAndUnwrap(_amount, false);
             IERC20(curveToken).safeTransfer(msg.sender, _amount);

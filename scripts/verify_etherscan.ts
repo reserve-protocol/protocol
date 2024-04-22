@@ -1,7 +1,12 @@
 /* eslint-disable no-process-exit */
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { baseL2Chains, developmentChains, networkConfig } from '../common/configuration'
+import {
+  arbitrumL2Chains,
+  baseL2Chains,
+  developmentChains,
+  networkConfig,
+} from '../common/configuration'
 import { sh } from './deployment/utils'
 import {
   getDeploymentFile,
@@ -47,13 +52,14 @@ async function main() {
   ]
 
   // Phase 2 - Individual Plugins
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     scripts.push(
       'collateral-plugins/verify_convex_crvusd_usdc.ts',
       'collateral-plugins/verify_convex_3pool.ts',
       'collateral-plugins/verify_convex_paypool.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
       'collateral-plugins/verify_convex_stable_rtoken_metapool.ts',
+      'collateral-plugins/verify_convex_ethplus_eth.ts',
       'collateral-plugins/verify_curve_stable.ts',
       'collateral-plugins/verify_curve_stable_metapool.ts',
       'collateral-plugins/verify_curve_stable_rtoken_metapool.ts',
@@ -67,7 +73,9 @@ async function main() {
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
       'collateral-plugins/verify_sfrax.ts',
-      'collateral-plugins/verify_sfrax_eth.ts'
+      'collateral-plugins/verify_sfrax_eth.ts',
+      'collateral-plugins/verify_steakusdc.ts',
+      'collateral-plugins/verify_re7weth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -77,6 +85,12 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_stargate_usdc',
       'assets/verify_stg.ts'
+    )
+  } else if (chainId == '42161' || chainId == '421614') {
+    // Arbitrum One
+    scripts.push(
+      'collateral-plugins/verify_aave_v3_usdc.ts',
+      'collateral-plugins/verify_cusdcv3.ts'
     )
   }
 

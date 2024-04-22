@@ -81,7 +81,7 @@ contract StaticATokenMock is ERC20Mock {
     }
 
     function claimRewardsToSelf(bool) external {
-        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] > 0) {
+        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] != 0) {
             aaveToken.mint(msg.sender, aaveBalances[msg.sender]);
             aaveBalances[msg.sender] = 0;
         }
@@ -97,7 +97,7 @@ contract StaticATokenMock is ERC20Mock {
 
     function claimRewards() external {
         uint256 oldBal = aaveToken.balanceOf(msg.sender);
-        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] > 0) {
+        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] != 0) {
             aaveToken.mint(msg.sender, aaveBalances[msg.sender]);
             aaveBalances[msg.sender] = 0;
         }

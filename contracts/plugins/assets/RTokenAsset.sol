@@ -21,8 +21,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     IBasketHandler public immutable basketHandler;
     IBackingManager public immutable backingManager;
     IFurnace public immutable furnace;
-    IERC20 public immutable rsr;
-    IStRSR public immutable stRSR;
 
     IERC20Metadata public immutable erc20; // The RToken
 
@@ -36,15 +34,13 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
-        require(maxTradeVolume_ > 0, "invalid max trade volume");
+        require(maxTradeVolume_ != 0, "invalid max trade volume");
 
         IMain main = erc20_.main();
         assetRegistry = main.assetRegistry();
         basketHandler = main.basketHandler();
         backingManager = main.backingManager();
         furnace = main.furnace();
-        rsr = main.rsr();
-        stRSR = main.stRSR();
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();

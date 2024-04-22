@@ -33,7 +33,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     uint192 public immutable revenueShowing; // {1} The maximum fraction of refPerTok to show
 
     // does not become nonzero until after first refresh()
-    uint192 public exposedReferencePrice; // {ref/tok} max ref price observed, sub revenue hiding
+    uint192 internal exposedReferencePrice; // {ref/tok} max ref price observed, sub revenue hiding
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
@@ -100,7 +100,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
                 // Save prices if priced
-                if (high < FIX_MAX) {
+                if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);

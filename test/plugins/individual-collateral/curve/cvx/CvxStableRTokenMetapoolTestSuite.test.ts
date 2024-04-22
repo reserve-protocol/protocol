@@ -1,14 +1,19 @@
 import collateralTests from '../collateralTests'
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import {
   CurveCollateralFixtureContext,
   CurveMetapoolCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
+import { expectEvents } from '../../../../../common/events'
+import { overrideOracle } from '../../../../utils/oracles'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
-import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
+import { makeWeUSDFraxBP, mintWeUSDFraxBP } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
+import { getResetFork } from '../../helpers'
+import { networkConfig } from '../../../../../common/configuration'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -41,6 +46,9 @@ import {
   eUSD,
 } from '../constants'
 import { whileImpersonating } from '../../../../utils/impersonation'
+
+const EUSD_ASSET_REGISTRY = '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+const EUSD_BASKET_HANDLER = '0x6d309297ddDFeA104A6E89a132e2f05ce3828e07'
 
 type Fixture<T> = () => Promise<T>
 
@@ -279,6 +287,80 @@ const collateralSpecificStatusTests = () => {
     // Stale should be false again
     expect(await mockRTokenAsset.stale()).to.be.false
   })
+
+  it('Regression test -- becomes IFFY when inner RToken is IFFY', async () => {
+    const [collateral] = await deployCollateral({})
+    const eusdAssetRegistry = await ethers.getContractAt('IAssetRegistry', EUSD_ASSET_REGISTRY)
+    const eusdBasketHandler = await ethers.getContractAt('IBasketHandler', EUSD_BASKET_HANDLER)
+    const cUSDTCollateral = await ethers.getContractAt(
+      'CTokenFiatCollateral',
+      await eusdAssetRegistry.toAsset(networkConfig['1'].tokens.cUSDT!)
+    )
+    const initialPrice = await cUSDTCollateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
+    expect(await cUSDTCollateral.status()).to.equal(0)
+
+    // De-peg oracle 20%
+    const chainlinkFeed = await cUSDTCollateral.chainlinkFeed()
+    const oracle = await overrideOracle(chainlinkFeed)
+    const latestAnswer = await oracle.latestAnswer()
+    await oracle.updateAnswer(latestAnswer.mul(4).div(5))
+
+    // CTokenFiatCollateral + CurveStableRTokenMetapoolCollateral should
+    // become IFFY through the top-level refresh
+    await expectEvents(collateral.refresh(), [
+      {
+        contract: eusdBasketHandler,
+        name: 'BasketStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+      {
+        contract: cUSDTCollateral,
+        name: 'CollateralStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+    ])
+    expect(await cUSDTCollateral.status()).to.equal(1)
+    expect(await collateral.status()).to.equal(1)
+    expect(await eusdBasketHandler.isReady()).to.equal(false)
+
+    // Should remain IFFY for the warmupPeriod even after cUSDTCollateral is SOUND again
+    await oracle.updateAnswer(latestAnswer)
+    await expectEvents(collateral.refresh(), [
+      {
+        contract: eusdBasketHandler,
+        name: 'BasketStatusChanged',
+        args: [1, 0],
+        emitted: true,
+      },
+      {
+        contract: cUSDTCollateral,
+        name: 'CollateralStatusChanged',
+        args: [1, 0],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        emitted: false,
+      },
+    ])
+    expect(await collateral.status()).to.equal(1)
+
+    // Goes back to SOUND after warmupPeriod
+    await advanceTime(1000)
+    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged').withArgs(1, 0)
+    expect(await collateral.status()).to.equal(0)
+  })
 }
 
 /*
@@ -291,13 +373,9 @@ const opts = {
   collateralSpecificStatusTests,
   makeCollateralFixtureContext,
   mintCollateralTo,
-  itChecksTargetPerRefDefault: it,
-  itChecksTargetPerRefDefaultUp: it,
-  itChecksRefPerTokDefault: it,
-  itHasRevenueHiding: it,
   itClaimsRewards: it,
   isMetapool: true,
-  resetFork,
+  resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
   collateralName: 'CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper',
 }
 

@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../libraries/Fixed.sol";
 import "../interfaces/IMain.sol";
 import "../mixins/ComponentRegistry.sol";
 import "../mixins/Auth.sol";
@@ -15,8 +14,6 @@ import "../mixins/Versioned.sol";
  */
 // solhint-disable max-states-count
 contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
-    using FixLib for uint192;
-
     IERC20 public rsr;
 
     /// Initializer

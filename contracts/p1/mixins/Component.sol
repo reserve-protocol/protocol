@@ -36,7 +36,7 @@ abstract contract ComponentP1 is
         main = main_;
     }
 
-    // === See docs/security.md ===
+    // === See docs/pause-freeze-states.md ===
 
     modifier notTradingPausedOrFrozen() {
         require(!main.tradingPausedOrFrozen(), "frozen or trading paused");

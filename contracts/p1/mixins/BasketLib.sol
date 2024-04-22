@@ -168,7 +168,7 @@ library BasketLibP1 {
         IAssetRegistry assetRegistry
     ) internal returns (bool) {
         // targetNames := {}
-        while (targetNames.length() > 0) {
+        while (targetNames.length() != 0) {
             targetNames.remove(targetNames.at(targetNames.length() - 1));
         }
 
@@ -279,7 +279,7 @@ library BasketLibP1 {
         // Now we've looped through all values of tgt, so for all e,
         //   targetWeight(newBasket, e) = primeWt(e) + backupWt(e)
 
-        return newBasket.erc20s.length > 0;
+        return newBasket.erc20s.length != 0;
     }
 
     // === Private ===
@@ -302,8 +302,8 @@ library BasketLibP1 {
             return
                 targetName == coll.targetName() &&
                 coll.status() == CollateralStatus.SOUND &&
-                coll.refPerTok() > 0 &&
-                coll.targetPerRef() > 0;
+                coll.refPerTok() != 0 &&
+                coll.targetPerRef() != 0;
         } catch {
             return false;
         }
@@ -361,11 +361,10 @@ library BasketLibP1 {
         uint192 newPrice; // {UoA/BU}
         for (uint256 i = 0; i < len; ++i) {
             ICollateral coll = assetRegistry.toColl(erc20s[i]); // reverts if unregistered
+            require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
 
             (uint192 low, uint192 high) = coll.price(); // {UoA/tok}
-            // untestable:
-            //      this function is only called if basket is SOUND
-            require(low > 0 && high < FIX_MAX, "invalid price");
+            require(low != 0 && high != FIX_MAX, "invalid price");
 
             // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
             newPrice += targetAmts[i].mulDiv(

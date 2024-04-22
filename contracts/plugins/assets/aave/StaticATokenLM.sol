@@ -22,6 +22,7 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
 
 /**
  * @title StaticATokenLM
+ * @dev Do not use on Arbitrum!
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  *
@@ -38,6 +39,7 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * Users should also be careful when claiming rewards using `forceUpdate=false` as this will result on permanent
  * loss of pending/uncollected rewards. It is recommended to always claim rewards using `forceUpdate=true`
  * unless the user is sure that gas costs would exceed the lost rewards.
+ *
  *
  * @author Aave
  * From: https://github.com/aave/protocol-v2/blob/238e5af2a95c3fbb83b0c8f44501ed2541215122/contracts/protocol/tokenization/StaticATokenLM.sol#L255
@@ -355,7 +357,7 @@ contract StaticATokenLM is
         uint256 amountToBurn;
 
         uint256 currentRate = rate();
-        if (staticAmount > 0) {
+        if (staticAmount != 0) {
             amountToBurn = (staticAmount > userBalance) ? userBalance : staticAmount;
             amountToWithdraw = _staticToDynamicAmount(amountToBurn, currentRate);
         } else {
@@ -409,6 +411,8 @@ contract StaticATokenLM is
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
+        // Alert! block.number is incompatible with Arbitrum!
+        // Should be fine because Aave V2 is not currently deployed to Arbitrum
         if (block.number > _lastRewardBlock) {
             _lastRewardBlock = block.number;
             uint256 supply = totalSupply();
@@ -449,13 +453,13 @@ contract StaticATokenLM is
         );
         uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshlyClaimed);
         uint256 rewardsAccrued = lifetimeRewards.sub(_lifetimeRewards).wadToRay();
-        if (supply > 0 && rewardsAccrued > 0) {
+        if (supply != 0 && rewardsAccrued != 0) {
             _accRewardsPerToken = _accRewardsPerToken.add(
                 (rewardsAccrued).rayDivNoRounding(supply.wadToRay())
             );
         }
 
-        if (rewardsAccrued > 0) {
+        if (rewardsAccrued != 0) {
             _lifetimeRewards = lifetimeRewards;
         }
 
@@ -493,7 +497,7 @@ contract StaticATokenLM is
         if (reward > totBal) {
             reward = totBal;
         }
-        if (reward > 0) {
+        if (reward != 0) {
             _unclaimedRewards[onBehalfOf] = 0;
             _updateUserSnapshotRewardsPerToken(onBehalfOf);
             REWARD_TOKEN.safeTransfer(receiver, reward);
@@ -561,7 +565,7 @@ contract StaticATokenLM is
      */
     function _updateUser(address user) internal {
         uint256 balance = balanceOf(user);
-        if (balance > 0) {
+        if (balance != 0) {
             uint256 pending = _getPendingRewards(user, balance, false);
             _unclaimedRewards[user] = _unclaimedRewards[user].add(pending);
         }

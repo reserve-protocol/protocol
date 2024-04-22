@@ -28,7 +28,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
-    uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
+    uint48 public constant MAX_WARMUP_PERIOD = 60 * 60 * 24 * 365; // {s} 1 year
+    uint256 internal constant MAX_BACKUP_ERC20S = 64;
 
     // Peer components
     IAssetRegistry private assetRegistry;
@@ -38,8 +39,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     IStRSR private stRSR;
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
+<<<<<<< HEAD
     // event. config is only modified by governance through setPrimeBakset and setBackupConfig
     BasketConfig internal config;
+=======
+    // event. config is only modified by governance through setPrimeBasket and setBackupConfig
+    BasketConfig private config;
+>>>>>>> 3.4.0
 
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
     // basket is the current basket.
@@ -219,7 +225,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bool normalize
     ) internal {
         requireGovernanceOnly();
+<<<<<<< HEAD
         require(erc20s.length > 0, "empty basket");
+=======
+        require(erc20s.length != 0, "empty basket");
+>>>>>>> 3.4.0
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
@@ -234,12 +244,21 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             );
         } else if (normalize && config.erc20s.length != 0) {
             // Confirm reference basket is SOUND
+<<<<<<< HEAD
             assetRegistry.refresh();
             require(status() == CollateralStatus.SOUND, "unsound basket");
 
             // Normalize targetAmts based on UoA value of reference basket
             (uint192 low, uint192 high) = _price(false);
             assert(low > 0 && high < FIX_MAX); // implied by SOUND status
+=======
+            assetRegistry.refresh(); // will set lastStatus
+            require(lastStatus == CollateralStatus.SOUND, "unsound basket");
+
+            // Normalize targetAmts based on UoA value of reference basket
+            (uint192 low, uint192 high) = _price(false);
+            assert(low != 0 && high != FIX_MAX); // implied by SOUND status
+>>>>>>> 3.4.0
             targetAmts = BasketLibP1.normalizeByPrice(
                 assetRegistry,
                 erc20s,
@@ -289,6 +308,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         IERC20[] calldata erc20s
     ) external {
         requireGovernanceOnly();
+<<<<<<< HEAD
+=======
+        require(max <= MAX_BACKUP_ERC20S, "max too large");
+        require(erc20s.length <= MAX_BACKUP_ERC20S, "erc20s too large");
+>>>>>>> 3.4.0
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -621,7 +645,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Require that erc20s is a valid collateral array
     function requireValidCollArray(IERC20[] calldata erc20s) private view {
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             require(
                 erc20s[i] != rsr &&
                     erc20s[i] != IERC20(address(rToken)) &&

@@ -503,10 +503,17 @@ export async function collateralFixture(
     18
   )
 
+  // EURT chainlink feed dead, use mock
+  const FeedFactory = await ethers.getContractFactory('MockV3Aggregator')
+  const eurFeed = await ethers.getContractAt(
+    'MockV3Aggregator',
+    networkConfig[chainId].chainlinkFeeds.EUR!
+  )
+  const feed = await FeedFactory.deploy(8, await eurFeed.latestAnswer())
   const eurt = await makeEURFiatCollateral(
-    networkConfig[chainId].tokens.EURT as string,
-    networkConfig[chainId].chainlinkFeeds.EURT as string,
-    networkConfig[chainId].chainlinkFeeds.EUR as string,
+    networkConfig[chainId].tokens.EURT!,
+    feed.address,
+    networkConfig[chainId].chainlinkFeeds.EUR!,
     'EUR'
   )
 
@@ -632,7 +639,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
+    rewardRatio: bn('89139297916'), // per second. approx half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     withdrawalLeak: fp('0'), // 0%; always refresh
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)

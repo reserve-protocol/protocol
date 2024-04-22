@@ -54,7 +54,7 @@ import {
   DECAY_DELAY,
   PRICE_TIMEOUT,
 } from './fixtures'
-import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { advanceToTimestamp, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import {
   CollateralStatus,
   TradeKind,
@@ -259,21 +259,33 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return maxIssuable correctly', async () => {
-      // Check values
+      // Regression test
+      // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
+      // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
+      const meltAmt = issueAmount.div(10)
+      const furnaceAddr = await main.furnace()
+      await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
+      await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
+        await rToken.connect(furnaceSigner).melt(meltAmt)
+      })
+
+      // Check values -- must reflect 10% appreciation
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
-        bn('39999999900e18')
+        bn('3.599999991e28')
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('40000000000e18')
+        bn('3.6e28')
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(await rToken.totalSupply())
+      expect(await rToken.totalSupply()).to.equal(0)
+      expect(await rToken.basketsNeeded()).to.equal(0)
 
-      // With 0 baskets needed - Returns correct value
+      // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('40000000000e18')
+        bn('4e28')
       )
     })
 
@@ -284,23 +296,35 @@ describe('Facade + FacadeMonitor contracts', () => {
       const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
       const otherAmounts = await Promise.all(erc20s.map((e) => e.balanceOf(other.address)))
 
-      // Check values
+      // Regression test
+      // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
+      // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
+      const meltAmt = issueAmount.div(10)
+      const furnaceAddr = await main.furnace()
+      await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
+      await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
+        await rToken.connect(furnaceSigner).melt(meltAmt)
+      })
+
+      // Check values -- must reflect 10% appreciation
       expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr1Amounts)).to.equal(
-        bn('39999999900e18')
+        bn('3.599999991e28')
       )
       expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr2Amounts)).to.equal(
-        bn('40000000000e18')
+        bn('3.6e28')
       )
       expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, otherAmounts)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(await rToken.totalSupply())
+      expect(await rToken.totalSupply()).to.equal(0)
+      expect(await rToken.basketsNeeded()).to.equal(0)
       const newAddr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
 
-      // With 0 baskets needed - Returns correct value
+      // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
       expect(
         await facade.callStatic.maxIssuableByAmounts(rToken.address, newAddr2Amounts)
-      ).to.equal(bn('40000000000e18'))
+      ).to.equal(bn('4e28'))
     })
 
     it('Should revert maxIssuable when frozen', async () => {
@@ -696,7 +720,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction is over
-      await advanceBlocks(2 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Now should be settleable
       const settleable = await facade.auctionsSettleable(rsrTrader.address)
@@ -1229,7 +1253,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issuance #2 - Consume all throttle
       const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount2)
 
       // Check new issuance available - all consumed
@@ -1287,7 +1311,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issue full throttle
       const issueAmount1: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount1)
 
       // Check redemption throttles updated
@@ -1306,7 +1330,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issuance #2 - Full throttle again - will be processed
       const issueAmount2: BigNumber = config.issuanceThrottle.amtRate
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount2)
 
       // Check new issuance available - all consumed
@@ -1334,7 +1358,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issuance #3 - Should be allowed, does not exceed supply restriction
       const issueAmount3: BigNumber = bn('100000e18')
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount3)
 
       // Check issuance throttle updated - Previous issuances recharged
@@ -1369,7 +1393,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       const issueAmount4: BigNumber = fp('105800')
       // Issuance #4 - almost all available
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
       await rToken.connect(addr1).issue(issueAmount4)
 
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
@@ -1589,7 +1613,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1653,7 +1677,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Upgrade components to V2
       await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
@@ -1688,7 +1712,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       await rTokenTrader.connect(owner).upgradeTo(revTraderV1.address)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Settle and start new auction - Will retry again
       await expectEvents(

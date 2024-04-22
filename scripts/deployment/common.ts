@@ -12,6 +12,8 @@ export interface IPrerequisites {
 export interface IFacets {
   actFacet: string
   readFacet: string
+  // individiual function facets
+  maxIssuableFacet: string
 }
 
 export interface IDeployments {

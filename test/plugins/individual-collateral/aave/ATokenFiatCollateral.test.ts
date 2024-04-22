@@ -141,7 +141,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
+    rewardRatio: bn('89139297916'), // per second. approx half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     withdrawalLeak: fp('0'), // 0%; always refresh
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
@@ -353,7 +353,6 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await aDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(refPerTok).to.be.closeTo(fp('1.066'), fp('0.001'))
       expect(await aDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await aDaiCollateral.exposedReferencePrice()).to.equal(refPerTok)
 
       const answer = await chainlinkFeed.latestAnswer()
 

@@ -191,8 +191,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     /// @param src The account to claim from
     /// @param dst The address to send claimed rewards to
     function claimTo(address src, address dst) public {
-        address sender = msg.sender;
-        if (!hasPermission(src, sender)) revert Unauthorized();
+        if (!hasPermission(src, msg.sender)) revert Unauthorized();
 
         accrueAccount(src);
         uint256 claimed = rewardsClaimed[src];
@@ -302,7 +301,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         uint40 timeDelta = uint40(block.timestamp) - totals.lastAccrualTime;
         uint64 baseSupplyIndex_ = totals.baseSupplyIndex;
         uint64 trackingSupplyIndex_ = totals.trackingSupplyIndex;
-        if (timeDelta > 0) {
+        if (timeDelta != 0) {
             uint256 baseTrackingSupplySpeed = underlyingComet.baseTrackingSupplySpeed();
             uint256 utilization = underlyingComet.getUtilization();
             uint256 supplyRate = underlyingComet.getSupplyRate(utilization);

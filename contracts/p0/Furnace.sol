@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "../interfaces/IFurnace.sol";
 import "./mixins/Component.sol";
 
@@ -15,17 +14,13 @@ contract FurnaceP0 is ComponentP0, IFurnace {
 
     uint192 public constant MAX_RATIO = 1e14; // {1} 0.01%
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable PERIOD; // {seconds} 1 block based on network
+    uint48 public constant PERIOD = 1; // {s} distribution period
 
     uint192 public ratio; // {1} What fraction of balance to melt each PERIOD
 
     // === Cached ===
     uint48 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
-
-    constructor() {
-        PERIOD = NetworkConfigLib.blocktime();
-    }
 
     function init(IMain main_, uint192 ratio_) public initializer {
         __Component_init(main_);
