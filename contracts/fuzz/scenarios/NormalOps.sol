@@ -492,6 +492,7 @@ contract NormalOpsScenario {
 
     function payRTokenProfits() public {
         main.furnace().melt();
+        assertFurnacePayouts();
     }
 
     function cacheComponents() public {
@@ -679,6 +680,10 @@ contract NormalOpsScenario {
 
     function _saveRTokenRate() internal {
         prevRTokenRate = rTokenRate();
+    }
+
+    function assertFurnacePayouts() public view {
+        FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
     function echidna_ratesNeverFall() external view returns (bool) {
