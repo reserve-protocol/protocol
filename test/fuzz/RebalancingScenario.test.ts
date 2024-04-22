@@ -10,7 +10,7 @@ import {
   mine,
   setBalance,
 } from '@nomicfoundation/hardhat-network-helpers'
-import { advanceBlocks, advanceTime, getLatestBlockNumber } from '../utils/time'
+import { advanceBlocks, advanceTime, setNextBlockTimestamp } from '../utils/time'
 import { RebalancingScenario } from '@typechain/RebalancingScenario'
 import {
   RebalancingScenarioStatus,
@@ -878,8 +878,8 @@ const scenarioSpecificTests = () => {
           expect(await c2.balanceOf(trade.address)).to.be.gt(0)
         }
 
-        // Wait and settle the trade
-        await advanceTime((await comp.broker.dutchAuctionLength()) - 12)
+        // Cannot settle the trade yet
+        await advanceTime(1)
         expect(await trade.canSettle()).to.be.false
 
         if (iteration == 1) {
@@ -889,6 +889,10 @@ const scenarioSpecificTests = () => {
           // State remains ongoing
           expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
         }
+
+        // Advance time to settle trade
+        await setNextBlockTimestamp(await trade.endTime() - 2)
+
         // Check echidna property is true at all times in the process
         expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
         expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
@@ -941,7 +945,9 @@ const scenarioSpecificTests = () => {
   })
 
   bidTypes.forEach((bidType) => {
-    it('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
+    it(`can manage scenario states - collateral default - partially covered by RSR [Dutch auction]  - Bid Type: ${
+      Object.values(BidType)[bidType]
+    }`, async () => {
       await warmup()
       await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('400000'), pctRate: fp('0.05') })
 

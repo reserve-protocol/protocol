@@ -1,0 +1,9 @@
+{
+  "assets": {},
+  "collateral": {
+    "saBasUSDC": "0x0F345F57ee2b395e23390f8e1F1869D7E6C0F70e"
+  },
+  "erc20s": {
+    "saBasUSDC": "0x184460704886f9F2A7F3A0c2887680867954dC6E"
+  }
+}

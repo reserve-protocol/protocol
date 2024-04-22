@@ -48,7 +48,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         require(address(metapoolToken_) != address(0), "metapoolToken address is zero");
         require(
-            pairedTokenDefaultThreshold_ > 0 && pairedTokenDefaultThreshold_ < FIX_ONE,
+            pairedTokenDefaultThreshold_ != 0 && pairedTokenDefaultThreshold_ < FIX_ONE,
             "pairedTokenDefaultThreshold out of bounds"
         );
         metapoolToken = metapoolToken_;

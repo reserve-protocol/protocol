@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.so
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "../../interfaces/IStRSRVotes.sol";
-import "../../libraries/NetworkConfigLib.sol";
 
 uint256 constant ONE_DAY = 86400; // {s}
 
@@ -34,13 +33,13 @@ contract Governance is
     uint256 public constant ONE_HUNDRED_PERCENT = 1e8; // {micro %}
 
     // solhint-disable-next-line var-name-mixedcase
-    uint256 public immutable MIN_VOTING_DELAY; // {block} equal to ONE_DAY
+    uint256 public constant MIN_VOTING_DELAY = 86400; // {s} ONE_DAY
 
     constructor(
         IStRSRVotes token_,
         TimelockController timelock_,
-        uint256 votingDelay_, // in blocks
-        uint256 votingPeriod_, // in blocks
+        uint256 votingDelay_, // {s}
+        uint256 votingPeriod_, // {s}
         uint256 proposalThresholdAsMicroPercent_, // e.g. 1e4 for 0.01%
         uint256 quorumPercent // e.g 4 for 4%
     )
@@ -50,9 +49,6 @@ contract Governance is
         GovernorVotesQuorumFraction(quorumPercent)
         GovernorTimelockControl(timelock_)
     {
-        MIN_VOTING_DELAY =
-            (ONE_DAY + NetworkConfigLib.blocktime() - 1) /
-            NetworkConfigLib.blocktime(); // ONE_DAY, in blocks
         requireValidVotingDelay(votingDelay_);
     }
 
@@ -79,21 +75,23 @@ contract Governance is
         returns (uint256)
     {
         uint256 asMicroPercent = super.proposalThreshold(); // {micro %}
-        uint256 pastSupply = token.getPastTotalSupply(block.number - 1); // {qStRSR}
+
+        // {qStRSR}
+        uint256 pastSupply = token.getPastTotalSupply(clock() - 1);
         // max StRSR supply is 1e38
 
         // CEIL to make sure thresholds near 0% don't get rounded down to 0 tokens
         return (asMicroPercent * pastSupply + (ONE_HUNDRED_PERCENT - 1)) / ONE_HUNDRED_PERCENT;
     }
 
-    function quorum(uint256 blockNumber)
+    function quorum(uint256 timepoint)
         public
         view
         virtual
         override(IGovernor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
-        return super.quorum(blockNumber);
+        return super.quorum(timepoint);
     }
 
     function state(uint256 proposalId)
@@ -130,9 +128,11 @@ contract Governance is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external {
+    ) public override(Governor, IGovernor) returns (uint256) {
         uint256 proposalId = _cancel(targets, values, calldatas, descriptionHash);
         require(!startedInSameEra(proposalId), "same era");
+
+        return proposalId;
     }
 
     function _execute(
@@ -164,13 +164,13 @@ contract Governance is
         return super._executor();
     }
 
-    /// @return {qStRSR} The voting weight the account had at a previous block number
+    /// @return {qStRSR} The voting weight the account had at a previous timepoint
     function _getVotes(
         address account,
-        uint256 blockNumber,
+        uint256 timepoint,
         bytes memory /*params*/
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
-        return token.getPastVotes(account, blockNumber); // {qStRSR}
+        return token.getPastVotes(account, timepoint); // {qStRSR}
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -185,13 +185,21 @@ contract Governance is
     // === Private ===
 
     function startedInSameEra(uint256 proposalId) private view returns (bool) {
-        uint256 startBlock = proposalSnapshot(proposalId);
-        uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startBlock);
+        uint256 startTimepoint = proposalSnapshot(proposalId);
+        uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startTimepoint);
         uint256 currentEra = IStRSRVotes(address(token)).currentEra();
         return currentEra == pastEra;
     }
 
-    function requireValidVotingDelay(uint256 newVotingDelay) private view {
+    function requireValidVotingDelay(uint256 newVotingDelay) private pure {
         require(newVotingDelay >= MIN_VOTING_DELAY, "invalid votingDelay");
+    }
+
+    function clock() public view override(GovernorVotes, IGovernor) returns (uint48) {
+        return SafeCast.toUint48(block.timestamp);
+    }
+
+    function CLOCK_MODE() public pure override(GovernorVotes, IGovernor) returns (string memory) {
+        return "mode=timestamp";
     }
 }

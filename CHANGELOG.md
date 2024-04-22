@@ -1,5 +1,27 @@
 # Changelog
 
+# 3.4.0
+
+## Upgrade Steps
+
+TODO
+
+Must-do: Upgrade Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s.
+
+Should-do: Set Governance as Timelock CANCELLER_ROLE
+
+## Core Protocol Contracts
+
+## Plugins
+
+### Trading
+
+- `DutchTrade`
+  - Switch to timestamp-based model
+  - `price(uint256 blockNumber)` -> `price(uint48 timestamp)`
+  - Remove `startBlock() returns (uint256)` + `endBlock() returns (uint256)`
+  - Add `startTime() returns (uint48)` (`endTime() returns (uint48)` already existed and is now used in the contract)
+
 # 3.3.0
 
 This release improves how collateral plugins price LP tokens and moves reward claiming out to the asset plugin level.
@@ -10,7 +32,7 @@ Swapout all collateral plugins with appreciation.
 
 All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be traded out for the raw underlying CToken, as well as aave-v3 USDC/USDCbC for canonical wrappers.
 
-### Core Protocol Contracts
+## Core Protocol Contracts
 
 - `BackingManager` + `RevenueTrader`
   - Change `claimRewards()` to delegatecall to the list of registered plugins
@@ -29,18 +51,14 @@ All collateral plugins should be upgraded. The compound-v2 ERC20 wrapper will be
 - compound-v3
   - Emit `RewardsClaimed` event during `claimRewards()`
 - curve
-  - Make `price()` more resistant to manipulation by MEV
   - Emit `RewardsClaimed` event during `claimRewards()`
 - convex
-  - Make `price()` more resistant to manipulation by MEV
   - Emit `RewardsClaimed` event during `claimRewards()`
   - Add new `crvUSD-USDC` plugin
 - morpho-aave
   - Emit `RewardsClaimed` event during `claimRewards()`
 - stargate
   - Emit `RewardsClaimed` event during `claimRewards()`
-- yearn-v2
-  - Make `price()` more resistant to manipulation by MEV
 
 ### Trading
 

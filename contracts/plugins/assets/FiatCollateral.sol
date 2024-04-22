@@ -72,14 +72,14 @@ contract FiatCollateral is ICollateral, Asset {
         )
     {
         require(config.targetName != bytes32(0), "targetName missing");
-        if (config.defaultThreshold > 0) {
-            require(config.delayUntilDefault > 0, "delayUntilDefault zero");
+        if (config.defaultThreshold != 0) {
+            require(config.delayUntilDefault != 0, "delayUntilDefault zero");
         }
         require(config.delayUntilDefault <= 1209600, "delayUntilDefault too long");
 
         // Note: This contract is designed to allow setting defaultThreshold = 0 to disable
         // default checks. You can apply the check below to child contracts when required
-        // require(config.defaultThreshold > 0, "defaultThreshold zero");
+        // require(config.defaultThreshold != 0, "defaultThreshold zero");
 
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;
@@ -134,7 +134,7 @@ contract FiatCollateral is ICollateral, Asset {
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
             // Save prices if priced
-            if (high < FIX_MAX) {
+            if (high != FIX_MAX) {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);

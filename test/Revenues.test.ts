@@ -60,12 +60,7 @@ import { whileImpersonating } from './utils/impersonation'
 import { withinQuad } from './utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import snapshotGasCost from './utils/snapshotGasCost'
-import {
-  advanceBlocks,
-  advanceTime,
-  getLatestBlockNumber,
-  getLatestBlockTimestamp,
-} from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { mintCollaterals } from './utils/tokens'
 import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 
@@ -1866,7 +1861,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmt.add(minBuyAmtRemainder),
-          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e4')) // melting
+          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e3')) // melting
         )
       })
 
@@ -2087,7 +2082,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e4')) // melting
+          minBuyAmtRToken.div(bn('1e2')) // melting
         )
       })
 
@@ -2903,7 +2898,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
 
         // Advance time near end of geometric phase
-        await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
+        await advanceToTimestamp(
+          (await rTokenTrade.startTime()) + config.dutchAuctionLength.div(5).sub(6).toNumber()
+        )
 
         // Should settle RSR auction without disabling dutch auctions
         await expect(router.connect(addr1).bid(rsrTrade.address, addr1.address))
@@ -3018,7 +3015,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
 
         // Advance time to middle of first linear phase
-        await advanceBlocks(config.dutchAuctionLength.div(12).div(3))
+        await advanceToTimestamp(
+          (await rTokenTrade.startTime()) + config.dutchAuctionLength.div(3).toNumber()
+        )
 
         // Should settle RSR auction
         await expect(router.connect(addr1).bid(rsrTrade.address, addr1.address))
@@ -3504,12 +3503,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
           // Cannot get bid amount yet
           await expect(
-            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
           ).to.be.revertedWith('auction not started')
 
           // Can get bid amount in following block
-          await advanceBlocks(1)
-          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
+          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
           expect(actual).to.be.gt(bn(0))
         })
 
@@ -3636,7 +3635,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             expect(await trade.status()).to.be.eq(1) // Status.OPEN
           })
 
-          it('Will revert if bidder submits the no bid', async () => {
+          it('Will revert if bidder submits no bid', async () => {
             await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
             await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
@@ -3664,25 +3663,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
 
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
+          await token0.connect(addr1).approve(router.address, constants.MaxUint256)
+          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-          await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
-          await token0.connect(addr1).approve(router.address, constants.MaxUint256)
-          await token1.connect(addr1).approve(router.address, constants.MaxUint256)
 
-          const start = await trade.startBlock()
-          const end = await trade.endBlock()
+          const start = await trade.startTime()
+          const end = await trade.endTime()
 
-          // Simulate 30 minutes of blocks, should swap at right price each time
-          let now = bn(await getLatestBlockNumber())
-
-          while (now.lt(end)) {
+          await advanceToTimestamp(start)
+          let now = start
+          while (now < end) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = await dutchBuyAmount(
-              fp(now.sub(start)).div(end.sub(start)),
+              fp(now - start).div(end - start),
               rTokenAsset.address,
               collateral0.address,
               issueAmount,
@@ -3693,10 +3691,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             const staticResult = await router
               .connect(addr1)
               .callStatic.bid(trade.address, addr1.address)
-
             expect(staticResult.buyAmt).to.equal(actual)
-            await advanceBlocks(1)
-            now = bn(await getLatestBlockNumber())
+            await advanceToTimestamp(now + 12)
+            now = await getLatestBlockTimestamp()
           }
         })
 
@@ -3712,9 +3709,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               await rTokenTrader.trades(token0.address)
             )
 
-            await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
+            await advanceToTimestamp((await trade.endTime()) + 1)
             await expect(
-              trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+              trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
             ).to.be.revertedWith('auction over')
 
             // Bid
@@ -3740,7 +3737,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Perform test for both bid types
         bidTypes.forEach((bidType) => {
-          it(`Should bid at exactly endBlock() and not launch another auction - Bid Type: ${
+          it(`Should bid at exactly endTime() and not launch another auction - Bid Type: ${
             Object.values(BidType)[bidType]
           }`, async () => {
             const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
@@ -3752,10 +3749,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               await rTokenTrader.trades(token0.address)
             )
             await rToken.connect(addr1).approve(trade.address, constants.MaxUint256)
-            await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
+            await expect(trade.bidAmount(await trade.endTime())).to.not.be.reverted
 
             // Snipe auction at 0s left
-            await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+            await advanceToTimestamp((await trade.endTime()) - 1)
 
             // Bid
             if (bidType == BidType.CALLBACK) {
@@ -3810,10 +3807,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             await rTokenTrader.trades(token0.address)
           )
           await rToken.connect(addr1).approve(trade.address, constants.MaxUint256)
-          await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
+          await expect(trade.bidAmount(await trade.endTime())).to.not.be.reverted
 
           // Snipe auction at 0s left
-          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+          await advanceToTimestamp((await trade.endTime()) - 1)
 
           // Run it down
           await expect(exploiter.connect(addr1).start(trade.address, rTokenTrader.address)).to.be

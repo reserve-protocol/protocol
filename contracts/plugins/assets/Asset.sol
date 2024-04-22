@@ -50,12 +50,12 @@ contract Asset is IAsset, VersionedAsset {
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_
     ) {
-        require(priceTimeout_ > 0, "price timeout zero");
+        require(priceTimeout_ != 0, "price timeout zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
-        require(oracleError_ > 0 && oracleError_ < FIX_ONE, "oracle error out of range");
+        require(oracleError_ != 0 && oracleError_ < FIX_ONE, "oracle error out of range");
         require(address(erc20_) != address(0), "missing erc20");
-        require(maxTradeVolume_ > 0, "invalid max trade volume");
-        require(oracleTimeout_ > 0, "oracleTimeout zero");
+        require(maxTradeVolume_ != 0, "invalid max trade volume");
+        require(oracleTimeout_ != 0, "oracleTimeout zero");
         priceTimeout = priceTimeout_;
         chainlinkFeed = chainlinkFeed_;
         oracleError = oracleError_;
@@ -96,7 +96,7 @@ contract Asset is IAsset, VersionedAsset {
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
             // Save prices if priced
-            if (high < FIX_MAX) {
+            if (high != FIX_MAX) {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);

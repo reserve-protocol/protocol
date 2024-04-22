@@ -26,6 +26,8 @@ const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const BASE_RPC_URL = useEnv('BASE_RPC_URL')
+const ARBITRUM_SEPOLIA_RPC_URL = useEnv('ARBITRUM_SEPOLIA_RPC_URL')
+const ARBITRUM_RPC_URL = useEnv('ARBITRUM_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') || 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
@@ -86,6 +88,21 @@ const config: HardhatUserConfig = {
       // gasPrice: 30_000_000_000,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
+    arbitrum: {
+      chainId: 42161,
+      url: ARBITRUM_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+      gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
+    },
+    'arbitrum-sepolia': {
+      chainId: 421614,
+      url: ARBITRUM_SEPOLIA_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
     tenderly: {
       chainId: 3,
       url: TENDERLY_RPC_URL,
@@ -145,6 +162,8 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: useEnv('ETHERSCAN_API_KEY'),
       base: useEnv('BASESCAN_API_KEY'),
+      arbitrum: useEnv('ARBISCAN_API_KEY'),
+      'arbitrum-sepolia': useEnv('ARBISCAN_API_KEY'),
     },
     customChains: [
       {
@@ -161,6 +180,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: 'https://api-goerli.basescan.org/api',
           browserURL: 'https://goerli.basescan.org',
+        },
+      },
+      {
+        network: 'arbitrum',
+        chainId: 42161,
+        urls: {
+          apiURL: 'https://api.arbiscan.io/api',
+          browserURL: 'https://arbiscan.io',
+        },
+      },
+      {
+        network: 'arbitrum-sepolia',
+        chainId: 421614,
+        urls: {
+          apiURL: 'https://api-sepolia.arbiscan.io/api',
+          browserURL: 'https://sepolia.arbiscan.io',
         },
       },
     ],

@@ -11,9 +11,7 @@
     "paths": {
       "@typechain/*": ["./typechain/*"],
       "#/*": ["./*"]
-    },
-    "typeRoots": ["./typechain", "./node_modules/@types"],
-    "types": ["@nomiclabs/hardhat-ethers"]
+    }
   },
   "exclude": ["./dist/**/*", "./node_modules/**/*"],
   "include": ["./test", "./tasks/**/*", "./common", "./scripts", "./typechain/**/*"],

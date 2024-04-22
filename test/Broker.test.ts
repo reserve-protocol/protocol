@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, constants } from 'ethers'
-import { ethers, upgrades } from 'hardhat'
+import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import {
   MAX_UINT48,
@@ -54,7 +54,7 @@ import {
   advanceTime,
   advanceToTimestamp,
   getLatestBlockTimestamp,
-  getLatestBlockNumber,
+  setNextBlockTimestamp,
 } from './utils/time'
 import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
@@ -1135,14 +1135,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startBlock()).to.equal((await getLatestBlockNumber()) + 1)
-        const tradeLen = (await trade.endBlock()).sub(await trade.startBlock())
-        expect(await trade.endTime()).to.equal(
-          tradeLen
-            .add(1)
-            .mul(12)
-            .add(await getLatestBlockTimestamp())
-        )
+        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 1)
+        const tradeLen = (await trade.endTime()) - (await trade.startTime())
+        expect(await trade.endTime()).to.equal(tradeLen + 1 + (await getLatestBlockTimestamp()))
         expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
@@ -1302,8 +1297,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         })
 
         // Advance blocks til trade can be settled
-        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
-        await advanceBlocks(tradeLen.add(1))
+        const now = await getLatestBlockTimestamp()
+        const tradeLen = (await trade.endTime()) - now
+        await advanceToTimestamp(now + tradeLen + 1)
 
         // Settle trade
         expect(await trade.canSettle()).to.equal(true)
@@ -1341,8 +1337,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance blocks til trade can be settled
-        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
-        await advanceBlocks(tradeLen.add(1))
+        const now = await getLatestBlockTimestamp()
+        const tradeLen = (await trade.endTime()) - now
+        await advanceToTimestamp(now + tradeLen + 1)
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -1460,33 +1457,37 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Get Trade
       const tradeAddr = await backingManager.trades(sellTok.address)
-      await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
       const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
-      await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
-      const currentBlock = bn(await getLatestBlockNumber())
-      const toAdvance = progression
-        .mul((await trade.endBlock()).sub(currentBlock))
-        .div(fp('1'))
-        .sub(1)
-      if (toAdvance.gt(0)) await advanceBlocks(toAdvance)
+      const startTime = await trade.startTime()
+      const endTime = await trade.endTime()
+      const bidTime =
+        startTime +
+        progression
+          .mul(endTime - startTime)
+          .div(fp('1'))
+          .toNumber()
+      const bidAmt = await trade.bidAmount(bidTime)
 
       // Bid
       const sellAmt = await trade.lot()
-      const bidBlock = bn('1').add(await getLatestBlockNumber())
-      const bidAmt = await trade.bidAmount(bidBlock)
       expect(bidAmt).to.be.gt(0)
       const buyBalBefore = await buyTok.balanceOf(backingManager.address)
       const sellBalBefore = await sellTok.balanceOf(addr1.address)
 
+      if (bidTime > (await getLatestBlockTimestamp())) await setNextBlockTimestamp(bidTime)
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
       if (bidType.eq(bn(BidType.CALLBACK))) {
-        await expect(router.connect(addr1).bid(trade.address, addr1.address))
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+        await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
+        await router.connect(addr1).bid(trade.address, addr1.address)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
-        await expect(trade.connect(addr1).bid())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+        await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+        await trade.connect(addr1).bid()
       }
+      await advanceBlocks(1)
+      await hre.network.provider.send('evm_setAutomine', [true])
 
       // Check balances
       expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))
@@ -1734,7 +1735,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceBlocks((await newTrade.endBlock()).sub(await getLatestBlockNumber()))
+        await advanceToTimestamp(await newTrade.endTime())
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {

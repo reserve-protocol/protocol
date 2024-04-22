@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 
@@ -30,19 +29,15 @@ import "./mixins/Component.sol";
  *   across non-withdrawing stakes, while when RSR is seized it is seized uniformly from both
  *   stakes that are in the process of being withdrawn and those that are not.
  */
-// solhint-disable max-states-count
 abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable PERIOD; // {s} 1 block based on network
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
-    uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
+    uint48 private constant MIN_UNSTAKING_DELAY = 60 * 2; // {s} 2 minutes
+    uint48 private constant MAX_UNSTAKING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
+    uint192 private constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
 
     // === ERC20 ===
     string public name; // immutable
@@ -150,7 +145,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //     rsrRewardsAtLastPayout was the value of rsrRewards() at that time
 
     // {seconds} The last time when rewards were paid out
-    uint48 public payoutLastPaid;
+    uint48 private payoutLastPaid;
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 private rsrRewardsAtLastPayout;
@@ -169,12 +164,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // ======================
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() ComponentP1() {
-        PERIOD = NetworkConfigLib.blocktime();
-        MIN_UNSTAKING_DELAY = PERIOD * 2;
-    }
-
     // init() can only be called once (initializer)
     // ==== Financial State:
     // effects:
@@ -189,8 +178,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 rewardRatio_,
         uint192 withdrawalLeak_
     ) external initializer {
-        require(bytes(name_).length > 0, "name empty");
-        require(bytes(symbol_).length > 0, "symbol empty");
+        assert(bytes(name_).length != 0);
+        assert(bytes(symbol_).length != 0);
         __Component_init(main_);
         __EIP712_init(name_, VERSION);
         name = name_;
@@ -234,15 +223,16 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
     function stake(uint256 rsrAmount) public {
-        require(rsrAmount > 0, "Cannot stake zero");
+        require(rsrAmount != 0, "Cannot stake zero");
 
         _payoutRewards();
 
         // Mint new stakes
-        mintStakes(_msgSender(), rsrAmount);
+        address caller = _msgSender();
+        mintStakes(caller, rsrAmount);
 
         // == Interactions ==
-        IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransferFrom(caller, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
@@ -268,8 +258,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         requireNotTradingPausedOrFrozen();
 
         address account = _msgSender();
-        require(stakeAmount > 0, "Cannot withdraw zero");
-        require(stakes[era][account] >= stakeAmount, "Not enough balance");
+        require(stakeAmount != 0, "zero amount");
+        require(stakes[era][account] >= stakeAmount, "insufficient balance");
 
         _payoutRewards();
 
@@ -322,7 +312,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // untestable:
         //      firstId will never be zero, due to previous checks against endId
-        uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint192 oldDrafts = firstId != 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
@@ -371,7 +361,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // untestable:
         //      firstId will never be zero, due to previous checks against endId
-        uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint192 oldDrafts = firstId != 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
@@ -434,11 +424,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external {
         requireNotTradingPausedOrFrozen();
 
-        require(_msgSender() == address(backingManager), "not backing manager");
-        require(rsrAmount > 0, "Amount cannot be zero");
+        address caller = _msgSender();
+        require(caller == address(backingManager), "!bm");
+        require(rsrAmount != 0, "zero amount");
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
-        require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
+        require(rsrAmount <= rsrBalance, "seize exceeds balance");
 
         _payoutRewards();
 
@@ -452,7 +443,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR = stakeRSRToTake;
 
         // update stakeRate, possibly beginning a new stake era
-        if (stakeRSR > 0) {
+        if (stakeRSR != 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
             stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
         }
@@ -467,7 +458,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR += draftRSRToTake;
 
         // update draftRate, possibly beginning a new draft era
-        if (draftRSR > 0) {
+        if (draftRSR != 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
             draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
         }
@@ -483,7 +474,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
-        IERC20Upgradeable(address(rsr)).safeTransfer(_msgSender(), seizedRSR);
+        IERC20Upgradeable(address(rsr)).safeTransfer(caller, seizedRSR);
     }
 
     /// @custom:governance
@@ -600,8 +591,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //     rewards_N = rewards_0 * (1-payoutRatio) ^ N
     //     payout = rewards_N - rewards_0 = rewards_0 * (1 - (1-payoutRatio)^N)
     function _payoutRewards() internal {
-        if (block.timestamp < payoutLastPaid + PERIOD) return;
-        uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / PERIOD;
+        if (block.timestamp < payoutLastPaid + 1) return;
+        uint48 numPeriods = uint48(block.timestamp) - payoutLastPaid;
 
         uint192 initRate = exchangeRate();
         uint256 payout;
@@ -619,7 +610,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             stakeRSR += payout;
         }
 
-        payoutLastPaid += numPeriods * PERIOD;
+        payoutLastPaid += numPeriods;
         rsrRewardsAtLastPayout = rsrRewards();
 
         // stakeRate else case: D18{qStRSR/qRSR} = {qStRSR} * D18 / {qRSR}
@@ -662,8 +653,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         index = queue.length;
 
-        uint192 oldDrafts = index > 0 ? queue[index - 1].drafts : 0;
-        uint64 lastAvailableAt = index > 0 ? queue[index - 1].availableAt : 0;
+        uint192 oldDrafts = index != 0 ? queue[index - 1].drafts : 0;
+        uint64 lastAvailableAt = index != 0 ? queue[index - 1].availableAt : 0;
         availableAt = uint64(block.timestamp) + unstakingDelay;
         if (lastAvailableAt > availableAt) {
             availableAt = lastAvailableAt;
@@ -779,8 +770,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     function transfer(address to, uint256 amount) public returns (bool) {
-        address owner = _msgSender();
-        _transfer(owner, to, amount);
+        _transfer(_msgSender(), to, amount);
         return true;
     }
 
@@ -816,7 +806,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
         address owner = _msgSender();
         uint256 currentAllowance = _allowances[era][owner][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        require(currentAllowance >= subtractedValue, "decrease allowance");
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
@@ -831,14 +821,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256 amount
     ) internal {
-        require(
-            from != address(0) && to != address(0),
-            "ERC20: transfer to or from the zero address"
-        );
+        require(from != address(0) && to != address(0), "zero address");
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 fromBalance = eraStakes[from];
-        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+        require(fromBalance >= amount, "insufficient balance");
         unchecked {
             eraStakes[from] = fromBalance - amount;
         }
@@ -853,7 +840,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // effects: bal[account] += amount; totalStakes += amount
     // this must only be called from a function that will fixup stakeRSR/Rate
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
+        require(account != address(0), "zero address");
         assert(totalStakes + amount < type(uint224).max);
 
         stakes[era][account] += amount;
@@ -869,13 +856,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function _burn(address account, uint256 amount) internal virtual {
         // untestable:
         //      _burn is only called from unstake(), which uses msg.sender as `account`
-        require(account != address(0), "ERC20: burn from the zero address");
+        require(account != address(0), "zero address");
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 accountBalance = eraStakes[account];
         // untestable:
         //      _burn is only called from unstake(), which already checks this
-        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        require(accountBalance >= amount, "insufficient balances");
         unchecked {
             eraStakes[account] = accountBalance - amount;
         }
@@ -890,10 +877,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address spender,
         uint256 amount
     ) internal {
-        require(
-            owner != address(0) && spender != address(0),
-            "ERC20: approve to or from the zero address"
-        );
+        require(owner != address(0) && spender != address(0), "zero address");
 
         _allowances[era][owner][spender] = amount;
         emit Approval(owner, spender, amount);
@@ -906,7 +890,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) internal {
         uint256 currentAllowance = _allowances[era][owner][spender];
         if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+            require(currentAllowance >= amount, "insufficient allowance");
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
             }
@@ -920,7 +904,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256
     ) internal virtual {
-        require(to != address(this), "StRSR transfer to self");
+        require(to != address(this), "transfer to self");
     }
 
     // === ERC20Permit ===
