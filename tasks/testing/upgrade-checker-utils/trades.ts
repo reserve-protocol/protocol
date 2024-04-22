@@ -114,8 +114,12 @@ export const runDutchTrade = async (
   const endTime = await trade.endTime()
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
 
-  // Bid close to end block
-  await advanceToTimestamp(hre, endTime - 5)
+  // Bid near 1:1 point, which occurs at the 70% mark
+  const toAdvance = endBlock
+    .sub(await getLatestBlockNumber(hre))
+    .mul(7)
+    .div(10)
+  await advanceBlocks(hre, toAdvance)
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
@@ -282,6 +286,10 @@ const getERC20Tokens = async (
     'IStaticATokenV3LM',
     networkConfig['1'].tokens.saEthPyUSD!
   )
+  const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
+    'ConvexStakingWrapper',
+    '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'
+  )
 
   if (tokenAddress == wcUSDCv3.address) {
     await whileImpersonating(
@@ -321,6 +329,15 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
+  } else if (tokenAddress == stkcvxeUSDFRAXBP.address) {
+    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'
+
+    await whileImpersonating(hre, whales[lpTokenAddr], async (whaleSigner) => {
+      const lpToken = await hre.ethers.getContractAt('ERC20Mock', lpTokenAddr)
+      await lpToken.connect(whaleSigner).approve(stkcvxeUSDFRAXBP.address, amount.mul(2))
+      await stkcvxeUSDFRAXBP.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address)
+      await token.connect(whaleSigner).transfer(recipient, amount)
+    })
   } else {
     const addr = whales[token.address.toLowerCase()]
     if (!addr) throw new Error('missing whale for ' + tokenAddress)

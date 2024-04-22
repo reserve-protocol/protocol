@@ -36,7 +36,7 @@ library OracleLib {
             uint48 secondsSince = uint48(block.timestamp - updateTime);
             if (secondsSince > timeout + ORACLE_TIMEOUT_BUFFER) revert StalePrice();
 
-            if (p == 0) revert ZeroPrice();
+            if (p <= 0) revert InvalidPrice();
 
             // {UoA/tok}
             return shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()));

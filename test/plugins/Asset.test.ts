@@ -458,6 +458,70 @@ describe('Assets contracts #fast', () => {
       await expect(rTokenAsset.price()).to.be.reverted
     })
 
+    it('Should return latestPrice() for RTokenAsset correctly', async () => {
+      // Confirm current price $1
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
+
+      // Latest Price returns current price
+      let rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.equal(fp('1'))
+      expect(rTokenPriceInfo.updatedAt).to.be.lte(await getLatestBlockTimestamp())
+
+      // Perform actual call to cache data
+      await rTokenAsset.latestPrice()
+      let latestUpdate = await getLatestBlockTimestamp()
+
+      // Calling again is noop
+      await rTokenAsset.latestPrice()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.equal(fp('1'))
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // did not refresh again
+
+      // Will refresh if basket changes
+      await basketHandler
+        .connect(wallet)
+        .setPrimeBasket([token.address, usdc.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(wallet).refreshBasket()
+
+      // Perform actual call and check values
+      await rTokenAsset.latestPrice()
+      latestUpdate = await getLatestBlockTimestamp()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.be.closeTo(fp('1'), fp('0.01')) // remains close
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // refreshed
+
+      // Perform trade (changes trade nonce)
+      await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+
+      // Perform actual call and check values
+      await rTokenAsset.latestPrice()
+      latestUpdate = await getLatestBlockTimestamp()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.be.closeTo(fp('1'), fp('0.01')) // remains close
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // refreshed
+
+      // Calling again is noop
+      await rTokenAsset.latestPrice()
+
+      // Settle trade
+      await advanceTime(config.batchAuctionLength.add(100).toString())
+      await rTokenAsset.latestPrice() // update cache
+      await backingManager.settleTrade(aToken.address)
+
+      // Perform actual call and check values
+      await rTokenAsset.latestPrice()
+      latestUpdate = await getLatestBlockTimestamp()
+      rTokenPriceInfo = await rTokenAsset.callStatic.latestPrice()
+      expect(rTokenPriceInfo.rTokenPrice).to.be.closeTo(fp('1'), fp('0.01')) // remains close
+      expect(rTokenPriceInfo.updatedAt).to.be.eq(latestUpdate) // refreshed
+    })
+
     it('Regression test -- Should handle unpriced collateral for RTokenAsset', async () => {
       // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
 
@@ -485,6 +549,9 @@ describe('Assets contracts #fast', () => {
 
       // Check RToken is unpriced
       await expectUnpriced(rTokenAsset.address)
+
+      // Oracle price update should revert
+      await expect(rTokenAsset.forceUpdatePrice()).to.be.revertedWith('invalid price')
     })
 
     it('Regression test -- RTokenAsset.refresh() should refresh everything', async () => {
@@ -750,6 +817,31 @@ describe('Assets contracts #fast', () => {
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidRSRAsset.price()).to.be.reverted
       await expect(invalidRSRAsset.refresh()).to.be.reverted
+    })
+
+    it('Bubbles error up if Chainlink feed reverts for explicit reason', async () => {
+      // Applies to all collateral as well
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidRSRAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          invalidChainlinkFeed.address,
+          ORACLE_ERROR,
+          rsr.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+
+      // Reverting with reason
+      await invalidChainlinkFeed.setRevertWithExplicitError(true)
+      await expect(invalidRSRAsset.tryPrice()).to.be.revertedWith('oracle explicit error')
     })
 
     it('Should handle price decay correctly', async () => {

@@ -100,7 +100,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
                 // Save prices if priced
-                if (high < FIX_MAX) {
+                if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);

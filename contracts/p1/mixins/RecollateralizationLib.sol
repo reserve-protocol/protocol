@@ -114,7 +114,7 @@ library RecollateralizationLibP1 {
         // tradesOpen can be > 0 when called by RTokenAsset.basketRange()
 
         (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
-        require(buPriceLow > 0 && buPriceHigh < FIX_MAX, "BUs unpriced");
+        require(buPriceLow != 0 && buPriceHigh != FIX_MAX, "BUs unpriced");
 
         uint192 basketsNeeded = ctx.rToken.basketsNeeded(); // {BU}
 
@@ -357,7 +357,7 @@ library RecollateralizationLibP1 {
 
             // if rsr does not have a registered asset the below array accesses will revert
             if (
-                high > 0 &&
+                high != 0 &&
                 TradeLib.isEnoughToSell(
                     reg.assets[rsrIndex],
                     ctx.bals[rsrIndex],
