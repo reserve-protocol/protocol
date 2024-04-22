@@ -122,11 +122,6 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
         }
     }
 
-    function refresh() public override {
-        pairedAssetRegistry.refresh(); // refresh all registered assets
-        super.refresh(); // already handles all necessary default checks
-    }
-
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token

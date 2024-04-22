@@ -96,8 +96,6 @@ contract DutchTrade is ITrade, Versioned {
 
     BidType public bidType; // = BidType.NONE
 
-    BidType public bidType; // = BidType.NONE
-
     TradeStatus public status; // reentrancy protection
 
     IBroker public broker; // The Broker that cloned this contract into existence

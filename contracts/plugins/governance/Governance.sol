@@ -11,8 +11,6 @@ import "../../interfaces/IStRSRVotes.sol";
 
 uint256 constant ONE_DAY = 86400; // {s}
 
-uint256 constant ONE_DAY = 86400; // {s}
-
 /*
  * @title Governance
  * @dev Decentralized Governance for the Reserve Protocol.
