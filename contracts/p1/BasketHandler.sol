@@ -39,13 +39,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     IStRSR private stRSR;
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
-<<<<<<< HEAD
     // event. config is only modified by governance through setPrimeBakset and setBackupConfig
     BasketConfig internal config;
-=======
-    // event. config is only modified by governance through setPrimeBasket and setBackupConfig
-    BasketConfig private config;
->>>>>>> 3.4.0
 
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
     // basket is the current basket.
@@ -225,11 +220,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bool normalize
     ) internal {
         requireGovernanceOnly();
-<<<<<<< HEAD
-        require(erc20s.length > 0, "empty basket");
-=======
         require(erc20s.length != 0, "empty basket");
->>>>>>> 3.4.0
         require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
@@ -244,21 +235,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             );
         } else if (normalize && config.erc20s.length != 0) {
             // Confirm reference basket is SOUND
-<<<<<<< HEAD
-            assetRegistry.refresh();
-            require(status() == CollateralStatus.SOUND, "unsound basket");
-
-            // Normalize targetAmts based on UoA value of reference basket
-            (uint192 low, uint192 high) = _price(false);
-            assert(low > 0 && high < FIX_MAX); // implied by SOUND status
-=======
             assetRegistry.refresh(); // will set lastStatus
             require(lastStatus == CollateralStatus.SOUND, "unsound basket");
 
             // Normalize targetAmts based on UoA value of reference basket
             (uint192 low, uint192 high) = _price(false);
             assert(low != 0 && high != FIX_MAX); // implied by SOUND status
->>>>>>> 3.4.0
             targetAmts = BasketLibP1.normalizeByPrice(
                 assetRegistry,
                 erc20s,
@@ -308,11 +290,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         IERC20[] calldata erc20s
     ) external {
         requireGovernanceOnly();
-<<<<<<< HEAD
-=======
         require(max <= MAX_BACKUP_ERC20S, "max too large");
         require(erc20s.length <= MAX_BACKUP_ERC20S, "erc20s too large");
->>>>>>> 3.4.0
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;

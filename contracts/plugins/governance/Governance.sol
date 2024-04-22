@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.so
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "../../interfaces/IStRSRVotes.sol";
-import "../../libraries/NetworkConfigLib.sol";
 
 uint256 constant ONE_DAY = 86400; // {s}
 

@@ -40,13 +40,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IFurnace private furnace;
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
-<<<<<<< HEAD
     // === 3.0.1 ===
     mapping(IERC20 => uint192) internal tokensOut; // {tok} token balances out in ITrades
-=======
-    // === 3.1.0 ===
-    mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
->>>>>>> 3.4.0
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
@@ -215,11 +210,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // Forward any RSR held to StRSR pool and payout rewards
         // RSR should never be sold for RToken yield
-<<<<<<< HEAD
-        if (rsr.balanceOf(address(this)) > 0) {
-=======
         if (rsr.balanceOf(address(this)) != 0) {
->>>>>>> 3.4.0
             // For CEI, this is an interaction "within our system" even though RSR is already live
             IERC20(address(rsr)).safeTransfer(address(stRSR), rsr.balanceOf(address(this)));
             stRSR.payoutRewards();
