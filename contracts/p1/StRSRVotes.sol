@@ -15,11 +15,11 @@ import "./StRSR.sol";
 contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     // A Checkpoint[] is a value history; it faithfully represents the history of value so long
     // as that value is only ever set by _writeCheckpoint. For any *previous* timepoint N, the
-    // recorded value at the end of block N was cp.val, where cp in the value history is the
+    // recorded value at the end of timepoint N was cp.val, where cp in the value history is the
     // Checkpoint value with fromTimepoint maximal such that fromTimepoint <= N.
 
-    // In particular, if the value changed during block N, there will be exactly one
-    // entry cp with cp.fromTimepoint = N, and cp.val is the value at the _end_ of that block.
+    // In particular, if the value changed during timepoint N, there will be exactly one
+    // entry cp with cp.fromTimepoint = N, and cp.val is the value at the _end_ of that timepoint.
     // 3.4.0: it's actually a timepoint described by clock().
     struct Checkpoint {
         uint48 fromTimepoint;
@@ -252,26 +252,30 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         }
     }
 
-    // Set this block's value in the history `ckpts`
+    // Set this timepoint's value in the history `ckpts`
     function _writeCheckpoint(
         Checkpoint[] storage ckpts,
         function(uint256, uint256) view returns (uint256) op,
         uint256 delta
     ) private returns (uint256 oldWeight, uint256 newWeight) {
         uint256 pos = ckpts.length;
-        oldWeight = pos == 0 ? 0 : ckpts[pos - 1].val;
-        newWeight = op(oldWeight, delta);
 
-        // `fromTimepoint` is a timepoint
-        if (pos != 0 && ckpts[pos - 1].fromTimepoint == clock()) {
-            ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
-        } else {
-            ckpts.push(
-                Checkpoint({
-                    fromTimepoint: clock(),
-                    val: SafeCastUpgradeable.toUint224(newWeight)
-                })
-            );
+        unchecked {
+            Checkpoint memory oldCkpt = pos == 0 ? Checkpoint(0, 0) : _unsafeAccess(ckpts, pos - 1);
+
+            oldWeight = oldCkpt.val;
+            newWeight = op(oldWeight, delta);
+
+            if (pos != 0 && oldCkpt.fromTimepoint == clock()) {
+                _unsafeAccess(ckpts, pos - 1).val = SafeCastUpgradeable.toUint224(newWeight);
+            } else {
+                ckpts.push(
+                    Checkpoint({
+                        fromTimepoint: clock(),
+                        val: SafeCastUpgradeable.toUint224(newWeight)
+                    })
+                );
+            }
         }
     }
 
