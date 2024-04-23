@@ -115,7 +115,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     {
         // We run a binary search to look for the last (most recent) checkpoint taken before (or at) `timepoint`.
         //
-        // Initially we check if the block is recent to narrow the search range.
+        // Initially we check if the timepoint is recent to narrow the search range.
         // During the loop, the index of the wanted checkpoint remains in the range [low-1, high).
         // With each iteration, either `low` or `high` is moved towards the middle of the range to maintain the invariant.
         // - If the middle checkpoint is after `timepoint`, we look in [low, mid)
