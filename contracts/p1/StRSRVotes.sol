@@ -135,14 +135,14 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         uint256 low = 0;
         uint256 high = length;
 
-        if (length > 5) {
-            uint256 mid = length - MathUpgradeable.sqrt(length);
-            if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
+        // if (length > 5) {
+        //     uint256 mid = length - MathUpgradeable.sqrt(length);
+        //     if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
+        //         high = mid;
+        //     } else {
+        //         low = mid + 1;
+        //     }
+        // }
 
         while (low < high) {
             uint256 mid = MathUpgradeable.average(low, high);
