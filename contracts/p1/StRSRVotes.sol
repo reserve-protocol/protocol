@@ -21,6 +21,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     // In particular, if the value changed during timepoint N, there will be exactly one
     // entry cp with cp.fromTimepoint = N, and cp.val is the value at the _end_ of that timepoint.
     // 3.4.0: it's actually a timepoint described by clock().
+    // !!!! REMEMBER THIS IS 2 SLOTS, NOT ONE, UNLIKE OZ !!!!
     struct Checkpoint {
         uint48 fromTimepoint;
         uint224 val;
@@ -135,14 +136,14 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         uint256 low = 0;
         uint256 high = length;
 
-        // if (length > 5) {
-        //     uint256 mid = length - MathUpgradeable.sqrt(length);
-        //     if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
-        //         high = mid;
-        //     } else {
-        //         low = mid + 1;
-        //     }
-        // }
+        if (length > 5) {
+            uint256 mid = length - MathUpgradeable.sqrt(length);
+            if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
 
         while (low < high) {
             uint256 mid = MathUpgradeable.average(low, high);
@@ -298,7 +299,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     {
         assembly {
             mstore(0, ckpts.slot)
-            result.slot := add(keccak256(0, 0x20), pos)
+            result.slot := add(keccak256(0, 0x20), mul(pos, 2))
         }
     }
 
