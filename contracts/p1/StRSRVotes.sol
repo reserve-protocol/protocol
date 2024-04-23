@@ -138,7 +138,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
         if (length > 5) {
             uint256 mid = length - MathUpgradeable.sqrt(length);
-            if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
+            if (ckpts[mid].fromTimepoint > timepoint) {
                 high = mid;
             } else {
                 low = mid + 1;
@@ -147,7 +147,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
         while (low < high) {
             uint256 mid = MathUpgradeable.average(low, high);
-            if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
+            if (ckpts[mid].fromTimepoint > timepoint) {
                 high = mid;
             } else {
                 low = mid + 1;
@@ -155,7 +155,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         }
 
         unchecked {
-            return high == 0 ? 0 : _unsafeAccess(ckpts, high - 1).val;
+            return high == 0 ? 0 : ckpts[high - 1].val;
         }
     }
 
@@ -262,13 +262,13 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         uint256 pos = ckpts.length;
 
         unchecked {
-            Checkpoint memory oldCkpt = pos == 0 ? Checkpoint(0, 0) : _unsafeAccess(ckpts, pos - 1);
+            Checkpoint memory oldCkpt = pos == 0 ? Checkpoint(0, 0) : ckpts[pos - 1];
 
             oldWeight = oldCkpt.val;
             newWeight = op(oldWeight, delta);
 
             if (pos != 0 && oldCkpt.fromTimepoint == clock()) {
-                _unsafeAccess(ckpts, pos - 1).val = SafeCastUpgradeable.toUint224(newWeight);
+                ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
             } else {
                 ckpts.push(
                     Checkpoint({
@@ -286,21 +286,6 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
     function _subtract(uint256 a, uint256 b) private pure returns (uint256) {
         return a - b;
-    }
-
-    /**
-     * @dev Access an element of the array without performing bounds check.
-     *      The position is assumed to be within bounds.
-     */
-    function _unsafeAccess(Checkpoint[] storage ckpts, uint256 pos)
-        private
-        pure
-        returns (Checkpoint storage result)
-    {
-        assembly {
-            mstore(0, ckpts.slot)
-            result.slot := add(keccak256(0, 0x20), mul(pos, 2))
-        }
     }
 
     /**
