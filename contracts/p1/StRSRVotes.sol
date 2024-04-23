@@ -16,13 +16,13 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     // A Checkpoint[] is a value history; it faithfully represents the history of value so long
     // as that value is only ever set by _writeCheckpoint. For any *previous* timepoint N, the
     // recorded value at the end of block N was cp.val, where cp in the value history is the
-    // Checkpoint value with fromBlock maximal such that fromBlock <= N.
+    // Checkpoint value with fromTimepoint maximal such that fromTimepoint <= N.
 
     // In particular, if the value changed during block N, there will be exactly one
-    // entry cp with cp.fromBlock = N, and cp.val is the value at the _end_ of that block.
-    // 3.4.0: Even though it says `fromBlock`, it's actually timepoint.
+    // entry cp with cp.fromTimepoint = N, and cp.val is the value at the _end_ of that block.
+    // 3.4.0: it's actually a timepoint described by clock().
     struct Checkpoint {
-        uint48 fromBlock;
+        uint48 fromTimepoint;
         uint224 val;
     }
 
@@ -132,7 +132,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
         if (length > 5) {
             uint256 mid = length - MathUpgradeable.sqrt(length);
-            if (_unsafeAccess(ckpts, mid).fromBlock > timepoint) {
+            if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
                 high = mid;
             } else {
                 low = mid + 1;
@@ -141,7 +141,7 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
         while (low < high) {
             uint256 mid = MathUpgradeable.average(low, high);
-            if (_unsafeAccess(ckpts, mid).fromBlock > timepoint) {
+            if (_unsafeAccess(ckpts, mid).fromTimepoint > timepoint) {
                 high = mid;
             } else {
                 low = mid + 1;
@@ -257,12 +257,15 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         oldWeight = pos == 0 ? 0 : ckpts[pos - 1].val;
         newWeight = op(oldWeight, delta);
 
-        // `fromBlock` is a timepoint
-        if (pos != 0 && ckpts[pos - 1].fromBlock == clock()) {
+        // `fromTimepoint` is a timepoint
+        if (pos != 0 && ckpts[pos - 1].fromTimepoint == clock()) {
             ckpts[pos - 1].val = SafeCastUpgradeable.toUint224(newWeight);
         } else {
             ckpts.push(
-                Checkpoint({ fromBlock: clock(), val: SafeCastUpgradeable.toUint224(newWeight) })
+                Checkpoint({
+                    fromTimepoint: clock(),
+                    val: SafeCastUpgradeable.toUint224(newWeight)
+                })
             );
         }
     }
