@@ -743,7 +743,7 @@ describe('FacadeWrite contract', () => {
             expect(await governor.proposalThreshold()).to.equal(0)
             expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(0)
           }
-          expect(await governor.name()).to.equal('Governor Alexios')
+          expect(await governor.name()).to.equal('Governor Anastasius')
 
           // Quorum
           expect(await governor['quorumNumerator()']()).to.equal(govParams.quorumPercent)

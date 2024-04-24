@@ -43,7 +43,7 @@ contract Governance is
         uint256 proposalThresholdAsMicroPercent_, // e.g. 1e4 for 0.01%
         uint256 quorumPercent // e.g 4 for 4%
     )
-        Governor("Governor Alexios")
+        Governor("Governor Anastasius")
         GovernorSettings(votingDelay_, votingPeriod_, proposalThresholdAsMicroPercent_)
         GovernorVotes(IVotes(address(token_)))
         GovernorVotesQuorumFraction(quorumPercent)
@@ -51,8 +51,6 @@ contract Governance is
     {
         requireValidVotingDelay(votingDelay_);
     }
-
-    // solhint-enable no-empty-blocks
 
     function votingDelay() public view override(IGovernor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
@@ -199,6 +197,7 @@ contract Governance is
         return SafeCast.toUint48(block.timestamp);
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public pure override(GovernorVotes, IGovernor) returns (string memory) {
         return "mode=timestamp";
     }
