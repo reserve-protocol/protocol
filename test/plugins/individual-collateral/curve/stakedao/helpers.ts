@@ -12,10 +12,12 @@ import {
 import {
   USDC,
   USDCPLUS,
-  USDCPLUS_BP_POOL,
+  USDCPLUS_USDC_POOL,
   USDCPLUS_ASSET_REGISTRY,
   USDCPLUS_TIMELOCK,
   USDCPLUS_USDC_VAULT,
+  USDCPLUS_USDC_TOKEN,
+  USDCPLUS_USDC_TOKEN_HOLDER,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
 
@@ -54,7 +56,7 @@ export const makeUSDCUSDCPlus = async (
   const usdcplus = await ethers.getContractAt('ERC20Mock', USDCPLUS)
 
   // Get real USDC+ pool
-  const realCurvePool = await ethers.getContractAt('ICurvePool', USDCPLUS_BP_POOL)
+  const realCurvePool = await ethers.getContractAt('ICurvePool', USDCPLUS_USDC_POOL)
 
   // Use mock curvePool seeded with initial balances
   const CurveMockFactory = await ethers.getContractFactory('CurvePoolMock')
@@ -72,14 +74,13 @@ export const mintUSDCUSDCPlusVault = async (
   ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,
-  recipient: string,
-  holder: string
+  recipient: string
 ) => {
-  console.log('1')
+  const lpToken = await ethers.getContractAt('IStakeDAOVault', USDCPLUS_USDC_TOKEN)
   const vault = await ethers.getContractAt('IStakeDAOVault', USDCPLUS_USDC_VAULT)
-  console.log('2')
-  await whileImpersonating(holder, async (signer) => {
-    console.log('3')
+  await whileImpersonating(USDCPLUS_USDC_TOKEN_HOLDER, async (signer) => {
+    await lpToken.connect(signer).approve(vault.address, amount)
+    await vault.connect(signer).deposit(signer.address, amount, true)
     await vault.connect(signer).transfer(recipient, amount)
   })
 }

@@ -73,6 +73,7 @@ export const pyUSD = networkConfig['1'].tokens.pyUSD!
 export const RSR = networkConfig['1'].tokens.RSR!
 export const CRV = networkConfig['1'].tokens.CRV!
 export const CVX = networkConfig['1'].tokens.CVX!
+export const SDT = networkConfig['1'].tokens.SDT!
 
 // ETH+
 export const ETHPLUS = networkConfig['1'].tokens.ETHPLUS!
@@ -126,10 +127,10 @@ export const ETHPLUS_ETH_HOLDER = '0x298bf7b80a6343214634aF16EB41Bb5B9fC6A1F1'
 
 // USDC+ + USDC
 export const USDCPLUS_USDC_VAULT = '0xd20467794B11ba1EF8BfA1d28A62fc3681683a0A'
-export const USDC_USDCPLUS_VAULT_HOLDER = '0x9bbF31E99F30c38a5003952206C31EEa77540BeF'
-export const USDCPLUS_BP_POOL = '0xf2b25362a03f6eacca8de8d5350a9f37944c1e59'
-export const USDCPLUS_BP_TOKEN = '0xfed2B54453F75634bcdaEA5e5b11a3f99b9C28Fa'
-export const USDCPLUS_BP_POOL_ID = 238
+export const USDCPLUS_USDC_POOL = '0xf2b25362a03f6eacca8de8d5350a9f37944c1e59'
+export const USDCPLUS_USDC_TOKEN = '0xfed2B54453F75634bcdaEA5e5b11a3f99b9C28Fa'
+export const USDCPLUS_USDC_TOKEN_HOLDER = '0x20e783242415A589B7E533a46A24FDA240590a18'
+export const USDCPLUS_USDC_POOL_ID = 238
 
 // MIM + 3pool
 export const MIM_THREE_POOL = '0x5a6A4D54456819380173272A5E8E9B9904BdF41B'

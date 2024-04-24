@@ -1,5 +1,6 @@
 import collateralTests from '../collateralTests'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import {
   CurveCollateralFixtureContext,
   CurveCollateralOpts,
@@ -7,10 +8,17 @@ import {
 } from '../pluginTestTypes'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
 import { makeUSDCUSDCPlus, mintUSDCUSDCPlusVault } from './helpers'
+import { expectEvents } from '#/common/events'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
 import { getResetFork } from '../../helpers'
+import {
+  advanceBlocks,
+  advanceTime,
+  advanceToTimestamp,
+  getLatestBlockTimestamp,
+} from '#/test/utils/time'
 import {
   ConvexStakingWrapper,
   ERC20Mock,
@@ -18,16 +26,15 @@ import {
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../../typechain'
-import { advanceTime } from '../../../../utils/time'
+import { CurveBase } from '../pluginTestTypes'
 import { bn } from '../../../../../common/numbers'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   PRICE_TIMEOUT,
-  USDCPLUS_BP_POOL,
-  USDCPLUS_BP_TOKEN,
-  USDC_USDCPLUS_VAULT_HOLDER,
+  USDCPLUS_USDC_POOL,
+  USDCPLUS_USDC_TOKEN,
   USDCPLUS_ASSET_REGISTRY,
   USDCPLUS_TIMELOCK,
   CVX,
@@ -39,6 +46,7 @@ import {
   RTOKEN_DELAY_UNTIL_DEFAULT,
   CurvePoolType,
   CRV,
+  SDT,
   USDCPLUS,
 } from '../constants'
 import { whileImpersonating } from '../../../../utils/impersonation'
@@ -57,8 +65,8 @@ export const defaultCvxRecursiveCollateralOpts: CurveCollateralOpts = {
   delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'),
   nTokens: 2,
-  curvePool: USDCPLUS_BP_POOL,
-  lpToken: USDCPLUS_BP_TOKEN,
+  curvePool: USDCPLUS_USDC_POOL,
+  lpToken: USDCPLUS_USDC_TOKEN,
   poolType: CurvePoolType.Plain,
   feeds: [[USDC_USD_FEED], [ONE_ADDRESS]],
   oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [bn('1')]],
@@ -141,6 +149,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.curvePool = fix.curvePool.address
 
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts))[0] as unknown)
+    const sdt = <ERC20Mock>await ethers.getContractAt('ERC20Mock', SDT)
     const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
     const crv = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV)
 
@@ -149,7 +158,7 @@ const makeCollateralFixtureContext = (
       collateral,
       curvePool: fix.curvePool,
       wrapper: fix.vault as unknown as ConvexStakingWrapper,
-      rewardTokens: [cvx, crv],
+      rewardTokens: [sdt, cvx, crv],
       chainlinkFeed: usdcFeed,
       poolTokens: [fix.usdc, fix.usdcplus],
       feeds: [usdcFeed, usdcplusFeed],
@@ -169,7 +178,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintUSDCUSDCPlusVault(ctx, amount, user, recipient, USDC_USDCPLUS_VAULT_HOLDER)
+  await mintUSDCUSDCPlusVault(ctx, amount, user, recipient)
 }
 
 /*
@@ -182,8 +191,6 @@ const collateralSpecificConstructorTests = () => {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
   it('Does not default if USDC+ defaults', async () => {
-    // TODO
-
     const [collateral] = await deployCollateral({})
     const initialPrice = await collateral.price()
     expect(initialPrice[0]).to.be.gt(0)
@@ -226,6 +233,59 @@ const collateralSpecificStatusTests = () => {
 
   it('Claims rewards', async () => {
     // TODO
+
+    const [collateral] = await deployCollateral()
+    const [alice] = await ethers.getSigners()
+    const amt = bn('1').mul(bn(10).pow(await collateral.erc20Decimals()))
+
+    // // Transfer some vault token from the gauge to the collateral plugin
+    // await mintUSDCUSDCPlusVault({} as CurveBase, amt, alice, collateral.address)
+
+    // // Stake the Vault token back in the gauge from the collateral plugin
+    // const vault = await ethers.getContractAt('ERC20Mock', await collateral.erc20())
+    // const gauge = await ethers.getContractAt('IStakeDAOGauge', USDCPLUS_USDC_VAULT_GAUGE)
+    // await whileImpersonating(collateral.address, async (signer) => {
+    //   await vault.connect(signer).approve(USDCPLUS_USDC_VAULT_GAUGE, amt)
+    //   await gauge.connect(signer).deposit(amt)
+    // })
+
+    await advanceBlocks(1000)
+    await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
+
+    const rewardTokens = [
+      // <ERC20Mock>await ethers.getContractAt('ERC20Mock', SDT),
+      // <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX),
+      <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV),
+    ]
+
+    // Expect 3 RewardsClaimed events to be emitted: [SDT, CVX, CRV]
+    const before = await Promise.all(rewardTokens.map((t) => t.balanceOf(collateral.address)))
+    await expectEvents(collateral.claimRewards(), [
+      {
+        contract: collateral,
+        name: 'RewardsClaimed',
+        args: [SDT, anyValue],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'RewardsClaimed',
+        args: [CRV, anyValue],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'RewardsClaimed',
+        args: [CVX, anyValue],
+        emitted: true,
+      },
+    ])
+
+    // All 3 reward token balances should grow
+    const after = await Promise.all(rewardTokens.map((t) => t.balanceOf(collateral.address)))
+    for (let i = 0; i < rewardTokens.length; i++) {
+      expect(after[i]).gt(before[i])
+    }
   })
 }
 
