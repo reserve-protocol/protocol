@@ -23,7 +23,9 @@ contract SFraxCollateral is AppreciatingFiatCollateral {
     /// @param config.chainlinkFeed {UoA/ref} price of DAI in USD terms
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
-    {}
+    {
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
+    }
 
     function refresh() public virtual override {
         try IStakedFrax(address(erc20)).syncRewardsAndDistribution() {} catch {}

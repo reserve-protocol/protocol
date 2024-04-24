@@ -150,7 +150,7 @@ To get setup with tenderly, install the [tenderly cli](https://github.com/Tender
 
 ## Responsible Disclosure
 
-See: [Immunifi](https://immunefi.com/bounty/reserve/)
+See: [Immunefi](https://immunefi.com/bounty/reserve/)
 
 ## External Documentation
 

@@ -27,8 +27,8 @@ contract ERC4626FiatCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {
         require(address(config.erc20) != address(0), "missing erc20");
-        if (config.defaultThreshold > 0) {
-            require(config.delayUntilDefault > 0, "delayUntilDefault zero");
+        if (config.defaultThreshold != 0) {
+            require(config.delayUntilDefault != 0, "delayUntilDefault zero");
         }
         IERC4626 vault = IERC4626(address(config.erc20));
         oneShare = 10**vault.decimals();

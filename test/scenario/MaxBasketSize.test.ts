@@ -292,9 +292,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   })
 
   describeGas('Fiatcoins', function () {
-    const maxBasketSize = 100
+    const maxBasketSize = 64
     const numBackupTokens = 1
-    const tokensToDefault = 99
+    const tokensToDefault = 63
 
     beforeEach(async () => {
       // Setup Max Basket - Only fiatcoins = true
@@ -429,8 +429,8 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   })
 
   describeGas('ATokens/CTokens', function () {
-    const maxBasketSize = 100
-    const numBackupTokens = 20
+    const maxBasketSize = 64
+    const numBackupTokens = 64
     const tokensToDefault = 20
 
     beforeEach(async () => {

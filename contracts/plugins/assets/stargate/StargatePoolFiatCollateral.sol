@@ -25,7 +25,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         pool = StargateRewardableWrapper(address(config.erc20)).pool();
         stg = StargateRewardableWrapper(address(config.erc20)).rewardToken();
     }
@@ -42,8 +42,8 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
     }
 
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 bal = stg.balanceOf(address(this));
+        uint256 _bal = stg.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(stg, stg.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(stg, stg.balanceOf(address(this)) - _bal);
     }
 }

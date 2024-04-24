@@ -18,6 +18,6 @@ contract MetaMorphoFiatCollateral is ERC4626FiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         ERC4626FiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
     }
 }

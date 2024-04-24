@@ -7,7 +7,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "contracts/plugins/assets/erc20/RewardableERC20.sol";
+import "../../../interfaces/IRewardable.sol";
 import "../curve/PoolTokens.sol";
 
 /**
@@ -43,7 +43,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
     ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
 
@@ -126,7 +126,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
                 // Save prices if priced
-                if (high < FIX_MAX) {
+                if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);
@@ -183,7 +183,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // Override this later to implement non-stable pools
     function _anyDepeggedInPool() internal view virtual returns (bool) {
         // Check reference token oracles
-        for (uint8 i = 0; i < nTokens; i++) {
+        for (uint8 i = 0; i < nTokens; ++i) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
                 // {UoA/tok} = {UoA/tok} + {UoA/tok}
                 uint192 mid = (low + high) / 2;

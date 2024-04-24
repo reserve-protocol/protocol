@@ -35,10 +35,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
-        uint192 maxTradeVolume_
+        uint192 minTradeVolume_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, maxTradeVolume_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -52,7 +52,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
-    /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// Settle a single trade. If the caller is the trade, try rebalance()
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
@@ -85,7 +85,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // DoS prevention:
         // unless caller is self, require that the next auction is not in same block
         require(
-            _msgSender() == address(this) || tradeEnd[kind] + 1 < block.timestamp,
+            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp,
             "already rebalancing"
         );
 
@@ -239,10 +239,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Private ===
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
-    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
-    function compromiseBasketsNeeded(uint192 wholeBasketsHeld) private {
+    /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
+    function compromiseBasketsNeeded(uint192 basketsHeldBottom) private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
-        main.rToken().setBasketsNeeded(wholeBasketsHeld);
+        main.rToken().setBasketsNeeded(basketsHeldBottom);
         assert(main.basketHandler().fullyCollateralized());
     }
 
