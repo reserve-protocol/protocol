@@ -148,7 +148,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @custom:interaction
     function stake(uint256 rsrAmount) external {
         address account = _msgSender();
-        require(rsrAmount > 0, "Cannot stake zero");
+        require(rsrAmount > 0, "zero amount");
 
         _payoutRewards();
 
