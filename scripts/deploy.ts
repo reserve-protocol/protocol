@@ -41,7 +41,11 @@ async function main() {
   // Phase 1.5 -- Facets
   // To update the existing Facade, add new facets to the below list
 
-  scripts.push('phase1-facade/1_deploy_readFacet.ts', 'phase1-facade/2_deploy_actFacet.ts')
+  scripts.push(
+    'phase1-facade/1_deploy_readFacet.ts',
+    'phase1-facade/2_deploy_actFacet.ts',
+    'phase1-facade/3_deploy_maxIssuable.ts'
+  )
 
   // =============================================
 
@@ -50,8 +54,6 @@ async function main() {
     scripts.push(
       'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
-      'phase2-assets/assets/deploy_crv.ts',
-      'phase2-assets/assets/deploy_cvx.ts',
       'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
@@ -95,6 +97,7 @@ async function main() {
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One
     scripts.push(
+      'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
       'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
