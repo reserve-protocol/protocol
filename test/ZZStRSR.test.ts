@@ -395,7 +395,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(zero)).to.be.revertedWith('Cannot stake zero')
+      await expect(stRSR.connect(addr1).stake(zero)).to.be.revertedWith('zero amount')
 
       // Check deposit not registered
       expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -769,7 +769,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Depeg collateral
         await setOraclePrice(collateral1.address, bn('0.5e8'))
-        await expect(stRSR.withdraw(addr1.address, 1)).to.be.revertedWith('basket not ready')
+        await expect(stRSR.withdraw(addr1.address, 1)).to.be.revertedWith('RToken readying')
       })
     })
 
@@ -919,7 +919,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'basket not ready'
+          'RToken readying'
         )
 
         // Nothing completed
@@ -939,7 +939,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'basket not ready'
+          'RToken readying'
         )
       })
 
@@ -2987,7 +2987,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Should perform basic validations on stake
       await expect(
         stRSRVotes.connect(addr1).stakeAndDelegate(bn(0), ZERO_ADDRESS)
-      ).to.be.revertedWith('Cannot stake zero')
+      ).to.be.revertedWith('zero amount')
 
       expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
 

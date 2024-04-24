@@ -89,21 +89,21 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     }
 
     function getPastVotes(address account, uint256 timepoint) public view returns (uint256) {
-        require(timepoint < block.timestamp, "ERC20Votes: future lookup");
+        _requireValidTimepoint(timepoint);
 
         uint256 pastEra = _checkpointsLookup(_eras, timepoint);
         return _checkpointsLookup(_checkpoints[pastEra][account], timepoint);
     }
 
     function getPastTotalSupply(uint256 timepoint) public view returns (uint256) {
-        require(timepoint < block.timestamp, "ERC20Votes: future lookup");
+        _requireValidTimepoint(timepoint);
 
         uint256 pastEra = _checkpointsLookup(_eras, timepoint);
         return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], timepoint);
     }
 
     function getPastEra(uint256 timepoint) public view returns (uint256) {
-        require(timepoint < block.timestamp, "ERC20Votes: future lookup");
+        _requireValidTimepoint(timepoint);
 
         return _checkpointsLookup(_eras, timepoint);
     }
@@ -171,14 +171,14 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         bytes32 r,
         bytes32 s
     ) public {
-        require(block.timestamp <= expiry, "ERC20Votes: signature expired");
+        require(block.timestamp <= expiry, "signature expired");
         address signer = ECDSAUpgradeable.recover(
             _hashTypedDataV4(keccak256(abi.encode(_DELEGATE_TYPEHASH, delegatee, nonce, expiry))),
             v,
             r,
             s
         );
-        require(nonce == _useDelegationNonce(signer), "ERC20Votes: invalid nonce");
+        require(nonce == _useDelegationNonce(signer), "invalid nonce");
         _delegate(signer, delegatee);
     }
 
@@ -286,6 +286,10 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
 
     function _subtract(uint256 a, uint256 b) private pure returns (uint256) {
         return a - b;
+    }
+
+    function _requireValidTimepoint(uint256 timepoint) private view {
+        require(timepoint < block.timestamp, "future lookup");
     }
 
     /**

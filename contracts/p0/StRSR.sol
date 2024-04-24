@@ -232,8 +232,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         leakyRefresh(total);
 
         // Checks
-        require(bh.fullyCollateralized(), "RToken uncollateralized");
-        require(bh.isReady(), "basket not ready");
+        require(bh.isReady(), "RToken readying");
+        require(bh.fullyCollateralized(), "RToken readying");
 
         // Execute accumulated withdrawals
         emit UnstakingCompleted(start, i, draftEra, account, total);
@@ -248,7 +248,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // We specifically allow unstaking when under collateralized
         // IBasketHandler bh = main.basketHandler();
-        // require(bh.fullyCollateralized(), "RToken uncollateralized");
+        // require(bh.fullyCollateralized(), "RToken readying");
         // require(bh.isReady(), "basket not ready");
 
         Withdrawal[] storage queue = withdrawals[account];
