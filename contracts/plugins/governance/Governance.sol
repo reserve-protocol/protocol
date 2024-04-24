@@ -197,6 +197,7 @@ contract Governance is
         return SafeCast.toUint48(block.timestamp);
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public pure override(GovernorVotes, IGovernor) returns (string memory) {
         return "mode=timestamp";
     }

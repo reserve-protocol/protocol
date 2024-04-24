@@ -14,6 +14,8 @@ import "../libraries/Fixed.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 
+// solhint-disable max-states-count
+
 /*
  * @title StRSRP1
  * @notice StRSR is an ERC20 token contract that allows people to stake their RSR as
@@ -346,7 +348,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address account = _msgSender();
 
         // We specifically allow cancelling unstaking when undercollateralized
-        // require(basketHandler.isReady() && basketHandler.fullyCollateralized(), "RToken readying");
+        // require(basketHandler.isReady() && basketHandler.fullyCollateralized(), """);
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
