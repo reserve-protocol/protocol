@@ -135,7 +135,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     it('Should deploy Governor correctly', async () => {
       expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
       expect(await governor.votingPeriod()).to.equal(VOTING_PERIOD)
-      expect(await governor.name()).to.equal('Governor Alchemist')
+      expect(await governor.name()).to.equal('Governor Anastasius')
 
       // Quorum
       expect(await governor['quorumNumerator()']()).to.equal(QUORUM_PERCENTAGE)
