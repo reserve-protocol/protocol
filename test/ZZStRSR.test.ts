@@ -887,7 +887,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'RToken uncollateralized'
+          'RToken readying'
         )
 
         // If fully collateralized should withdraw OK  - Set back original basket
@@ -2738,7 +2738,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Attempt to delegate with invalid nonce
       await expect(
         stRSRVotes.connect(other).delegateBySig(addr1.address, invalidNonce, expiry, v, r, s)
-      ).to.be.revertedWith('ERC20Votes: invalid nonce')
+      ).to.be.revertedWith('invalid nonce')
 
       // Attempt to delegate with invalid signature
       await expect(
@@ -2762,7 +2762,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Attempt to delegate with invalid expiry
       await expect(
         stRSRVotes.connect(other).delegateBySig(addr1.address, nonce, invalidExpiry, v, r, s)
-      ).to.be.revertedWith('ERC20Votes: signature expired')
+      ).to.be.revertedWith('signature expired')
 
       // Check result - No delegates
       expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
@@ -2833,7 +2833,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         stRSRVotes
           .connect(other)
           .delegateBySig(addr1.address, nonce1, expiry, sig1.v, sig1.r, sig1.s)
-      ).to.be.revertedWith('ERC20Votes: invalid nonce')
+      ).to.be.revertedWith('invalid nonce')
 
       const nonce2 = await stRSRVotes.delegationNonces(addr1.address)
 
@@ -2881,13 +2881,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Cannot check votes on future block
       await expect(stRSRVotes.getPastTotalSupply(currentBlockTimestamp + 1)).to.be.revertedWith(
-        'ERC20Votes: future lookup'
+        'future lookup'
       )
       await expect(
         stRSRVotes.getPastVotes(addr1.address, currentBlockTimestamp + 1)
-      ).to.be.revertedWith('ERC20Votes: future lookup')
+      ).to.be.revertedWith('future lookup')
       await expect(stRSRVotes.getPastEra(currentBlockTimestamp + 1)).to.be.revertedWith(
-        'ERC20Votes: future lookup'
+        'future lookup'
       )
 
       // Delegate votes
