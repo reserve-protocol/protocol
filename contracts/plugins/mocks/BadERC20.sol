@@ -48,6 +48,7 @@ contract BadERC20 is ERC20Mock {
     }
 
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
+        if (censored[msg.sender] || censored[spender]) revert("censored");
         if (revertApprove && amount > 0 && amount < type(uint256).max) revert("revertApprove");
         return super.approve(spender, amount);
     }
@@ -65,8 +66,9 @@ contract BadERC20 is ERC20Mock {
         address to,
         uint256 amount
     ) public virtual override returns (bool) {
-        if (censored[from] || censored[to]) revert("censored");
-        _spendAllowance(from, msg.sender, amount);
+        address spender = msg.sender;
+        if (censored[spender] || censored[from] || censored[to]) revert("censored");
+        _spendAllowance(from, spender, amount);
         uint256 fee = transferFee.mulu_toUint(amount, CEIL);
         _transfer(from, to, amount - fee);
         _burn(from, fee);
