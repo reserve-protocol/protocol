@@ -113,7 +113,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // DoS prevention:
         // unless caller is self, require that the next auction is not in same block
         require(
-            _msgSender() == address(this) || tradeEnd[kind] + 1 < block.timestamp,
+            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp,
             "already rebalancing"
         );
 

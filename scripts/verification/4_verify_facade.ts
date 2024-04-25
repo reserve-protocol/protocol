@@ -20,7 +20,7 @@ async function main() {
 
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
-  /** ******************** Verify FacadeRead ****************************************/
+  /** ******************** Verify Facade ****************************************/
   await verifyContract(chainId, deployments.facade, [], 'contracts/facade/Facade.sol:Facade')
 
   /** ******************** Verify ReadFacet ****************************************/
