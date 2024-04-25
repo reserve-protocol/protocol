@@ -272,7 +272,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // newStakeRSR: {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
         uint256 newStakeRSR = (FIX_ONE_256 * totalStakes + (stakeRate - 1)) / stakeRate;
-        uint256 rsrAmount = stakeRSR - newStakeRSR;
+        uint256 rsrAmount = newStakeRSR < stakeRSR ? stakeRSR - newStakeRSR : 0;
         stakeRSR = newStakeRSR;
 
         // Create draft
@@ -324,7 +324,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
-        uint256 rsrAmount = draftRSR - newDraftRSR;
+        uint256 rsrAmount = newDraftRSR < draftRSR ? draftRSR - newDraftRSR : 0;
 
         if (rsrAmount == 0) return;
 
@@ -371,7 +371,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
-        uint256 rsrAmount = draftRSR - newDraftRSR;
+        uint256 rsrAmount = newDraftRSR < draftRSR ? draftRSR - newDraftRSR : 0;
 
         if (rsrAmount == 0) return;
 
@@ -445,7 +445,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update stakeRate, possibly beginning a new stake era
         if (stakeRSR != 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
-            stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
+            stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
         }
         if (stakeRSR == 0 || stakeRate > MAX_STAKE_RATE) {
             seizedRSR += stakeRSR;
@@ -460,7 +460,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update draftRate, possibly beginning a new draft era
         if (draftRSR != 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
-            draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
+            draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
         }
 
         if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
@@ -620,7 +620,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         //      if totalStakes == 0, then stakeRSR == 0
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
-            : uint192((totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR);
+            : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
 
         emit RewardsPaid(payout);
         emit ExchangeRateSet(initRate, exchangeRate());

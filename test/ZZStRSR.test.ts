@@ -1434,7 +1434,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
-      const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake)
+      const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake).add(1)
 
       // Payout rewards
       await expectEvents(stRSR.payoutRewards(), [
@@ -1483,7 +1483,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
-      const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake)
+      const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake).add(1)
 
       // Payout rewards
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
@@ -1755,7 +1755,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
 
-      const newRate = fp(amount.mul(3).sub(amount2)).div(amount.mul(3))
+      const newRate = fp(amount.mul(3).sub(amount2)).div(amount.mul(3)).add(1)
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
