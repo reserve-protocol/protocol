@@ -6,11 +6,11 @@ import "./IStakeDAO.sol";
 
 /**
  * @title StakeDAORecursiveCollateral
- * @notice Collateral plugin for a StakeDAO USDC+LP-f Vault that contains
- *   a Curve pool with a reference token and an RToken. The RToken can be
- *   of like kind of up-only in relation to the reference token.
+ * @notice Collateral plugin for a StakeDAO sdUSDC+LP-f-gauge corresponding
+ *   to a Curve pool with a reference token and an RToken. The RToken must
+ *   be strictly up-only with respect to the reference token.
  *
- * tok = sdUSDC+LP-f Vault
+ * tok = sdUSDC+LP-f-gauge
  * ref = USDC
  * tar = USD
  * UoA = USD
@@ -19,18 +19,17 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    IStakeDAOGauge internal immutable gauge;
+    IStakeDAOGauge internal immutable gauge; // typed erc20 variable
     IStakeDAOClaimer internal immutable claimer;
 
-    /// @param config.erc20 must be of type IStakeDAOVault
+    /// @param config.erc20 must be of type IStakeDAOGauge
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
     ) CurveRecursiveCollateral(config, revenueHiding, ptConfig) {
-        IStakeDAOVault vault = IStakeDAOVault(address(config.erc20));
-        gauge = vault.liquidityGauge();
+        gauge = IStakeDAOGauge(address(config.erc20));
         claimer = gauge.claimer();
     }
 

@@ -3,19 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-interface IStakeDAOVault is IERC20Metadata {
-    function deposit(
-        address _staker,
-        uint256 _amount,
-        bool _earn
-    ) external;
-
-    function token() external view returns (IERC20Metadata);
-
-    function liquidityGauge() external view returns (IStakeDAOGauge);
-}
-
-interface IStakeDAOGauge {
+interface IStakeDAOGauge is IERC20Metadata {
     function deposit(uint256 amount) external;
 
     function claimer() external view returns (IStakeDAOClaimer);

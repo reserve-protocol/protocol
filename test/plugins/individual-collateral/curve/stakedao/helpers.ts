@@ -6,7 +6,7 @@ import { bn, fp } from '../../../../../common/numbers'
 import {
   CurvePoolMock,
   ERC20Mock,
-  IStakeDAOVault,
+  IStakeDAOGauge,
   MockV3Aggregator,
 } from '../../../../../typechain'
 import {
@@ -15,9 +15,8 @@ import {
   USDCPLUS_USDC_POOL,
   USDCPLUS_ASSET_REGISTRY,
   USDCPLUS_TIMELOCK,
-  USDCPLUS_USDC_VAULT,
-  USDCPLUS_USDC_TOKEN,
-  USDCPLUS_USDC_TOKEN_HOLDER,
+  USDCPLUS_USDC_GAUGE,
+  USDCPLUS_USDC_GAUGE_HOLDER,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
 
@@ -27,7 +26,7 @@ export interface WrappedUSDCUSDCPlusFixture {
   usdcplus: ERC20Mock
   usdc: ERC20Mock
   curvePool: CurvePoolMock
-  vault: IStakeDAOVault
+  gauge: IStakeDAOGauge
 }
 
 export const makeUSDCUSDCPlus = async (
@@ -66,21 +65,18 @@ export const makeUSDCUSDCPlus = async (
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  const vault = await ethers.getContractAt('IStakeDAOVault', USDCPLUS_USDC_VAULT)
-  return { usdcplus, usdc, curvePool, vault }
+  const gauge = await ethers.getContractAt('IStakeDAOGauge', USDCPLUS_USDC_GAUGE)
+  return { usdcplus, usdc, curvePool, gauge }
 }
 
-export const mintUSDCUSDCPlusVault = async (
+export const mintUSDCUSDCPlus = async (
   ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string
 ) => {
-  const lpToken = await ethers.getContractAt('IStakeDAOVault', USDCPLUS_USDC_TOKEN)
-  const vault = await ethers.getContractAt('IStakeDAOVault', USDCPLUS_USDC_VAULT)
-  await whileImpersonating(USDCPLUS_USDC_TOKEN_HOLDER, async (signer) => {
-    await lpToken.connect(signer).approve(vault.address, amount)
-    await vault.connect(signer).deposit(signer.address, amount, true)
-    await vault.connect(signer).transfer(recipient, amount)
+  const gauge = await ethers.getContractAt('IStakeDAOGauge', USDCPLUS_USDC_GAUGE)
+  await whileImpersonating(USDCPLUS_USDC_GAUGE_HOLDER, async (signer) => {
+    await gauge.connect(signer).transfer(recipient, amount)
   })
 }

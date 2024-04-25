@@ -1,18 +1,20 @@
 import collateralTests from '../collateralTests'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
+import { CollateralStatus } from '../../pluginTestTypes'
 import {
   CurveCollateralFixtureContext,
   CurveCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
-import { makeUSDCUSDCPlus, mintUSDCUSDCPlusVault } from './helpers'
+import { makeUSDCUSDCPlus, mintUSDCUSDCPlus } from './helpers'
 import { expectEvents } from '#/common/events'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
-import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
+import { expectExactPrice } from '../../../../utils/oracles'
 import { getResetFork } from '../../helpers'
+import { CurveBase } from '../pluginTestTypes'
 import {
   advanceBlocks,
   advanceTime,
@@ -26,7 +28,6 @@ import {
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../../typechain'
-import { CurveBase } from '../pluginTestTypes'
 import { bn } from '../../../../../common/numbers'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../../../../common/constants'
 import { expect } from 'chai'
@@ -87,7 +88,7 @@ export const deployCollateral = async (
     const fix = await makeUSDCUSDCPlus(usdcplusFeed)
 
     opts.feeds = [[usdcFeed.address], [usdcplusFeed.address]]
-    opts.erc20 = fix.vault.address
+    opts.erc20 = fix.gauge.address
   }
 
   opts = { ...defaultCvxRecursiveCollateralOpts, ...opts }
@@ -145,7 +146,7 @@ const makeCollateralFixtureContext = (
     const fix = await makeUSDCUSDCPlus(usdcplusFeed)
 
     collateralOpts.feeds = [[usdcFeed.address], [usdcplusFeed.address]]
-    collateralOpts.erc20 = fix.vault.address
+    collateralOpts.erc20 = fix.gauge.address
     collateralOpts.curvePool = fix.curvePool.address
 
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts))[0] as unknown)
@@ -157,7 +158,7 @@ const makeCollateralFixtureContext = (
       alice,
       collateral,
       curvePool: fix.curvePool,
-      wrapper: fix.vault as unknown as ConvexStakingWrapper,
+      wrapper: fix.gauge as unknown as ConvexStakingWrapper, // cast to make work with curve tests
       rewardTokens: [sdt, cvx, crv],
       chainlinkFeed: usdcFeed,
       poolTokens: [fix.usdc, fix.usdcplus],
@@ -178,7 +179,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintUSDCUSDCPlusVault(ctx, amount, user, recipient)
+  await mintUSDCUSDCPlus(ctx, amount, user, recipient)
 }
 
 /*
@@ -190,13 +191,13 @@ const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
-  it('Does not default if USDC+ defaults', async () => {
-    const [collateral] = await deployCollateral({})
+  it('Does not depend on USDC+ RTokenAsset.price()', async () => {
+    const [collateral, opts] = await deployCollateral({})
     const initialPrice = await collateral.price()
     expect(initialPrice[0]).to.be.gt(0)
     expect(initialPrice[1]).to.be.lt(MAX_UINT192)
 
-    // Swap out USDCPLUS's RTokenAsset with a mock one
+    // Swap out USDCPLUS's RTokenAsset with a mock one, which should be IGNORED
     const AssetMockFactory = await ethers.getContractFactory('AssetMock')
     const mockRTokenAsset = await AssetMockFactory.deploy(
       bn('1'), // unused
@@ -210,49 +211,51 @@ const collateralSpecificStatusTests = () => {
       'IAssetRegistry',
       USDCPLUS_ASSET_REGISTRY
     )
+    const usdcFeed = await ethers.getContractAt('MockV3Aggregator', opts.feeds![0][0])
+    const initialAnswer = await usdcFeed.latestAnswer()
     await whileImpersonating(USDCPLUS_TIMELOCK, async (signer) => {
       await usdcplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
     })
 
-    // Set RTokenAsset to unpriced
-    // Would be the price under a stale oracle timeout for a poorly-coded RTokenAsset
+    // Set RTokenAsset to unpriced, which should end up being IGNORED
     await mockRTokenAsset.setPrice(0, MAX_UINT192)
+
+    // Should be SOUND still
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
     await expectExactPrice(collateral.address, initialPrice)
 
-    // Should decay after oracle timeout
+    // SOUND after decay period
     await advanceTime((await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER)
-    await expectDecayedPrice(collateral.address)
-
-    // Should be unpriced after price timeout
-    await advanceTime(await collateral.priceTimeout())
-    await expectUnpriced(collateral.address)
-
-    // refresh() should not revert
+    await usdcFeed.updateAnswer(initialAnswer)
     await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    await expectExactPrice(collateral.address, initialPrice)
+
+    // SOUND after full price timeout
+    await advanceTime(await collateral.priceTimeout())
+    await usdcFeed.updateAnswer(initialAnswer)
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    await expectExactPrice(collateral.address, initialPrice)
   })
 
   it('Claims rewards', async () => {
-    // TODO
+    // Reward claiming is tested here instead of in the generic suite due to not all 3
+    // reward tokens being claimed for positive token balances
 
     const [collateral] = await deployCollateral()
     const [alice] = await ethers.getSigners()
-    const amt = bn('1').mul(bn(10).pow(await collateral.erc20Decimals()))
+    const amt = bn('200').mul(bn(10).pow(await collateral.erc20Decimals()))
 
-    // // Transfer some vault token from the gauge to the collateral plugin
-    // await mintUSDCUSDCPlusVault({} as CurveBase, amt, alice, collateral.address)
-
-    // // Stake the Vault token back in the gauge from the collateral plugin
-    // const vault = await ethers.getContractAt('ERC20Mock', await collateral.erc20())
-    // const gauge = await ethers.getContractAt('IStakeDAOGauge', USDCPLUS_USDC_VAULT_GAUGE)
-    // await whileImpersonating(collateral.address, async (signer) => {
-    //   await vault.connect(signer).approve(USDCPLUS_USDC_VAULT_GAUGE, amt)
-    //   await gauge.connect(signer).deposit(amt)
-    // })
+    // Transfer some gauge token to the collateral plugin
+    await mintUSDCUSDCPlus({} as CurveBase, amt, alice, collateral.address)
 
     await advanceBlocks(1000)
     await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
 
     const rewardTokens = [
+      // StakeDAO is waiting to start SDT/CVX rewards as of the time of this plugin development
       // <ERC20Mock>await ethers.getContractAt('ERC20Mock', SDT),
       // <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX),
       <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV),
@@ -302,7 +305,7 @@ const opts = {
   itClaimsRewards: it.skip, // in this file
   isMetapool: false,
   resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
-  collateralName: 'StakeDAORecursiveCollateral - StakeDAOVault',
+  collateralName: 'StakeDAORecursiveCollateral - StakeDAOGauge',
 }
 
 collateralTests(opts)
