@@ -646,7 +646,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         draftRSR += rsrAmount;
         // newTotalDrafts: {qDrafts} = D18{qDrafts/qRSR} * {qRSR} / D18
         uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
-        uint256 draftAmount = newTotalDrafts - totalDrafts;
+        uint256 draftAmount = totalDrafts < newTotalDrafts ? newTotalDrafts - totalDrafts : 0;
         totalDrafts = newTotalDrafts;
 
         // Push drafts into account's draft queue
@@ -727,7 +727,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 newStakeRSR = stakeRSR + rsrAmount;
         // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
         uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
-        uint256 stakeAmount = newTotalStakes - totalStakes;
+        uint256 stakeAmount = totalStakes < newTotalStakes ? newTotalStakes - totalStakes : 0;
 
         // Transfer RSR from account to this contract
         stakeRSR += rsrAmount;
