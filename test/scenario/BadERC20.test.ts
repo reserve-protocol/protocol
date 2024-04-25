@@ -280,19 +280,16 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await token0.setCensored(rToken.address, true)
     })
 
-    it('should revert during atomic issuance', async () => {
-      await token0.connect(addr2).approve(rToken.address, issueAmt)
-      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
+    it('should revert on issuance', async () => {
+      // Will revert even on approval
+      await expect(token0.connect(addr2).approve(rToken.address, issueAmt)).to.be.revertedWith(
+        'censored'
+      )
 
-      // Should work now
-      await token0.setCensored(backingManager.address, false)
+      // Allow approval temporarily
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr2).issue(issueAmt)
-    })
-
-    it('should revert during slow issuance', async () => {
-      issueAmt = initialBal.div(10) // over 1 block
       await token0.connect(addr2).approve(rToken.address, issueAmt)
+      await token0.setCensored(rToken.address, true)
       await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
@@ -388,41 +385,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION]))
         .to.emit(rsrTrader, 'TradeStarted')
         .withArgs(anyValue, rToken.address, rsr.address, issueAmt.div(2), anyValue)
-    })
-  })
-
-  describe('with fussy approvals', function () {
-    let issueAmt: BigNumber
-
-    beforeEach(async () => {
-      issueAmt = initialBal.div(100)
-      await token0.connect(addr1).approve(rToken.address, issueAmt)
-      await token0.setRevertApprove(true)
-      await rToken.connect(addr1).issue(issueAmt)
-    })
-
-    context('Regression tests wcUSDCv3 10/10/2023', () => {
-      it('should not revert during recollateralization', async () => {
-        await basketHandler.setPrimeBasket(
-          [token0.address, backupToken.address],
-          [fp('0.5'), fp('0.5')]
-        )
-        await basketHandler.refreshBasket()
-
-        // Should launch recollateralization auction successfully
-        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION))
-          .to.emit(backingManager, 'TradeStarted')
-          .withArgs(anyValue, token0.address, backupToken.address, anyValue, anyValue)
-      })
-
-      it('should not revert during revenue auction', async () => {
-        await token0.mint(rsrTrader.address, issueAmt)
-
-        // Should launch revenue auction successfully
-        await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION]))
-          .to.emit(rsrTrader, 'TradeStarted')
-          .withArgs(anyValue, token0.address, rsr.address, anyValue, anyValue)
-      })
     })
   })
 

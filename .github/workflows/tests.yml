@@ -54,29 +54,9 @@ jobs:
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:plugins
-<<<<<<< HEAD
-      - name: 'Cache hardhat network fork'
-        uses: actions/cache@v3
-        with:
-          path: cache/hardhat-network-fork
-          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-          restore-keys: |
-            hardhat-network-fork-${{ runner.os }}-
-            hardhat-network-fork-
-      - run: yarn test:plugins:integration
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
-          TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-          FORK_NETWORK: mainnet
-
-  plugin-tests-base:
-    name: 'Plugin Tests (Base)'
-=======
 
   plugin-tests-mainnet-1:
     name: 'Plugin Integration Tests (Mainnet) - 1/2'
->>>>>>> 3.4.0
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -93,8 +73,6 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-<<<<<<< HEAD
-=======
       - run: yarn hardhat test ./test/plugins/individual-collateral/[A-Ca-c]*/*.test.ts ./test/plugins/individual-collateral/[A-Ca-c]*/*/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -149,7 +127,6 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
->>>>>>> 3.4.0
       - run: npx hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido}/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -309,21 +286,3 @@ jobs:
           FORK_NETWORK: mainnet
           FORK: 1
           PROTO_IMPL: 1
-<<<<<<< HEAD
-
-  slither:
-    name: 'Slither'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16.x
-          cache: 'yarn'
-      - run: yarn install --immutable
-      - run: pip3 install solc-select slither-analyzer
-      - run: solc-select install 0.8.19
-      - run: solc-select use 0.8.19
-      - run: yarn slither
-=======
->>>>>>> 3.4.0
