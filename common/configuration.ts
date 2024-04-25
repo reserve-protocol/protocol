@@ -127,11 +127,12 @@ export interface IPools {
   crveUSDFRAXBP?: string
   crvTriCrypto?: string
   crvMIM3Pool?: string
+  sdUSDCUSSDCPlus?: string
 }
 
 interface INetworkConfig {
   name: string
-  tokens: ITokens
+  tokens: ITokens & IPools
   chainlinkFeeds: ITokens & ICurrencies & IFeeds
   AAVE_LENDING_POOL?: string
   AAVE_INCENTIVES?: string
@@ -235,6 +236,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
+      sdUSDCUSSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
