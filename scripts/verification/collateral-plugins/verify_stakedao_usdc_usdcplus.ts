@@ -13,8 +13,8 @@ import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  USDCPLUS_USDC_POOL,
-  USDCPLUS_USDC_TOKEN,
+  USDC_USDCPLUS_POOL,
+  USDC_USDCPLUS_LP_TOKEN,
   USDC_ORACLE_ERROR,
   USDC_ORACLE_TIMEOUT,
   USDC_USD_FEED,
@@ -62,12 +62,12 @@ async function main() {
       fp('1e-4'), // backtest to confirm: 0.01% since pool virtual price will probably decrease
       {
         nTokens: 2,
-        curvePool: USDCPLUS_USDC_POOL,
+        curvePool: USDC_USDCPLUS_POOL,
         poolType: CurvePoolType.Plain,
         feeds: [[USDC_USD_FEED], [ONE_ADDRESS]],
         oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [bn('1')]],
         oracleErrors: [[USDC_ORACLE_ERROR], [bn('1')]],
-        lpToken: USDCPLUS_USDC_TOKEN,
+        lpToken: USDC_USDCPLUS_LP_TOKEN,
       },
     ],
     'contracts/plugins/assets/curve/stakedao/StakeDAORecursiveCollateral.sol:StakeDAORecursiveCollateral'

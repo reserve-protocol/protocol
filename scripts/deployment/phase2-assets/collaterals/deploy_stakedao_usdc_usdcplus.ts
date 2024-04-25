@@ -17,9 +17,9 @@ import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  USDCPLUS_USDC_GAUGE,
-  USDCPLUS_USDC_POOL,
-  USDCPLUS_USDC_TOKEN,
+  USDC_USDCPLUS_GAUGE,
+  USDC_USDCPLUS_POOL,
+  USDC_USDCPLUS_LP_TOKEN,
   USDC_USD_FEED,
   USDC_ORACLE_TIMEOUT,
   USDC_ORACLE_ERROR,
@@ -56,15 +56,11 @@ async function main() {
 
   /********  Deploy StakeDAO Recursive RToken Collateral for USDC/USDC+  **************************/
 
-  const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
-    'StakeDAORecursiveCollateral'
-  )
+  const CollateralFactory = await hre.ethers.getContractFactory('StakeDAORecursiveCollateral')
 
-  const collateral = <StakeDAORecursiveCollateral>await CurveStableCollateralFactory.connect(
-    deployer
-  ).deploy(
+  const collateral = <StakeDAORecursiveCollateral>await CollateralFactory.connect(deployer).deploy(
     {
-      erc20: USDCPLUS_USDC_GAUGE,
+      erc20: USDC_USDCPLUS_GAUGE,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS,
@@ -77,12 +73,12 @@ async function main() {
     fp('1e-4'), // backtest to confirm: 0.01% since pool virtual price will probably decrease
     {
       nTokens: 2,
-      curvePool: USDCPLUS_USDC_POOL,
+      curvePool: USDC_USDCPLUS_POOL,
       poolType: CurvePoolType.Plain,
       feeds: [[USDC_USD_FEED], [ONE_ADDRESS]],
       oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [bn('1')]],
       oracleErrors: [[USDC_ORACLE_ERROR], [bn('1')]],
-      lpToken: USDCPLUS_USDC_TOKEN,
+      lpToken: USDC_USDCPLUS_LP_TOKEN,
     }
   )
   await collateral.deployed()

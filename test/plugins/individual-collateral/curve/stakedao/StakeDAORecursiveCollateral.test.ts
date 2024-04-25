@@ -34,8 +34,8 @@ import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   PRICE_TIMEOUT,
-  USDCPLUS_USDC_POOL,
-  USDCPLUS_USDC_TOKEN,
+  USDC_USDCPLUS_POOL,
+  USDC_USDCPLUS_LP_TOKEN,
   USDCPLUS_ASSET_REGISTRY,
   USDCPLUS_TIMELOCK,
   CVX,
@@ -66,8 +66,8 @@ export const defaultCvxRecursiveCollateralOpts: CurveCollateralOpts = {
   delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'),
   nTokens: 2,
-  curvePool: USDCPLUS_USDC_POOL,
-  lpToken: USDCPLUS_USDC_TOKEN,
+  curvePool: USDC_USDCPLUS_POOL,
+  lpToken: USDC_USDCPLUS_LP_TOKEN,
   poolType: CurvePoolType.Plain,
   feeds: [[USDC_USD_FEED], [ONE_ADDRESS]],
   oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [bn('1')]],
