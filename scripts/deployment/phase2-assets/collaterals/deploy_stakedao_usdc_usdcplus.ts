@@ -93,7 +93,7 @@ async function main() {
     `Deployed StakeDAO Recursive Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.collateral.sdUSDCUSSDCPlus = collateral.address
+  assetCollDeployments.collateral.sdUSDCUSDCPlus = collateral.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
