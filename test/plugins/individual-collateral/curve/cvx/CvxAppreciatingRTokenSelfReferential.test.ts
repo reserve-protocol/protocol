@@ -40,14 +40,13 @@ import {
   CurvePoolType,
   CRV,
   ETHPLUS,
+  ETHPLUS_ASSET_REGISTRY,
+  ETHPLUS_BASKET_HANDLER,
+  ETHPLUS_TIMELOCK,
 } from '../constants'
 import { whileImpersonating } from '../../../../utils/impersonation'
 
 type Fixture<T> = () => Promise<T>
-
-const ETHPLUS_ASSET_REGISTRY = '0xf526f058858E4cD060cFDD775077999562b31bE0'
-const ETHPLUS_BASKET_HANDLER = '0x56f40A33e3a3fE2F1614bf82CBeb35987ac10194'
-const ETHPLUS_TIMELOCK = '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B'
 
 export const defaultCvxAppreciatingCollateralOpts: CurveCollateralOpts = {
   erc20: ZERO_ADDRESS,
@@ -63,7 +62,7 @@ export const defaultCvxAppreciatingCollateralOpts: CurveCollateralOpts = {
   nTokens: 2,
   curvePool: ETHPLUS_BP_POOL,
   lpToken: ETHPLUS_BP_TOKEN,
-  poolType: CurvePoolType.Plain, // for fraxBP, not the top-level pool
+  poolType: CurvePoolType.Plain,
   feeds: [[ONE_ADDRESS], [WETH_USD_FEED]],
   oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
   oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],

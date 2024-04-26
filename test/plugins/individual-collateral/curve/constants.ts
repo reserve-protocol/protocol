@@ -73,8 +73,19 @@ export const pyUSD = networkConfig['1'].tokens.pyUSD!
 export const RSR = networkConfig['1'].tokens.RSR!
 export const CRV = networkConfig['1'].tokens.CRV!
 export const CVX = networkConfig['1'].tokens.CVX!
+export const SDT = networkConfig['1'].tokens.SDT!
 
+// ETH+
 export const ETHPLUS = networkConfig['1'].tokens.ETHPLUS!
+export const ETHPLUS_ASSET_REGISTRY = '0xf526f058858E4cD060cFDD775077999562b31bE0'
+export const ETHPLUS_BASKET_HANDLER = '0x56f40A33e3a3fE2F1614bf82CBeb35987ac10194'
+export const ETHPLUS_TIMELOCK = '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B'
+
+// USDC+
+export const USDCPLUS = networkConfig['1'].tokens.USDCPLUS!
+export const USDCPLUS_ASSET_REGISTRY = '0xbCd2719E4862d1Eb32A36e8C956D3118ebB2f511'
+export const USDCPLUS_BASKET_HANDLER = '0x162587b5B4c01d26AfaFD4A1ccA61CdC632c9508'
+export const USDCPLUS_TIMELOCK = '0x6C957417cB6DF6e821eec8555DEE8b116C291999'
 
 // 3pool - USDC, USDT, DAI
 export const THREE_POOL = '0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7'
@@ -113,7 +124,13 @@ export const ETHPLUS_BP_POOL = '0x7fb53345f1b21ab5d9510adb38f7d3590be6364b'
 export const ETHPLUS_BP_TOKEN = '0xe8a5677171c87fcb65b76957f2852515b404c7b1'
 export const ETHPLUS_BP_POOL_ID = 185
 export const ETHPLUS_ETH_HOLDER = '0x298bf7b80a6343214634aF16EB41Bb5B9fC6A1F1'
-export const ETHPLUS_GAUGE = '0x298bf7b80a6343214634af16eb41bb5b9fc6a1f1'
+
+// USDC+ + USDC
+export const USDCPLUS_USDC_GAUGE = '0x9bbF31E99F30c38a5003952206C31EEa77540BeF'
+export const USDCPLUS_USDC_GAUGE_HOLDER = '0xC6625129C9df3314a4dd604845488f4bA62F9dB8'
+export const USDCPLUS_USDC_POOL = '0xf2b25362a03f6eacca8de8d5350a9f37944c1e59'
+export const USDCPLUS_USDC_TOKEN = '0xfed2B54453F75634bcdaEA5e5b11a3f99b9C28Fa'
+export const USDCPLUS_USDC_POOL_ID = 238
 
 // MIM + 3pool
 export const MIM_THREE_POOL = '0x5a6A4D54456819380173272A5E8E9B9904BdF41B'
