@@ -61,8 +61,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // Typically: "balances". These are the tokenized staking positions!
     // era => ({account} => {qStRSR})
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
-    uint256 public totalStakes; // Total of all stakes {qStRSR}
-    uint256 public stakeRSR; // Amount of RSR backing all stakes {qRSR}
+    uint256 private totalStakes; // Total of all stakes {qStRSR}
+    uint256 private stakeRSR; // Amount of RSR backing all stakes {qRSR}
     uint192 private stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
     // DEPRECATED in 3.4.0 in favor of totalStakes / stakeRSR
 
@@ -118,7 +118,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // [draft-rate]: if totalDrafts == 0, then draftRSR == 0 and draftRate == FIX_ONE
     //               else, draftRSR * draftRate >= totalDrafts * 1e18
     //               (ie, draftRSR covers totalDrafts at draftRate)
-
     // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
     // === Delegation ===
