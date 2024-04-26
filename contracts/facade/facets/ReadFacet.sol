@@ -258,9 +258,7 @@ contract ReadFacet is MaxIssuableFacet {
         StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
         uint256 left = stRSR.firstRemainingDraft(draftEra, account);
         uint256 right = stRSR.draftQueueLen(draftEra, account);
-
-        uint256 draftRSR = stRSR.draftRSR();
-        uint256 totalDrafts = stRSR.totalDrafts();
+        uint192 draftRate = stRSR.draftRate();
 
         unstakings = new IReadFacet.Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
@@ -273,11 +271,7 @@ contract ReadFacet is MaxIssuableFacet {
             }
 
             // {qRSR} = {qDrafts} / {qDrafts/qRSR}
-            unstakings[i] = IReadFacet.Pending(
-                i + left,
-                availableAt,
-                diff.muluDivu(draftRSR, totalDrafts)
-            );
+            unstakings[i] = IReadFacet.Pending(i + left, availableAt, diff.div(draftRate));
         }
     }
 

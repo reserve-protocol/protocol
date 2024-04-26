@@ -84,10 +84,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // {draftEra} => ({account} => {qDrafts})
     mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {qDrafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
-    uint256 public totalDrafts; // Total of all drafts {qDrafts}
-    uint256 public draftRSR; // Amount of RSR backing all drafts {qRSR}
-    uint192 private draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
-    // DEPRECATED in 3.4.0 in favor of totalDrafts / draftRSR
+    uint256 private totalDrafts; // Total of all drafts {qDrafts}
+    uint256 private draftRSR; // Amount of RSR backing all drafts {qRSR}
+    uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
 
     uint192 private constant MAX_DRAFT_RATE = 1e9 * FIX_ONE; // 1e9 D18{qDrafts/qRSR}
 
@@ -113,9 +112,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // ==== Invariants ====
     // [total-stakes]: totalStakes == sum(bal[acct] for acct in bal)
-    // [max-stake-rate]: 0 < totalStakes.div(stakeRSR) <= MAX_STAKE_RATE
+    // [max-stake-rate]: 0 < divuu(totalStakes, stakeRSR) <= MAX_STAKE_RATE
     // [total-drafts]: totalDrafts == sum(draftSum(draft[acct]) for acct in draft)
-    // [max-draft-rate]: 0 < totalDrafts.div(draftRSR) <= MAX_DRAFT_RATE
+    // [max-draft-rate]: 0 < divuu(totalDrafts, draftRSR) <= MAX_DRAFT_RATE
 
     // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
@@ -243,7 +242,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //   bal'[caller] = bal[caller] - stakeAmount
     //   stakeRSR' = ceil(totalStakes' * stakeRSR / totalStakes)
     //   draftRSR' + stakeRSR' = draftRSR + stakeRSR
-    //   totalDrafts' = floor(totalDrafts' * draftRSR / totalDrafts)
+    //   draftRate' = draftRate (no change)
+    //   totalDrafts' = floor(draftRSR' + draftRate' / 1e18)
     //
     //   A draft for (totalDrafts' - totalDrafts) drafts
     //   is freshly appended to the caller's draft record.
@@ -289,7 +289,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //   draftSum'(account) = draftSum(account) + draftAmount)
     //   r'.right = r.right
     //   totalDrafts' = totalDrafts - draftAmount
-    //   draftRSR' = ceil(totalDrafts' * draftRSR / totalDrafts)
+    //   draftRSR' = ceil(totalDrafts' * 1e18 / draftRate)
     //
     // actions:
     //   rsr.transfer(account, rsrOut)
@@ -313,12 +313,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         firstRemainingDraft[draftEra][account] = endId;
 
         // ==== Compute RSR amount
-        uint256 newTotalDrafts = draftAmount < totalDrafts ? totalDrafts - draftAmount : 0;
-        // {qRSR} = {qRSR} * {qDrafts} / {qDrafts}
-        uint256 newDraftRSR = totalDrafts != 0
-            ? (draftRSR * newTotalDrafts + (totalDrafts - 1)) / totalDrafts
-            : 0;
-        uint256 rsrAmount = newDraftRSR < draftRSR ? draftRSR - newDraftRSR : 0;
+        uint256 newTotalDrafts = totalDrafts - draftAmount;
+        // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
+        uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
 
@@ -362,12 +360,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         firstRemainingDraft[draftEra][account] = endId;
 
         // ==== Compute RSR amount
-        uint256 newTotalDrafts = draftAmount < totalDrafts ? totalDrafts - draftAmount : 0;
-        // {qRSR} = {qRSR} * {qDrafts} / {qDrafts}
-        uint256 newDraftRSR = totalDrafts != 0
-            ? (draftRSR * newTotalDrafts + (totalDrafts - 1)) / totalDrafts
-            : 0;
-        uint256 rsrAmount = newDraftRSR < draftRSR ? draftRSR - newDraftRSR : 0;
+        uint256 newTotalDrafts = totalDrafts - draftAmount;
+        // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
+        uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
 
@@ -400,11 +396,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     //   draftRSR' = floor(draftRSR * keepRatio)
     //   totalDrafts' = totalDrafts
+    //   draftRate' = ceil(totalDrafts' * 1e18 / draftRSR')
     //
     //   let fromRewards = floor(rsrRewards() * (1 - keepRatio))
     //
     // effects phase 2: (from x' to x'')
     //   draftRSR'' = (draftRSR' <= MAX_DRAFT_RATE) ? draftRSR' : 0
+    //   if draftRSR'' = 0, then totalDrafts'' = 0 and draftRate'' = FIX_ONE
     //   stakeRSR'' = (stakeRSR' <= MAX_STAKE_RATE) ? stakeRSR' : 0
     //
     // actions:
@@ -441,10 +439,16 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Remove RSR from draftRSR
         uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-        draftRSR = draftRSRToTake < draftRSR ? draftRSR - draftRSRToTake : 0;
+        draftRSR -= draftRSRToTake;
         seizedRSR += draftRSRToTake;
 
-        if (draftRSR == 0 || (FIX_ONE * totalDrafts) / draftRSR > MAX_DRAFT_RATE) {
+        // update draftRate, possibly beginning a new draft era
+        if (draftRSR != 0) {
+            // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
+            draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
+        }
+
+        if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
             seizedRSR += draftRSR;
             beginDraftEra();
         }
@@ -611,13 +615,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         internal
         returns (uint256 index, uint64 availableAt)
     {
-        uint256 oldDraftRSR = draftRSR;
         // draftAmount: how many drafts to create and assign to the user
+        // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
         draftRSR += rsrAmount;
-        // newTotalDrafts: {qDrafts} = {qDrafts} * {qRSR} / {qRSR}
-        uint256 newTotalDrafts = oldDraftRSR != 0
-            ? (totalDrafts * draftRSR) / oldDraftRSR
-            : rsrAmount;
+        // newTotalDrafts: {qDrafts} = D18{qDrafts/qRSR} * {qRSR} / D18
+        uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
         uint256 draftAmount = newTotalDrafts - totalDrafts;
         totalDrafts = newTotalDrafts;
 
@@ -649,9 +651,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // effects:
     //  draftRSR' = totalDrafts' = 0
+    //  draftRate' = FIX_ONE
     function beginDraftEra() internal virtual {
         draftRSR = 0;
         totalDrafts = 0;
+        draftRate = FIX_ONE;
         draftEra++;
 
         emit AllUnstakingReset(draftEra);
