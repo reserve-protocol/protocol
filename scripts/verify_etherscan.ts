@@ -71,7 +71,6 @@ async function main() {
       'collateral-plugins/verify_morpho.ts',
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
-      'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
       'collateral-plugins/verify_sfrax.ts',
       'collateral-plugins/verify_sfrax_eth.ts',
       'collateral-plugins/verify_steakusdc.ts',

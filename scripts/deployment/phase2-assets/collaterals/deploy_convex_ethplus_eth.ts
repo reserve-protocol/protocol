@@ -4,7 +4,7 @@ import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { expect } from 'chai'
 import { ONE_ADDRESS, CollateralStatus } from '../../../../common/constants'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -13,7 +13,6 @@ import {
   fileExists,
 } from '../../common'
 import { CurveAppreciatingRTokenSelfReferentialCollateral } from '../../../../typechain'
-import { revenueHiding } from '../../utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -83,7 +82,7 @@ async function main() {
         defaultThreshold: DEFAULT_THRESHOLD.add(WETH_ORACLE_ERROR),
         delayUntilDefault: DELAY_UNTIL_DEFAULT, // 72h
       },
-      revenueHiding.toString(),
+      fp('1e-4').toString(),
       {
         nTokens: 2,
         curvePool: ETHPLUS_BP_POOL,

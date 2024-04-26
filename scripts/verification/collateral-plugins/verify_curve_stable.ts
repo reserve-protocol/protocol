@@ -31,6 +31,8 @@ import {
   USDT_USD_FEED,
 } from '../../../test/plugins/individual-collateral/curve/constants'
 
+// DEPRECATED
+
 let deployments: IAssetCollDeployments
 
 async function main() {
