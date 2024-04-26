@@ -114,7 +114,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // [total-stakes]: totalStakes == sum(bal[acct] for acct in bal)
     // [max-stake-rate]: 0 < divuu(totalStakes, stakeRSR) <= MAX_STAKE_RATE
     // [total-drafts]: totalDrafts == sum(draftSum(draft[acct]) for acct in draft)
-    // [max-draft-rate]: 0 < divuu(totalDrafts, draftRSR) <= MAX_DRAFT_RATE
+    // [max-draft-rate]: 0 < draftRate <= MAX_DRAFT_RATE
+    // [draft-rate]: if totalDrafts == 0, then draftRSR == 0 and draftRate == FIX_ONE
+    //               else, draftRSR * draftRate >= totalDrafts * 1e18
+    //               (ie, draftRSR covers totalDrafts at draftRate)
 
     // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
@@ -404,6 +407,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //   draftRSR'' = (draftRSR' <= MAX_DRAFT_RATE) ? draftRSR' : 0
     //   if draftRSR'' = 0, then totalDrafts'' = 0 and draftRate'' = FIX_ONE
     //   stakeRSR'' = (stakeRSR' <= MAX_STAKE_RATE) ? stakeRSR' : 0
+    //   if stakeRSR'' = 0, then totalStakes'' = 0
     //
     // actions:
     //   as (this), rsr.transfer(backingManager, seized)
@@ -606,6 +610,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @return availableAt {s} The timestamp the cumulative draft vests
     // effects:
     //   draftRSR' = draftRSR + rsrAmount
+    //   draftRate' = draftRate    (ie, unchanged)
     //   totalDrafts' = floor(draftRSR' * totalDrafts / draftRSR)
     //   r'.left = r.left
     //   r'.right = r.right + 1
@@ -641,9 +646,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Overriden in StRSRVotes to handle rebases
     // effects:
     //   stakeRSR' = totalStakes' = 0
+    //   stakeRate' = FIX_ONE
     function beginEra() internal virtual {
         stakeRSR = 0;
         totalStakes = 0;
+        stakeRate = FIX_ONE;
         era++;
 
         emit AllBalancesReset(era);
