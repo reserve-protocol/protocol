@@ -207,7 +207,7 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
   })
 
-  describe('ReadFacet + ActFacet', () => {
+  describe('Facets', () => {
     let issueAmount: BigNumber
 
     const expectValidBasketBreakdown = async (rToken: TestIRToken) => {
