@@ -31,7 +31,7 @@ async function main() {
     'phase1-core/1_deploy_libraries.ts',
     'phase1-core/2_deploy_implementations.ts',
     'phase1-core/3_deploy_rsrAsset.ts',
-    // 'phase1-core/4_deploy_facade.ts', // restore this to create new Facade instance
+    'phase1-core/4_deploy_facade.ts',
     'phase1-core/5_deploy_deployer.ts',
     'phase1-core/6_deploy_facadeWrite.ts',
   ]
@@ -41,11 +41,11 @@ async function main() {
   // Phase 1.5 -- Facets
   // To update the existing Facade, add new facets to the below list
 
-  // scripts.push(
-  //   'phase1-facade/1_deploy_readFacet.ts',
-  //   'phase1-facade/2_deploy_actFacet.ts',
-  //   'phase1-facade/3_deploy_maxIssuable.ts'
-  // )
+  scripts.push(
+    'phase1-facade/1_deploy_readFacet.ts',
+    'phase1-facade/2_deploy_actFacet.ts',
+    'phase1-facade/3_deploy_maxIssuable.ts'
+  )
 
   // =============================================
 

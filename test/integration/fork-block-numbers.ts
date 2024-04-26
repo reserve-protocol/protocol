@@ -9,7 +9,7 @@ const forkBlockNumber = {
   'old-curve-plugins': 16915576, // Ethereum
   'new-curve-plugins': 19626711, // Ethereum
   // TODO add all the block numbers we fork from to benefit from caching
-  default: 19635384, // Ethereum
+  default: 19742528, // Ethereum
 }
 
 export default forkBlockNumber
