@@ -88,10 +88,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
   describeFork(`Collateral: ${collateralName}`, () => {
     let defaultOpts: CurveCollateralOpts
     let mockERC20: ERC20Mock
+    let collateral: TestICollateral
 
     before(async () => {
       await resetFork()
-      ;[, defaultOpts] = await deployCollateral({})
+      ;[collateral, defaultOpts] = await deployCollateral({})
       const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
       mockERC20 = await ERC20Factory.deploy('Mock ERC20', 'ERC20')
     })
@@ -147,7 +148,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
         await expect(
           deployCollateral({
-            erc20: mockERC20.address, // can be anything.
+            erc20: await collateral.erc20(),
             feeds,
             oracleTimeouts,
             oracleErrors,
@@ -343,11 +344,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
 
           const before = await Promise.all(
-            ctx.rewardTokens.map((t) => t.balanceOf(ctx.wrapper.address))
+            ctx.rewardTokens.map((t) => t.balanceOf(ctx.collateral.address))
           )
-          await expect(ctx.wrapper.claimRewards()).to.emit(ctx.wrapper, 'RewardsClaimed')
+          await expect(ctx.collateral.claimRewards()).to.emit(ctx.collateral, 'RewardsClaimed')
           const after = await Promise.all(
-            ctx.rewardTokens.map((t) => t.balanceOf(ctx.wrapper.address))
+            ctx.rewardTokens.map((t) => t.balanceOf(ctx.collateral.address))
           )
 
           // Each reward token should have grew

@@ -27,12 +27,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import {
-  advanceBlocks,
-  advanceTime,
-  getLatestBlockTimestamp,
-  setNextBlockTimestamp,
-} from '../../../utils/time'
+import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from '../../../utils/time'
 import {
   forkNetwork,
   ORACLE_ERROR,
