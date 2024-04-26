@@ -54,13 +54,7 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import { advanceToTimestamp, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import {
-  CollateralStatus,
-  TradeKind,
-  MAX_UINT256,
-  ONE_PERIOD,
-  ZERO_ADDRESS,
-} from '#/common/constants'
+import { CollateralStatus, TradeKind, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
 import { expectTrade } from './utils/trades'
 import { mintCollaterals } from './utils/tokens'
 
