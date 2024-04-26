@@ -118,6 +118,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // [draft-rate]: if totalDrafts == 0, then draftRSR == 0 and draftRate == FIX_ONE
     //               else, draftRSR * draftRate >= totalDrafts * 1e18
     //               (ie, draftRSR covers totalDrafts at draftRate)
+    //
     // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
     // === Delegation ===
@@ -610,7 +611,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // effects:
     //   draftRSR' = draftRSR + rsrAmount
     //   draftRate' = draftRate    (ie, unchanged)
-    //   totalDrafts' = floor(draftRSR' * totalDrafts / draftRSR)
+    //   totalDrafts' = floor(draftRSR' * draftRate' / 1e18)
     //   r'.left = r.left
     //   r'.right = r.right + 1
     //   r'.queue is r.queue with a new entry appeneded for (totalDrafts' - totalDraft) drafts
@@ -701,7 +702,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // This is not an overflow risk according to our expected ranges:
         //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
         // stakeAmount: how many stRSR the user shall receive.
-
+        // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
         uint256 newStakeRSR = stakeRSR + rsrAmount;
         // {qStRSR} = {qStRSR} * {qRSR} / {qRSR}
         uint256 newTotalStakes = stakeRSR != 0 ? (totalStakes * newStakeRSR) / stakeRSR : rsrAmount;
