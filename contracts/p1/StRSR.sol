@@ -264,7 +264,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _burn(account, stakeAmount);
 
         // rsrAmount: how many RSR to move from the stake pool to the draft pool
-        // pick rsrAmount as big as we can such that (newStakeRSR >= stakeRSR * totalStakes / prevTotalStakes)
+        // pick rsrAmount so that (newStakeRSR >= stakeRSR * totalStakes / prevTotalStakes)
 
         // {qRSR} = {qRSR} * {qStRSR} / {qStRSR}
         uint256 newStakeRSR = prevTotalStakes != 0
