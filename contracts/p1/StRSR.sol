@@ -436,6 +436,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         stakeRSR -= stakeRSRToTake;
         seizedRSR = stakeRSRToTake;
 
+        // Removed in 3.4.0
+        // // update stakeRate, possibly beginning a new stake era
+        // if (stakeRSR != 0) {
+        //     // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
+        //     stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
+        // }
+
         if (stakeRSR == 0 || (FIX_ONE * totalStakes) / stakeRSR > MAX_STAKE_RATE) {
             seizedRSR += stakeRSR;
             beginEra();
