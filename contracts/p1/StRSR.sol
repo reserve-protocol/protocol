@@ -433,7 +433,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Remove RSR from stakeRSR
         uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-        stakeRSR = stakeRSRToTake < stakeRSR ? stakeRSR - stakeRSRToTake : 0;
+        stakeRSR -= stakeRSRToTake;
         seizedRSR = stakeRSRToTake;
 
         if (stakeRSR == 0 || (FIX_ONE * totalStakes) / stakeRSR > MAX_STAKE_RATE) {
