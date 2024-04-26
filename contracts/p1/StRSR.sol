@@ -263,7 +263,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 oldTotalStakes = totalStakes;
         _burn(account, stakeAmount);
 
-        // newStakeRSR: {qRSR} = {qRSR} * {qStRSR} / {qStRSR}
+        // {qRSR} = {qRSR} * {qStRSR} / {qStRSR}
         uint256 newStakeRSR = oldTotalStakes != 0
             ? (stakeRSR * totalStakes + (oldTotalStakes - 1)) / oldTotalStakes
             : stakeAmount;
@@ -317,7 +317,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
-        // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
+        // {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
@@ -364,7 +364,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
-        // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
+        // {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
@@ -630,7 +630,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // draftAmount: how many drafts to create and assign to the user
         // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
         draftRSR += rsrAmount;
-        // newTotalDrafts: {qDrafts} = D18{qDrafts/qRSR} * {qRSR} / D18
+        // {qDrafts} = D18{qDrafts/qRSR} * {qRSR} / D18
         uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
         uint256 draftAmount = newTotalDrafts - totalDrafts;
         totalDrafts = newTotalDrafts;
