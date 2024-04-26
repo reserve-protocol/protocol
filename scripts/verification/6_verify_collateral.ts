@@ -240,28 +240,6 @@ async function main() {
       ],
       'contracts/plugins/assets/SelfReferentialCollateral.sol:SelfReferentialCollateral'
     )
-
-    /********************** Verify EURFiatCollateral - EURT  ****************************************/
-    await verifyContract(
-      chainId,
-      deployments.collateral.EURT,
-      [
-        {
-          priceTimeout: priceTimeout.toString(),
-          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.EURT,
-          oracleError: fp('0.02').toString(), // 2%
-          erc20: networkConfig[chainId].tokens.EURT,
-          maxTradeVolume: fp('1e6').toString(), // $1m,
-          oracleTimeout: '86400', // 24hr
-          targetName: ethers.utils.formatBytes32String('EUR'),
-          defaultThreshold: fp('0.03').toString(), // 3%
-          delayUntilDefault: bn('86400').toString(), // 24h
-        },
-        networkConfig[chainId].chainlinkFeeds.EUR,
-        '86400',
-      ],
-      'contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral'
-    )
   }
 }
 
