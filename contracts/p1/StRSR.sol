@@ -260,12 +260,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _payoutRewards();
 
         // ==== Compute changes to stakes and RSR accounting
-        uint256 oldTotalStakes = totalStakes;
+        uint256 prevTotalStakes = totalStakes;
         _burn(account, stakeAmount);
 
+        // rsrAmount: how many RSR to move from the stake pool to the draft pool
+        // pick rsrAmount as big as we can such that (newStakeRSR >= stakeRSR * totalStakes / prevTotalStakes)
+
         // {qRSR} = {qRSR} * {qStRSR} / {qStRSR}
-        uint256 newStakeRSR = oldTotalStakes != 0
-            ? (stakeRSR * totalStakes + (oldTotalStakes - 1)) / oldTotalStakes
+        uint256 newStakeRSR = prevTotalStakes != 0
+            ? (stakeRSR * totalStakes + (prevTotalStakes - 1)) / prevTotalStakes
             : stakeAmount;
         uint256 rsrAmount = newStakeRSR < stakeRSR ? stakeRSR - newStakeRSR : 0;
         stakeRSR = newStakeRSR;
@@ -316,6 +319,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         firstRemainingDraft[draftEra][account] = endId;
 
         // ==== Compute RSR amount
+        // rsrAmount: how many RSR to withdraw from the draft pool
+        // pick rsrAmount as big as we can such that (newDraftRSR >= newTotalDrafts / draftRate)
+
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
@@ -363,6 +369,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         firstRemainingDraft[draftEra][account] = endId;
 
         // ==== Compute RSR amount
+        // rsrAmount: how many RSR to move from the draft pool to the stake pool
+        // pick rsrAmount as big as we can such that (newDraftRSR >= newTotalDrafts / draftRate)
+
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
@@ -497,8 +506,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @return D18{qRSR/qStRSR} The exchange rate between RSR and StRSR
     function exchangeRate() public view returns (uint192) {
+        // downcast is safe: expression is at most 1e18 * 1e29 / 1 = 1e47
         // D18{qRSR/qStRSR} = D18 * {qRSR} / {qStRSR}
-        return _safeWrap(totalStakes != 0 ? (FIX_ONE * stakeRSR) / totalStakes : FIX_ONE);
+        return uint192(totalStakes != 0 ? (FIX_ONE * stakeRSR) / totalStakes : FIX_ONE);
     }
 
     /// Return the maximum value of endId such that withdraw(endId) can immediately work
@@ -563,7 +573,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     /// @dev perhaps astonishingly, this _isn't_ a refresher
-
     // let
     //   N = numPeriods; the number of whole rewardPeriods since the last payout
     //   payout = rsrRewards() * (1 - (1 - rewardRatio)^N)  (see [strsr-payout-formula])
