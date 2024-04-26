@@ -127,7 +127,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const drafts = draftsCurr.sub(draftsPrev)
 
       if (withdrawal.rsrAmount) {
-        const rsrAmount = fp(drafts).div(await stRSRP1.draftRate())
+        const rsrAmount = bn(drafts)
+          .mul(await stRSRP1.draftRSR())
+          .div(await stRSRP1.totalDrafts())
         expect(rsrAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
       }
 
