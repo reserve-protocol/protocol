@@ -7,7 +7,6 @@ import {
   networkConfig,
 } from '../../common/configuration'
 import { fp, bn } from '../../common/numbers'
-import { USDC_ARBITRUM_ORACLE_ERROR } from '../../test/plugins/individual-collateral/aave-v3/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -106,7 +105,7 @@ async function main() {
         'Static ' + (await aToken.name()),
         's' + (await aToken.symbol()),
       ],
-      'contracts/plugins/assets/aave/vendor/StaticATokenLM.sol:StaticATokenLM'
+      'contracts/plugins/assets/aave/StaticATokenLM.sol:StaticATokenLM'
     )
     /********  Verify ATokenFiatCollateral - aDAI  **************************/
     await verifyContract(

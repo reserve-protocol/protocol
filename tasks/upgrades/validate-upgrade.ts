@@ -52,7 +52,15 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
 
     await validateUpgrade(hre, deployments.implementations.main, 'MainP1')
     await validateUpgrade(hre, deployments.implementations.components.rToken, 'RTokenP1')
-    await validateUpgrade(hre, deployments.implementations.components.stRSR, 'StRSRP1Votes')
+    await validateUpgrade(
+      hre,
+      deployments.implementations.components.stRSR,
+      'StRSRP1Votes',
+      undefined,
+      undefined,
+      undefined,
+      true
+    )
     await validateUpgrade(
       hre,
       deployments.implementations.components.assetRegistry,
@@ -102,7 +110,8 @@ const validateUpgrade = async (
   factoryName: string,
   tradingLibAddress?: string,
   basketLibAddress?: string,
-  unsafeAllow?: any[]
+  unsafeAllow?: any[],
+  unsafeAllowRenames?: boolean
 ) => {
   // Get Contract Factory
   let contractFactory: ContractFactory
@@ -129,6 +138,7 @@ const validateUpgrade = async (
   await hre.upgrades.validateUpgrade(prevImplAddress, contractFactory, {
     kind: 'uups',
     unsafeAllow,
+    unsafeAllowRenames,
   })
 
   console.log(
