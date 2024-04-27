@@ -27,13 +27,13 @@ async function main() {
 
   // Phase 1 -- Implementations
   const scripts = [
-    // 'phase1-core/0_setup_deployments.ts',
-    // 'phase1-core/1_deploy_libraries.ts',
-    // 'phase1-core/2_deploy_implementations.ts',
-    // 'phase1-core/3_deploy_rsrAsset.ts',
-    // 'phase1-core/4_deploy_facade.ts',
-    // 'phase1-core/5_deploy_deployer.ts',
-    // 'phase1-core/6_deploy_facadeWrite.ts',
+    'phase1-core/0_setup_deployments.ts',
+    'phase1-core/1_deploy_libraries.ts',
+    'phase1-core/2_deploy_implementations.ts',
+    'phase1-core/3_deploy_rsrAsset.ts',
+    'phase1-core/4_deploy_facade.ts',
+    'phase1-core/5_deploy_deployer.ts',
+    'phase1-core/6_deploy_facadeWrite.ts',
   ]
 
   // =============================================
@@ -41,12 +41,11 @@ async function main() {
   // Phase 1.5 -- Facets
   // To update the existing Facade, add new facets to the below list
 
-  scripts
-    .push
-    // 'phase1-facade/1_deploy_readFacet.ts',
-    // 'phase1-facade/2_deploy_actFacet.ts',
-    // 'phase1-facade/3_deploy_maxIssuable.ts'
-    ()
+  scripts.push(
+    'phase1-facade/1_deploy_readFacet.ts',
+    'phase1-facade/2_deploy_actFacet.ts',
+    'phase1-facade/3_deploy_maxIssuable.ts'
+  )
 
   // =============================================
 
@@ -87,12 +86,12 @@ async function main() {
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
     scripts.push(
-      // 'phase2-assets/0_setup_deployments.ts',
-      // 'phase2-assets/1_deploy_assets.ts',
-      // 'phase2-assets/2_deploy_collateral.ts',
-      // 'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
-      // 'phase2-assets/collaterals/deploy_ctokenv3_usdbc_collateral.ts',
-      // 'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/0_setup_deployments.ts',
+      'phase2-assets/1_deploy_assets.ts',
+      'phase2-assets/2_deploy_collateral.ts',
+      'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
+      'phase2-assets/collaterals/deploy_ctokenv3_usdbc_collateral.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
