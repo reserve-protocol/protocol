@@ -24,6 +24,7 @@ import { test_proposal } from './test-proposal'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { resetFork } from '#/utils/chain'
 import runChecks3_3_0 from './upgrade-checker-utils/upgrades/3_0_0'
+import fs from 'fs'
 
 // run script for eUSD (version 3.3.0)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
@@ -44,15 +45,11 @@ import runChecks3_3_0 from './upgrade-checker-utils/upgrades/3_0_0'
 */
 
 interface Params {
-  rtoken: string
-  governor: string
-  proposalId?: string
+  proposalid?: string
 }
 
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
-  .addParam('rtoken', 'the address of the RToken being upgraded')
-  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
-  .addOptionalParam('proposalid', 'the ID of the governance proposal', undefined)
+  .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
     await resetFork(hre, Number(process.env.FORK_BLOCK))
 
@@ -69,24 +66,23 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     }
 
     // make sure subgraph is configured
-    if (params.proposalId && !useEnv('SUBGRAPH_URL')) {
+    if (params.proposalid && !useEnv('SUBGRAPH_URL')) {
       throw new Error('SUBGRAPH_URL required for subgraph queries')
     }
 
     console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
     await hre.run('propose', {
-      rtoken: params.rtoken,
-      governor: params.governor,
-      proposalid: params.proposalid,
+      pid: params.proposalid,
     })
 
+    const proposalData = JSON.parse(fs.readFileSync(`./tasks/testing/proposal-${params.proposalid}.json`, 'utf-8'))
     await hre.run('recollateralize', {
-      rtoken: params.rtoken,
-      governor: params.governor,
+      rtoken: proposalData.rtoken,
+      governor: proposalData.governor,
     })
 
-    const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
+    const rToken = await hre.ethers.getContractAt('IRToken', proposalData.rtoken)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const assetRegistry = await hre.ethers.getContractAt(
       'IAssetRegistry',
@@ -105,30 +101,30 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
   })
 
 interface ProposeParams {
-  step: string
-  rtoken: string
-  governor: string
-  proposalId?: string
+  pid: string
 }
 
 task('propose', 'propose a gov action')
-  .addParam('proposalid', 'the ID of the governance proposal')
-  .addParam('rtoken', 'the address of the RToken being upgraded')
-  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
+  .addParam('pid', 'the ID of the governance proposal')
   .setAction(async (params: ProposeParams, hre) => {
+    const proposalData = JSON.parse(fs.readFileSync(`./tasks/testing/proposal-${params.pid}.json`, 'utf-8'))
 
-    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, params.proposalid)
+    const proposal = await proposeUpgrade(hre, proposalData.rtoken, proposalData.governor, proposalData)
 
-    await moveProposalToActive(hre, params.rtoken, params.governor, proposal.proposalId)
-    await voteProposal(hre, params.rtoken, params.governor, proposal.proposalId)
-    await passProposal(hre, params.rtoken, params.governor, proposal.proposalId)
-    await executeProposal(hre, params.rtoken, params.governor, proposal.proposalId, proposal)
+    if (proposal.proposalId != params.pid) {
+      throw new Error(`Proposed Proposal ID does not match expected ID: ${params.pid}`)
+    }
+
+    await moveProposalToActive(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
+    await voteProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
+    await passProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
+    await executeProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId, proposal)
   })
 
 task('recollateralize')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
-  .setAction(async (params: Params, hre) => {
+  .setAction(async (params, hre) => {
     const [tester] = await hre.ethers.getSigners()
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
 
