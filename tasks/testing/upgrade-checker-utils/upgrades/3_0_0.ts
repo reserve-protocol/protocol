@@ -58,7 +58,7 @@ export default async (
   await setNextBlockTimestamp(hre, nextTimestamp)
   await assetRegistry.refresh()
   expect(await assetRegistry.lastRefresh()).to.equal(nextTimestamp)
-  expect(await assetRegistry.size()).to.equal(16)
+  expect(await assetRegistry.size()).to.equal(17)
   console.log(`successfully tested new AssetRegistry getters`)
 
   /*

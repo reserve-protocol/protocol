@@ -10,7 +10,7 @@
   },
   "scripts": {
     "compile": "hardhat compile",
-    "devchain": "FORK=true hardhat node --port 8546",
+    "devchain": "NODE_OPTIONS='--max-old-space-size=12000' FORK=true hardhat node --port 8546",
     "deploy:check_env": "hardhat run scripts/check_env.ts",
     "deploy:run": "hardhat run scripts/deploy.ts",
     "deploy:confirm": "hardhat run scripts/confirm.ts",
