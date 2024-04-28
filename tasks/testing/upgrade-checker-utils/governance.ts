@@ -6,6 +6,7 @@ import { advanceBlocks, advanceTime } from '#/utils/time'
 import { BigNumber, PopulatedTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { pushOraclesForward } from './oracles'
+import fs from 'fs'
 
 const validatePropState = async (propState: ProposalState, expectedState: ProposalState) => {
   if (propState !== expectedState) {
@@ -223,7 +224,7 @@ export const proposeUpgrade = async (
   hre: HardhatRuntimeEnvironment,
   rTokenAddress: string,
   governorAddress: string,
-  proposalBuilder: ProposalBuilder
+  proposalId: string
 ) => {
   console.log(`\nGenerating and proposing proposal...`)
   const [tester] = await hre.ethers.getSigners()
@@ -231,7 +232,7 @@ export const proposeUpgrade = async (
   await hre.run('give-rsr', { address: tester.address })
   await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
-  const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress)
+  var proposal = JSON.parse(fs.readFileSync(`./tasks/testing/proposal-${proposalId}.json`, 'utf-8'))
 
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
 

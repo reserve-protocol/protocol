@@ -78,6 +78,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     await hre.run('propose', {
       rtoken: params.rtoken,
       governor: params.governor,
+      proposalid: params.proposalid,
     })
 
     await hre.run('recollateralize', {
@@ -111,11 +112,12 @@ interface ProposeParams {
 }
 
 task('propose', 'propose a gov action')
+  .addParam('proposalid', 'the ID of the governance proposal')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params: ProposeParams, hre) => {
 
-    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, test_proposal)
+    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, params.proposalid)
 
     await moveProposalToActive(hre, params.rtoken, params.governor, proposal.proposalId)
     await voteProposal(hre, params.rtoken, params.governor, proposal.proposalId)
