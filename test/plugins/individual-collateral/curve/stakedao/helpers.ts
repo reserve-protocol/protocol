@@ -12,11 +12,11 @@ import {
 import {
   USDC,
   USDCPLUS,
-  USDCPLUS_USDC_POOL,
+  USDC_USDCPLUS_POOL,
   USDCPLUS_ASSET_REGISTRY,
   USDCPLUS_TIMELOCK,
-  USDCPLUS_USDC_GAUGE,
-  USDCPLUS_USDC_GAUGE_HOLDER,
+  USDC_USDCPLUS_GAUGE,
+  USDC_USDCPLUS_GAUGE_HOLDER,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
 
@@ -55,7 +55,7 @@ export const makeUSDCUSDCPlus = async (
   const usdcplus = await ethers.getContractAt('ERC20Mock', USDCPLUS)
 
   // Get real USDC+ pool
-  const realCurvePool = await ethers.getContractAt('ICurvePool', USDCPLUS_USDC_POOL)
+  const realCurvePool = await ethers.getContractAt('ICurvePool', USDC_USDCPLUS_POOL)
 
   // Use mock curvePool seeded with initial balances
   const CurveMockFactory = await ethers.getContractFactory('CurvePoolMock')
@@ -65,7 +65,7 @@ export const makeUSDCUSDCPlus = async (
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  const gauge = await ethers.getContractAt('IStakeDAOGauge', USDCPLUS_USDC_GAUGE)
+  const gauge = await ethers.getContractAt('IStakeDAOGauge', USDC_USDCPLUS_GAUGE)
   return { usdcplus, usdc, curvePool, gauge }
 }
 
@@ -75,8 +75,8 @@ export const mintUSDCUSDCPlus = async (
   user: SignerWithAddress,
   recipient: string
 ) => {
-  const gauge = await ethers.getContractAt('IStakeDAOGauge', USDCPLUS_USDC_GAUGE)
-  await whileImpersonating(USDCPLUS_USDC_GAUGE_HOLDER, async (signer) => {
+  const gauge = await ethers.getContractAt('IStakeDAOGauge', USDC_USDCPLUS_GAUGE)
+  await whileImpersonating(USDC_USDCPLUS_GAUGE_HOLDER, async (signer) => {
     await gauge.connect(signer).transfer(recipient, amount)
   })
 }
