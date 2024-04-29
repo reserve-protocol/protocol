@@ -23,8 +23,14 @@ import { advanceTime, getLatestBlockNumber } from '#/utils/time'
 import { test_proposal } from './test-proposal'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { resetFork } from '#/utils/chain'
-import runChecks3_3_0 from './utils/upgrades/3_0_0'
 import fs from 'fs'
+import { BigNumber } from 'ethers'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { BasketHandlerP1 } from '@typechain/BasketHandlerP1'
+import { RTokenP1 } from '@typechain/RTokenP1'
+import { StRSRP1Votes } from '@typechain/StRSRP1Votes'
+import { MainP1 } from '@typechain/MainP1'
+import { IMain } from '@typechain/IMain'
 
 // run script for eUSD (version 3.3.0)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
@@ -107,7 +113,7 @@ interface ProposeParams {
 task('propose', 'propose a gov action')
   .addParam('pid', 'the ID of the governance proposal')
   .setAction(async (params: ProposeParams, hre) => {
-    const proposalData = JSON.parse(fs.readFileSync(`./tasks/testing/proposal-${params.pid}.json`, 'utf-8'))
+    const proposalData = JSON.parse(fs.readFileSync(`./tasks/validation/proposals/proposal-${params.pid}.json`, 'utf-8'))
 
     const proposal = await proposeUpgrade(hre, proposalData.rtoken, proposalData.governor, proposalData)
 
@@ -149,14 +155,15 @@ task('recollateralize')
     await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION).catch((e: Error) => {
       if (e.message.includes('already collateralized')) {
         console.log('Already Collateralized!')
-
         return
       }
-
       throw e
     })
     if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
 
+    /*
+      redeem
+    */
     // Give `tester` RTokens from a whale
     const redeemAmt = fp('1e3')
     await whileImpersonating(hre, whales[params.rtoken.toLowerCase()], async (whaleSigner) => {
@@ -164,70 +171,91 @@ task('recollateralize')
     })
     if (!(await rToken.balanceOf(tester.address)).gte(redeemAmt)) throw new Error('missing R')
 
-    /*
-      redeem
-    */
-    await redeemRTokens(hre, tester, params.rtoken, redeemAmt)
-
-    // 3. Run the 3.0.0 checks
-    await runChecks3_3_0(hre, params.rtoken, params.governor)
+    await runCheck_redeem(hre, tester, rToken.address, redeemAmt)
 
     /*
       mint
     */
-
-    const issueAmt = redeemAmt.div(2)
-    console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
-    const [erc20s] = await basketHandler.quote(fp('1'), 0)
-    for (const e of erc20s) {
-      const erc20 = await hre.ethers.getContractAt(
-        '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
-        e
-      )
-      await erc20.connect(tester).approve(rToken.address, MAX_UINT256) // max approval
-    }
-    const preBal = await rToken.balanceOf(tester.address)
-    await rToken.connect(tester).issue(issueAmt)
-
-    const postIssueBal = await rToken.balanceOf(tester.address)
-    if (!postIssueBal.eq(preBal.add(issueAmt))) {
-      throw new Error(
-        `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
-          preBal.add(issueAmt),
-          'mwei'
-        )}    balance: ${formatUnits(postIssueBal, 'mwei')}`
-      )
-    }
-
-    console.log('Successfully minted RTokens')
+    await runCheck_mint(hre, fp('1e3'), tester, basketHandler, rToken)
 
     /*
       claim rewards
     */
     await claimRsrRewards(hre, params.rtoken)
 
+    await pushOraclesForward(hre, params.rtoken, [])
+
     /*
       staking/unstaking
     */
-
-    // get RSR
-    const stakeAmount = fp('4e6')
-    const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.RSR!.toLowerCase()],
-      async (rsrSigner) => {
-        await rsr.connect(rsrSigner).transfer(tester.address, stakeAmount)
-      }
-    )
-
-    const balPrevRSR = await rsr.balanceOf(stRSR.address)
-    const balPrevStRSR = await stRSR.balanceOf(tester.address)
-    const testerBal = await rsr.balanceOf(tester.address)
-
-    await stakeAndDelegateRsr(hre, rToken.address, tester.address)
-
-    expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(testerBal))
-    expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
+    await runCheck_stakeUnstake(hre, tester, rToken, stRSR, main)
   })
 
+const runCheck_stakeUnstake = async (
+  hre: HardhatRuntimeEnvironment,
+  tester: SignerWithAddress,
+  rToken: RTokenP1,
+  stRSR: StRSRP1Votes,
+  main: IMain
+) => {
+  // get RSR
+  const stakeAmount = fp('4e6')
+  const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
+  await whileImpersonating(
+    hre,
+    whales[networkConfig['1'].tokens.RSR!.toLowerCase()],
+    async (rsrSigner) => {
+      await rsr.connect(rsrSigner).transfer(tester.address, stakeAmount)
+    }
+  )
+
+  const balPrevRSR = await rsr.balanceOf(stRSR.address)
+  const balPrevStRSR = await stRSR.balanceOf(tester.address)
+  const testerBal = await rsr.balanceOf(tester.address)
+
+  await stakeAndDelegateRsr(hre, rToken.address, tester.address)
+
+  expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(testerBal))
+  expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
+}
+
+const runCheck_redeem = async (
+  hre: HardhatRuntimeEnvironment,
+  signer: SignerWithAddress,
+  rToken: string,
+  redeemAmt: BigNumber
+) => {
+  await redeemRTokens(hre, signer, rToken, redeemAmt)
+}
+
+const runCheck_mint = async (
+  hre: HardhatRuntimeEnvironment,
+  issueAmt: BigNumber,
+  signer: SignerWithAddress,
+  basketHandler: BasketHandlerP1,
+  rToken: RTokenP1
+) => {
+  console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
+  const [erc20s] = await basketHandler.quote(fp('1'), 0)
+  for (const e of erc20s) {
+    const erc20 = await hre.ethers.getContractAt(
+      '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+      e
+    )
+    await erc20.connect(signer).approve(rToken.address, MAX_UINT256) // max approval
+  }
+  const preBal = await rToken.balanceOf(signer.address)
+  await rToken.connect(signer).issue(issueAmt)
+
+  const postIssueBal = await rToken.balanceOf(signer.address)
+  if (!postIssueBal.eq(preBal.add(issueAmt))) {
+    throw new Error(
+      `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
+        preBal.add(issueAmt),
+        'mwei'
+      )}    balance: ${formatUnits(postIssueBal, 'mwei')}`
+    )
+  }
+
+  console.log('Successfully minted RTokens')
+}
