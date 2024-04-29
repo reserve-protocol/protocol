@@ -2,7 +2,7 @@ import { CollateralFixtureContext, MintCollateralFunc } from '../pluginTestTypes
 import hre from 'hardhat'
 import { BigNumberish, constants } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { whales } from '#/tasks/testing/upgrade-checker-utils/constants'
+import { whales } from '#/tasks/validation/utils/constants'
 import { whileImpersonating } from '#/utils/impersonation'
 import { IERC20 } from '@typechain/IERC20'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'

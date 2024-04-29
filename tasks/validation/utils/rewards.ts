@@ -5,7 +5,7 @@ import { advanceBlocks, advanceTime } from '#/utils/time'
 import { IRewardable } from '@typechain/IRewardable'
 import { formatEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { runBatchTrade } from '../upgrade-checker-utils/trades'
+import { runBatchTrade } from './trades'
 
 const claimRewards = async (claimer: IRewardable) => {
   const resp = await claimer.claimRewards()

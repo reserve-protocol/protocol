@@ -1,14 +1,14 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { expect } from 'chai'
-import { ProposalBuilder, buildProposal } from './upgrade-checker-utils/governance'
+import { ProposalBuilder, buildProposal } from './utils/governance'
 import { Proposal } from '#/utils/subgraph'
 import { networkConfig } from '#/common/configuration'
 import { bn, fp, toBNDecimals } from '#/common/numbers'
 import { CollateralStatus, TradeKind, ZERO_ADDRESS } from '#/common/constants'
-import { setOraclePrice } from './upgrade-checker-utils/oracles'
+import { setOraclePrice } from './utils/oracles'
 import { whileImpersonating } from '#/utils/impersonation'
-import { whales } from './upgrade-checker-utils/constants'
-import { getTokens, runDutchTrade } from './upgrade-checker-utils/trades'
+import { whales } from './utils/constants'
+import { getTokens, runDutchTrade } from './utils/trades'
 import {
   advanceTime,
   advanceToTimestamp,

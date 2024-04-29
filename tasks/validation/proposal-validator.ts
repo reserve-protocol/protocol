@@ -7,10 +7,10 @@ import { expect } from 'chai'
 import { fp } from '#/common/numbers'
 import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
-import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
-import { claimRsrRewards } from './upgrade-checker-utils/rewards'
-import { whales } from './upgrade-checker-utils/constants'
-import { pushOraclesForward } from './upgrade-checker-utils/oracles'
+import { recollateralize, redeemRTokens } from './utils/rtokens'
+import { claimRsrRewards } from './utils/rewards'
+import { whales } from './utils/constants'
+import { pushOraclesForward } from './utils/oracles'
 import {
   passProposal,
   executeProposal,
@@ -18,12 +18,12 @@ import {
   stakeAndDelegateRsr,
   moveProposalToActive,
   voteProposal,
-} from './upgrade-checker-utils/governance'
+} from './utils/governance'
 import { advanceTime, getLatestBlockNumber } from '#/utils/time'
 import { test_proposal } from './test-proposal'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { resetFork } from '#/utils/chain'
-import runChecks3_3_0 from './upgrade-checker-utils/upgrades/3_0_0'
+import runChecks3_3_0 from './utils/upgrades/3_0_0'
 import fs from 'fs'
 
 // run script for eUSD (version 3.3.0)
@@ -76,7 +76,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       pid: params.proposalid,
     })
 
-    const proposalData = JSON.parse(fs.readFileSync(`./tasks/testing/proposal-${params.proposalid}.json`, 'utf-8'))
+    const proposalData = JSON.parse(fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8'))
     await hre.run('recollateralize', {
       rtoken: proposalData.rtoken,
       governor: proposalData.governor,
@@ -115,9 +115,9 @@ task('propose', 'propose a gov action')
       throw new Error(`Proposed Proposal ID does not match expected ID: ${params.pid}`)
     }
 
-    await moveProposalToActive(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
+    await moveProposalToActive(hre, proposalData.governor, proposal.proposalId)
     await voteProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
-    await passProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
+    await passProposal(hre, proposalData.governor, proposal.proposalId)
     await executeProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId, proposal)
   })
 
@@ -231,66 +231,3 @@ task('recollateralize')
     expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
   })
 
-task('eusd-q1-2024-test', 'Test deployed eUSD Proposals').setAction(async (_, hre) => {
-  console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
-
-  const RTokenAddress = '0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f'
-  const RTokenGovernor = '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6'
-
-  const ProposalIdOne =
-    '114052081659629247617665835769035094910371266951213483500173240902265689564540'
-  const ProposalIdTwo =
-    '84013999114211651083886802889501217056607481369823717462033802424606122383108'
-
-  // Make sure both proposals are active.
-  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await hre.run('recollateralize', {
-    rtoken: RTokenAddress,
-    governor: RTokenGovernor,
-  })
-
-  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-  await hre.run('recollateralize', {
-    rtoken: RTokenAddress,
-    governor: RTokenGovernor,
-  })
-})
-
-task('hyusd-q1-2024-test', 'Test deployed hyUSD Proposals').setAction(async (_, hre) => {
-  console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
-
-  const RTokenAddress = '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be'
-  const RTokenGovernor = '0x22d7937438b4bBf02f6cA55E3831ABB94Bd0b6f1'
-
-  const ProposalIdOne =
-    '12128108731947079972460039600592322347543776217408895065380983128537007111991'
-  const ProposalIdTwo =
-    '67602359440860478788595002306085984888572052896929999758442845286427134600253'
-
-  // Make sure both proposals are active.
-  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await moveProposalToActive(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
-  await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
-
-  await hre.run('recollateralize', {
-    rtoken: RTokenAddress,
-    governor: RTokenGovernor,
-  })
-})

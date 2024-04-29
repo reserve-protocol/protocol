@@ -17,7 +17,6 @@ const validatePropState = async (propState: ProposalState, expectedState: Propos
 
 export const moveProposalToActive = async (
   hre: HardhatRuntimeEnvironment,
-  rtokenAddress: string,
   governorAddress: string,
   proposalId: string
 ) => {
@@ -96,7 +95,6 @@ export const voteProposal = async (
 
 export const passProposal = async (
   hre: HardhatRuntimeEnvironment,
-  rtokenAddress: string,
   governorAddress: string,
   proposalId: string
 ) => {
@@ -119,8 +117,7 @@ export const executeProposal = async (
   rtokenAddress: string,
   governorAddress: string,
   proposalId: string,
-  proposal?: Proposal,
-  extraAssets: string[] = []
+  proposal?: Proposal
 ) => {
   console.log('Executing Proposal:', proposalId)
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
@@ -167,7 +164,7 @@ export const executeProposal = async (
      ** Executing proposals requires that the oracles aren't stale.
      ** Make sure to specify any extra assets that may have been registered.
      */
-    await pushOraclesForward(hre, rtokenAddress, extraAssets)
+    await pushOraclesForward(hre, rtokenAddress, [])
 
     console.log('Executing now...')
 

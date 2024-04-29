@@ -23,7 +23,7 @@ import hre from 'hardhat'
 import { MorphoAaveCollateralFixtureContext, mintCollateralTo } from './mintCollateralTo'
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
 import { whileImpersonating } from '#/utils/impersonation'
-import { whales } from '#/tasks/testing/upgrade-checker-utils/constants'
+import { whales } from '#/tasks/validation/utils/constants'
 import { advanceBlocks, advanceTime } from '#/utils/time'
 
 interface MAFiatCollateralOpts extends CollateralOpts {
