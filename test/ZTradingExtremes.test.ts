@@ -814,10 +814,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     }
 
     const size = SLOW ? 100 : 4 // Currently 100 takes >5 minutes to execute 32 cases
+    const bkpsize = SLOW ? 64 : 4
 
     const primeTokens = [size, 1]
 
-    const backupTokens = [size, 0]
+    const backupTokens = [bkpsize, 0]
 
     const targetUnits = [size, 1]
 
