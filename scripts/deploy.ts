@@ -65,6 +65,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_ethplus_eth.ts',
+      'phase2-assets/collaterals/deploy_stakedao_usdc_usdcplus.ts',
       'phase2-assets/collaterals/deploy_curve_stable_plugin.ts',
       'phase2-assets/collaterals/deploy_curve_rToken_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_curve_stable_metapool_plugin.ts',
