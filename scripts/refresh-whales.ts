@@ -4,7 +4,7 @@ import { ITokens, ITokensKeys, networkConfig } from '#/common/configuration'
 import { whileImpersonating } from '#/utils/impersonation'
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { NetworkWhales, getWhalesFile, getWhalesFileName } from './whalesConfig';
+import { NetworkWhales, RTOKENS, getWhalesFile, getWhalesFileName } from './whalesConfig';
 import fs from 'fs'
 import { useEnv } from '#/utils/env';
 
@@ -19,8 +19,9 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  const tokens: ITokensKeys = Object.keys(networkConfig[chainId].tokens) as ITokensKeys
-
+  const whalesFile = getWhalesFileName(chainId)
+  const whales: NetworkWhales = getWhalesFile(chainId)
+  
   const getBigWhale = async (token: string) => {
     const ethUrl = `https://etherscan.io/token/generic-tokenholders2?m=light&a=${token}&p=1`
     const response = await axios.get(ethUrl);
@@ -30,29 +31,39 @@ async function main() {
     return selector(selector("tbody > tr")[0]).find("td > div > .link-secondary")[0].attribs['data-clipboard-text'];
   }
 
-  const whalesFile = getWhalesFileName(chainId)
-  const whales: NetworkWhales = getWhalesFile(chainId)
-
-  for (let i = 0; i < tokens.length; i++) {
-    let tokenAddress = networkConfig[chainId].tokens[tokens[i]]!.toLowerCase()
-    let tokenWhale = whales.tokens[tokens[i]]
-    let lastUpdated = whales.lastUpdated[tokens[i]]
+  const refreshWhale = async (tokenAddress: string) => {
+    let tokenWhale = whales.tokens[tokenAddress]
+    let lastUpdated = whales.lastUpdated[tokenAddress]
     // only get a big whale if the whale is not already set or if it was last updated more than 1 day ago
     if (!FORCE_REFRESH && tokenWhale && lastUpdated && new Date().getTime() - new Date(lastUpdated).getTime() < 86400000) {
-      console.log('Whale already set for', tokens[i], 'skipping...')
-      continue
+      console.log('Whale already set for', tokenAddress, 'skipping...')
+      return
     }
-    console.log('Getting whale for', tokens[i])
+    console.log('Getting whale for', tokenAddress)
     try {
       const bigWhale = await getBigWhale(tokenAddress)
       // FIX THIS
       whales.tokens[tokenAddress] = bigWhale
       whales.lastUpdated[tokenAddress] = new Date().toISOString()
       fs.writeFileSync(whalesFile, JSON.stringify(whales, null, 2))
-      console.log('Whale updated for', tokens[i], tokenAddress)
+      console.log('Whale updated for', tokenAddress, tokenAddress)
     } catch (error) {
-      console.error('Error getting whale for', tokens[i], error)
+      console.error('Error getting whale for', tokenAddress, error)
     }
+  }
+  
+  // ERC20 Collaterals
+  const tokens: ITokensKeys = Object.keys(networkConfig[chainId].tokens) as ITokensKeys
+  for (let i = 0; i < tokens.length; i++) {
+    let tokenAddress = networkConfig[chainId].tokens[tokens[i]]!.toLowerCase()
+    await refreshWhale(tokenAddress)
+  }
+
+  // RTokens
+  const rTokens = RTOKENS[chainId]
+  for (let i = 0; i < rTokens.length; i++) {
+    let tokenAddress = rTokens[i]
+    await refreshWhale(tokenAddress)
   }
 
   console.log('All whales updated for network', chainId)

@@ -2,7 +2,7 @@ import { BigNumber } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 // getChainId: Returns current chain Id
-export const getChainId = async (hre: HardhatRuntimeEnvironment) => {
+export const getChainId = async (hre: HardhatRuntimeEnvironment): Promise<string> => {
   let _chainId
   try {
     _chainId = await hre.network.provider.send('eth_chainId')
