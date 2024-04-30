@@ -1,11 +1,15 @@
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { ITokens, networkConfig } from '#/common/configuration'
+import { ITokens, ITokensKeys, networkConfig } from '#/common/configuration'
 import { whileImpersonating } from '#/utils/impersonation'
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { NetworkWhales, getWhalesFile } from './whalesConfig';
+import { NetworkWhales, getWhalesFile, getWhalesFileName } from './whalesConfig';
 import fs from 'fs'
+import { useEnv } from '#/utils/env';
+
+// set to true to force a refresh of all whales
+const FORCE_REFRESH = useEnv('FORCE_WHALE_REFRESH');
 
 async function main() {
   const chainId = await getChainId(hre)
@@ -15,7 +19,7 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  const tokens = Object.keys(networkConfig[chainId].tokens)
+  const tokens: ITokensKeys = Object.keys(networkConfig[chainId].tokens) as ITokensKeys
 
   const getBigWhale = async (token: string) => {
     const ethUrl = `https://etherscan.io/token/generic-tokenholders2?m=light&a=${token}&p=1`
@@ -26,24 +30,26 @@ async function main() {
     return selector(selector("tbody > tr")[0]).find("td > div > .link-secondary")[0].attribs['data-clipboard-text'];
   }
 
+  const whalesFile = getWhalesFileName(chainId)
   const whales: NetworkWhales = getWhalesFile(chainId)
 
   for (let i = 0; i < tokens.length; i++) {
-    let tokenAddress = networkConfig[chainId].tokens[tokens[i]].toLowerCase()
+    let tokenAddress = networkConfig[chainId].tokens[tokens[i]]!.toLowerCase()
     let tokenWhale = whales.tokens[tokens[i]]
     let lastUpdated = whales.lastUpdated[tokens[i]]
     // only get a big whale if the whale is not already set or if it was last updated more than 1 day ago
-    if (tokenWhale && lastUpdated && new Date().getTime() - new Date(lastUpdated).getTime() < 86400000) {
+    if (!FORCE_REFRESH && tokenWhale && lastUpdated && new Date().getTime() - new Date(lastUpdated).getTime() < 86400000) {
       console.log('Whale already set for', tokens[i], 'skipping...')
       continue
     }
     console.log('Getting whale for', tokens[i])
     try {
       const bigWhale = await getBigWhale(tokenAddress)
-      whales.tokens[tokens[i]] = bigWhale
-      whales.lastUpdated[tokens[i]] = new Date().toISOString()
+      // FIX THIS
+      whales.tokens[tokenAddress] = bigWhale
+      whales.lastUpdated[tokenAddress] = new Date().toISOString()
       fs.writeFileSync(whalesFile, JSON.stringify(whales, null, 2))
-      console.log('Whale updated for', tokens[i])
+      console.log('Whale updated for', tokens[i], tokenAddress)
     } catch (error) {
       console.error('Error getting whale for', tokens[i], error)
     }

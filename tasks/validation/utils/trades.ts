@@ -38,7 +38,7 @@ export const runBatchTrade = async (
     throw new Error(`Invalid Trade Type`)
   }
 
-  const buyTokenAddress = await trade.buy()
+  const buyTokenAddress = (await trade.buy()).toLowerCase()
   console.log(
     `Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
   )
@@ -207,13 +207,13 @@ export const getTokens = async (
   recipient: string
 ) => {
   console.log('Acquiring tokens...', tokenAddress)
-  switch (tokenAddress) {
-    case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15': // saUSDC
-    case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9': // saUSDT
+  switch (tokenAddress.toLowerCase()) {
+    case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase(): // saUSDC
+    case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase(): // saUSDT
       await getStaticAToken(hre, tokenAddress, amount, recipient)
       break
-    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022': // cUSDCVault
-    case '0x4Be33630F92661afD646081BC29079A38b879aA0': // cUSDTVault
+    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase(): // cUSDCVault
+    case '0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase(): // cUSDTVault
       await getCTokenVault(hre, tokenAddress, amount, recipient)
       break
     default:
@@ -286,24 +286,16 @@ const getERC20Tokens = async (
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
 
   // special-cases for wrappers with 0 supply
-  const wcUSDCv3 = await hre.ethers.getContractAt(
-    'CusdcV3Wrapper',
-    '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'
-  )
-  const saEthUSDC = await hre.ethers.getContractAt(
-    'IStaticATokenV3LM',
-    networkConfig['1'].tokens.saEthUSDC!
-  )
-  const saEthPyUSD = await hre.ethers.getContractAt(
-    'IStaticATokenV3LM',
-    networkConfig['1'].tokens.saEthPyUSD!
-  )
-  const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
-    'ConvexStakingWrapper',
-    '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'
-  )
+  const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
+  const aUSDCv3Address = networkConfig['1'].tokens.saEthUSDC!.toLowerCase()
+  const aPyUSDv3Address = networkConfig['1'].tokens.saEthPyUSD!.toLowerCase()
+  const stkcvxeUSDFRAXBPAddress = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
 
-  if (tokenAddress == wcUSDCv3.address) {
+  if (tokenAddress.toLowerCase() == wcUSDCv3Address) {
+    const wcUSDCv3 = await hre.ethers.getContractAt(
+      'CusdcV3Wrapper',
+      wcUSDCv3Address
+    )
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
@@ -319,7 +311,11 @@ const getERC20Tokens = async (
         await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
       }
     )
-  } else if (tokenAddress == saEthUSDC.address) {
+  } else if (tokenAddress.toLowerCase() == aUSDCv3Address) {
+    const saEthUSDC = await hre.ethers.getContractAt(
+      'IStaticATokenV3LM',
+      aUSDCv3Address
+    )
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
@@ -330,7 +326,11 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
       }
     )
-  } else if (tokenAddress == saEthPyUSD.address) {
+  } else if (tokenAddress.toLowerCase() == aPyUSDv3Address) {
+    const saEthPyUSD = await hre.ethers.getContractAt(
+      'IStaticATokenV3LM',
+      aPyUSDv3Address
+    )
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.pyUSD!.toLowerCase()],
@@ -341,8 +341,13 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
-  } else if (tokenAddress == stkcvxeUSDFRAXBP.address) {
-    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'
+  } else if (tokenAddress.toLowerCase() == stkcvxeUSDFRAXBPAddress) {
+    const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
+      'ConvexStakingWrapper',
+      stkcvxeUSDFRAXBPAddress
+    )
+  
+    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'.toLowerCase()
 
     await whileImpersonating(hre, whales[lpTokenAddr], async (whaleSigner) => {
       const lpToken = await hre.ethers.getContractAt('ERC20Mock', lpTokenAddr)

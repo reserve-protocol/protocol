@@ -32,24 +32,6 @@ import { MainP1 } from '@typechain/MainP1'
 import { IMain } from '@typechain/IMain'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 
-// run script for eUSD (version 3.3.0)
-// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
-
-/*
-  This script is currently useful for the upcoming eUSD upgrade.
-  In order to make this useful for future upgrades and for other rTokens, we will need the following:
-    - generic minting (5 pts)
-      - dynamically gather and approve the necessary basket tokens needed to mint
-      - use ZAPs
-    - generic reward claiming (5 pts)
-      - check for where revenue should be allocated
-      - dynamically run and complete necessary auctions to realize revenue
-    - generic basket switching (8 pts)
-      - not sure if possible if there is no backup basket
-
-  21-34 more points of work to make this more generic
-*/
-
 interface Params {
   proposalid?: string
 }
@@ -202,7 +184,7 @@ const runCheck_stakeUnstake = async (
   main: IMain
 ) => {
   const chainId = await getChainId(hre)
-  const whales: Whales = getWhalesFile(chainId).tokens
+  const whales = getWhalesFile(chainId).tokens
   
   // get RSR
   const stakeAmount = fp('4e6')
