@@ -114,7 +114,7 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  assetCollDeployments.collateral.cvx3Pool = collateral.address
+  assetCollDeployments.collateral.crv3Pool = collateral.address
   assetCollDeployments.erc20s.crv3Pool = w3Pool.address
   deployedCollateral.push(collateral.address.toString())
 

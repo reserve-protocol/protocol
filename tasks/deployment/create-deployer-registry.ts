@@ -1,6 +1,6 @@
 import { getChainId } from '../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
-import { DeployerRegistry, IDeployer } from '../../typechain'
+import { DeployerRegistry } from '../../typechain'
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 

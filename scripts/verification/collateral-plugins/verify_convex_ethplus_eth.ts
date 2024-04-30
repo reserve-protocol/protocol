@@ -2,14 +2,13 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
 import { ONE_ADDRESS } from '../../../common/constants'
-import { bn } from '../../../common/numbers'
+import { bn, fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
-import { revenueHiding } from '../../deployment/utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -69,7 +68,7 @@ async function main() {
         defaultThreshold: DEFAULT_THRESHOLD.add(WETH_ORACLE_ERROR), // 2% +
         delayUntilDefault: DELAY_UNTIL_DEFAULT, // 72h
       },
-      revenueHiding.toString(),
+      fp('1e-3').toString(),
       {
         nTokens: 2,
         curvePool: ETHPLUS_BP_POOL,

@@ -72,7 +72,6 @@ async function main() {
       'collateral-plugins/verify_morpho.ts',
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
-      'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
       'collateral-plugins/verify_sfrax.ts',
       'collateral-plugins/verify_sfrax_eth.ts',
       'collateral-plugins/verify_steakusdc.ts',
@@ -81,10 +80,10 @@ async function main() {
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
     scripts.push(
-      'collateral-plugins/verify_cbeth.ts',
-      'collateral-plugins/verify_cusdbcv3.ts',
+      'collateral-plugins/verify_cusdcv3.ts',
       'collateral-plugins/verify_aave_v3_usdc.ts',
-      'collateral-plugins/verify_stargate_usdc',
+      'collateral-plugins/verify_wsteth.ts',
+      'collateral-plugins/verify_cbeth.ts',
       'assets/verify_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {

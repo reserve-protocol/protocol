@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../../plugins/trading/DutchTrade.sol";
 import "../../plugins/trading/GnosisTrade.sol";
-import "../../interfaces/IActFacet.sol";
 import "../../interfaces/IBackingManager.sol";
 
 /**
@@ -17,7 +16,7 @@ import "../../interfaces/IBackingManager.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ActFacet is IActFacet, Multicall {
+contract ActFacet is Multicall {
     using Address for address;
     using SafeERC20 for IERC20;
     using FixLib for uint192;
