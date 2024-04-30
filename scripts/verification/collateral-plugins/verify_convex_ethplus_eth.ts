@@ -68,7 +68,7 @@ async function main() {
         defaultThreshold: DEFAULT_THRESHOLD.add(WETH_ORACLE_ERROR), // 2% +
         delayUntilDefault: DELAY_UNTIL_DEFAULT, // 72h
       },
-      fp('1e-4').toString(),
+      fp('1e-3').toString(),
       {
         nTokens: 2,
         curvePool: ETHPLUS_BP_POOL,
