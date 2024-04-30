@@ -796,7 +796,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
       for (let i = 0; i < targetUnits; i++) {
         const targetUnit = ethers.utils.formatBytes32String(i.toString())
-        await basketHandler.setBackupConfig(targetUnit, numPrimeTokens, backups[i])
+        await basketHandler.setBackupConfig(targetUnit, numBackupTokens, backups[i])
       }
 
       // Set prime basket with all collateral
