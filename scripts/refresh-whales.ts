@@ -4,14 +4,14 @@ import { ITokens, networkConfig } from '#/common/configuration'
 import { whileImpersonating } from '#/utils/impersonation'
 import axios from "axios";
 import * as cheerio from "cheerio";
-const whales = require("../tasks/validation/whales.json")
 import fs from "fs"
 
 interface Whales extends ITokens {}
+interface Updated extends ITokens {}
 
-interface WhaleNetworkConfig {
-    name: string
+interface NetworkWhales {
     tokens: Whales
+    lastUpdated: Updated
 }
 
 async function main() {
@@ -30,19 +30,34 @@ async function main() {
     const selector = cheerio.load(response.data);
     // TODO: make sure that the selector is ok to use
     //    example: if the token is RSR, we don't want an stRSR to be the whale
-    selector(selector("tbody > tr")[0]).find("td > div > .link-secondary")[0].attribs['data-clipboard-text'];
+    return selector(selector("tbody > tr")[0]).find("td > div > .link-secondary")[0].attribs['data-clipboard-text'];
   }
 
-  const tokenWales = {}
+  const whalesFile = `./tasks/validation/whales/whales_${chainId}.json`
+  const whales: NetworkWhales = JSON.parse(fs.readFileSync(whalesFile, 'utf8'))
 
   for (let i = 0; i < tokens.length; i++) {
+    let tokenAddress = networkConfig[chainId].tokens[tokens[i]]
+    let tokenWhale = whales.tokens[tokens[i]]
+    let lastUpdated = whales.lastUpdated[tokens[i]]
+    // only get a big whale if the whale is not already set or if it was last updated more than 1 day ago
+    if (tokenWhale && lastUpdated && new Date().getTime() - new Date(lastUpdated).getTime() < 86400000) {
+      console.log('Whale already set for', tokens[i], 'skipping...')
+      continue
+    }
     console.log('Getting whale for', tokens[i])
-    const bigWhale = await getBigWhale(networkConfig[chainId].tokens[tokens[i]])
-    tokenWales[tokens[i]] = bigWhale
+    try {
+      const bigWhale = await getBigWhale(tokenAddress)
+      whales.tokens[tokens[i]] = bigWhale
+      whales.lastUpdated[tokens[i]] = new Date().toISOString()
+      fs.writeFileSync(whalesFile, JSON.stringify(whales, null, 2))
+      console.log('Whale updated for', tokens[i])
+    } catch (error) {
+      console.error('Error getting whale for', tokens[i], error)
+    }
   }
 
-  tokenWales[chainId].tokens = tokenWales
-  fs.writeFileSync("../tasks/validation/whales.json", JSON.stringify(tokenWales, null, 2))
+  console.log('All whales updated for network', chainId)
 }
 
 main()
