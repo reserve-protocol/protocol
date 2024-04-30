@@ -80,7 +80,7 @@ async function main() {
     // Base L2 chains
     scripts.push(
       'collateral-plugins/verify_cbeth.ts',
-      'collateral-plugins/verify_cusdbcv3.ts',
+      'collateral-plugins/verify_cusdcv3.ts',
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_stargate_usdc',
       'assets/verify_stg.ts'

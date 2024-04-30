@@ -68,13 +68,13 @@ async function main() {
   if (baseL2Chains.includes(hre.network.name)) {
     await verifyContract(
       chainId,
-      deployments.collateral.USDbC,
+      deployments.collateral.USDC,
       [
         {
           priceTimeout: priceTimeout.toString(),
           chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
           oracleError: usdcOracleError.toString(),
-          erc20: networkConfig[chainId].tokens.USDbC,
+          erc20: networkConfig[chainId].tokens.USDC,
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: usdcOracleTimeout,
           targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -86,7 +86,7 @@ async function main() {
     )
   }
 
-  if (!arbitrumL2Chains.includes(hre.network.name)) {
+  if (!arbitrumL2Chains.includes(hre.network.name) && !baseL2Chains.includes(hre.network.name)) {
     /********  Verify StaticATokenLM - aDAI  **************************/
     // Get AToken to retrieve name and symbol
     const aToken: ATokenMock = <ATokenMock>(
