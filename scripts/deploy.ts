@@ -82,7 +82,9 @@ async function main() {
       'phase2-assets/collaterals/deploy_steakusdc.ts',
       'phase2-assets/collaterals/deploy_steakpyusd.ts',
       'phase2-assets/collaterals/deploy_bbusdt.ts',
-      'phase2-assets/collaterals/deploy_re7weth.ts'
+      'phase2-assets/collaterals/deploy_re7weth.ts',
+      'phase2-assets/assets/deploy_crv.ts',
+      'phase2-assets/assets/deploy_cvx.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -93,6 +95,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
+      'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {

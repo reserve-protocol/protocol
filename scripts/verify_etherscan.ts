@@ -80,9 +80,10 @@ async function main() {
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
     scripts.push(
-      'collateral-plugins/verify_cbeth.ts',
       'collateral-plugins/verify_cusdcv3.ts',
       'collateral-plugins/verify_aave_v3_usdc.ts',
+      'collateral-plugins/verify_wsteth.ts',
+      'collateral-plugins/verify_cbeth.ts',
       'assets/verify_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
