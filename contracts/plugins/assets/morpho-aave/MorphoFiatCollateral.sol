@@ -18,7 +18,7 @@ import { shiftl_toFix, FIX_ONE } from "../../../libraries/Fixed.sol";
 contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
-    IERC20Metadata private immutable morpho;
+    IERC20Metadata private immutable morpho; // MORPHO token
     uint256 private immutable oneShare;
     int8 private immutable refDecimals;
 
