@@ -4,15 +4,7 @@ import { ITokens, networkConfig } from '#/common/configuration'
 import { whileImpersonating } from '#/utils/impersonation'
 import axios from "axios";
 import * as cheerio from "cheerio";
-import fs from "fs"
-
-interface Whales extends ITokens {}
-interface Updated extends ITokens {}
-
-interface NetworkWhales {
-    tokens: Whales
-    lastUpdated: Updated
-}
+import { NetworkWhales, getWhalesFile } from './whalesConfig';
 
 async function main() {
   const chainId = await getChainId(hre)
@@ -33,11 +25,10 @@ async function main() {
     return selector(selector("tbody > tr")[0]).find("td > div > .link-secondary")[0].attribs['data-clipboard-text'];
   }
 
-  const whalesFile = `./tasks/validation/whales/whales_${chainId}.json`
-  const whales: NetworkWhales = JSON.parse(fs.readFileSync(whalesFile, 'utf8'))
+  const whales: NetworkWhales = getWhalesFile(chainId)
 
   for (let i = 0; i < tokens.length; i++) {
-    let tokenAddress = networkConfig[chainId].tokens[tokens[i]]
+    let tokenAddress = networkConfig[chainId].tokens[tokens[i]].toLowerCase()
     let tokenWhale = whales.tokens[tokens[i]]
     let lastUpdated = whales.lastUpdated[tokens[i]]
     // only get a big whale if the whale is not already set or if it was last updated more than 1 day ago

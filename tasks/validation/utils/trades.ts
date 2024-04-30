@@ -14,8 +14,9 @@ import { TestITrading } from '@typechain/TestITrading'
 import { BigNumber, ContractTransaction } from 'ethers'
 import { LogDescription } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { whales } from './constants'
 import { logToken } from './logs'
+import { getChainId } from '#/common/blockchain-utils'
+import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 
 export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -26,6 +27,8 @@ export const runBatchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // placeSellOrders() flips it to be from the perspective of the trader
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
 
   const tradeAddr = await trader.trades(tradeToken)
   const trade = <GnosisTrade>await hre.ethers.getContractAt('GnosisTrade', tradeAddr)
@@ -226,6 +229,9 @@ const getCTokenVault = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
   const collateral = await hre.ethers.getContractAt('CTokenWrapper', tokenAddress)
   const cToken = await hre.ethers.getContractAt('ICToken', await collateral.underlying())
 
@@ -246,6 +252,9 @@ const getStaticAToken = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
   const collateral = await hre.ethers.getContractAt('StaticATokenLM', tokenAddress)
   const aTokensNeeded = await collateral.staticToDynamicAmount(amount)
   const aToken = await hre.ethers.getContractAt(
@@ -271,6 +280,9 @@ const getERC20Tokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
 
   // special-cases for wrappers with 0 supply

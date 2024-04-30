@@ -9,7 +9,6 @@ import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
 import { claimRsrRewards } from './utils/rewards'
-import { whales } from './utils/constants'
 import { pushOraclesForward } from './utils/oracles'
 import {
   passProposal,
@@ -31,6 +30,7 @@ import { RTokenP1 } from '@typechain/RTokenP1'
 import { StRSRP1Votes } from '@typechain/StRSRP1Votes'
 import { MainP1 } from '@typechain/MainP1'
 import { IMain } from '@typechain/IMain'
+import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 
 // run script for eUSD (version 3.3.0)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
@@ -161,6 +161,9 @@ task('recollateralize')
     })
     if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
 
+
+    const chainId = await getChainId(hre)
+    const whales: Whales = getWhalesFile(chainId).tokens
     /*
       redeem
     */
@@ -198,6 +201,9 @@ const runCheck_stakeUnstake = async (
   stRSR: StRSRP1Votes,
   main: IMain
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+  
   // get RSR
   const stakeAmount = fp('4e6')
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
