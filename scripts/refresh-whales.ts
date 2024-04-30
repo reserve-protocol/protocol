@@ -5,6 +5,7 @@ import { whileImpersonating } from '#/utils/impersonation'
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { NetworkWhales, getWhalesFile } from './whalesConfig';
+import fs from 'fs'
 
 async function main() {
   const chainId = await getChainId(hre)
