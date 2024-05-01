@@ -26,11 +26,11 @@ interface IConvexRewardPool is IERC20Metadata {
 
 /**
  * @title L2ConvexStableCollateral
- *  This plugin contract is designed for any number of (fiat) tokens in a Convex stable pool,
+ *  This plugin is designed for any number of (fiat) tokens in a Convex L2 stable pool.
  *  Each token in the pool can have between 1 and 2 oracles per each token.
  *  Stable means only like-kind pools.
  *
- * tok = Convex LP (stablePlainPool) - no wrapper needed in L2
+ * tok = Convex Rewards Pool (stablePlainPool) - no wrapper needed in L2
  * ref = stablePlainPool pool invariant
  * tar = USD
  * UoA = USD
