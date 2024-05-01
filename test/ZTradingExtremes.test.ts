@@ -649,7 +649,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await basketHandler.connect(owner).setBackupConfig(
         ethers.utils.formatBytes32String('USD'),
         bkpSize,
-        primeBasket.map((c) => c.address)
+        primeBasket.slice(0, bkpSize).map((c) => c.address)
       )
       await basketHandler.connect(owner).refreshBasket()
       await advanceTime(Number(config.warmupPeriod) + 1)
