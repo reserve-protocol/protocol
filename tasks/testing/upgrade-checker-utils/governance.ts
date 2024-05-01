@@ -31,7 +31,10 @@ export const moveProposalToActive = async (
 
     // Advance time to start voting
     const votingDelay = await governor.votingDelay()
-    await advanceBlocks(hre, votingDelay.add(2))
+    const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
+    const version = await rToken.version()
+    if (version == '3.0.0' || version == '3.0.1') await advanceBlocks(hre, votingDelay.add(2))
+    else await advanceTime(hre, votingDelay.add(2).toNumber())
   } else {
     if (propState == ProposalState.Active) {
       console.log(`Proposal is already ${ProposalState[ProposalState.Active]}... skipping step.`)

@@ -103,6 +103,12 @@ export const proposal_3_4_0_step_1: ProposalBuilder = async (
     await distributor.populateTransaction.cacheComponents(),
     await rTokenTrader.populateTransaction.cacheComponents(),
     await rsrTrader.populateTransaction.cacheComponents(),
+    await broker.populateTransaction.setDutchTradeImplementation(
+      deployments.implementations.trading.dutchTrade
+    ),
+    await broker.populateTransaction.setBatchTradeImplementation(
+      deployments.implementations.trading.gnosisTrade
+    ),
     await furnace.populateTransaction.setRatio(TWO_WEEK_REWARD_RATIO),
     await stRSR.populateTransaction.setRewardRatio(TWO_WEEK_REWARD_RATIO),
     // TODO

@@ -81,7 +81,7 @@ export const runBatchTrade = async (
   await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
   await trader.settleTrade(tradeToken)
 
-  console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
+  console.log(`Settled trade for ${logToken(buyTokenAddress)} in amount ${buyAmount}.`)
 }
 
 export const runDutchTrade = async (
