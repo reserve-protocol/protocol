@@ -651,6 +651,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         bkpSize,
         primeBasket.slice(0, bkpSize).map((c) => c.address)
       )
+
       await basketHandler.connect(owner).refreshBasket()
       await advanceTime(Number(config.warmupPeriod) + 1)
 
@@ -824,7 +825,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     const size = SLOW ? MAX_BASKET_SIZE : 4 // Currently 100 takes >5 minutes to execute 32 cases
     const bkpsize = SLOW ? MAX_BACKUP_SIZE : 4
 
-    const primeTokens = [, 1]
+    const primeTokens = [size, 1]
 
     const backupTokens = [bkpsize, 0]
 
