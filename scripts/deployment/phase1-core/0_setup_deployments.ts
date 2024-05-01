@@ -54,11 +54,11 @@ async function main() {
       GNOSIS_EASY_AUCTION: gnosisAddr,
     },
     tradingLib: '',
-    cvxMiningLib: '',
     facade: '',
     facets: {
       actFacet: '',
       readFacet: '',
+      maxIssuableFacet: '',
     },
     facadeWriteLib: '',
     basketLib: '',

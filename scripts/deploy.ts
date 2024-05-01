@@ -31,7 +31,7 @@ async function main() {
     'phase1-core/1_deploy_libraries.ts',
     'phase1-core/2_deploy_implementations.ts',
     'phase1-core/3_deploy_rsrAsset.ts',
-    'phase1-core/4_deploy_facade.ts', // comment this out before deployment to keep old Facade
+    'phase1-core/4_deploy_facade.ts',
     'phase1-core/5_deploy_deployer.ts',
     'phase1-core/6_deploy_facadeWrite.ts',
   ]
@@ -62,9 +62,11 @@ async function main() {
       'phase2-assets/collaterals/deploy_convex_3pool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_paypool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_ethplus_eth.ts',
+      'phase2-assets/collaterals/deploy_stakedao_usdc_usdcplus.ts',
       'phase2-assets/collaterals/deploy_curve_stable_plugin.ts',
       'phase2-assets/collaterals/deploy_curve_rToken_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_curve_stable_metapool_plugin.ts',
@@ -80,7 +82,9 @@ async function main() {
       'phase2-assets/collaterals/deploy_steakusdc.ts',
       'phase2-assets/collaterals/deploy_steakpyusd.ts',
       'phase2-assets/collaterals/deploy_bbusdt.ts',
-      'phase2-assets/collaterals/deploy_re7weth.ts'
+      'phase2-assets/collaterals/deploy_re7weth.ts',
+      'phase2-assets/assets/deploy_crv.ts',
+      'phase2-assets/assets/deploy_cvx.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -89,9 +93,10 @@ async function main() {
       'phase2-assets/1_deploy_assets.ts',
       'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdbc_collateral.ts',
+      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
-      'phase2-assets/collaterals/deploy_stargate_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
+      'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {

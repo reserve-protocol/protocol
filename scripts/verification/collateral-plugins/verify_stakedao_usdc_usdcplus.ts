@@ -13,11 +13,11 @@ import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  ETHPLUS_BP_POOL,
-  ETHPLUS_BP_TOKEN,
-  WETH_USD_FEED,
-  WETH_ORACLE_TIMEOUT,
-  WETH_ORACLE_ERROR,
+  USDC_USDCPLUS_POOL,
+  USDC_USDCPLUS_LP_TOKEN,
+  USDC_ORACLE_ERROR,
+  USDC_ORACLE_TIMEOUT,
+  USDC_USD_FEED,
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
 } from '../../../test/plugins/individual-collateral/curve/constants'
@@ -38,48 +38,39 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const ethPlusETHPlugin = await ethers.getContractAt(
-    'CurveAppreciatingRTokenSelfReferentialCollateral',
-    deployments.collateral.cvxETHPlusETH as string
+  const collateral = await ethers.getContractAt(
+    'StakeDAORecursiveCollateral',
+    deployments.collateral.sdUSDCUSDCPlus!
   )
 
-  /********  Verify ConvexStakingWrapper  **************************/
-
+  /********  Verify USDC/USDC+ plugin  **************************/
   await verifyContract(
     chainId,
-    await ethPlusETHPlugin.erc20(),
-    [],
-    'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
-  )
-
-  /********  Verify eUSD/fraxBP plugin  **************************/
-  await verifyContract(
-    chainId,
-    deployments.collateral.cvxETHPlusETH,
+    deployments.collateral.sdUSDCUSDCPlus,
     [
       {
-        erc20: await ethPlusETHPlugin.erc20(),
-        targetName: ethers.utils.formatBytes32String('ETH'),
+        erc20: await collateral.erc20(),
+        targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS,
         oracleError: bn('1'),
         oracleTimeout: bn('1'),
         maxTradeVolume: MAX_TRADE_VOL,
-        defaultThreshold: DEFAULT_THRESHOLD.add(WETH_ORACLE_ERROR), // 2% +
+        defaultThreshold: DEFAULT_THRESHOLD.add(USDC_ORACLE_ERROR), // 2% +
         delayUntilDefault: DELAY_UNTIL_DEFAULT, // 72h
       },
-      fp('1e-3').toString(),
+      fp('1e-4'), // backtest to confirm: 0.01% since pool virtual price will probably decrease
       {
         nTokens: 2,
-        curvePool: ETHPLUS_BP_POOL,
+        curvePool: USDC_USDCPLUS_POOL,
         poolType: CurvePoolType.Plain,
-        feeds: [[ONE_ADDRESS], [WETH_USD_FEED]],
-        oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
-        oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
-        lpToken: ETHPLUS_BP_TOKEN,
+        feeds: [[USDC_USD_FEED], [ONE_ADDRESS]],
+        oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [bn('1')]],
+        oracleErrors: [[USDC_ORACLE_ERROR], [bn('1')]],
+        lpToken: USDC_USDCPLUS_LP_TOKEN,
       },
     ],
-    'contracts/plugins/assets/curve/CurveAppreciatingRTokenSelfReferentialCollateral.sol:CurveAppreciatingRTokenSelfReferentialCollateral'
+    'contracts/plugins/assets/curve/stakedao/StakeDAORecursiveCollateral.sol:StakeDAORecursiveCollateral'
   )
 }
 
