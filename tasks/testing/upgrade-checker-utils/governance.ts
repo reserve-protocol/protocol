@@ -216,13 +216,15 @@ export const buildProposal = (txs: Array<PopulatedTransaction>, description: str
 export type ProposalBuilder = (
   hre: HardhatRuntimeEnvironment,
   rTokenAddress: string,
-  governorAddress: string
+  governorAddress: string,
+  timelockAddress: string
 ) => Promise<Proposal>
 
 export const proposeUpgrade = async (
   hre: HardhatRuntimeEnvironment,
   rTokenAddress: string,
   governorAddress: string,
+  timelockAddress: string,
   proposalBuilder: ProposalBuilder
 ) => {
   console.log(`\nGenerating and proposing proposal...`)
@@ -231,7 +233,7 @@ export const proposeUpgrade = async (
   await hre.run('give-rsr', { address: tester.address })
   await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
-  const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress)
+  const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress, timelockAddress)
 
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
 

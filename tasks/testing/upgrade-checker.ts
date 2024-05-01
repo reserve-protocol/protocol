@@ -11,12 +11,11 @@ import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
 import { pushOraclesForward } from './upgrade-checker-utils/oracles'
-import runChecks3_3_0, {
-  proposal_3_3_0_step_1,
-  proposal_3_3_0_step_2,
-  proposal_3_3_0_step_3,
-  proposal_3_3_0_step_4,
-} from './upgrade-checker-utils/upgrades/3_3_0_plugins'
+import {
+  proposal_3_4_0_step_1,
+  proposal_3_4_0_step_2,
+  GOVERNOR_ANASTASIUSES,
+} from './upgrade-checker-utils/upgrades/3_4_0'
 import {
   passProposal,
   executeProposal,
@@ -27,7 +26,7 @@ import {
 } from './upgrade-checker-utils/governance'
 import { advanceTime, getLatestBlockNumber } from '#/utils/time'
 
-// run script for eUSD (version 3.3.0)
+// run script for eUSD (version 3.4.0)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
 
 /*
@@ -41,19 +40,19 @@ import { advanceTime, getLatestBlockNumber } from '#/utils/time'
       - dynamically run and complete necessary auctions to realize revenue
     - generic basket switching (8 pts)
       - not sure if possible if there is no backup basket
-
-  21-34 more points of work to make this more generic
 */
 
 interface Params {
   rtoken: string
   governor: string
+  timelock: string
   proposalId?: string
 }
 
 task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('rtoken', 'the address of the RToken being upgraded')
-  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
+  .addParam('governor', 'the address of the Governor of the RToken being upgraded')
+  .addParam('timelock', 'the OWNER of the RToken being upgraded')
   .addOptionalParam('proposalId', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
     const chainId = await getChainId(hre)
@@ -79,6 +78,7 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
       step: '1',
       rtoken: params.rtoken,
       governor: params.governor,
+      timelock: params.timelock,
     })
 
     await hre.run('recollateralize', {
@@ -89,29 +89,13 @@ task('upgrade-checker', 'Runs a proposal and confirms can fully rebalance + rede
     await hre.run('propose', {
       step: '2',
       rtoken: params.rtoken,
-      governor: params.governor,
+      governor: GOVERNOR_ANASTASIUSES[params.rtoken],
+      timelock: params.timelock,
     })
 
     await hre.run('recollateralize', {
       rtoken: params.rtoken,
-      governor: params.governor,
-    })
-
-    await hre.run('propose', {
-      step: '3',
-      rtoken: params.rtoken,
-      governor: params.governor,
-    })
-
-    await hre.run('recollateralize', {
-      rtoken: params.rtoken,
-      governor: params.governor,
-    })
-
-    await hre.run('propose', {
-      step: '4',
-      rtoken: params.rtoken,
-      governor: params.governor,
+      governor: GOVERNOR_ANASTASIUSES[params.rtoken],
     })
 
     const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
@@ -136,33 +120,34 @@ interface ProposeParams {
   step: string
   rtoken: string
   governor: string
+  timelock: string
   proposalId?: string
 }
 
 task('propose', 'propose a gov action')
   .addParam('step', 'the step of the proposal')
   .addParam('rtoken', 'the address of the RToken being upgraded')
-  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
+  .addParam('governor', 'the address of the Governor of the RToken being upgraded')
+  .addParam('timelock', 'the OWNER of the RToken being upgraded')
   .setAction(async (params: ProposeParams, hre) => {
     const stepFunction = (() => {
       console.log(`=========================== STEP ${params.step} ===============================`)
       if (params.step === '1') {
-        return proposal_3_3_0_step_1
+        return proposal_3_4_0_step_1
       }
       if (params.step === '2') {
-        return proposal_3_3_0_step_2
+        return proposal_3_4_0_step_2
       }
-      if (params.step === '3') {
-        return proposal_3_3_0_step_3
-      }
-      if (params.step === '4') {
-        return proposal_3_3_0_step_4
-      }
-
       throw Error('Invalid step')
     })()
 
-    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, stepFunction)
+    const proposal = await proposeUpgrade(
+      hre,
+      params.rtoken,
+      params.governor,
+      params.timelock,
+      stepFunction
+    )
 
     await moveProposalToActive(hre, params.rtoken, params.governor, proposal.proposalId)
     await voteProposal(hre, params.rtoken, params.governor, proposal.proposalId)
@@ -217,9 +202,6 @@ task('recollateralize')
       redeem
     */
     await redeemRTokens(hre, tester, params.rtoken, redeemAmt)
-
-    // 3. Run the 3.0.0 checks
-    await runChecks3_3_0(hre, params.rtoken, params.governor)
 
     /*
       mint
@@ -343,3 +325,24 @@ task('hyusd-q1-2024-test', 'Test deployed hyUSD Proposals').setAction(async (_, 
     governor: RTokenGovernor,
   })
 })
+
+// task('eusd-q2-2024-test', 'Test upgrading to 3.4.0 for eUSD').setAction(async (_, hre) => {
+//   console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
+
+//   const RTokenAddress = '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F'
+//   const RTokenGovernor = '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6'
+
+//   await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+//   await voteProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+//   await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+//   await passProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+//   await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdOne)
+//   await executeProposal(hre, RTokenAddress, RTokenGovernor, ProposalIdTwo)
+
+//   await hre.run('recollateralize', {
+//     rtoken: RTokenAddress,
+//     governor: RTokenGovernor,
+//   })
+// })
