@@ -517,13 +517,18 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
   '42161': {
     name: 'arbitrum',
     tokens: {
-      ARB: '0x912ce59144191c1204e64559fe8253a0e49e6548',
+      ARB: '0x912CE59144191C1204E64559FE8253a0e49E6548',
+      CRV: '0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978',
+      CVX: '0xaAFcFD42c9954C6689ef1901e03db742520829c5',
+      crvUSD: '0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5',
       DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
       COMP: '0x354A6dA3fcde098F8389cad84b0182725c6C91dE',
       RSR: '0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594',
       USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
       USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
       cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      WETH: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
+      WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
       aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
       saArbUSDCn: '', // TODO our wrapper. remove from deployment script after placing here
       aArbUSDT: '0x6ab707aca953edaefbc4fd23ba73294241490620',
@@ -536,6 +541,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
       USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
+      crvUSD: '0x0a32255dd4BB6177C994bAAc73E0606fDD568f66',
     },
     GNOSIS_EASY_AUCTION: '0xcD033976a011F41D2AB6ef47984041568F818E73', // our deployment
     COMET_REWARDS: '0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae',

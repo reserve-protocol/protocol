@@ -192,6 +192,18 @@ export const mintWPool = async (
   await cvxWrapper.connect(user).deposit(amount, recipient)
 }
 
+export const mintL2Pool = async (
+  ctx: CurveBase,
+  amount: BigNumberish,
+  recipient: string,
+  holder: string
+) => {
+  const cvxLPToken = ctx.wrapper
+  await whileImpersonating(holder, async (signer) => {
+    await cvxLPToken.connect(signer).transfer(recipient, amount)
+  })
+}
+
 export const resetFork = getResetFork(forkBlockNumber['old-curve-plugins'])
 
 export type Numeric = number | bigint

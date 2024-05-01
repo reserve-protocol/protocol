@@ -83,9 +83,10 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     resetFork,
     collateralName,
     itClaimsRewards,
+    targetNetwork
   } = fixtures
 
-  describeFork(`Collateral: ${collateralName}`, () => {
+  getDescribeFork(targetNetwork)(`Collateral: ${collateralName}`, () => {
     let defaultOpts: CurveCollateralOpts
     let mockERC20: ERC20Mock
     let collateral: TestICollateral
@@ -780,7 +781,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
     // Only run full protocol integration tests on mainnet
     // Protocol integration fixture not currently set up to deploy onto base
-    getDescribeFork('mainnet')('integration tests', () => {
+    getDescribeFork(targetNetwork)('integration tests', () => {
       before(resetFork)
 
       let ctx: X
@@ -1057,13 +1058,19 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await MockV3AggregatorFactory.deploy(8, bn('1e8'))
         )
 
+        let chainId = await getChainId(hre)
+        if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
+        if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = 42161
+  
         if (target == ethers.utils.formatBytes32String('USD')) {
           // USD
           const erc20 = await ethers.getContractAt(
             'IERC20Metadata',
             networkConfig[chainId].tokens.USDC!
           )
-          await whileImpersonating('0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf', async (signer) => {
+
+          const usdcHolder = (chainId == 42161) ?  '0x47c031236e19d024b42f8ae6780e44a573170703' : '0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf'
+          await whileImpersonating(usdcHolder, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
@@ -1088,7 +1095,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WETH!
           )
-          await whileImpersonating('0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E', async (signer) => {
+          const wethHolder = (chainId == 42161) ?  '0x70d95587d40a2caf56bd97485ab3eec10bee6336' : '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+          await whileImpersonating(wethHolder, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
@@ -1116,7 +1124,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WBTC!
           )
-          await whileImpersonating('0xccf4429db6322d5c611ee964527d42e5d685dd6a', async (signer) => {
+          const wbtcHolder = (chainId == 42161) ?  '0x47c031236e19d024b42f8ae6780e44a573170703' : '0xccf4429db6322d5c611ee964527d42e5d685dd6a'
+      
+          await whileImpersonating(wbtcHolder, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
