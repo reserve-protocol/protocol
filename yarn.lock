@@ -1982,15 +1982,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/cheerio@npm:^0.22.31":
-  version: 0.22.35
-  resolution: "@types/cheerio@npm:0.22.35"
-  dependencies:
-    "@types/node": "*"
-  checksum: 34ef8f0f754bd022e7d686c7295fdba997766a796257add2377be256f215f2e12fe74218125570e61344dbd3de0a952495181981af1eeb8eebeb5cf886c62f1f
-  languageName: node
-  linkType: hard
-
 "@types/concat-stream@npm:^1.6.0":
   version: 1.6.1
   resolution: "@types/concat-stream@npm:1.6.1"
@@ -2855,7 +2846,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios-retry@npm:^4.0.0, axios-retry@npm:^4.1.0":
+"axios-retry@npm:^4.1.0":
   version: 4.1.0
   resolution: "axios-retry@npm:4.1.0"
   dependencies:
@@ -9068,7 +9059,6 @@ __metadata:
     mocha-chai-jest-snapshot: ^1.1.3
     prettier: 2.5.1
     prettier-plugin-solidity: 1.0.0-beta.13
-    scrapfly-sdk: ^0.4.0
     solhint: 3.3.6
     solhint-plugin-prettier: 0.0.5
     solidity-coverage: ^0.8.2
@@ -9350,19 +9340,6 @@ __metadata:
   bin:
     istanbul: lib/cli.js
   checksum: 256472ebd35787985be7fc924f817f3e0fcf0ed17655250555bf24f76d44af18fd1b25a91c33458e17a4c57b80375bea22d46e2a982880ffbde1b1a94dfeed19
-  languageName: node
-  linkType: hard
-
-"scrapfly-sdk@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "scrapfly-sdk@npm:0.4.0"
-  dependencies:
-    "@types/cheerio": ^0.22.31
-    axios: ^1.4.0
-    axios-retry: ^4.0.0
-    cheerio: ^1.0.0-rc.12
-    tslib: ~2.5
-  checksum: babf25bf77ecd374f4420b8de5e40f6cc6588f1e7aff47a1efa50c0ae6c710be40b501c18e371f22b8238b551c0b6f1660726e4f940973d59d7b17ccac015a19
   languageName: node
   linkType: hard
 
@@ -10359,13 +10336,6 @@ __metadata:
   version: 2.6.1
   resolution: "tslib@npm:2.6.1"
   checksum: b0d176d176487905b66ae4d5856647df50e37beea7571c53b8d10ba9222c074b81f1410fb91da13debaf2cbc970663609068bdebafa844ea9d69b146527c38fe
-  languageName: node
-  linkType: hard
-
-"tslib@npm:~2.5":
-  version: 2.5.3
-  resolution: "tslib@npm:2.5.3"
-  checksum: 88902b309afaf83259131c1e13da1dceb0ad1682a213143a1346a649143924d78cf3760c448b84d796938fd76127183894f8d85cbb3bf9c4fddbfcc140c0003c
   languageName: node
   linkType: hard
 

@@ -15,6 +15,7 @@
     "deploy:run": "hardhat run scripts/deploy.ts",
     "deploy:confirm": "hardhat run scripts/confirm.ts",
     "deploy:verify_etherscan": "hardhat run scripts/verify_etherscan.ts",
+    "whales": "npx hardhat run scripts/refresh-whales.ts",
     "test:extreme": "EXTREME=1 PROTO_IMPL=1 npx hardhat test test/{Broker,Furnace,RTokenExtremes,ZTradingExtremes,ZZStRSR}.test.ts",
     "test:extreme:integration": "FORK=1 EXTREME=1 PROTO_IMPL=1 npx hardhat test test/integration/**/*.test.ts",
     "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1",
@@ -117,7 +118,6 @@
     "@types/isomorphic-fetch": "^0.0.36",
     "axios-retry": "^4.1.0",
     "cheerio": "^1.0.0-rc.12",
-    "isomorphic-fetch": "^3.0.0",
-    "scrapfly-sdk": "^0.4.0"
+    "isomorphic-fetch": "^3.0.0"
   }
 }
