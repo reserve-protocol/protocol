@@ -37,9 +37,9 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   const rsrRatePre = await strsr.exchangeRate()
 
   // requires 3.4.0 plugins to be swapped in
-  const rewards = await claimRewards(backingManager)
-  console.log('rewards claimed', rewards)
-  // const rewards = await assetRegistry.erc20s()
+  // const rewards = await claimRewards(backingManager)
+  // console.log('rewards claimed', rewards)
+  const rewards = await assetRegistry.erc20s()
 
   await backingManager.forwardRevenue(rewards)
   const comp = '0xc00e94Cb662C3520282E6f5717214004A7f26888'

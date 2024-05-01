@@ -150,7 +150,7 @@ task('recollateralize')
       redeem
     */
     // Give `tester` RTokens from a whale
-    const redeemAmt = fp('1e3')
+    const redeemAmt = fp('1e4')
     await whileImpersonating(hre, whales[params.rtoken.toLowerCase()], async (whaleSigner) => {
       await rToken.connect(whaleSigner).transfer(tester.address, redeemAmt)
     })
