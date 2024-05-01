@@ -55,6 +55,7 @@ async function main() {
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     scripts.push(
       'collateral-plugins/verify_convex_crvusd_usdc.ts',
+      'collateral-plugins/verify_convex_crvusd_usdt.ts',
       'collateral-plugins/verify_convex_3pool.ts',
       'collateral-plugins/verify_convex_paypool.ts',
       'collateral-plugins/verify_convex_stable_metapool.ts',
@@ -90,7 +91,9 @@ async function main() {
     // Arbitrum One
     scripts.push(
       'collateral-plugins/verify_aave_v3_usdc.ts',
-      'collateral-plugins/verify_cusdcv3.ts'
+      'collateral-plugins/verify_cusdcv3.ts',
+      'collateral-plugins/verify_convex_crvusd_usdc.ts',
+      'collateral-plugins/verify_convex_crvusd_usdt.ts'
     )
   }
 

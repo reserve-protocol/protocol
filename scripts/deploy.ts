@@ -103,6 +103,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
       'phase2-assets/assets/deploy_arb.ts'
     )
   }
