@@ -96,6 +96,8 @@ export const runDutchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
 
   let tradesRemain = false
   let newSellToken = ''
@@ -118,11 +120,9 @@ export const runDutchTrade = async (
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
 
   // Bid near 1:1 point, which occurs at the 70% mark
-  const toAdvance = endBlock
-    .sub(await getLatestBlockNumber(hre))
-    .mul(7)
-    .div(10)
-  await advanceBlocks(hre, toAdvance)
+  const latestTimestamp = await getLatestBlockTimestamp(hre)
+  const toAdvance = (endTime - latestTimestamp) * 7 / 10
+  await advanceTime(hre, toAdvance)
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
