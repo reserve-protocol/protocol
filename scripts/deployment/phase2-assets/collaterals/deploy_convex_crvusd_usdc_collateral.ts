@@ -12,7 +12,12 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { ConvexStakingWrapper, CurveStableCollateral, L2ConvexStableCollateral, IConvexRewardPool } from '../../../../typechain'
+import {
+  ConvexStakingWrapper,
+  CurveStableCollateral,
+  L2ConvexStableCollateral,
+  IConvexRewardPool,
+} from '../../../../typechain'
 import { revenueHiding } from '../../utils'
 import {
   CurvePoolType,
@@ -35,7 +40,7 @@ import {
   ARB_USDC_USD_FEED,
   ARB_crvUSD_ORACLE_ERROR,
   ARB_crvUSD_ORACLE_TIMEOUT,
-  ARB_crvUSD_USD_FEED
+  ARB_crvUSD_USD_FEED,
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // Convex Stable Plugin: crvUSD-USDC
@@ -70,11 +75,12 @@ async function main() {
   let crvUsdUSDCPool: ConvexStakingWrapper | IConvexRewardPool // no wrapper needed for L2s
 
   if (!arbitrumL2Chains.includes(hre.network.name)) {
-
-    const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
+    const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
+      'CurveStableCollateral'
+    )
     const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-    crvUsdUSDCPool = <ConvexStakingWrapper> await ConvexStakingWrapperFactory.deploy()
+    crvUsdUSDCPool = <ConvexStakingWrapper>await ConvexStakingWrapperFactory.deploy()
     await crvUsdUSDCPool.deployed()
     await (await crvUsdUSDCPool.initialize(crvUSD_USDC_POOL_ID)).wait()
 
@@ -82,9 +88,7 @@ async function main() {
       `Deployed wrapper for Convex Stable crvUSD-USDC pool on ${hre.network.name} (${chainId}): ${crvUsdUSDCPool.address} `
     )
 
-    collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
-      deployer
-    ).deploy(
+    collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(deployer).deploy(
       {
         erc20: crvUsdUSDCPool.address,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -108,8 +112,12 @@ async function main() {
       }
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    const L2ConvexStableCollateralFactory = await hre.ethers.getContractFactory('L2ConvexStableCollateral')
-    crvUsdUSDCPool = <IConvexRewardPool> await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDC)
+    const L2ConvexStableCollateralFactory = await hre.ethers.getContractFactory(
+      'L2ConvexStableCollateral'
+    )
+    crvUsdUSDCPool = <IConvexRewardPool>(
+      await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDC)
+    )
     collateral = <L2ConvexStableCollateral>await L2ConvexStableCollateralFactory.connect(
       deployer
     ).deploy(
@@ -142,7 +150,6 @@ async function main() {
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
 
   console.log(
     `Deployed Convex Stable Collateral for crvUSD-USDC to ${hre.network.name} (${chainId}): ${collateral.address}`

@@ -65,7 +65,11 @@ contract L2ConvexStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192
+        )
     {
         // Assumption: the pool is balanced
         //
@@ -172,7 +176,7 @@ contract L2ConvexStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         IERC20Metadata[] memory rewardTokens = new IERC20Metadata[](count);
         uint256[] memory bals = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
-             RewardType memory _reward = IConvexRewardPool(address(erc20)).rewards(i);
+            RewardType memory _reward = IConvexRewardPool(address(erc20)).rewards(i);
             rewardTokens[i] = IERC20Metadata(_reward.reward_token);
             bals[i] = rewardTokens[i].balanceOf(address(this));
         }

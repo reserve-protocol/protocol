@@ -27,7 +27,7 @@ export const DAI_ORACLE_ERROR = fp('0.0025')
 // USDC
 export const USDC_USD_FEED = networkConfig['1'].chainlinkFeeds.USDC!
 export const USDC_ORACLE_TIMEOUT = bn('86400')
-export const USDC_ORACLE_ERROR =  fp('0.0025')
+export const USDC_ORACLE_ERROR = fp('0.0025')
 
 // USDT
 export const USDT_USD_FEED = networkConfig['1'].chainlinkFeeds.USDT!
@@ -195,12 +195,12 @@ export const ARB_crvUSD_USDT_HOLDER = '0x171c53d55b1bcb725f660677d9e8bad7fd08428
 // Arbitrum USDC
 export const ARB_USDC_USD_FEED = networkConfig['42161'].chainlinkFeeds.USDC!
 export const ARB_USDC_ORACLE_TIMEOUT = bn('86400')
-export const ARB_USDC_ORACLE_ERROR =  fp('0.001')
+export const ARB_USDC_ORACLE_ERROR = fp('0.001')
 
 // Arbitrum USDT
 export const ARB_USDT_USD_FEED = networkConfig['42161'].chainlinkFeeds.USDT!
 export const ARB_USDT_ORACLE_TIMEOUT = bn('86400')
-export const ARB_USDT_ORACLE_ERROR =  fp('0.001')
+export const ARB_USDT_ORACLE_ERROR = fp('0.001')
 
 // Arbitrum crvUSD
 export const ARB_crvUSD_USD_FEED = networkConfig['42161'].chainlinkFeeds.crvUSD!
@@ -220,4 +220,3 @@ export enum CurvePoolType {
   Plain,
   Lending,
 }
-

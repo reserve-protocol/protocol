@@ -4,7 +4,7 @@ import {
   CurveCollateralFixtureContext,
   CurveCollateralOpts,
   MintCurveCollateralFunc,
-  CurveBase
+  CurveBase,
 } from '../pluginTestTypes'
 
 import { mintL2Pool } from './helpers'
@@ -16,7 +16,7 @@ import {
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
-  IConvexRewardPool
+  IConvexRewardPool,
 } from '../../../../../typechain'
 import { expectEvents } from '#/common/events'
 import { bn } from '../../../../../common/numbers'
@@ -45,11 +45,7 @@ import {
   crvUSD,
   FORK_BLOCK_ARBITRUM,
 } from '../constants'
-import {
-  advanceBlocks,
-  advanceToTimestamp,
-  getLatestBlockTimestamp,
-} from '#/test/utils/time'
+import { advanceBlocks, advanceToTimestamp, getLatestBlockTimestamp } from '#/test/utils/time'
 import { getResetFork } from '../../helpers'
 
 type Fixture<T> = () => Promise<T>
@@ -146,7 +142,9 @@ const makeCollateralFixtureContext = (
 
     // Use mock curvePool seeded with initial balances
     const CurvePoolMockFactory = await ethers.getContractFactory('CurvePoolMock')
-    const realCurvePool = <CurvePoolMock>await ethers.getContractAt('CurvePoolMock', ARB_crvUSD_USDT)
+    const realCurvePool = <CurvePoolMock>(
+      await ethers.getContractAt('CurvePoolMock', ARB_crvUSD_USDT)
+    )
     const curvePool = <CurvePoolMock>(
       await CurvePoolMockFactory.deploy(
         [await realCurvePool.balances(0), await realCurvePool.balances(1)],
@@ -155,7 +153,9 @@ const makeCollateralFixtureContext = (
     )
     await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-    const crvUsdUSDTPool = <IConvexRewardPool> await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDT)
+    const crvUsdUSDTPool = <IConvexRewardPool>(
+      await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDT)
+    )
 
     collateralOpts.erc20 = crvUsdUSDTPool.address
     collateralOpts.curvePool = curvePool.address
@@ -211,8 +211,15 @@ const collateralSpecificStatusTests = () => {
     const amt = bn('20000').mul(bn(10).pow(await collateral.erc20Decimals()))
 
     // Transfer some tokens to the collateral plugin
-    const crvUsdUSDTPool = <IConvexRewardPool> await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDT)
-    await mintL2Pool({ wrapper: crvUsdUSDTPool } as CurveBase, amt, collateral.address, ARB_crvUSD_USDT_HOLDER)
+    const crvUsdUSDTPool = <IConvexRewardPool>(
+      await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDT)
+    )
+    await mintL2Pool(
+      { wrapper: crvUsdUSDTPool } as CurveBase,
+      amt,
+      collateral.address,
+      ARB_crvUSD_USDT_HOLDER
+    )
 
     await advanceBlocks(1000)
     await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -244,7 +251,7 @@ const collateralSpecificStatusTests = () => {
         args: [crvUSD, anyValue],
         emitted: true,
       },
-          {
+      {
         contract: collateral,
         name: 'RewardsClaimed',
         args: [ARB, anyValue],
@@ -258,7 +265,6 @@ const collateralSpecificStatusTests = () => {
       expect(after[i]).gt(before[i])
     }
   })
-
 }
 
 /*
@@ -271,7 +277,7 @@ const opts = {
   collateralSpecificStatusTests,
   makeCollateralFixtureContext,
   mintCollateralTo,
-  itClaimsRewards: it.skip,  // in this file
+  itClaimsRewards: it.skip, // in this file
   isMetapool: false,
   resetFork: getResetFork(FORK_BLOCK_ARBITRUM),
   collateralName: 'CurveStableCollateral - Convex L2 (crvUSD/USDT)',

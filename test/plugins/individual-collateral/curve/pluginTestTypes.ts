@@ -5,7 +5,7 @@ import {
   ERC20Mock,
   MockV3Aggregator,
   TestICollateral,
-  IConvexRewardPool
+  IConvexRewardPool,
 } from '../../../../typechain'
 import { CollateralOpts } from '../pluginTestTypes'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
