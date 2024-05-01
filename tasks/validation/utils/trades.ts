@@ -153,7 +153,7 @@ export const runDutchTrade = async (
     throw new Error(`Error settling Dutch Trade`)
   }
 
-  console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
+  console.log(`Settled trade for ${logToken(buyTokenAddress)} in amount ${buyAmount}.`)
 
   // Return new trade (if exists)
   return [tradesRemain, newSellToken]

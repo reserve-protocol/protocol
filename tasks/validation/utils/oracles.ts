@@ -69,7 +69,7 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
     )
     if (feed.address != ONE_ADDRESS) await updateAnswer(feed)
   } catch {
-    console.error('❌ chainlinkFeed not found for:', asset, 'skipping...')
+    // console.error('❌ chainlinkFeed not found for:', asset, 'skipping...')
   }
 
   // targetUnitChainlinkFeed
@@ -81,7 +81,7 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
     )
     await updateAnswer(feed)
   } catch {
-    console.error('❌ targetUnitChainlinkFeed not found for:', asset, 'skipping...')
+    // console.error('❌ targetUnitChainlinkFeed not found for:', asset, 'skipping...')
   }
 
   // targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, refPerTokenChainlinkFeed
@@ -103,7 +103,7 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
     )
     await updateAnswer(feed)
   } catch {
-    console.error('❌ targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, or refPerTokenChainlinkFeed not found for:', asset, 'skipping...')
+    // console.error('❌ targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, or refPerTokenChainlinkFeed not found for:', asset, 'skipping...')
   }
 
   // targetPerTokChainlinkFeed
@@ -115,7 +115,7 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
     )
     await updateAnswer(feed)
   } catch {
-    console.error('❌ targetPerTokChainlinkFeed not found for:', asset, 'skipping...')
+    // console.error('❌ targetPerTokChainlinkFeed not found for:', asset, 'skipping...')
   }
 
   // TODO do better

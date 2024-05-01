@@ -103,7 +103,7 @@ task('propose', 'propose a gov action')
       throw new Error(`Proposed Proposal ID does not match expected ID: ${params.pid}`)
     }
 
-    await moveProposalToActive(hre, proposalData.governor, proposal.proposalId)
+    await moveProposalToActive(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
     await voteProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
     await passProposal(hre, proposalData.governor, proposal.proposalId)
     await executeProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId, proposal)
