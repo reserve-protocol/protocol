@@ -70,6 +70,11 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       governor: proposalData.governor,
     })
 
+    await hre.run('run-validations', {
+      rtoken: proposalData.rtoken,
+      governor: proposalData.governor,
+    })
+
     const rToken = await hre.ethers.getContractAt('IRToken', proposalData.rtoken)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const assetRegistry = await hre.ethers.getContractAt(
@@ -142,10 +147,30 @@ task('recollateralize')
       throw e
     })
     if (!(await basketHandler.fullyCollateralized())) throw new Error('Failed to recollateralize')
+  })
 
+task('run-validations', 'Runs all validations')
+  .addParam('rtoken', 'the address of the RToken being upgraded')
+  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
+  .setAction(async (params, hre) => {
+    const [tester] = await hre.ethers.getSigners()
+    const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
+
+    // 2. Bring back to fully collateralized
+    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    const basketHandler = await hre.ethers.getContractAt(
+      'BasketHandlerP1',
+      await main.basketHandler()
+    )
+    const backingManager = await hre.ethers.getContractAt(
+      'BackingManagerP1',
+      await main.backingManager()
+    )
+    const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
     const chainId = await getChainId(hre)
     const whales: Whales = getWhalesFile(chainId).tokens
+
     /*
       redeem
     */
