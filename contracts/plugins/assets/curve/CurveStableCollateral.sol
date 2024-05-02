@@ -30,7 +30,6 @@ IERC20 constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
  * @notice Curve pools with native ETH or ERC777 should be avoided,
  *  see docs/collateral.md for information
  */
-
 contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
