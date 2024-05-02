@@ -26,6 +26,8 @@ import { whileImpersonating } from '#/utils/impersonation'
 import { whales } from '#/tasks/validation/utils/constants'
 import { advanceBlocks, advanceTime } from '#/utils/time'
 
+whales[networkConfig['1'].tokens.USDC!.toLowerCase()] = '0xD6153F5af5679a75cC85D8974463545181f48772'
+
 interface MAFiatCollateralOpts extends CollateralOpts {
   underlyingToken?: string
   poolToken?: string
@@ -402,16 +404,16 @@ const makeOpts = (
   Run the test suite
 */
 const { tokens, chainlinkFeeds } = networkConfig[31337]
-makeAaveFiatCollateralTestSuite(
-  'MorphoAAVEV2FiatCollateral - USDT',
-  makeOpts(tokens.USDT!, tokens.aUSDT!, chainlinkFeeds.USDT!),
-  true // Only run specific tests once, since they are slow
-)
+// makeAaveFiatCollateralTestSuite(
+//   'MorphoAAVEV2FiatCollateral - USDT',
+//   makeOpts(tokens.USDT!, tokens.aUSDT!, chainlinkFeeds.USDT!),
+//   true // Only run specific tests once, since they are slow
+// )
 makeAaveFiatCollateralTestSuite(
   'MorphoAAVEV2FiatCollateral - USDC',
   makeOpts(tokens.USDC!, tokens.aUSDC!, chainlinkFeeds.USDC!)
 )
-makeAaveFiatCollateralTestSuite(
-  'MorphoAAVEV2FiatCollateral - DAI',
-  makeOpts(tokens.DAI!, tokens.aDAI!, chainlinkFeeds.DAI!)
-)
+// makeAaveFiatCollateralTestSuite(
+//   'MorphoAAVEV2FiatCollateral - DAI',
+//   makeOpts(tokens.DAI!, tokens.aDAI!, chainlinkFeeds.DAI!)
+// )

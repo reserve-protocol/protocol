@@ -1,5 +1,6 @@
 import { CollateralFixtureContext, MintCollateralFunc } from '../pluginTestTypes'
 import hre from 'hardhat'
+import { networkConfig } from '#/common/configuration'
 import { BigNumberish, constants } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { whileImpersonating } from '#/utils/impersonation'
@@ -35,7 +36,9 @@ export const mintCollateralTo: MintCollateralFunc<MorphoAaveCollateralFixtureCon
 ) => {
   const chainId = await getChainId(hre)
   const whales: Whales = getWhalesFile(chainId).tokens
-  
+  whales[networkConfig['1'].tokens.USDC!.toLowerCase()] =
+    '0xD6153F5af5679a75cC85D8974463545181f48772'
+
   await whileImpersonating(
     hre,
     whales[ctx.underlyingErc20.address.toLowerCase()],
