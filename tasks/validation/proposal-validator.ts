@@ -5,7 +5,7 @@ import { whileImpersonating } from '#/utils/impersonation'
 import { useEnv } from '#/utils/env'
 import { expect } from 'chai'
 import { fp } from '#/common/numbers'
-import { MAX_UINT256, TradeKind, ZERO_BYTES } from '#/common/constants'
+import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
 import { claimRsrRewards } from './utils/rewards'
@@ -31,12 +31,16 @@ import { IMain } from '@typechain/IMain'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 import { proposal_3_4_0_step_1, proposal_3_4_0_step_2 } from './proposals/3_4_0'
 
+// === scratch ====
+
 // Use this once to serialize a proposal
-task('save-proposal', 'Save proposal')
+task('scratch', "Check the implementation to figure out what this does; it's always in flux")
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .addParam('timelock', 'the address of the TimelockController')
   .setAction(async (params, hre) => {
+    console.log('Part 1')
+
     const step1 = await proposal_3_4_0_step_1(hre, params.rtoken, params.governor, params.timelock)
     step1.rtoken = params.rtoken
     step1.governor = params.governor
@@ -48,15 +52,25 @@ task('save-proposal', 'Save proposal')
       await governor.hashProposal(step1.targets, step1.values, step1.calldatas, descHash)
     ).toString()
 
-    console.log(step1)
     fs.writeFileSync(
       `./tasks/validation/proposals/proposal-${step1.proposalId}.json`,
       JSON.stringify(step1, null, 4)
     )
 
+    await hre.run('proposal-validator', {
+      proposalid: step1.proposalId,
+    })
+
+    const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
+    if ((await rToken.version()) != '3.4.0') throw new Error('Failed to upgrade to 3.4.0')
+
+    console.log('Part 2')
+
     // const step2 = await proposal_3_4_0_step_2(hre, params.rtoken, params.governor, params.timelock)
     // console.log(step2)
   })
+
+// === Proposal Validator ====
 
 interface Params {
   proposalid?: string
@@ -65,7 +79,7 @@ interface Params {
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
-    await resetFork(hre, Number(process.env.FORK_BLOCK))
+    // await resetFork(hre, Number(process.env.FORK_BLOCK))
 
     const chainId = await getChainId(hre)
 
@@ -113,12 +127,43 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       'IBasketHandler',
       await main.basketHandler()
     )
+    const backingManager = await hre.ethers.getContractAt(
+      'IBackingManager',
+      await main.backingManager()
+    )
+    const broker = await hre.ethers.getContractAt('IBroker', await main.broker())
+    const distributor = await hre.ethers.getContractAt('IDistributor', await main.distributor())
+    const furnace = await hre.ethers.getContractAt('IFurnace', await main.furnace())
+    const stRSR = await hre.ethers.getContractAt('IStRSR', await main.stRSR())
+    const rsrTrader = await hre.ethers.getContractAt('IRevenueTrader', await main.rsrTrader())
+    const rTokenTrader = await hre.ethers.getContractAt('IRevenueTrader', await main.rTokenTrader())
     await assetRegistry.refresh()
     if (!((await basketHandler.status()) == 0)) throw new Error('Basket is not SOUND')
     if (!(await basketHandler.fullyCollateralized())) {
       throw new Error('Basket is not fully collateralized')
     }
-    console.log('Basket is SOUND and fully collateralized!')
+    console.log('💪 Basket is SOUND and fully collateralized!')
+
+    console.log('Core Contract versions')
+    console.log('  - main:', await main.version())
+    console.log('  - assetRegistry:', await assetRegistry.version())
+    console.log('  - basketHandler:', await basketHandler.version())
+    console.log('  - backingManager:', await backingManager.version())
+    console.log('  - broker:', await broker.version())
+    console.log('  - distributor:', await distributor.version())
+    console.log('  - furnace:', await furnace.version())
+    console.log('  - stRSR:', await stRSR.version())
+    console.log('  - rsrTrader:', await rsrTrader.version())
+    console.log('  - rTokenTrader:', await rTokenTrader.version())
+    console.log('  - rToken:', await rToken.version())
+
+    const [erc20s, assets] = await assetRegistry.getRegistry()
+    console.log('\n', `Asset versions (${assets.length})`)
+    for (let i = 0; i < assets.length; i++) {
+      const erc20 = await hre.ethers.getContractAt('IERC20Metadata', erc20s[i])
+      const asset = await hre.ethers.getContractAt('IVersioned', assets[i])
+      console.log(`  - ${await erc20.symbol()}: ${await asset.version()}`)
+    }
   })
 
 interface ProposeParams {

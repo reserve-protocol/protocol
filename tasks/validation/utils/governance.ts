@@ -173,7 +173,14 @@ export const executeProposal = async (
     console.log('Executing now...')
 
     // Execute
-    await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
+    const tx = await governor.execute(
+      proposal.targets,
+      proposal.values,
+      proposal.calldatas,
+      descriptionHash
+    )
+    const receipt = await tx.wait()
+    console.log('Gas Used:', receipt.gasUsed.toString())
 
     propState = await governor.state(proposalId)
     await validatePropState(propState, ProposalState.Executed)

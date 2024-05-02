@@ -1,0 +1,25 @@
+{
+    "targets": [
+        "0x7697aE4dEf3C3Cd52493Ba3a6F57fc6d8c59108a",
+        "0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c"
+    ],
+    "values": [
+        {
+            "type": "BigNumber",
+            "hex": "0x00"
+        },
+        {
+            "type": "BigNumber",
+            "hex": "0x00"
+        }
+    ],
+    "calldatas": [
+        "0x2f2ff15d4f574e455200000000000000000000000000000000000000000000000000000000000000000000000000000059c7d03d2e9893fb7baa89da50a9452e1e9b8b90",
+        "0x2f2ff15d5f58e3a2316349923ce3780f8d587db2d72378aed66a8261c916544fa6846ca500000000000000000000000059c7d03d2e9893fb7baa89da50a9452e1e9b8b90"
+    ],
+    "description": "3.4.0 Upgrade (1/2) - Core Contracts + Plugins",
+    "rtoken": "0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F",
+    "governor": "0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6",
+    "timelock": "0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c",
+    "proposalId": "17900627719419352630033366909136145438567016127212944428505160895530188055111"
+}
