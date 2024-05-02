@@ -105,9 +105,9 @@ async function main() {
         nTokens: 2,
         curvePool: crvUSD_USDT,
         poolType: CurvePoolType.Plain,
-        feeds: [[USDT_USD_FEED], [crvUSD_USD_FEED]],
-        oracleTimeouts: [[USDT_ORACLE_TIMEOUT], [crvUSD_ORACLE_TIMEOUT]],
-        oracleErrors: [[USDT_ORACLE_ERROR], [crvUSD_ORACLE_ERROR]],
+        feeds: [[crvUSD_USD_FEED], [USDT_USD_FEED]],
+        oracleTimeouts: [[crvUSD_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
+        oracleErrors: [[crvUSD_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
         lpToken: crvUSD_USDT,
       }
     )

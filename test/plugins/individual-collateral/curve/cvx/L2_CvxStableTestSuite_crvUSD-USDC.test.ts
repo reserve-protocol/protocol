@@ -65,9 +65,9 @@ export const defaultCvxStableCollateralOpts: CurveCollateralOpts = {
   curvePool: ARB_crvUSD_USDC,
   lpToken: ARB_crvUSD_USDC,
   poolType: CurvePoolType.Plain,
-  feeds: [[ARB_USDC_USD_FEED], [ARB_crvUSD_USD_FEED]],
-  oracleTimeouts: [[ARB_USDC_ORACLE_TIMEOUT], [ARB_crvUSD_ORACLE_TIMEOUT]],
-  oracleErrors: [[ARB_USDC_ORACLE_ERROR], [ARB_crvUSD_ORACLE_ERROR]],
+  feeds: [[ARB_crvUSD_USD_FEED], [ARB_USDC_USD_FEED]],
+  oracleTimeouts: [[ARB_crvUSD_ORACLE_TIMEOUT], [ARB_USDC_ORACLE_TIMEOUT]],
+  oracleErrors: [[ARB_crvUSD_ORACLE_ERROR], [ARB_USDC_ORACLE_ERROR]],
 }
 
 export const deployCollateral = async (
