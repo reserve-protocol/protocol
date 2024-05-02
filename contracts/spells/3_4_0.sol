@@ -8,6 +8,7 @@ import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ISpell.sol";
 
+// TODO remove console logs. super helpful while working through each RToken though
 import "hardhat/console.sol";
 
 // === RTokens ===

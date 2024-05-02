@@ -53,6 +53,13 @@ const tokens: { [key: string]: string } = {
   ['0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'.toLowerCase()]: 'wcUSDCv3',
   ['0x3BECE5EC596331033726E5C6C188c313Ff4E3fE5'.toLowerCase()]: 'stkcvxeUSDFRAXBP',
   ['0x83f20f44975d03b1b09e64809b757c47f942beea'.toLowerCase()]: 'sDAI',
+  ['0xa8157BF67Fd7BcDCC139CB9Bf1bd7Eb921A779D3'.toLowerCase()]: 'saUSDC',
+  ['0x684AA4faf9b07d5091B88c6e0a8160aCa5e6d17b'.toLowerCase()]: 'saUSDT',
+  ['0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7'.toLowerCase()]: 'saEthPyUSD',
+  ['0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase()]: 'stkcvxeUSDFRAXBP',
+  ['0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()]: 'stkcvxeUSDFRAXBP',
+  ['0x093cb4f405924a0c468b43209d5e466f1dd0ac7d'.toLowerCase()]: 'saEthUSDC',
+  ['0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a'.toLowerCase()]: 'wcUSDCv3',
 }
 
 export const logToken = (tokenAddress: string) => {

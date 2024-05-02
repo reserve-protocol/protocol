@@ -117,11 +117,19 @@ export const runDutchTrade = async (
   if (!whaleAddr) console.log('missing whale for ' + buyTokenAddress)
   whaleAddr = signer.address
 
-  // Bid near 1:1 point, which occurs at the 70% mark
-  const latestTimestamp = await getLatestBlockTimestamp(hre)
-  const toAdvance = ((endTime - latestTimestamp) * 7) / 10
+  // Bid near 1:1 point, which occurs at a difficult-to-calculate time due to maxTradeSlippage
+  const bestPrice = await trade.bestPrice()
+  const worstPrice = await trade.worstPrice()
+  const delta = bestPrice.sub(worstPrice).mul(fp('1')).div(bestPrice)
+  const maxTradeSlippage = (await trader.maxTradeSlippage()).mul(fp('1')).div(delta)
+  const unofficialEnd = 95 - maxTradeSlippage.div(2).div(bn('1e16')).toNumber()
+  const fairMidpoint = (unofficialEnd - 45) / 2 + 45
+  console.log(bestPrice, worstPrice, delta, maxTradeSlippage, fairMidpoint)
+  console.log('bidding at pct:', fairMidpoint)
+
+  const toAdvance = ((endTime - (await getLatestBlockTimestamp(hre))) * fairMidpoint) / 100
   await advanceTime(hre, toAdvance)
-  const buyAmount = await trade.bidAmount(endTime)
+  const buyAmount = await trade.bidAmount(await getLatestBlockTimestamp(hre))
 
   // Ensure funds available
   await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
@@ -328,8 +336,9 @@ const getERC20Tokens = async (
   const aUSDCv3Address = networkConfig[chainId].tokens.saEthUSDC!.toLowerCase()
   const aUSDCv3AddressOld = '0x093cB4f405924a0C468b43209d5E466F1dd0aC7d'.toLowerCase()
   const aPyUSDv3Address = networkConfig[chainId].tokens.saEthPyUSD!.toLowerCase()
-  const aPyUSDv3AddressOld = '0x8d6E0402A3E3aD1b43575b05905F9468447013cF'.toLowerCase()
-  const stkcvxeUSDFRAXBPAddress = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
+  const aPyUSDv3AddressOld = '0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7'.toLowerCase()
+  const stkcvxeUSDFRAXBPAddress = '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase()
+  const stkcvxeUSDFRAXBPAddressOld = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
 
   const tokAddress = tokenAddress.toLowerCase()
 
@@ -377,11 +386,8 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
-  } else if (tokAddress == stkcvxeUSDFRAXBPAddress) {
-    const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
-      'ConvexStakingWrapper',
-      stkcvxeUSDFRAXBPAddress
-    )
+  } else if (tokAddress == stkcvxeUSDFRAXBPAddress || tokAddress == stkcvxeUSDFRAXBPAddressOld) {
+    const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt('ConvexStakingWrapper', tokAddress)
 
     const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'.toLowerCase()
 

@@ -106,7 +106,7 @@ export interface ITokens {
   Re7WETH?: string
 }
 
-export type ITokensKeys = Array<keyof ITokens>;
+export type ITokensKeys = Array<keyof ITokens>
 
 export interface IFeeds {
   stETHETH?: string
@@ -218,7 +218,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
-      wcUSDCv3: '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A',
+      wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
