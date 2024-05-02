@@ -5,7 +5,7 @@ import { whileImpersonating } from '#/utils/impersonation'
 import { useEnv } from '#/utils/env'
 import { expect } from 'chai'
 import { fp } from '#/common/numbers'
-import { MAX_UINT256, TradeKind } from '#/common/constants'
+import { MAX_UINT256, TradeKind, ZERO_BYTES } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
 import { claimRsrRewards } from './utils/rewards'
@@ -19,7 +19,6 @@ import {
   voteProposal,
 } from './utils/governance'
 import { advanceTime, getLatestBlockNumber } from '#/utils/time'
-import { test_proposal } from './test-proposal'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { resetFork } from '#/utils/chain'
 import fs from 'fs'
@@ -28,9 +27,41 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BasketHandlerP1 } from '@typechain/BasketHandlerP1'
 import { RTokenP1 } from '@typechain/RTokenP1'
 import { StRSRP1Votes } from '@typechain/StRSRP1Votes'
-import { MainP1 } from '@typechain/MainP1'
 import { IMain } from '@typechain/IMain'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
+import { proposal_3_4_0_step_1, proposal_3_4_0_step_2 } from './proposals/3_4_0'
+
+// Use this once to serialize a proposal
+task('save-proposal', 'Save proposal')
+  .addParam('rtoken', 'the address of the RToken being upgraded')
+  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
+  .addParam('timelock', 'the address of the TimelockController')
+  .setAction(async (params, hre) => {
+    const step1 = await proposal_3_4_0_step_1(hre, params.rtoken, params.governor, params.timelock)
+    step1.rtoken = params.rtoken
+    step1.governor = params.governor
+    step1.timelock = params.timelock
+
+    const timelock = await hre.ethers.getContractAt('TimelockController', params.timelock)
+    step1.proposalId = BigNumber.from(
+      await timelock.hashOperationBatch(
+        step1.targets,
+        step1.values,
+        step1.calldatas,
+        ZERO_BYTES,
+        ZERO_BYTES
+      )
+    ).toString()
+
+    console.log(step1)
+    fs.writeFileSync(
+      `./tasks/validation/proposals/proposal-${step1.proposalId}.json`,
+      JSON.stringify(step1)
+    )
+
+    // const step2 = await proposal_3_4_0_step_2(hre, params.rtoken, params.governor, params.timelock)
+    // console.log(step2)
+  })
 
 interface Params {
   proposalid?: string
@@ -64,7 +95,9 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       pid: params.proposalid,
     })
 
-    const proposalData = JSON.parse(fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8'))
+    const proposalData = JSON.parse(
+      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
+    )
     await hre.run('recollateralize', {
       rtoken: proposalData.rtoken,
       governor: proposalData.governor,
@@ -100,9 +133,16 @@ interface ProposeParams {
 task('propose', 'propose a gov action')
   .addParam('pid', 'the ID of the governance proposal')
   .setAction(async (params: ProposeParams, hre) => {
-    const proposalData = JSON.parse(fs.readFileSync(`./tasks/validation/proposals/proposal-${params.pid}.json`, 'utf-8'))
+    const proposalData = JSON.parse(
+      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.pid}.json`, 'utf-8')
+    )
 
-    const proposal = await proposeUpgrade(hre, proposalData.rtoken, proposalData.governor, proposalData)
+    const proposal = await proposeUpgrade(
+      hre,
+      proposalData.rtoken,
+      proposalData.governor,
+      proposalData
+    )
 
     if (proposal.proposalId != params.pid) {
       throw new Error(`Proposed Proposal ID does not match expected ID: ${params.pid}`)
@@ -111,14 +151,19 @@ task('propose', 'propose a gov action')
     await moveProposalToActive(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
     await voteProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId)
     await passProposal(hre, proposalData.governor, proposal.proposalId)
-    await executeProposal(hre, proposalData.rtoken, proposalData.governor, proposal.proposalId, proposal)
+    await executeProposal(
+      hre,
+      proposalData.rtoken,
+      proposalData.governor,
+      proposal.proposalId,
+      proposal
+    )
   })
 
 task('recollateralize')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params, hre) => {
-    const [tester] = await hre.ethers.getSigners()
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
 
     // 2. Bring back to fully collateralized
@@ -131,8 +176,6 @@ task('recollateralize')
       'BackingManagerP1',
       await main.backingManager()
     )
-    // const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
-    const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
     /*
       recollateralize
@@ -161,10 +204,6 @@ task('run-validations', 'Runs all validations')
     const basketHandler = await hre.ethers.getContractAt(
       'BasketHandlerP1',
       await main.basketHandler()
-    )
-    const backingManager = await hre.ethers.getContractAt(
-      'BackingManagerP1',
-      await main.backingManager()
     )
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
@@ -210,7 +249,7 @@ const runCheck_stakeUnstake = async (
 ) => {
   const chainId = await getChainId(hre)
   const whales = getWhalesFile(chainId).tokens
-  
+
   // get RSR
   const stakeAmount = fp('4e6')
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())

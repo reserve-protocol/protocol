@@ -29,6 +29,9 @@ export const getDelegates = async (governance: string): Promise<Array<Delegate>>
 }
 
 export interface Proposal {
+  rtoken?: string
+  governor?: string
+  timelock?: string
   targets: Array<string>
   values: Array<BigNumber>
   calldatas: Array<string>
