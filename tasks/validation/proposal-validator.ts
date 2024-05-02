@@ -275,7 +275,7 @@ const runCheck_mint = async (
 
 import { proposal_3_4_0_step_1 } from './proposals/3_4_0'
 
-task('340')
+task('print-proposal')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('gov', 'the address of the OWNER of the RToken being upgraded')
   .addParam('time', 'the address of the timelock')
