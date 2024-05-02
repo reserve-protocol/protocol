@@ -209,11 +209,11 @@ contract Upgrade3_4_0 is ISpell {
             IERC20[] memory erc20s = comps.assetRegistry.erc20s();
             for (uint256 i = 0; i < erc20s.length; i++) {
                 if (address(erc20s[i]) == address(rToken)) continue;
-                if (assets[erc20s[i]] == IAsset(address(0))) continue;
+                // if (assets[erc20s[i]] == IAsset(address(0))) continue;
 
                 // TODO
                 // return to this, some RTokens will fail this and we can instead pass silently
-                // require(assets[erc20s[i]] != IAsset(address(0)), "missing asset");
+                require(assets[erc20s[i]] != IAsset(address(0)), "missing asset");
                 comps.assetRegistry.swapRegistered(assets[erc20s[i]]);
             }
 

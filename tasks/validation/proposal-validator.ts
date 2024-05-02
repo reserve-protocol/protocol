@@ -42,21 +42,16 @@ task('save-proposal', 'Save proposal')
     step1.governor = params.governor
     step1.timelock = params.timelock
 
-    const timelock = await hre.ethers.getContractAt('TimelockController', params.timelock)
+    const governor = await hre.ethers.getContractAt('Governance', params.governor)
+    const descHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(step1.description))
     step1.proposalId = BigNumber.from(
-      await timelock.hashOperationBatch(
-        step1.targets,
-        step1.values,
-        step1.calldatas,
-        ZERO_BYTES,
-        ZERO_BYTES
-      )
+      await governor.hashProposal(step1.targets, step1.values, step1.calldatas, descHash)
     ).toString()
 
     console.log(step1)
     fs.writeFileSync(
       `./tasks/validation/proposals/proposal-${step1.proposalId}.json`,
-      JSON.stringify(step1)
+      JSON.stringify(step1, null, 4)
     )
 
     // const step2 = await proposal_3_4_0_step_2(hre, params.rtoken, params.governor, params.timelock)
