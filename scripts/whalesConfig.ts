@@ -37,7 +37,7 @@ export const RTOKENS: RTokens = {
     '0x78da5799CF427Fee11e9996982F4150eCe7a99A7'.toLowerCase(), // rgUSD
   ],
   // base
-  '8543': [
+  '8453': [
     '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4'.toLowerCase(), // eUSD
     '0xEFb97aaF77993922aC4be4Da8Fbc9A2425322677'.toLowerCase(), // USDC3
     '0x8E5E9DF4F0EA39aE5270e79bbABFCc34203A3470'.toLowerCase(), // rgUSD
