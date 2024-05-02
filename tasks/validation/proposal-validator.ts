@@ -306,3 +306,45 @@ const runCheck_mint = async (
 
   console.log('Successfully minted RTokens')
 }
+
+import { proposal_3_4_0_step_1 } from './proposals/3_4_0'
+
+task('print-proposal')
+  .addParam('rtoken', 'the address of the RToken being upgraded')
+  .addParam('gov', 'the address of the OWNER of the RToken being upgraded')
+  .addParam('time', 'the address of the timelock')
+  .setAction(async (params, hre) => {
+    const proposal = await proposal_3_4_0_step_1(hre, params.rtoken, params.gov, params.time)
+
+    console.log(`\nGenerating and proposing proposal...`)
+    const [tester] = await hre.ethers.getSigners()
+  
+    await hre.run('give-rsr', { address: tester.address })
+    await stakeAndDelegateRsr(hre, params.rtoken, tester.address)
+  
+    const governor = await hre.ethers.getContractAt('Governance', params.gov)
+  
+    const call = await governor.populateTransaction.propose(
+      proposal.targets,
+      proposal.values,
+      proposal.calldatas,
+      proposal.description
+    )
+  
+    console.log(`Proposal Transaction:\n`, call.data)
+  
+    const r = await governor.propose(
+      proposal.targets,
+      proposal.values,
+      proposal.calldatas,
+      proposal.description
+    )
+    const resp = await r.wait()
+  
+    console.log('\nSuccessfully proposed!')
+    console.log(`Proposal ID: ${resp.events![0].args!.proposalId}`)
+  
+    proposal.proposalId = resp.events![0].args!.proposalId.toString()
+
+    fs.writeFileSync(`./tasks/validation/proposals/proposal-${proposal.proposalId}.json`, JSON.stringify(proposal, null, 2))
+  })

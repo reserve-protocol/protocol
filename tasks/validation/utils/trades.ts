@@ -96,6 +96,8 @@ export const runDutchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
 
   let tradesRemain = false
   let newSellToken = ''
@@ -118,11 +120,9 @@ export const runDutchTrade = async (
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
 
   // Bid near 1:1 point, which occurs at the 70% mark
-  const toAdvance = endBlock
-    .sub(await getLatestBlockNumber(hre))
-    .mul(7)
-    .div(10)
-  await advanceBlocks(hre, toAdvance)
+  const latestTimestamp = await getLatestBlockTimestamp(hre)
+  const toAdvance = (endTime - latestTimestamp) * 7 / 10
+  await advanceTime(hre, toAdvance)
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
@@ -208,18 +208,53 @@ export const getTokens = async (
 ) => {
   console.log('Acquiring tokens...', tokenAddress)
   switch (tokenAddress.toLowerCase()) {
-    case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase(): // saUSDC
-    case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase(): // saUSDT
+    case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase(): // saUSDC mainnet
+    case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase(): // saUSDT mainnet
+    case '0xC19f5d60e2Aca1174f3D5Fe189f0A69afaB76f50'.toLowerCase(): // saBasUSDC base
       await getStaticAToken(hre, tokenAddress, amount, recipient)
       break
-    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase(): // cUSDCVault
-    case '0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase(): // cUSDTVault
+    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase(): // cUSDCVault mainnet
+    case '0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase(): // cUSDTVault mainnet
       await getCTokenVault(hre, tokenAddress, amount, recipient)
       break
+    case '0x24CDc6b4Edd3E496b7283D94D93119983A61056a'.toLowerCase(): // cvx3Pool mainnet
+    case '0x511daB8150966aFfE15F0a5bFfBa7F4d2b62DEd4'.toLowerCase(): // cvxPayPool mainnet
+    case '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase(): // cvxeUSDFRAXBP mainnet
+    case '0x3e8f7EDc03E0133b95EcB4dD2f72B5027E695413'.toLowerCase(): // cvxMIM3Pool mainnet
+    case '0xDbC0cE2321B76D3956412B36e9c0FA9B0fD176E7'.toLowerCase(): // cvxETHPlusETH mainnet
+    case '0x6ad24C0B8fD4B594C6009A7F7F48450d9F56c6b8'.toLowerCase(): // cvxCrvUSDUSDC mainnet
+    case '0x5d1B749bA7f689ef9f260EDC54326C48919cA88b'.toLowerCase(): // cvxCrvUSDUSDT mainnet
+      await getCvxVault(hre, tokenAddress, amount, recipient)
     default:
       await getERC20Tokens(hre, tokenAddress, amount, recipient)
       return
   }
+}
+
+const getCvxVault = async (
+  hre: HardhatRuntimeEnvironment,
+  tokenAddress: string,
+  amount: BigNumber,
+  recipient: string
+) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
+  const cvxWrapper = await hre.ethers.getContractAt('ConvexStakingWrapper', tokenAddress)
+  const curveTokenAddy = await cvxWrapper.curveToken()
+  const curvePool = await hre.ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+    curveTokenAddy
+  )
+  
+  await whileImpersonating(hre, whales[curveTokenAddy.toLowerCase()], async (whaleSigner) => {
+    await curvePool.connect(whaleSigner).transfer(recipient, amount)
+  })
+
+  await whileImpersonating(hre, recipient, async (recipientSigner) => {
+    await curvePool.connect(recipientSigner).approve(cvxWrapper.address, amount)
+    await cvxWrapper.connect(recipientSigner).deposit(amount, recipient)
+  })
 }
 
 // get a specific amount of wrapped cTokens
@@ -287,8 +322,8 @@ const getERC20Tokens = async (
 
   // special-cases for wrappers with 0 supply
   const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
-  const aUSDCv3Address = networkConfig['1'].tokens.saEthUSDC!.toLowerCase()
-  const aPyUSDv3Address = networkConfig['1'].tokens.saEthPyUSD!.toLowerCase()
+  const aUSDCv3Address = networkConfig[chainId].tokens.saEthUSDC!.toLowerCase()
+  const aPyUSDv3Address = networkConfig[chainId].tokens.saEthPyUSD!.toLowerCase()
   const stkcvxeUSDFRAXBPAddress = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
 
   if (tokenAddress.toLowerCase() == wcUSDCv3Address) {
