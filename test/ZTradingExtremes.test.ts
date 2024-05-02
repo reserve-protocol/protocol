@@ -649,7 +649,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await basketHandler.connect(owner).setBackupConfig(
         ethers.utils.formatBytes32String('USD'),
         bkpSize,
-        primeBasket.slice(0, bkpSize).map((c) => c.address)
+        primeBasket.slice(-1 * bkpSize).map((c) => c.address)
       )
 
       await basketHandler.connect(owner).refreshBasket()
@@ -692,7 +692,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         [2, MAX_BASKET_SIZE], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
         [8, 18], // collateral decimals
-        [1, 99], // how many collateral assets default (up to)
+        [1, MAX_BASKET_SIZE - 1], // how many collateral assets default (up to)
       ]
     } else {
       dimensions = [
