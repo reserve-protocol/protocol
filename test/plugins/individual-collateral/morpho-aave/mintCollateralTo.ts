@@ -35,7 +35,6 @@ export const mintCollateralTo: MintCollateralFunc<MorphoAaveCollateralFixtureCon
 ) => {
   const chainId = await getChainId(hre)
   const whales: Whales = getWhalesFile(chainId).tokens
-  
   await whileImpersonating(
     hre,
     whales[ctx.underlyingErc20.address.toLowerCase()],
