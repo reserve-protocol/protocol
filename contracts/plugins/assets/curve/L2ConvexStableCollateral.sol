@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "./CurveStableCollateral.sol";
 
 struct RewardType {
+    // solhint-disable-next-line var-name-mixedcase
     address reward_token;
     uint128 reward_integral;
     uint128 reward_remaining;
