@@ -68,7 +68,9 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
       await assetContract.chainlinkFeed()
     )
     if (feed.address != ONE_ADDRESS) await updateAnswer(feed)
-  } catch {}
+  } catch {
+    // console.error('❌ chainlinkFeed not found for:', asset, 'skipping...')
+  }
 
   // targetUnitChainlinkFeed
   try {
@@ -78,7 +80,9 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
       await assetContractNonFiat.targetUnitChainlinkFeed()
     )
     await updateAnswer(feed)
-  } catch {}
+  } catch {
+    // console.error('❌ targetUnitChainlinkFeed not found for:', asset, 'skipping...')
+  }
 
   // targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, refPerTokenChainlinkFeed
   try {
@@ -98,7 +102,9 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
       await assetContractLido.refPerTokenChainlinkFeed()
     )
     await updateAnswer(feed)
-  } catch {}
+  } catch {
+    // console.error('❌ targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, or refPerTokenChainlinkFeed not found for:', asset, 'skipping...')
+  }
 
   // targetPerTokChainlinkFeed
   try {
@@ -108,7 +114,9 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
       await assetContractReth.targetPerTokChainlinkFeed()
     )
     await updateAnswer(feed)
-  } catch {}
+  } catch {
+    // console.error('❌ targetPerTokChainlinkFeed not found for:', asset, 'skipping...')
+  }
 
   // TODO do better
   // Problem: The feeds on PoolTokens are internal immutable. Not in storage nor are there getters.

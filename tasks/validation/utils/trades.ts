@@ -14,8 +14,9 @@ import { TestITrading } from '@typechain/TestITrading'
 import { BigNumber, ContractTransaction } from 'ethers'
 import { LogDescription } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { whales } from './constants'
 import { logToken } from './logs'
+import { getChainId } from '#/common/blockchain-utils'
+import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 
 export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -26,6 +27,8 @@ export const runBatchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // placeSellOrders() flips it to be from the perspective of the trader
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
 
   const tradeAddr = await trader.trades(tradeToken)
   const trade = <GnosisTrade>await hre.ethers.getContractAt('GnosisTrade', tradeAddr)
@@ -35,7 +38,7 @@ export const runBatchTrade = async (
     throw new Error(`Invalid Trade Type`)
   }
 
-  const buyTokenAddress = await trade.buy()
+  const buyTokenAddress = (await trade.buy()).toLowerCase()
   console.log(
     `Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
   )
@@ -93,6 +96,8 @@ export const runDutchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
 
   let tradesRemain = false
   let newSellToken = ''
@@ -115,11 +120,9 @@ export const runDutchTrade = async (
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
 
   // Bid near 1:1 point, which occurs at the 70% mark
-  const toAdvance = endBlock
-    .sub(await getLatestBlockNumber(hre))
-    .mul(7)
-    .div(10)
-  await advanceBlocks(hre, toAdvance)
+  const latestTimestamp = await getLatestBlockTimestamp(hre)
+  const toAdvance = (endTime - latestTimestamp) * 7 / 10
+  await advanceTime(hre, toAdvance)
   const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
 
   // Ensure funds available
@@ -150,7 +153,7 @@ export const runDutchTrade = async (
     throw new Error(`Error settling Dutch Trade`)
   }
 
-  console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
+  console.log(`Settled trade for ${logToken(buyTokenAddress)} in amount ${buyAmount}.`)
 
   // Return new trade (if exists)
   return [tradesRemain, newSellToken]
@@ -204,19 +207,54 @@ export const getTokens = async (
   recipient: string
 ) => {
   console.log('Acquiring tokens...', tokenAddress)
-  switch (tokenAddress) {
-    case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15': // saUSDC
-    case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9': // saUSDT
+  switch (tokenAddress.toLowerCase()) {
+    case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase(): // saUSDC mainnet
+    case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase(): // saUSDT mainnet
+    case '0xC19f5d60e2Aca1174f3D5Fe189f0A69afaB76f50'.toLowerCase(): // saBasUSDC base
       await getStaticAToken(hre, tokenAddress, amount, recipient)
       break
-    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022': // cUSDCVault
-    case '0x4Be33630F92661afD646081BC29079A38b879aA0': // cUSDTVault
+    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase(): // cUSDCVault mainnet
+    case '0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase(): // cUSDTVault mainnet
       await getCTokenVault(hre, tokenAddress, amount, recipient)
       break
+    case '0x24CDc6b4Edd3E496b7283D94D93119983A61056a'.toLowerCase(): // cvx3Pool mainnet
+    case '0x511daB8150966aFfE15F0a5bFfBa7F4d2b62DEd4'.toLowerCase(): // cvxPayPool mainnet
+    case '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase(): // cvxeUSDFRAXBP mainnet
+    case '0x3e8f7EDc03E0133b95EcB4dD2f72B5027E695413'.toLowerCase(): // cvxMIM3Pool mainnet
+    case '0xDbC0cE2321B76D3956412B36e9c0FA9B0fD176E7'.toLowerCase(): // cvxETHPlusETH mainnet
+    case '0x6ad24C0B8fD4B594C6009A7F7F48450d9F56c6b8'.toLowerCase(): // cvxCrvUSDUSDC mainnet
+    case '0x5d1B749bA7f689ef9f260EDC54326C48919cA88b'.toLowerCase(): // cvxCrvUSDUSDT mainnet
+      await getCvxVault(hre, tokenAddress, amount, recipient)
     default:
       await getERC20Tokens(hre, tokenAddress, amount, recipient)
       return
   }
+}
+
+const getCvxVault = async (
+  hre: HardhatRuntimeEnvironment,
+  tokenAddress: string,
+  amount: BigNumber,
+  recipient: string
+) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
+  const cvxWrapper = await hre.ethers.getContractAt('ConvexStakingWrapper', tokenAddress)
+  const curveTokenAddy = await cvxWrapper.curveToken()
+  const curvePool = await hre.ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+    curveTokenAddy
+  )
+  
+  await whileImpersonating(hre, whales[curveTokenAddy.toLowerCase()], async (whaleSigner) => {
+    await curvePool.connect(whaleSigner).transfer(recipient, amount)
+  })
+
+  await whileImpersonating(hre, recipient, async (recipientSigner) => {
+    await curvePool.connect(recipientSigner).approve(cvxWrapper.address, amount)
+    await cvxWrapper.connect(recipientSigner).deposit(amount, recipient)
+  })
 }
 
 // get a specific amount of wrapped cTokens
@@ -226,6 +264,9 @@ const getCTokenVault = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
   const collateral = await hre.ethers.getContractAt('CTokenWrapper', tokenAddress)
   const cToken = await hre.ethers.getContractAt('ICToken', await collateral.underlying())
 
@@ -246,6 +287,9 @@ const getStaticAToken = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
   const collateral = await hre.ethers.getContractAt('StaticATokenLM', tokenAddress)
   const aTokensNeeded = await collateral.staticToDynamicAmount(amount)
   const aToken = await hre.ethers.getContractAt(
@@ -271,27 +315,22 @@ const getERC20Tokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
 
   // special-cases for wrappers with 0 supply
-  const wcUSDCv3 = await hre.ethers.getContractAt(
-    'CusdcV3Wrapper',
-    '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'
-  )
-  const saEthUSDC = await hre.ethers.getContractAt(
-    'IStaticATokenV3LM',
-    networkConfig['1'].tokens.saEthUSDC!
-  )
-  const saEthPyUSD = await hre.ethers.getContractAt(
-    'IStaticATokenV3LM',
-    networkConfig['1'].tokens.saEthPyUSD!
-  )
-  const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
-    'ConvexStakingWrapper',
-    '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'
-  )
+  const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
+  const aUSDCv3Address = networkConfig[chainId].tokens.saEthUSDC!.toLowerCase()
+  const aPyUSDv3Address = networkConfig[chainId].tokens.saEthPyUSD!.toLowerCase()
+  const stkcvxeUSDFRAXBPAddress = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
 
-  if (tokenAddress == wcUSDCv3.address) {
+  if (tokenAddress.toLowerCase() == wcUSDCv3Address) {
+    const wcUSDCv3 = await hre.ethers.getContractAt(
+      'CusdcV3Wrapper',
+      wcUSDCv3Address
+    )
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
@@ -307,7 +346,11 @@ const getERC20Tokens = async (
         await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
       }
     )
-  } else if (tokenAddress == saEthUSDC.address) {
+  } else if (tokenAddress.toLowerCase() == aUSDCv3Address) {
+    const saEthUSDC = await hre.ethers.getContractAt(
+      'IStaticATokenV3LM',
+      aUSDCv3Address
+    )
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
@@ -318,7 +361,11 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
       }
     )
-  } else if (tokenAddress == saEthPyUSD.address) {
+  } else if (tokenAddress.toLowerCase() == aPyUSDv3Address) {
+    const saEthPyUSD = await hre.ethers.getContractAt(
+      'IStaticATokenV3LM',
+      aPyUSDv3Address
+    )
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.pyUSD!.toLowerCase()],
@@ -329,8 +376,13 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
-  } else if (tokenAddress == stkcvxeUSDFRAXBP.address) {
-    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'
+  } else if (tokenAddress.toLowerCase() == stkcvxeUSDFRAXBPAddress) {
+    const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt(
+      'ConvexStakingWrapper',
+      stkcvxeUSDFRAXBPAddress
+    )
+  
+    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'.toLowerCase()
 
     await whileImpersonating(hre, whales[lpTokenAddr], async (whaleSigner) => {
       const lpToken = await hre.ethers.getContractAt('ERC20Mock', lpTokenAddr)
