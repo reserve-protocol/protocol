@@ -228,6 +228,10 @@ contract Upgrade3_4_0 is ISpell {
             );
         }
 
+        console.log("eliminate trading delay");
+        // Set trading delay to 0
+        TestIBackingManager(address(proxies.backingManager)).setTradingDelay(0);
+
         console.log("=============================================");
         console.log("swapping assets");
         // Assets
