@@ -24,6 +24,9 @@ import {
   crvUSD_ORACLE_TIMEOUT,
   crvUSD_USD_FEED,
   ARB_crvUSD_USDT,
+  ARB_crvUSD_ORACLE_ERROR,
+  ARB_crvUSD_ORACLE_TIMEOUT,
+  ARB_crvUSD_USD_FEED,
   ARB_USDT_ORACLE_ERROR,
   ARB_USDT_ORACLE_TIMEOUT,
   ARB_USDT_USD_FEED,
@@ -112,13 +115,13 @@ async function main() {
           nTokens: 2,
           curvePool: ARB_crvUSD_USDT,
           poolType: CurvePoolType.Plain,
-          feeds: [[crvUSD_USD_FEED], [ARB_USDT_USD_FEED]],
-          oracleTimeouts: [[crvUSD_ORACLE_TIMEOUT], [ARB_USDT_ORACLE_TIMEOUT]],
-          oracleErrors: [[crvUSD_ORACLE_ERROR], [ARB_USDT_ORACLE_ERROR]],
+          feeds: [[ARB_crvUSD_USD_FEED], [ARB_USDT_USD_FEED]],
+          oracleTimeouts: [[ARB_crvUSD_ORACLE_TIMEOUT], [ARB_USDT_ORACLE_TIMEOUT]],
+          oracleErrors: [[ARB_crvUSD_ORACLE_ERROR], [ARB_USDT_ORACLE_ERROR]],
           lpToken: ARB_crvUSD_USDT,
         },
       ],
-      'contracts/plugins/assets/curve/CurveStableCollateral.sol:CurveStableCollateral'
+      'contracts/plugins/assets/curve/L2ConvexStableCollateral.sol:L2ConvexStableCollateral'
     )
   }
 }
