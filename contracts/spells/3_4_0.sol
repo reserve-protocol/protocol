@@ -25,6 +25,7 @@ IRToken constant hyUSD_base = IRToken(0xCc7FF230365bD730eE4B352cC2492CEdAC49383e
 IRToken constant bsdETH = IRToken(0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff);
 IRToken constant iUSDC = IRToken(0xfE0D6D83033e313691E96909d2188C150b834285);
 IRToken constant Vaya = IRToken(0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d);
+IRToken constant MAAT = IRToken(0x641B0453487C9D14c5df96d45a481ef1dc84e31f);
 
 // === Anastasius Governors ===
 // Mainnet
@@ -40,6 +41,7 @@ IGovernor constant ANASTASIUS_hyUSD_base = IGovernor(0x5Ef74A083Ac932b5f050bf41c
 IGovernor constant ANASTASIUS_bsdETH = IGovernor(0x8A11D590B32186E1236B5E75F2d8D72c280dc880);
 IGovernor constant ANASTASIUS_iUSDC = IGovernor(0xaeCa35F0cB9d12D68adC4d734D4383593F109654);
 IGovernor constant ANASTASIUS_Vaya = IGovernor(0xC8f487B34251Eb76761168B70Dc10fA38B0Bd90b);
+IGovernor constant ANASTASIUS_MAAT = IGovernor(0x437b525F96A2Da0A4b165efe27c61bea5c8d3CD4);
 
 // === 3.4.0 Implementations ===
 TestIDeployer constant mainDeployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
@@ -154,6 +156,7 @@ contract Upgrade3_4_0 is ISpell {
             if (rToken == bsdETH) anastasius = ANASTASIUS_bsdETH;
             if (rToken == iUSDC) anastasius = ANASTASIUS_iUSDC;
             if (rToken == Vaya) anastasius = ANASTASIUS_Vaya;
+            if (rToken == MAAT) anastasius = ANASTASIUS_MAAT;
         }
         require(address(anastasius) != address(0), "unsupported RToken");
 

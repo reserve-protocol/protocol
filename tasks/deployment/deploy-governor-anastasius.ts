@@ -19,8 +19,8 @@ task(
     if ((await oldGovernor.name()) != 'Governor Alexios') throw new Error('Alexios only')
 
     let blocktime = 1 // arbitrum
-    if (chainId == 1 || chainId == 3 || chainId == 5) blocktime = 12 // mainnet
-    if (chainId == 8453 || chainId == 84531) blocktime = 2 // base
+    if (chainId == '1' || chainId == '3' || chainId == '5') blocktime = 12 // mainnet
+    if (chainId == '8453' || chainId == '84531') blocktime = 2 // base
 
     const votingDelay = await oldGovernor.votingDelay()
     const votingPeriod = await oldGovernor.votingPeriod()
