@@ -256,7 +256,6 @@ const getCvxVault = async (
     '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
     curveTokenAddy
   )
-
   await whileImpersonating(hre, whales[curveTokenAddy.toLowerCase()], async (whaleSigner) => {
     await curvePool.connect(whaleSigner).transfer(recipient, amount)
   })
