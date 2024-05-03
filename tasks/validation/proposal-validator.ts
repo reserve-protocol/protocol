@@ -31,47 +31,6 @@ import { IMain } from '@typechain/IMain'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 import { proposal_3_4_0_step_1, proposal_3_4_0_step_2 } from './proposals/3_4_0'
 
-// === scratch ====
-
-// Use this once to serialize a proposal
-task('scratch', "Check the implementation to figure out what this does; it's always in flux")
-  .addParam('rtoken', 'the address of the RToken being upgraded')
-  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
-  .addParam('timelock', 'the address of the TimelockController')
-  .setAction(async (params, hre) => {
-    console.log('Part 1')
-
-    const step1 = await proposal_3_4_0_step_1(hre, params.rtoken, params.governor, params.timelock)
-    step1.rtoken = params.rtoken
-    step1.governor = params.governor
-    step1.timelock = params.timelock
-
-    const governor = await hre.ethers.getContractAt('Governance', params.governor)
-    const descHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(step1.description))
-    step1.proposalId = BigNumber.from(
-      await governor.hashProposal(step1.targets, step1.values, step1.calldatas, descHash)
-    ).toString()
-
-    fs.writeFileSync(
-      `./tasks/validation/proposals/proposal-${step1.proposalId}.json`,
-      JSON.stringify(step1, null, 4)
-    )
-
-    await hre.run('proposal-validator', {
-      proposalid: step1.proposalId,
-    })
-
-    const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
-    if ((await rToken.version()) != '3.4.0') throw new Error('Failed to upgrade to 3.4.0')
-
-    console.log('Part 2')
-
-    // const step2 = await proposal_3_4_0_step_2(hre, params.rtoken, params.governor, params.timelock)
-    // console.log(step2)
-  })
-
-// === Proposal Validator ====
-
 interface Params {
   proposalid?: string
 }
@@ -356,7 +315,7 @@ task('print-proposal')
   .addParam('gov', 'the address of the OWNER of the RToken being upgraded')
   .addParam('time', 'the address of the timelock')
   .setAction(async (params, hre) => {
-    const proposal = await proposal_3_4_0_step_1(hre, params.rtoken, params.gov, params.time)
+    const proposal = await proposal_3_4_0_step_2(hre, params.rtoken, params.gov, params.time)
 
     console.log(`\nGenerating and proposing proposal...`)
     const [tester] = await hre.ethers.getSigners()

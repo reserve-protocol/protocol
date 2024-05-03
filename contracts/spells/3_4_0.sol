@@ -290,7 +290,7 @@ contract Upgrade3_4_0 is ISpell {
         // Replace Alexios with Anastasius
         timelock.revokeRole(EXECUTOR_ROLE, address(alexios));
         timelock.revokeRole(PROPOSER_ROLE, address(alexios));
-        timelock.revokeRole(CANCELLER_ROLE, address(alexios)); // some aren't set up as canceller; should be fine
+        timelock.revokeRole(CANCELLER_ROLE, address(alexios));
         timelock.grantRole(EXECUTOR_ROLE, address(anastasius));
         timelock.grantRole(PROPOSER_ROLE, address(anastasius));
         timelock.grantRole(CANCELLER_ROLE, address(anastasius));

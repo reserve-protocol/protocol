@@ -13,11 +13,12 @@ const CANCELLER_ROLE = '0xfd643c72710c63c0180259aba6b2d05451e3591a24e58b62239378
 const ONE_WEEK_REWARD_RATIO = '1146076687500'
 // const TWO_WEEK_REWARD_RATIO = '573038343750'
 
-export const proposal_3_4_0_step_1: ProposalBuilder = async (
+export const proposal_3_4_0_step_1 = async (
   hre: HardhatRuntimeEnvironment,
   rTokenAddress: string,
   governorAddress: string,
-  timelockAddress?: string
+  timelockAddress: string,
+  spellAddress: string
 ): Promise<Proposal> => {
   // Confirm old governor is Alexios
   const alexios = await hre.ethers.getContractAt('Governance', governorAddress)
@@ -49,7 +50,7 @@ export const proposal_3_4_0_step_1: ProposalBuilder = async (
     await spell.populateTransaction.cast(rTokenAddress, governorAddress),
   ]
 
-  const description = '3.4.0 Upgrade (1/2) - Core Contracts + Plugins'
+  const description = '3.4.0 Upgrade (1/3) - Core Contracts + Plugins'
 
   return buildProposal(txs, description)
 }
@@ -96,7 +97,21 @@ export const proposal_3_4_0_step_2: ProposalBuilder = async (
     }),
   ]
 
-  const description = '3.4.0 Upgrade (2/2) - Parameters'
+  const description = '3.4.0 Upgrade (2/3) - Parameters'
 
   return buildProposal(txs, description)
 }
+
+// export const proposal_3_4_0_step_3: ProposalBuilder = async (
+//   hre: HardhatRuntimeEnvironment,
+//   rTokenAddress: string,
+//   governorAddress: string,
+//   timelockAddress?: string
+// ): Promise<Proposal> => {
+//   // Assumption: The upgrade spell has been cast and rebalancing has completed
+
+//   // TODO
+//   // Unregister assets
+
+//   return buildProposal(txs, description)
+// }
