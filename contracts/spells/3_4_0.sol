@@ -8,9 +8,6 @@ import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ISpell.sol";
 
-// TODO remove console logs. super helpful while working through each RToken though
-import "hardhat/console.sol";
-
 // === RTokens ===
 // Mainnet
 IRToken constant eUSD = IRToken(0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F);
@@ -92,27 +89,22 @@ contract Upgrade3_4_0 is ISpell {
     bool public mainnet; // !mainnet => base
 
     constructor() {
-        console.log("block.chainid: ", block.chainid);
         mainnet = block.chainid == 1 || block.chainid == 31337;
         require(mainnet || block.chainid == 8453, "unsupported chain");
 
         // Set up `assets` array
         if (mainnet) {
-            console.log("mainnet");
             for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
                 IERC20 erc20 = MAINNET_ASSETS[i].erc20();
                 require(assets[erc20] == IAsset(address(0)), "duplicate asset");
                 assets[erc20] = IAsset(MAINNET_ASSETS[i]);
             }
-            console.log("mainnet set up successfully on", MAINNET_ASSETS.length, "assets");
         } else if (block.chainid == 8453) {
-            console.log("base");
             for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
                 IERC20 erc20 = BASE_ASSETS[i].erc20();
                 require(assets[erc20] == IAsset(address(0)), "duplicate asset");
                 assets[erc20] = IAsset(BASE_ASSETS[i]);
             }
-            console.log("base set up successfully on", BASE_ASSETS.length, "assets");
         } else {
             revert("unsupported chain");
         }
@@ -123,8 +115,6 @@ contract Upgrade3_4_0 is ISpell {
     /// @param alexios The corresponding Governor Alexios for the RToken
     /// @dev Requirement: has administration of Timelock and RToken. revoked at end of execution
     function cast(IRToken rToken, IGovernor alexios) external {
-        console.log("cast", address(rToken), address(alexios));
-
         // Can only cast once
         require(!castFrom[msg.sender], "repeat cast");
         castFrom[msg.sender] = true;
@@ -132,7 +122,6 @@ contract Upgrade3_4_0 is ISpell {
         IMain main = rToken.main();
         TimelockController timelock = TimelockController(payable(msg.sender));
 
-        console.log("checking timelock + alexios");
         // Validations
         require(keccak256(abi.encodePacked(alexios.name())) == ALEXIOS_HASH, "not alexios");
         require(timelock.hasRole(PROPOSER_ROLE, address(alexios)), "alexios not timelock admin");
@@ -140,7 +129,6 @@ contract Upgrade3_4_0 is ISpell {
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
         require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "must be owner of Main");
 
-        console.log("grabbing anastasius to use");
         // Determine which anastasius to use for the RToken
         TestIDeployer deployer = mainnet ? mainDeployer : baseDeployer;
         IGovernor anastasius;
@@ -172,7 +160,6 @@ contract Upgrade3_4_0 is ISpell {
         proxies.rsrTrader = main.rsrTrader();
         proxies.stRSR = main.stRSR();
 
-        console.log("component upgrades");
         // Component Proxy Upgrades
         {
             (
@@ -218,7 +205,6 @@ contract Upgrade3_4_0 is ISpell {
             ICachedComponent(address(rsrTrader)).cacheComponents();
         }
 
-        console.log("scaling reward ratios");
         // Scale the reward downwards by the blocktime
         {
             uint48 blocktime = block.chainid == 8453 ? 2 : 12; // checked prior for else cases
@@ -228,12 +214,9 @@ contract Upgrade3_4_0 is ISpell {
             );
         }
 
-        console.log("eliminate trading delay");
         // Set trading delay to 0
         TestIBackingManager(address(proxies.backingManager)).setTradingDelay(0);
 
-        console.log("=============================================");
-        console.log("swapping assets");
         // Assets
         {
             IERC20[] memory erc20s = proxies.assetRegistry.erc20s();
@@ -248,11 +231,9 @@ contract Upgrade3_4_0 is ISpell {
 
                     // if we have a rotated asset, register() a new asset
                     if (rotatedWrapperAsset != IAsset(address(0))) {
-                        console.log(i, "rotate:", erc20.symbol(), address(erc20));
                         proxies.assetRegistry.register(rotatedWrapperAsset);
                     } else {
                         // assets being deprecated will be skipped
-                        console.log(i, "skip:", erc20.symbol(), address(erc20));
                     }
                 }
             }
@@ -265,9 +246,7 @@ contract Upgrade3_4_0 is ISpell {
                 )
             );
         }
-        console.log("=============================================");
 
-        console.log("switching basket");
         // Set new prime basket with rotated collateral
         {
             (IERC20[] memory erc20s, , uint192[] memory targetAmts) = TestIBasketHandler(
@@ -281,7 +260,6 @@ contract Upgrade3_4_0 is ISpell {
                 IAsset rotatedWrapperAsset = getRotatedWrapperAsset(erc20s[i]);
                 if (rotatedWrapperAsset != IAsset(address(0))) {
                     IERC20Metadata newERC20 = rotatedWrapperAsset.erc20();
-                    console.log(i, erc20.symbol(), "=>", newERC20.symbol());
                     erc20s[i] = newERC20;
                 }
             }
@@ -293,7 +271,6 @@ contract Upgrade3_4_0 is ISpell {
         require(proxies.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         // basket must be SOUND post-upgrade
 
-        console.log("upgrading governance");
         // Replace Alexios with Anastasius
         timelock.revokeRole(EXECUTOR_ROLE, address(alexios));
         timelock.revokeRole(PROPOSER_ROLE, address(alexios));
@@ -302,13 +279,11 @@ contract Upgrade3_4_0 is ISpell {
         timelock.grantRole(PROPOSER_ROLE, address(anastasius));
         timelock.grantRole(CANCELLER_ROLE, address(anastasius));
 
-        console.log("renouncing adminships");
         // Renounce adminships
         main.renounceRole(MAIN_OWNER_ROLE, address(this));
         assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
         timelock.renounceRole(TIMELOCK_ADMIN_ROLE, address(this));
         assert(!timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)));
-        console.log("spell cast");
     }
 
     // === Wrapper Rotation Helper ===
