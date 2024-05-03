@@ -8,6 +8,9 @@ import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ISpell.sol";
 
+// TODO remove console logs. super helpful while working through each RToken though
+import "hardhat/console.sol";
+
 // === RTokens ===
 // Mainnet
 IRToken constant eUSD = IRToken(0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F);
@@ -89,22 +92,27 @@ contract Upgrade3_4_0 is ISpell {
     bool public mainnet; // !mainnet => base
 
     constructor() {
+        console.log("block.chainid: ", block.chainid);
         mainnet = block.chainid == 1 || block.chainid == 31337;
         require(mainnet || block.chainid == 8453, "unsupported chain");
 
         // Set up `assets` array
         if (mainnet) {
+            console.log("mainnet");
             for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
                 IERC20 erc20 = MAINNET_ASSETS[i].erc20();
                 require(assets[erc20] == IAsset(address(0)), "duplicate asset");
                 assets[erc20] = IAsset(MAINNET_ASSETS[i]);
             }
+            console.log("mainnet set up successfully on", MAINNET_ASSETS.length, "assets");
         } else if (block.chainid == 8453) {
+            console.log("base");
             for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
                 IERC20 erc20 = BASE_ASSETS[i].erc20();
                 require(assets[erc20] == IAsset(address(0)), "duplicate asset");
                 assets[erc20] = IAsset(BASE_ASSETS[i]);
             }
+            console.log("base set up successfully on", BASE_ASSETS.length, "assets");
         } else {
             revert("unsupported chain");
         }
@@ -115,6 +123,8 @@ contract Upgrade3_4_0 is ISpell {
     /// @param alexios The corresponding Governor Alexios for the RToken
     /// @dev Requirement: has administration of Timelock and RToken. revoked at end of execution
     function cast(IRToken rToken, IGovernor alexios) external {
+        console.log("cast", address(rToken), address(alexios));
+
         // Can only cast once
         require(!castFrom[msg.sender], "repeat cast");
         castFrom[msg.sender] = true;
@@ -122,6 +132,7 @@ contract Upgrade3_4_0 is ISpell {
         IMain main = rToken.main();
         TimelockController timelock = TimelockController(payable(msg.sender));
 
+        console.log("checking timelock + alexios");
         // Validations
         require(keccak256(abi.encodePacked(alexios.name())) == ALEXIOS_HASH, "not alexios");
         require(timelock.hasRole(PROPOSER_ROLE, address(alexios)), "alexios not timelock admin");
@@ -129,6 +140,7 @@ contract Upgrade3_4_0 is ISpell {
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
         require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "must be owner of Main");
 
+        console.log("grabbing anastasius to use");
         // Determine which anastasius to use for the RToken
         TestIDeployer deployer = mainnet ? mainDeployer : baseDeployer;
         IGovernor anastasius;
@@ -160,6 +172,7 @@ contract Upgrade3_4_0 is ISpell {
         proxies.rsrTrader = main.rsrTrader();
         proxies.stRSR = main.stRSR();
 
+        console.log("component upgrades");
         // Component Proxy Upgrades
         {
             (
@@ -205,6 +218,7 @@ contract Upgrade3_4_0 is ISpell {
             ICachedComponent(address(rsrTrader)).cacheComponents();
         }
 
+        console.log("scaling reward ratios");
         // Scale the reward downwards by the blocktime
         {
             uint48 blocktime = block.chainid == 8453 ? 2 : 12; // checked prior for else cases
@@ -214,9 +228,12 @@ contract Upgrade3_4_0 is ISpell {
             );
         }
 
+        console.log("eliminate trading delay");
         // Set trading delay to 0
         TestIBackingManager(address(proxies.backingManager)).setTradingDelay(0);
 
+        console.log("=============================================");
+        console.log("swapping assets");
         // Assets
         {
             IERC20[] memory erc20s = proxies.assetRegistry.erc20s();
@@ -231,9 +248,11 @@ contract Upgrade3_4_0 is ISpell {
 
                     // if we have a rotated asset, register() a new asset
                     if (rotatedWrapperAsset != IAsset(address(0))) {
+                        console.log(i, "rotate:", erc20.symbol(), address(erc20));
                         proxies.assetRegistry.register(rotatedWrapperAsset);
                     } else {
                         // assets being deprecated will be skipped
+                        console.log(i, "skip:", erc20.symbol(), address(erc20));
                     }
                 }
             }
@@ -246,13 +265,16 @@ contract Upgrade3_4_0 is ISpell {
                 )
             );
         }
+        console.log("=============================================");
 
+        console.log("switching basket");
         // Set new prime basket with rotated collateral
         {
             (IERC20[] memory erc20s, , uint192[] memory targetAmts) = TestIBasketHandler(
                 address(proxies.basketHandler)
             ).getPrimeBasket();
 
+            bool newBasket;
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IERC20Metadata erc20 = IERC20Metadata(address(erc20s[i]));
                 if (assets[erc20s[i]] != IAsset(address(0))) continue;
@@ -260,17 +282,20 @@ contract Upgrade3_4_0 is ISpell {
                 IAsset rotatedWrapperAsset = getRotatedWrapperAsset(erc20s[i]);
                 if (rotatedWrapperAsset != IAsset(address(0))) {
                     IERC20Metadata newERC20 = rotatedWrapperAsset.erc20();
+                    console.log(i, erc20.symbol(), "=>", newERC20.symbol());
                     erc20s[i] = newERC20;
+                    newBasket = true;
                 }
             }
 
             // Set prime basket
-            proxies.basketHandler.setPrimeBasket(erc20s, targetAmts);
+            if (newBasket) proxies.basketHandler.setPrimeBasket(erc20s, targetAmts);
         }
         proxies.basketHandler.refreshBasket();
         require(proxies.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         // basket must be SOUND post-upgrade
 
+        console.log("upgrading governance");
         // Replace Alexios with Anastasius
         timelock.revokeRole(EXECUTOR_ROLE, address(alexios));
         timelock.revokeRole(PROPOSER_ROLE, address(alexios));
@@ -279,11 +304,13 @@ contract Upgrade3_4_0 is ISpell {
         timelock.grantRole(PROPOSER_ROLE, address(anastasius));
         timelock.grantRole(CANCELLER_ROLE, address(anastasius));
 
+        console.log("renouncing adminships");
         // Renounce adminships
         main.renounceRole(MAIN_OWNER_ROLE, address(this));
         assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
         timelock.renounceRole(TIMELOCK_ADMIN_ROLE, address(this));
         assert(!timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)));
+        console.log("spell cast");
     }
 
     // === Wrapper Rotation Helper ===
@@ -317,76 +344,76 @@ contract Upgrade3_4_0 is ISpell {
 
     IAsset[58] MAINNET_ASSETS = [
         IAsset(0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA), // RSR
-        IAsset(0xF4493581D52671a9E04d693a68ccc61853bceEaE),
-        IAsset(0x63eDdF26Bc65eDa1D1c0147ce8E23c09BE963596),
-        IAsset(0xc18bF46F178F7e90b9CD8b7A8b00Af026D5ce3D3),
-        IAsset(0x7ef93b20C10E6662931b32Dd9D4b85861eB2E4b8),
-        IAsset(0xEc375F2984D21D5ddb0D82767FD8a9C4CE8Eec2F),
-        IAsset(0x442f8fc98e3cc6B3d49a66f9858Ac9B6e70Dad3e),
-        IAsset(0xe7Dcd101A027Ec34860ECb634a2797d0D2dc4d8b),
-        IAsset(0x4C0B21Acb267f1fAE4aeFA977A26c4a63C9B35e6),
-        IAsset(0x97bb4a995b98b1BfF99046b3c518276f78fA5250),
-        IAsset(0x9ca9A9cdcE9E943608c945E7001dC89EB163991E),
-        IAsset(0xc4240D22FFa144E2712aACF3E2cC302af0339ED0),
-        IAsset(0x8d753659D4E4e4b4601c7F01Dc1c920cA538E333),
-        IAsset(0x01F9A6bf339cff820cA503A56FD3705AE35c27F7),
-        IAsset(0xda5cc207CCefD116fF167a8ABEBBd52bD67C958E),
-        IAsset(0x337E418b880bDA5860e05D632CF039B7751B907B),
-        IAsset(0x043be931D9C4422e1cFeA528e19818dcDfdE9Ebc),
-        IAsset(0x5ceadb6606C5D82FcCd3f9b312C018fE1f8aa6dA),
-        IAsset(0xa0c02De8FfBb9759b9beBA5e29C82112688A0Ff4),
-        IAsset(0xC0f89AFcb6F1c4E943aA61FFcdFc41fDcB7D84DD),
-        IAsset(0x4d3A8507a8eb9036895efdD1a462210CE58DE4ad),
-        IAsset(0x832D65735E541c0404a58B741bEF5652c2B7D0Db),
-        IAsset(0xADDca344c92Be84A053C5CBE8e067460767FB816),
-        IAsset(0xb7049ee9F533D32C9434101f0645E6Ea5DFe2cdb),
-        IAsset(0x987f5e0f845D46262893e680b652D8aAF1B5bCc0),
-        IAsset(0xB58D95003Af73CF76Ce349103726a51D4Ec8af17),
-        IAsset(0xD5254b740FbEF6AAcD674936ea7Fb9f4053781aF),
-        IAsset(0xA0a620B94446a7DC8952ECf252FcC495eeC65873),
-        IAsset(0xFd9c32198D3cf3ad3b165918FD78De3654cb22eA),
-        IAsset(0x33Ba1BC07b0fafb4BBC1520B330081b91ca6bdf0),
-        IAsset(0x8E5ADdC553962DAcdF48106B6218AC93DA9617b2),
-        IAsset(0x5315Fbe0CEB299F53aE375f65fd9376767C8224c),
-        IAsset(0xE529B59C1764d6E5a274099Eb660DD9e130A5481),
-        IAsset(0x3d21f841C0Fb125176C1DBDF0DE196b071323A75),
-        IAsset(0xc4a5Fb266E8081D605D87f0b1290F54B0a5Dc221),
-        IAsset(0x945b0ad788dD6dB3864AB23876C68C1bf000d237),
-        IAsset(0x692cf8CE08d03eF1f8C3dCa82F67935fa9417B62),
-        IAsset(0xf59a7987EDd5380cbAb30c37D1c808686f9b67B9),
-        IAsset(0x62a9DDC6FF6077E823690118eCc935d16A8de47e),
-        IAsset(0xC8b80813cad9139D0eeFe38C711a11b20147aA54),
-        IAsset(0x2F8F8Ac64ECbAC38f212b05115836120784a29F7),
-        IAsset(0xC5d03FB7A38E6025D9A32C7444cfbBfa18B7D656),
-        IAsset(0x7be70371e7ECd9af5A5b49015EC8F8C336B52D81),
-        IAsset(0x75B6921925e8BD632380706e722035752ffF175d),
-        IAsset(0xA402078f0A2e077Ea2b1Fb3b6ab74F0cBA10E508),
-        IAsset(0x4a139215D9E696c0e7618a441eD3CFd12bbD8CD6),
-        IAsset(0x1573416df7095F698e37A954D9e951868E526650),
-        IAsset(0xb3A3552Cc52411dFF6D520C6F725E6F9e11001EF),
-        IAsset(0x0b7DcCBceA6f985301506D575E2661bf858CdEcC),
-        IAsset(0x00F820794Bda3fb01E5f159ee1fF7c8409fca5AB),
-        IAsset(0x58a41c87f8C65cf21f961b570540b176e408Cf2E),
-        IAsset(0x3017d881724D93783e7f065Cc5F62c81C62c36A0),
-        IAsset(0x4895b9aee383b5dec499F54172Ccc7Ee05FC8Bbc),
-        IAsset(0xBd01C789Be742688fb73F6aE46f1320196B6c973),
-        IAsset(0x3421d2cB19c8E69c6FA642C43e60cD943e75Ca8b),
-        IAsset(0x9Fc0F31e2D26C437461a9eEBfe858d17e2611Ea5),
-        IAsset(0x69c6597690B8Df61D15F201519C03725bdec40c1),
-        IAsset(0x4c891fCa6319d492866672E3D2AfdAAA5bDcfF67)
+        IAsset(0xF4493581D52671a9E04d693a68ccc61853bceEaE), // stkAAVE
+        IAsset(0x63eDdF26Bc65eDa1D1c0147ce8E23c09BE963596), // COMP
+        IAsset(0xc18bF46F178F7e90b9CD8b7A8b00Af026D5ce3D3), // CRV
+        IAsset(0x7ef93b20C10E6662931b32Dd9D4b85861eB2E4b8), // CVX
+        IAsset(0xEc375F2984D21D5ddb0D82767FD8a9C4CE8Eec2F), // DAI
+        IAsset(0x442f8fc98e3cc6B3d49a66f9858Ac9B6e70Dad3e), // USDC
+        IAsset(0xe7Dcd101A027Ec34860ECb634a2797d0D2dc4d8b), // USDT
+        IAsset(0x4C0B21Acb267f1fAE4aeFA977A26c4a63C9B35e6), // USDP
+        IAsset(0x97bb4a995b98b1BfF99046b3c518276f78fA5250), // BUSD
+        IAsset(0x9ca9A9cdcE9E943608c945E7001dC89EB163991E), // aDAI
+        IAsset(0xc4240D22FFa144E2712aACF3E2cC302af0339ED0), // aUSDC
+        IAsset(0x8d753659D4E4e4b4601c7F01Dc1c920cA538E333), // aUSDT
+        IAsset(0x01F9A6bf339cff820cA503A56FD3705AE35c27F7), // aBUSD
+        IAsset(0xda5cc207CCefD116fF167a8ABEBBd52bD67C958E), // aUSDP
+        IAsset(0x337E418b880bDA5860e05D632CF039B7751B907B), // cDAI
+        IAsset(0x043be931D9C4422e1cFeA528e19818dcDfdE9Ebc), // cUSDC
+        IAsset(0x5ceadb6606C5D82FcCd3f9b312C018fE1f8aa6dA), // cUSDT
+        IAsset(0xa0c02De8FfBb9759b9beBA5e29C82112688A0Ff4), // cUSDP
+        IAsset(0xC0f89AFcb6F1c4E943aA61FFcdFc41fDcB7D84DD), // cWBTC
+        IAsset(0x4d3A8507a8eb9036895efdD1a462210CE58DE4ad), // cETH
+        IAsset(0x832D65735E541c0404a58B741bEF5652c2B7D0Db), // WBTC
+        IAsset(0xADDca344c92Be84A053C5CBE8e067460767FB816), // WETH
+        IAsset(0xb7049ee9F533D32C9434101f0645E6Ea5DFe2cdb), // wstETH
+        IAsset(0x987f5e0f845D46262893e680b652D8aAF1B5bCc0), // rETH
+        IAsset(0xB58D95003Af73CF76Ce349103726a51D4Ec8af17), // fUSDC
+        IAsset(0xD5254b740FbEF6AAcD674936ea7Fb9f4053781aF), // fUSDT
+        IAsset(0xA0a620B94446a7DC8952ECf252FcC495eeC65873), // fDAI
+        IAsset(0xFd9c32198D3cf3ad3b165918FD78De3654cb22eA), // fFRAX
+        IAsset(0x33Ba1BC07b0fafb4BBC1520B330081b91ca6bdf0), // cUSDCv3
+        IAsset(0x8E5ADdC553962DAcdF48106B6218AC93DA9617b2), // cvx3Pool
+        IAsset(0x5315Fbe0CEB299F53aE375f65fd9376767C8224c), // cvxPayPool
+        IAsset(0xE529B59C1764d6E5a274099Eb660DD9e130A5481), // cvxeUSDFRAXBP
+        IAsset(0x3d21f841C0Fb125176C1DBDF0DE196b071323A75), // crvMIM3Pool
+        IAsset(0xc4a5Fb266E8081D605D87f0b1290F54B0a5Dc221), // cvxETHPlusETH
+        IAsset(0x945b0ad788dD6dB3864AB23876C68C1bf000d237), // crveUSDFRAXBP
+        IAsset(0x692cf8CE08d03eF1f8C3dCa82F67935fa9417B62), // crvMIM3Pool
+        IAsset(0xf59a7987EDd5380cbAb30c37D1c808686f9b67B9), // crv3Pool
+        IAsset(0x62a9DDC6FF6077E823690118eCc935d16A8de47e), // sDAI
+        IAsset(0xC8b80813cad9139D0eeFe38C711a11b20147aA54), // maDA,cbETHI
+        IAsset(0x2F8F8Ac64ECbAC38f212b05115836120784a29F7), // maUSDT
+        IAsset(0xC5d03FB7A38E6025D9A32C7444cfbBfa18B7D656), // maUSDC
+        IAsset(0x7be70371e7ECd9af5A5b49015EC8F8C336B52D81), // maDAI
+        IAsset(0x75B6921925e8BD632380706e722035752ffF175d), // maWBTC
+        IAsset(0xA402078f0A2e077Ea2b1Fb3b6ab74F0cBA10E508), // maWETH
+        IAsset(0x4a139215D9E696c0e7618a441eD3CFd12bbD8CD6), // maStETH
+        IAsset(0x1573416df7095F698e37A954D9e951868E526650), // yvCurveUSDCcrvUSD
+        IAsset(0xb3A3552Cc52411dFF6D520C6F725E6F9e11001EF), // yvCurveUSDTcrvUSD
+        IAsset(0x0b7DcCBceA6f985301506D575E2661bf858CdEcC), // sFRAX
+        IAsset(0x00F820794Bda3fb01E5f159ee1fF7c8409fca5AB), // saEthUSDC
+        IAsset(0x58a41c87f8C65cf21f961b570540b176e408Cf2E), // saEthPyUSD
+        IAsset(0x3017d881724D93783e7f065Cc5F62c81C62c36A0), // bbUSDT
+        IAsset(0x4895b9aee383b5dec499F54172Ccc7Ee05FC8Bbc), // steakUSDC
+        IAsset(0xBd01C789Be742688fb73F6aE46f1320196B6c973), // steakPYUSD
+        IAsset(0x3421d2cB19c8E69c6FA642C43e60cD943e75Ca8b), // Re7WETH
+        IAsset(0x9Fc0F31e2D26C437461a9eEBfe858d17e2611Ea5), // cvxCrvUSDUSDC
+        IAsset(0x69c6597690B8Df61D15F201519C03725bdec40c1), // cvxCrvUSDUSDT
+        IAsset(0x4c891fCa6319d492866672E3D2AfdAAA5bDcfF67) // sfrxETH
     ];
 
     IAsset[11] BASE_ASSETS = [
         IAsset(0x02062c16c28A169D1f2F5EfA7eEDc42c3311ec23), // RSR
-        IAsset(0xB8794Fb1CCd62bFe631293163F4A3fC2d22e37e0),
-        IAsset(0xEE527CC63122732532d0f1ad33Ec035D30f3050f),
-        IAsset(0x3E40840d0282C9F9cC7d17094b5239f87fcf18e5),
-        IAsset(0xaa85216187F92a781D8F9Bcb40825E356ee2635a),
-        IAsset(0xD126741474B0348D9B0F4911573d8f543c01C2c4),
-        IAsset(0x073BD162BBD05Cd2CF631B90D44239B8a367276e),
-        IAsset(0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D),
-        IAsset(0xC19f5d60e2Aca1174f3D5Fe189f0A69afaB76f50),
-        IAsset(0xf7a9D27c3B60c78c6F6e2c2d6ED6E8B94b352461),
-        IAsset(0x8b4374005291B8FCD14C4E947604b2FB3C660A73)
+        IAsset(0xB8794Fb1CCd62bFe631293163F4A3fC2d22e37e0), // COMP
+        IAsset(0xEE527CC63122732532d0f1ad33Ec035D30f3050f), // STG
+        IAsset(0x3E40840d0282C9F9cC7d17094b5239f87fcf18e5), // DAI
+        IAsset(0xaa85216187F92a781D8F9Bcb40825E356ee2635a), // USDC
+        IAsset(0xD126741474B0348D9B0F4911573d8f543c01C2c4), // USDbC
+        IAsset(0x073BD162BBD05Cd2CF631B90D44239B8a367276e), // WETH
+        IAsset(0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D), // cbETH
+        IAsset(0xC19f5d60e2Aca1174f3D5Fe189f0A69afaB76f50), // saBasUSDC
+        IAsset(0xf7a9D27c3B60c78c6F6e2c2d6ED6E8B94b352461), // cUSDCv3
+        IAsset(0x8b4374005291B8FCD14C4E947604b2FB3C660A73) // wstETH
     ];
 }
