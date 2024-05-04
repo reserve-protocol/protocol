@@ -124,8 +124,7 @@ export const runDutchTrade = async (
   const maxTradeSlippage = (await trader.maxTradeSlippage()).mul(fp('1')).div(delta)
   const unofficialEnd = 95 - maxTradeSlippage.div(2).div(bn('1e16')).toNumber()
   const fairMidpoint = (unofficialEnd - 45) / 2 + 45
-  console.log(bestPrice, worstPrice, delta, maxTradeSlippage, fairMidpoint)
-  console.log('bidding at pct:', fairMidpoint)
+  console.log('bidding at auction pct:', fairMidpoint)
 
   const toAdvance = ((endTime - (await getLatestBlockTimestamp(hre))) * fairMidpoint) / 100
   await advanceTime(hre, toAdvance)
@@ -359,9 +358,7 @@ const getERC20Tokens = async (
       }
     )
   } else if (tokAddress == aUSDCv3Address || tokAddress == aUSDCv3AddressOld) {
-    console.log('saEthUSDC')
     const saEthUSDC = await hre.ethers.getContractAt('IStaticATokenV3LM', tokAddress)
-    console.log('impersonating')
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
@@ -370,7 +367,6 @@ const getERC20Tokens = async (
         await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
         await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
-        console.log('after')
       }
     )
   } else if (tokAddress == aPyUSDv3Address || tokAddress == aPyUSDv3AddressOld) {

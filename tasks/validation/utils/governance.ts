@@ -64,20 +64,22 @@ export const voteProposal = async (
     if (!proposal) {
       // gather enough whale voters
       let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
-      const startBlock = await governor.proposalSnapshot(proposalId)
-      const quorum = await governor.quorum(startBlock)
+      const quorum = await governor.quorum(await governor.proposalSnapshot(proposalId))
 
       let quorumNotReached = true
       let currentVoteAmount = BigNumber.from(0)
       let i = 0
       while (quorumNotReached) {
         const whale = whales[i]
+        if (!whale) throw new Error(`missing whale at index ${i}`)
         currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
         i += 1
+        console.log(`Votes: ${currentVoteAmount} / ${quorum}`)
         if (currentVoteAmount.gt(quorum)) {
           quorumNotReached = false
         }
       }
+      if (quorumNotReached) throw new Error('quorum not reached')
 
       whales = whales.slice(0, i)
 
@@ -237,7 +239,12 @@ export const proposeUpgrade = async (
   console.log(`\nGenerating and proposing proposal...`)
   const [tester] = await hre.ethers.getSigners()
 
-  await hre.run('give-rsr', { address: tester.address })
+  const rToken = await hre.ethers.getContractAt('IRToken', rTokenAddress)
+  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
+  const amount = (await stRSR.getStakeRSR()).div(100) // 1% increase in staked RSR
+
+  await hre.run('give-rsr', { address: tester.address, amount: amount.toString() })
   await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)

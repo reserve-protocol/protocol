@@ -1,6 +1,4 @@
-import { fp } from '#/common/numbers'
 import { TradeKind } from '#/common/constants'
-import { whileImpersonating } from '#/utils/impersonation'
 import { advanceBlocks, advanceTime } from '#/utils/time'
 import { IRewardable } from '@typechain/IRewardable'
 import { formatEther } from 'ethers/lib/utils'
@@ -19,7 +17,8 @@ const claimRewards = async (claimer: IRewardable) => {
   return rewards
 }
 
-export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
+// Expects RToken was transferred into RSRTrader beforehand
+export const processRevenue = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
   console.log(`\n* * * * * Claiming RSR rewards...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -36,22 +35,26 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   const strsr = await hre.ethers.getContractAt('StRSRP1', await main.stRSR())
   const rsrRatePre = await strsr.exchangeRate()
 
-  // requires 3.4.0 plugins to be swapped in
-  // const rewards = await claimRewards(backingManager)
-  // console.log('rewards claimed', rewards)
-  const rewards = await assetRegistry.erc20s()
+  const [rewards, assets] = await assetRegistry.getRegistry()
+  let successCount = 0
+  for (let i = 0; i < rewards.length; i++) {
+    try {
+      await backingManager.claimRewardsSingle(rewards[i])
+      successCount++
+    } catch (e) {
+      console.log(`❌ failed to claim rewards for asset ${assets[i]}`)
+    }
+  }
+  const emoji = successCount == rewards.length ? '✅' : '❌'
+  console.log(
+    `${emoji} claimRewardsSingle() was successful for ${successCount}/${rewards.length} assets`
+  )
+  // await claimRewards(backingManager)
 
   await backingManager.forwardRevenue(rewards)
-  const comp = '0xc00e94Cb662C3520282E6f5717214004A7f26888'
-  const compContract = await hre.ethers.getContractAt('ERC20Mock', comp)
 
-  // fake enough rewards to trade
-  await whileImpersonating(hre, '0x73AF3bcf944a6559933396c1577B257e2054D935', async (compWhale) => {
-    await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
-  })
-
-  await rsrTrader.manageTokens([comp], [TradeKind.BATCH_AUCTION])
-  await runBatchTrade(hre, rsrTrader, comp, false)
+  await rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION])
+  await runBatchTrade(hre, rsrTrader, rToken.address, false)
   await strsr.payoutRewards()
   await advanceBlocks(hre, 100)
   await advanceTime(hre, 1200)

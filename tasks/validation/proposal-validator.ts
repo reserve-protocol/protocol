@@ -8,7 +8,7 @@ import { fp } from '#/common/numbers'
 import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
-import { claimRsrRewards } from './utils/rewards'
+import { processRevenue } from './utils/rewards'
 import { pushOraclesForward } from './utils/oracles'
 import {
   passProposal,
@@ -103,7 +103,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     }
     console.log('💪 Basket is SOUND and fully collateralized!')
 
-    console.log('Core Contract versions')
+    console.log('Core Contracts')
     console.log('  - main:', await main.version())
     console.log('  - assetRegistry:', await assetRegistry.version())
     console.log('  - basketHandler:', await basketHandler.version())
@@ -117,7 +117,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     console.log('  - rToken:', await rToken.version())
 
     const [erc20s, assets] = await assetRegistry.getRegistry()
-    console.log('\n', `Asset versions (${assets.length})`)
+    console.log('\n', `Assets (${assets.length})`)
     for (let i = 0; i < assets.length; i++) {
       const erc20 = await hre.ethers.getContractAt('IERC20Metadata', erc20s[i])
       const asset = await hre.ethers.getContractAt('IVersioned', assets[i])
@@ -179,6 +179,7 @@ task('recollateralize')
     /*
       recollateralize
     */
+    await advanceTime(hre, (await basketHandler.warmupPeriod()) + 1)
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
     await pushOraclesForward(hre, params.rtoken, [])
     await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION).catch((e: Error) => {
@@ -213,23 +214,26 @@ task('run-validations', 'Runs all validations')
       redeem
     */
     // Give `tester` RTokens from a whale
-    const redeemAmt = fp('1e4')
+    const redeemAmt = fp('100')
     await whileImpersonating(hre, whales[params.rtoken.toLowerCase()], async (whaleSigner) => {
       await rToken.connect(whaleSigner).transfer(tester.address, redeemAmt)
     })
-    if (!(await rToken.balanceOf(tester.address)).gte(redeemAmt)) throw new Error('missing R')
+    if (!(await rToken.balanceOf(tester.address)).gte(redeemAmt)) throw new Error('missing RToken')
 
     await runCheck_redeem(hre, tester, rToken.address, redeemAmt)
 
     /*
-      mint
+      mint the redeemed amount
     */
-    await runCheck_mint(hre, fp('1e3'), tester, basketHandler, rToken)
+    const mintAmt = redeemAmt.mul(999).div(1000)
+    await runCheck_mint(hre, mintAmt, tester, basketHandler, rToken)
 
     /*
       claim rewards
     */
-    await claimRsrRewards(hre, params.rtoken)
+
+    await rToken.connect(tester).transfer(await main.rsrTrader(), mintAmt)
+    await processRevenue(hre, params.rtoken)
 
     await pushOraclesForward(hre, params.rtoken, [])
 
@@ -286,11 +290,11 @@ const runCheck_mint = async (
   rToken: RTokenP1
 ) => {
   console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
-  const [erc20s] = await basketHandler.quote(fp('1'), 0)
-  for (const e of erc20s) {
+  const [erc20s] = await basketHandler.quote(fp('1'), 2)
+  for (let i = 0; i < erc20s.length; i++) {
     const erc20 = await hre.ethers.getContractAt(
       '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
-      e
+      erc20s[i]
     )
     await erc20.connect(signer).approve(rToken.address, MAX_UINT256) // max approval
   }

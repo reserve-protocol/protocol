@@ -57,11 +57,11 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
   //   governor: '0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6',
   //   timelock: '0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c',
   // },
-  {
-    rToken: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8', // ETH+
-    governor: '0x239cDcBE174B4728c870A24F77540dAB3dC5F981',
-    timelock: '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B',
-  },
+  // {
+  //   rToken: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8', // ETH+
+  //   governor: '0x239cDcBE174B4728c870A24F77540dAB3dC5F981',
+  //   timelock: '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B',
+  // },
   // {
   //   rToken: '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be', // hyUSD (mainnet)
   //   governor: '0x22d7937438b4bBf02f6cA55E3831ABB94Bd0b6f1',
@@ -77,11 +77,11 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
   //   governor: '0x020CB71181008369C388CaAEE98b0E69f8F4C471',
   //   timelock: '0xE0289984F709fc7150E646B672bfaDC879a15f14',
   // },
-  // {
-  //   rToken: '0x78da5799CF427Fee11e9996982F4150eCe7a99A7', // rgUSD
-  //   governor: '0x409bAc94c4207C6627EA5f4E4FFB7128e8F654Fc',
-  //   timelock: '0x9aD9E73e38c8506a664A3A37e8A9CE910B6FBeb4',
-  // },
+  {
+    rToken: '0x78da5799CF427Fee11e9996982F4150eCe7a99A7', // rgUSD
+    governor: '0x409bAc94c4207C6627EA5f4E4FFB7128e8F654Fc',
+    timelock: '0x9aD9E73e38c8506a664A3A37e8A9CE910B6FBeb4',
+  },
 ]
 
 export const BASE_DEPLOYMENTS: RTokenDeployment[] = [

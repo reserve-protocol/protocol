@@ -41,22 +41,29 @@ export const pushOraclesForward = async (
   )
   const registry = await assetRegistry.getRegistry()
 
+  let addresses: string[] = [] // hacky way to ensure only unique updates to save time
   for (const asset of registry.assets) {
-    await pushOracleForward(hre, asset)
+    addresses = await pushOracleForward(hre, asset, addresses)
   }
 
   for (const asset of extraAssets) {
-    await pushOracleForward(hre, asset)
+    await pushOracleForward(hre, asset, addresses)
   }
 }
 
-export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: string) => {
+export const pushOracleForward = async (
+  hre: HardhatRuntimeEnvironment,
+  asset: string,
+  addresses: string[]
+): Promise<string[]> => {
   // Need to handle all oracle cases, ie targetUnitChainlinkFeed, PoolTokens, etc
   const updateAnswer = async (chainlinkFeed: AggregatorV3Interface) => {
+    if (addresses.indexOf(chainlinkFeed.address) != -1) return
     const initPrice = await chainlinkFeed.latestRoundData()
     const oracle = await overrideOracle(hre, chainlinkFeed.address)
     await oracle.updateAnswer(initPrice.answer)
 
+    addresses.push(chainlinkFeed.address)
     console.log('✅ Feed Updated:', chainlinkFeed.address)
   }
 
@@ -128,6 +135,8 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
     )
     await updateAnswer(feed)
   }
+
+  return addresses
 }
 
 export const setOraclePrice = async (
