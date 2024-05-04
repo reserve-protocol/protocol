@@ -7,9 +7,6 @@ import "@openzeppelin/contracts/governance/TimelockController.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 
-// TODO remove console logs. super helpful while working through each RToken though
-import "hardhat/console.sol";
-
 // interface avoids needing to know about P1 contracts
 interface ICachedComponent {
     function cacheComponents() external;
@@ -41,6 +38,7 @@ contract Upgrade3_4_0 {
 
     // ======================================================================================
 
+    // 3.4.0 Assets (mainnet)
     IAsset[51] MAINNET_ASSETS = [
         IAsset(0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA), // RSR
         IAsset(0xF4493581D52671a9E04d693a68ccc61853bceEaE), // stkAAVE
@@ -95,6 +93,7 @@ contract Upgrade3_4_0 {
         IAsset(0x4c891fCa6319d492866672E3D2AfdAAA5bDcfF67) // sfrxETH
     ];
 
+    // 3.4.0 Assets (base)
     IAsset[11] BASE_ASSETS = [
         IAsset(0x02062c16c28A169D1f2F5EfA7eEDc42c3311ec23), // RSR
         IAsset(0xB8794Fb1CCd62bFe631293163F4A3fC2d22e37e0), // COMP
@@ -131,13 +130,11 @@ contract Upgrade3_4_0 {
     // =======================================================================================
 
     constructor() {
-        console.log("block.chainid: ", block.chainid);
         mainnet = block.chainid == 1 || block.chainid == 31337;
         require(mainnet || block.chainid == 8453, "unsupported chain");
 
         // Set up `assets` array
         if (mainnet) {
-            console.log("mainnet");
             // Set up `deployer`
             deployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
 
@@ -195,7 +192,6 @@ contract Upgrade3_4_0 {
                 0xE529B59C1764d6E5a274099Eb660DD9e130A5481 // cvxeUSDFRAXBP
             );
         } else if (block.chainid == 8453) {
-            console.log("Base");
             // Set up `deployer`
             deployer = TestIDeployer(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
 
@@ -235,8 +231,6 @@ contract Upgrade3_4_0 {
     /// @param alexios The corresponding Governor Alexios for the RToken
     /// @dev Requirement: has administration of Timelock and RToken. revoked at end of execution
     function castSpell1(IRToken rToken, IGovernor alexios) external {
-        console.log("cast spell 1", address(rToken), address(alexios));
-
         // Can only cast once
         require(!oneCast[msg.sender], "repeat cast");
         oneCast[msg.sender] = true;
@@ -244,7 +238,6 @@ contract Upgrade3_4_0 {
         IMain main = rToken.main();
         TimelockController timelock = TimelockController(payable(msg.sender));
 
-        console.log("checking timelock + alexios");
         // Validations
         require(keccak256(abi.encodePacked(alexios.name())) == ALEXIOS_HASH, "not alexios");
         require(timelock.hasRole(PROPOSER_ROLE, address(alexios)), "alexios not timelock admin");
@@ -252,28 +245,29 @@ contract Upgrade3_4_0 {
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
         require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "must be owner of Main");
 
-        console.log("grabbing anastasius to use");
         // Determine which anastasius to use for the RToken
         IGovernor anastasius = anastasiuses[rToken];
         require(address(anastasius) != address(0), "unsupported RToken");
 
-        Components memory proxies;
-        proxies.assetRegistry = main.assetRegistry();
-        proxies.basketHandler = main.basketHandler();
-        proxies.backingManager = main.backingManager();
-        proxies.broker = main.broker();
-        proxies.distributor = main.distributor();
-        proxies.furnace = main.furnace();
-        proxies.rToken = rToken;
-        proxies.rTokenTrader = main.rTokenTrader();
-        proxies.rsrTrader = main.rsrTrader();
-        proxies.stRSR = main.stRSR();
+        Components memory proxy;
+        proxy.assetRegistry = main.assetRegistry();
+        proxy.basketHandler = main.basketHandler();
+        proxy.backingManager = main.backingManager();
+        proxy.broker = main.broker();
+        proxy.distributor = main.distributor();
+        proxy.furnace = main.furnace();
+        proxy.rToken = rToken;
+        proxy.rTokenTrader = main.rTokenTrader();
+        proxy.rsrTrader = main.rsrTrader();
+        proxy.stRSR = main.stRSR();
 
-        console.log("component upgrades");
-        // Component Proxy Upgrades
+        // Proxy Upgrades
         {
-            (IMain mainImpl, Components memory compImpls, TradePlugins memory tradingImpls) = deployer
-            .implementations();
+            (
+                IMain mainImpl,
+                Components memory compImpls,
+                TradePlugins memory tradingImpls
+            ) = deployer.implementations();
             IBackingManager backingManager = main.backingManager();
             IBroker broker = main.broker();
             IDistributor distributor = main.distributor();
@@ -281,16 +275,22 @@ contract Upgrade3_4_0 {
             IRevenueTrader rsrTrader = main.rsrTrader();
 
             UUPSUpgradeable(address(main)).upgradeTo(address(mainImpl));
-            UUPSUpgradeable(address(proxies.assetRegistry)).upgradeTo(address(compImpls.assetRegistry));
-            UUPSUpgradeable(address(proxies.backingManager)).upgradeTo(address(compImpls.backingManager));
-            UUPSUpgradeable(address(proxies.basketHandler)).upgradeTo(address(compImpls.basketHandler));
-            UUPSUpgradeable(address(proxies.broker)).upgradeTo(address(compImpls.broker));
-            UUPSUpgradeable(address(proxies.distributor)).upgradeTo(address(compImpls.distributor));
-            UUPSUpgradeable(address(proxies.furnace)).upgradeTo(address(compImpls.furnace));
-            UUPSUpgradeable(address(proxies.rTokenTrader)).upgradeTo(address(compImpls.rTokenTrader));
-            UUPSUpgradeable(address(proxies.rsrTrader)).upgradeTo(address(compImpls.rsrTrader));
-            UUPSUpgradeable(address(proxies.stRSR)).upgradeTo(address(compImpls.stRSR));
-            UUPSUpgradeable(address(proxies.rToken)).upgradeTo(address(compImpls.rToken));
+            UUPSUpgradeable(address(proxy.assetRegistry)).upgradeTo(
+                address(compImpls.assetRegistry)
+            );
+            UUPSUpgradeable(address(proxy.backingManager)).upgradeTo(
+                address(compImpls.backingManager)
+            );
+            UUPSUpgradeable(address(proxy.basketHandler)).upgradeTo(
+                address(compImpls.basketHandler)
+            );
+            UUPSUpgradeable(address(proxy.broker)).upgradeTo(address(compImpls.broker));
+            UUPSUpgradeable(address(proxy.distributor)).upgradeTo(address(compImpls.distributor));
+            UUPSUpgradeable(address(proxy.furnace)).upgradeTo(address(compImpls.furnace));
+            UUPSUpgradeable(address(proxy.rTokenTrader)).upgradeTo(address(compImpls.rTokenTrader));
+            UUPSUpgradeable(address(proxy.rsrTrader)).upgradeTo(address(compImpls.rsrTrader));
+            UUPSUpgradeable(address(proxy.stRSR)).upgradeTo(address(compImpls.stRSR));
+            UUPSUpgradeable(address(proxy.rToken)).upgradeTo(address(compImpls.rToken));
 
             // Trading plugins
             TestIBroker(address(broker)).setDutchTradeImplementation(tradingImpls.dutchTrade);
@@ -304,86 +304,81 @@ contract Upgrade3_4_0 {
             ICachedComponent(address(rsrTrader)).cacheComponents();
         }
 
-        console.log("scaling reward ratios");
         // Scale the reward downwards by the blocktime
+        // This assumption only makes sense if the old Governor is Alexios, which has been checked
         {
             uint48 blocktime = block.chainid == 8453 ? 2 : 12; // checked prior for else cases
-            proxies.furnace.setRatio(proxies.furnace.ratio() / blocktime);
-            TestIStRSR(address(proxies.stRSR)).setRewardRatio(
-                TestIStRSR(address(proxies.stRSR)).rewardRatio() / blocktime
+            proxy.furnace.setRatio(proxy.furnace.ratio() / blocktime);
+            TestIStRSR(address(proxy.stRSR)).setRewardRatio(
+                TestIStRSR(address(proxy.stRSR)).rewardRatio() / blocktime
             );
         }
 
-        console.log("eliminate trading delay");
         // Set trading delay to 0
-        TestIBackingManager(address(proxies.backingManager)).setTradingDelay(0);
+        TestIBackingManager(address(proxy.backingManager)).setTradingDelay(0);
 
-        console.log("=============================================");
-        console.log("swapping assets");
-        // Assets
+        // Asset registry updates
         {
-            IERC20[] memory erc20s = proxies.assetRegistry.erc20s();
+            IERC20[] memory erc20s = proxy.assetRegistry.erc20s();
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IERC20Metadata erc20 = IERC20Metadata(address(erc20s[i]));
                 if (address(erc20) == address(rToken)) continue;
                 if (assets[erc20] != IAsset(address(0))) {
                     // if we have a new asset with that erc20, swapRegistered()
-                    proxies.assetRegistry.swapRegistered(assets[erc20]);
+                    proxy.assetRegistry.swapRegistered(assets[erc20]);
                 } else {
                     // if we have a rotated asset, register() a new asset
                     if (rotations[erc20] != IAsset(address(0))) {
-                        console.log(i, "rotate:", erc20.symbol(), address(erc20));
-                        proxies.assetRegistry.register(rotations[erc20]);
+                        proxy.assetRegistry.register(rotations[erc20]);
                     } else {
                         // assets being deprecated will be skipped
-                        console.log(i, "skip:", erc20.symbol(), address(erc20));
                     }
                 }
             }
 
             // RTokenAsset -- always do last since could depend on everything else
-            proxies.assetRegistry.swapRegistered(
+            proxy.assetRegistry.swapRegistered(
                 deployer.deployRTokenAsset(
                     rToken,
-                    proxies.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
+                    proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
                 )
             );
-        }
-        console.log("=============================================");
 
-        console.log("switching basket");
+            // Unregister TUSD if registered -- oracle is fully offline as of at least May 4th, 2024
+            if (
+                proxy.assetRegistry.isRegistered(IERC20(0x0000000000085d4780B73119b644AE5ecd22b376))
+            ) {
+                proxy.assetRegistry.unregister(IAsset(0x7F9999B2C9D310a5f48dfD070eb5129e1e8565E2)); // TUSD
+            }
+        }
+
         // Set new prime basket with rotated collateral
         {
             (IERC20[] memory primeERC20s, , uint192[] memory targetAmts) = TestIBasketHandler(
-                address(proxies.basketHandler)
+                address(proxy.basketHandler)
             ).getPrimeBasket();
 
             bool newBasket;
             for (uint256 i = 0; i < primeERC20s.length; i++) {
-                IERC20Metadata erc20 = IERC20Metadata(address(primeERC20s[i]));
-                console.log("basket", i, erc20.symbol(), address(erc20));
                 if (assets[primeERC20s[i]] != IAsset(address(0))) continue;
 
                 if (rotations[primeERC20s[i]] != IAsset(address(0))) {
-                    IERC20Metadata primeERC20 = IERC20Metadata(address(rotations[primeERC20s[i]].erc20()));
-                    console.log(i, erc20.symbol(), "=>", primeERC20.symbol());
+                    IERC20Metadata primeERC20 = IERC20Metadata(
+                        address(rotations[primeERC20s[i]].erc20())
+                    );
                     primeERC20s[i] = primeERC20;
                     newBasket = true;
                 }
             }
 
             // Set prime basket
-            if (newBasket) proxies.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
-
-            console.log("=======================================================");
+            if (newBasket) proxy.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
 
             // Set reference basket
-            proxies.basketHandler.refreshBasket();
-            require(proxies.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
+            proxy.basketHandler.refreshBasket();
+            require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         }
-        console.log("=======================================================");
 
-        console.log("upgrading governance");
         // Replace Alexios with Anastasius
         timelock.revokeRole(EXECUTOR_ROLE, address(alexios));
         timelock.revokeRole(PROPOSER_ROLE, address(alexios));
@@ -392,13 +387,11 @@ contract Upgrade3_4_0 {
         timelock.grantRole(PROPOSER_ROLE, address(anastasius));
         timelock.grantRole(CANCELLER_ROLE, address(anastasius));
 
-        console.log("renouncing adminships");
         // Renounce adminships
         main.renounceRole(MAIN_OWNER_ROLE, address(this));
         assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
         timelock.renounceRole(TIMELOCK_ADMIN_ROLE, address(this));
         assert(!timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)));
-        console.log("spell 1 cast");
     }
 
     // Cast once-per-sender, which is assumed to be the timelock
@@ -406,14 +399,16 @@ contract Upgrade3_4_0 {
     /// @param anastasius The corresponding Governor for the RToken
     /// @dev Requirement: has administration of RToken. revoked at end of execution
     function castSpell2(IRToken rToken, IGovernor anastasius) external {
-        console.log("cast spell 2", address(rToken));
         require(oneCast[msg.sender], "step 1 not cast");
 
         // Can only cast once
         require(!twoCast[msg.sender], "repeat cast");
         twoCast[msg.sender] = true;
 
-        require(keccak256(abi.encodePacked(anastasius.name())) == ANASTASIUS_HASH, "not anastasius");
+        require(
+            keccak256(abi.encodePacked(anastasius.name())) == ANASTASIUS_HASH,
+            "not anastasius"
+        );
 
         IMain main = rToken.main();
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
@@ -425,7 +420,6 @@ contract Upgrade3_4_0 {
 
             // if we have a rotated asset, unregister it now
             if (rotations[erc20] != IAsset(address(0))) {
-                console.log(i, "unregister:", erc20.symbol(), address(erc20));
                 assetRegistry.unregister(assetRegistry.toAsset(erc20));
             }
         }
@@ -437,6 +431,5 @@ contract Upgrade3_4_0 {
         assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
         timelock.renounceRole(TIMELOCK_ADMIN_ROLE, address(this));
         assert(!timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this))); // execessive revoke
-        console.log("spell 2 cast");
     }
 }
