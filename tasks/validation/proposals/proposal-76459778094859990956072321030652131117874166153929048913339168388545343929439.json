@@ -1,0 +1,25 @@
+{
+    "targets": [
+        "0xb6A7d481719E97e142114e905E86a39a2Fa0dfD2",
+        "0x834Ea01e45F9b5365314358159d92d134d89feEb"
+    ],
+    "values": [
+        {
+            "type": "BigNumber",
+            "hex": "0x00"
+        },
+        {
+            "type": "BigNumber",
+            "hex": "0x00"
+        }
+    ],
+    "calldatas": [
+        "0x2f2ff15d4f574e4552000000000000000000000000000000000000000000000000000000000000000000000000000000834ea01e45f9b5365314358159d92d134d89feeb",
+        "0x85b622fc000000000000000000000000e72b141df173b999ae7c1adcbf60cc9833ce56a8000000000000000000000000991c13ff5e8bd3ffc59244a8cf13e0253c78d2bd"
+    ],
+    "description": "3.4.0 Upgrade (2/2) - Cleanup",
+    "rtoken": "0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8",
+    "governor": "0x991c13ff5e8bd3FFc59244A8cF13E0253C78d2bD",
+    "timelock": "0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B",
+    "proposalId": "76459778094859990956072321030652131117874166153929048913339168388545343929439"
+}

@@ -198,8 +198,6 @@ task('run-validations', 'Runs all validations')
   .setAction(async (params, hre) => {
     const [tester] = await hre.ethers.getSigners()
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
-
-    // 2. Bring back to fully collateralized
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const basketHandler = await hre.ethers.getContractAt(
       'BasketHandlerP1',

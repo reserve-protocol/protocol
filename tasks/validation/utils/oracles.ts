@@ -125,15 +125,28 @@ export const pushOracleForward = async (
     // console.error('❌ targetPerTokChainlinkFeed not found for:', asset, 'skipping...')
   }
 
+  // Dealing with nested RTokens
   // TODO do better
-  // Problem: The feeds on PoolTokens are internal immutable. Not in storage nor are there getters.
-  // Workaround solution: hard-code oracles for FRAX for eUSDFRAXBP; USDC is registered as backup
-  if (asset == '0x890FAa00C16EAD6AA76F18A1A7fe9C40838F9122') {
+
+  // eUSDFRAXBP
+  if (
+    asset == '0x890FAa00C16EAD6AA76F18A1A7fe9C40838F9122' ||
+    asset == '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac' ||
+    asset == '0xE529B59C1764d6E5a274099Eb660DD9e130A5481'
+  ) {
     const feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
       networkConfig['1'].chainlinkFeeds.FRAX!
     )
     await updateAnswer(feed)
+    const eUSDAssetRegistry = await hre.ethers.getContractAt(
+      'IAssetRegistry',
+      '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+    )
+    const [, eUSDAssets] = await eUSDAssetRegistry.getRegistry()
+    for (const eUSDAsset of eUSDAssets) {
+      addresses = await pushOracleForward(hre, eUSDAsset, addresses) // recursion!
+    }
   }
 
   return addresses

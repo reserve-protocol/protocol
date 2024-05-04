@@ -213,7 +213,7 @@ export const getTokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  console.log('Acquiring tokens...', tokenAddress)
+  console.log('Acquiring tokens...', logToken(tokenAddress))
   switch (tokenAddress.toLowerCase()) {
     case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase(): // <3.4.0 saUSDC mainnet
     case '0xa8157BF67Fd7BcDCC139CB9Bf1bd7Eb921A779D3'.toLowerCase(): // >=3.4.0 saUSDC mainnet
@@ -226,8 +226,9 @@ export const getTokens = async (
       await getCTokenVault(hre, tokenAddress, amount, recipient)
       break
     case '0x24CDc6b4Edd3E496b7283D94D93119983A61056a'.toLowerCase(): // cvx3Pool mainnet
-    case '0x511daB8150966aFfE15F0a5bFfBa7F4d2b62DEd4'.toLowerCase(): // cvxPayPool mainnet
-    case '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase(): // cvxeUSDFRAXBP mainnet
+    case '0x5ale11daB8150966aFfE15F0a5bFfBa7F4d2b62DEd4'.toLowerCase(): // cvxPayPool mainnet
+    case '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase(): // <3.4.0 cvxeUSDFRAXBP mainnet
+    case '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac'.toLowerCase(): // <3.4.0 cvxeUSDFRAXBP mainnet
     case '0x3e8f7EDc03E0133b95EcB4dD2f72B5027E695413'.toLowerCase(): // cvxMIM3Pool mainnet
     case '0xDbC0cE2321B76D3956412B36e9c0FA9B0fD176E7'.toLowerCase(): // cvxETHPlusETH mainnet
     case '0x6ad24C0B8fD4B594C6009A7F7F48450d9F56c6b8'.toLowerCase(): // cvxCrvUSDUSDC mainnet
@@ -337,9 +338,11 @@ const getERC20Tokens = async (
   const aPyUSDv3AddressOld = '0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7'.toLowerCase()
   const stkcvxeUSDFRAXBPAddress = '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase()
   const stkcvxeUSDFRAXBPAddressOld = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
+  const stkcvxeUSDFRAXBPAddressOld2 = '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac'.toLowerCase()
 
   const tokAddress = tokenAddress.toLowerCase()
 
+  // Solutions for wrappers without whales
   if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
     const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
     await whileImpersonating(
@@ -381,7 +384,11 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
       }
     )
-  } else if (tokAddress == stkcvxeUSDFRAXBPAddress || tokAddress == stkcvxeUSDFRAXBPAddressOld) {
+  } else if (
+    tokAddress == stkcvxeUSDFRAXBPAddress ||
+    tokAddress == stkcvxeUSDFRAXBPAddressOld ||
+    tokAddress == stkcvxeUSDFRAXBPAddressOld2
+  ) {
     const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt('ConvexStakingWrapper', tokAddress)
 
     const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'.toLowerCase()
