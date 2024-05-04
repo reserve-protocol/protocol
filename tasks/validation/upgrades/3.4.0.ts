@@ -1,18 +1,18 @@
 import fs from 'fs'
 import { task } from 'hardhat/config'
 import { BigNumber } from 'ethers'
-import { MAINNET_DEPLOYMENTS } from './utils/constants'
+import { MAINNET_DEPLOYMENTS } from '../utils/constants'
 import {
   proposal_3_4_0_step_1,
   proposal_3_4_0_step_2,
   EXECUTOR_ROLE,
   PROPOSER_ROLE,
   CANCELLER_ROLE,
-} from './proposals/3_4_0'
+} from '../proposals/3_4_0'
 
 // Use this once to serialize a proposal
 task(
-  'test-spell',
+  '3.4.0',
   "Check the implementation to figure out what this does; it's always in flux"
 ).setAction(async (params, hre) => {
   console.log('Part 1')
