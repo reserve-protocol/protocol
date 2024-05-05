@@ -330,80 +330,88 @@ const getERC20Tokens = async (
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
 
   // special-cases for wrappers with 0 supply
-  const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
-  const wcUSDCv3AddressOld = '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'.toLowerCase()
-  const aUSDCv3Address = networkConfig[chainId].tokens.saEthUSDC!.toLowerCase()
-  const aUSDCv3AddressOld = '0x093cB4f405924a0C468b43209d5E466F1dd0aC7d'.toLowerCase()
-  const aPyUSDv3Address = networkConfig[chainId].tokens.saEthPyUSD!.toLowerCase()
-  const aPyUSDv3AddressOld = '0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7'.toLowerCase()
-  const stkcvxeUSDFRAXBPAddress = '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase()
-  const stkcvxeUSDFRAXBPAddressOld = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
-  const stkcvxeUSDFRAXBPAddressOld2 = '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac'.toLowerCase()
+  if (chainId == '1' || chainId == '31337') {
+    const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
+    const wcUSDCv3AddressOld = '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'.toLowerCase()
+    const aUSDCv3Address = networkConfig[chainId].tokens.saEthUSDC!.toLowerCase()
+    const aUSDCv3AddressOld = '0x093cB4f405924a0C468b43209d5E466F1dd0aC7d'.toLowerCase()
+    const aPyUSDv3Address = networkConfig[chainId].tokens.saEthPyUSD!.toLowerCase()
+    const aPyUSDv3AddressOld = '0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7'.toLowerCase()
+    const stkcvxeUSDFRAXBPAddress = '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase()
+    const stkcvxeUSDFRAXBPAddressOld = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
+    const stkcvxeUSDFRAXBPAddressOld2 = '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac'.toLowerCase()
 
-  const tokAddress = tokenAddress.toLowerCase()
+    const tokAddress = tokenAddress.toLowerCase()
 
-  // Solutions for wrappers without whales
-  if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
-    const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
-      async (whaleSigner) => {
-        const cUSDCv3 = await hre.ethers.getContractAt(
-          'ERC20Mock',
-          networkConfig['1'].tokens.cUSDCv3!
-        )
-        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
-        await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
-        await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(2))
-        const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
-        await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
-      }
-    )
-  } else if (tokAddress == aUSDCv3Address || tokAddress == aUSDCv3AddressOld) {
-    const saEthUSDC = await hre.ethers.getContractAt('IStaticATokenV3LM', tokAddress)
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (whaleSigner) => {
-        const USDC = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.USDC!)
-        await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
-        await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
-        await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
-      }
-    )
-  } else if (tokAddress == aPyUSDv3Address || tokAddress == aPyUSDv3AddressOld) {
-    const saEthPyUSD = await hre.ethers.getContractAt('IStaticATokenV3LM', tokAddress)
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.pyUSD!.toLowerCase()],
-      async (whaleSigner) => {
-        const pyUSD = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.pyUSD!)
-        await pyUSD.connect(whaleSigner).approve(saEthPyUSD.address, amount.mul(2))
-        await saEthPyUSD.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
-        await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
-      }
-    )
-  } else if (
-    tokAddress == stkcvxeUSDFRAXBPAddress ||
-    tokAddress == stkcvxeUSDFRAXBPAddressOld ||
-    tokAddress == stkcvxeUSDFRAXBPAddressOld2
-  ) {
-    const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt('ConvexStakingWrapper', tokAddress)
+    // Solutions for wrappers without whales
+    if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
+      const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+      await whileImpersonating(
+        hre,
+        whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
+        async (whaleSigner) => {
+          const cUSDCv3 = await hre.ethers.getContractAt(
+            'ERC20Mock',
+            networkConfig['1'].tokens.cUSDCv3!
+          )
+          await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
+          await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
+          await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(2))
+          const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
+          await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
+        }
+      )
+    } else if (tokAddress == aUSDCv3Address || tokAddress == aUSDCv3AddressOld) {
+      const saEthUSDC = await hre.ethers.getContractAt('IStaticATokenV3LM', tokAddress)
+      await whileImpersonating(
+        hre,
+        whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+        async (whaleSigner) => {
+          const USDC = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.USDC!)
+          await USDC.connect(whaleSigner).approve(saEthUSDC.address, amount.mul(2))
+          await saEthUSDC.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
+          await token.connect(whaleSigner).transfer(recipient, amount) // saEthUSDC transfer
+        }
+      )
+    } else if (tokAddress == aPyUSDv3Address || tokAddress == aPyUSDv3AddressOld) {
+      const saEthPyUSD = await hre.ethers.getContractAt('IStaticATokenV3LM', tokAddress)
+      await whileImpersonating(
+        hre,
+        whales[networkConfig['1'].tokens.pyUSD!.toLowerCase()],
+        async (whaleSigner) => {
+          const pyUSD = await hre.ethers.getContractAt(
+            'ERC20Mock',
+            networkConfig['1'].tokens.pyUSD!
+          )
+          await pyUSD.connect(whaleSigner).approve(saEthPyUSD.address, amount.mul(2))
+          await saEthPyUSD.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address, 0, true)
+          await token.connect(whaleSigner).transfer(recipient, amount) // saEthPyUSD transfer
+        }
+      )
+    } else if (
+      tokAddress == stkcvxeUSDFRAXBPAddress ||
+      tokAddress == stkcvxeUSDFRAXBPAddressOld ||
+      tokAddress == stkcvxeUSDFRAXBPAddressOld2
+    ) {
+      const stkcvxeUSDFRAXBP = await hre.ethers.getContractAt('ConvexStakingWrapper', tokAddress)
 
-    const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'.toLowerCase()
+      const lpTokenAddr = '0xaeda92e6a3b1028edc139a4ae56ec881f3064d4f'.toLowerCase()
 
-    await whileImpersonating(hre, whales[lpTokenAddr], async (whaleSigner) => {
-      const lpToken = await hre.ethers.getContractAt('ERC20Mock', lpTokenAddr)
-      await lpToken.connect(whaleSigner).approve(stkcvxeUSDFRAXBP.address, amount.mul(2))
-      await stkcvxeUSDFRAXBP.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address)
-      await token.connect(whaleSigner).transfer(recipient, amount)
-    })
+      await whileImpersonating(hre, whales[lpTokenAddr], async (whaleSigner) => {
+        const lpToken = await hre.ethers.getContractAt('ERC20Mock', lpTokenAddr)
+        await lpToken.connect(whaleSigner).approve(stkcvxeUSDFRAXBP.address, amount.mul(2))
+        await stkcvxeUSDFRAXBP.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address)
+        await token.connect(whaleSigner).transfer(recipient, amount)
+      })
+    } else {
+      const addr = whales[token.address.toLowerCase()]
+      if (!addr) throw new Error('missing whale for ' + tokenAddress)
+      await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
+        await token.connect(whaleSigner).transfer(recipient, amount)
+      })
+    }
   } else {
-    const addr = whales[token.address.toLowerCase()]
-    if (!addr) throw new Error('missing whale for ' + tokenAddress)
-    await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
-      await token.connect(whaleSigner).transfer(recipient, amount)
-    })
+    // Base
+    // TODO
   }
 }

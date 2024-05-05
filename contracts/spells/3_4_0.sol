@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -129,12 +131,16 @@ contract Upgrade3_4_0 {
 
     // =======================================================================================
 
-    constructor() {
-        mainnet = block.chainid == 1 || block.chainid == 31337;
-        require(mainnet || block.chainid == 8453, "unsupported chain");
+    constructor(bool _mainnet) {
+        // we have to pass-in `_mainnet` because chainid is not reliable during testing
+        require(
+            block.chainid == 1 || block.chainid == 31337 || block.chainid == 8453,
+            "unsupported chain"
+        );
+        mainnet = _mainnet;
 
         // Set up `assets` array
-        if (mainnet) {
+        if (_mainnet) {
             // Set up `deployer`
             deployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
 
@@ -191,7 +197,7 @@ contract Upgrade3_4_0 {
             rotations[IERC20(0x3BECE5EC596331033726E5C6C188c313Ff4E3fE5)] = IAsset(
                 0xE529B59C1764d6E5a274099Eb660DD9e130A5481 // cvxeUSDFRAXBP
             );
-        } else if (block.chainid == 8453) {
+        } else {
             // Set up `deployer`
             deployer = TestIDeployer(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
 
@@ -221,8 +227,7 @@ contract Upgrade3_4_0 {
 
             // Set up `rotations`
             // <3.4.0 ERC20 => 3.4.0 Asset
-        } else {
-            revert("unsupported chain");
+            // TODO
         }
     }
 

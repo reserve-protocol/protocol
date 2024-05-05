@@ -71,7 +71,7 @@ export const voteProposal = async (
       let i = 0
       while (quorumNotReached) {
         const whale = whales[i]
-        if (!whale) throw new Error(`missing whale at index ${i}`)
+        if (!whale) throw new Error(`missing whale at index ${i} for RToken ${rtokenAddress}`)
         currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
         i += 1
         console.log(`Votes: ${currentVoteAmount} / ${quorum}`)
