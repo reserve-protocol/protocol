@@ -57,6 +57,7 @@ async function main() {
   let oracleError = fp('0.0025')
 
   if (chainIdKey == '8453') {
+    throw new Error('deprecated; no pure USDC market available')
     USDC_NAME = 'USDbC'
     name = 'Wrapped Stargate USDbC'
     symbol = 'wsgUSDbC'

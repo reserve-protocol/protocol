@@ -5,7 +5,7 @@ import { advanceBlocks, advanceTime } from '#/utils/time'
 import { IRewardable } from '@typechain/IRewardable'
 import { formatEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { runBatchTrade } from '../upgrade-checker-utils/trades'
+import { runBatchTrade } from './trades'
 
 const claimRewards = async (claimer: IRewardable) => {
   const resp = await claimer.claimRewards()
@@ -23,6 +23,10 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   console.log(`\n* * * * * Claiming RSR rewards...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const assetRegistry = await hre.ethers.getContractAt(
+    'AssetRegistryP1',
+    await main.assetRegistry()
+  )
   const backingManager = await hre.ethers.getContractAt(
     'BackingManagerP1',
     await main.backingManager()
@@ -32,8 +36,11 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   const strsr = await hre.ethers.getContractAt('StRSRP1', await main.stRSR())
   const rsrRatePre = await strsr.exchangeRate()
 
-  const rewards = await claimRewards(backingManager)
-  console.log('rewards claimed', rewards)
+  // requires 3.4.0 plugins to be swapped in
+  // const rewards = await claimRewards(backingManager)
+  // console.log('rewards claimed', rewards)
+  const rewards = await assetRegistry.erc20s()
+
   await backingManager.forwardRevenue(rewards)
   const comp = '0xc00e94Cb662C3520282E6f5717214004A7f26888'
   const compContract = await hre.ethers.getContractAt('ERC20Mock', comp)
@@ -45,7 +52,6 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
 
   await rsrTrader.manageTokens([comp], [TradeKind.BATCH_AUCTION])
   await runBatchTrade(hre, rsrTrader, comp, false)
-  await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
   await strsr.payoutRewards()
   await advanceBlocks(hre, 100)
   await advanceTime(hre, 1200)

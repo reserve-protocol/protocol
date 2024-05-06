@@ -16,7 +16,7 @@ import "./mixins/Component.sol";
 
 // solhint-disable max-states-count
 
-/*
+/**
  * @title StRSRP1
  * @notice StRSR is an ERC20 token contract that allows people to stake their RSR as
  *   over-collateralization behind an RToken. As compensation stakers receive a share of revenues

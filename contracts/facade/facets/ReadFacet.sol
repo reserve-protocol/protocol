@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../plugins/trading/DutchTrade.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IAssetRegistry.sol";
-import "../../interfaces/IReadFacet.sol";
 import "../../interfaces/IRToken.sol";
 import "../../interfaces/IStRSR.sol";
 import "../../libraries/Fixed.sol";
@@ -22,7 +21,7 @@ import "./MaxIssuableFacet.sol";
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ReadFacet is MaxIssuableFacet {
+contract ReadFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
@@ -247,6 +246,12 @@ contract ReadFacet is MaxIssuableFacet {
 
     // === Views ===
 
+    struct Pending {
+        uint256 index;
+        uint256 availableAt;
+        uint256 amount;
+    }
+
     /// @param draftEra {draftEra} The draft era to query unstakings for
     /// @param account The account for the query
     /// @return unstakings {qRSR} All the pending StRSR unstakings for an account, in RSR
@@ -254,7 +259,7 @@ contract ReadFacet is MaxIssuableFacet {
         RTokenP1 rToken,
         uint256 draftEra,
         address account
-    ) external view returns (IReadFacet.Pending[] memory unstakings) {
+    ) external view returns (Pending[] memory unstakings) {
         StRSRP1 stRSR = StRSRP1(address(rToken.main().stRSR()));
         uint256 left = stRSR.firstRemainingDraft(draftEra, account);
         uint256 right = stRSR.draftQueueLen(draftEra, account);
@@ -271,7 +276,7 @@ contract ReadFacet is MaxIssuableFacet {
             }
 
             // {qRSR} = {qDrafts} / {qDrafts/qRSR}
-            unstakings[i] = IReadFacet.Pending(i + left, availableAt, diff.div(draftRate));
+            unstakings[i] = Pending(i + left, availableAt, diff.div(draftRate));
         }
     }
 
