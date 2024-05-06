@@ -19,9 +19,6 @@ task(
   console.log('Part 1')
 
   const network = useEnv('FORK_NETWORK').toLowerCase()
-  if (['localhost', 'hardhat', 'base'].indexOf(network) == -1) {
-    throw new Error(`unsupported network ${network}`)
-  }
 
   // Deploy 3.4.0 Upgrade spell
   console.log('Deploying 3.4.0 Upgrade spell...')
