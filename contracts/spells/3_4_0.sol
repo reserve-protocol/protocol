@@ -118,10 +118,10 @@ contract Upgrade3_4_0 {
     mapping(IRToken => IGovernor) public anastasiuses;
 
     // 3.4.0 ERC20 => 3.4.0 Asset
-    mapping(IERC20 => IAsset) public assets;
+    mapping(IERC20 => IAsset) public assets; // ALL 3.4.0 assets
 
     // <3.4.0 ERC20 => 3.4.0 Asset
-    mapping(IERC20 => IAsset) public rotations;
+    mapping(IERC20 => IAsset) public rotations; // wrapper rotations
 
     // msg.sender => bool
     mapping(address => bool) public oneCast;
@@ -171,7 +171,7 @@ contract Upgrade3_4_0 {
                 assets[erc20] = IAsset(MAINNET_ASSETS[i]);
             }
 
-            // Set up `rotations`
+            // Set up wrapper `rotations`
             // <3.4.0 ERC20 => 3.4.0 Asset
             rotations[IERC20(0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9)] = IAsset(
                 0x8d753659D4E4e4b4601c7F01Dc1c920cA538E333 // saUSDT
@@ -225,9 +225,26 @@ contract Upgrade3_4_0 {
                 assets[erc20] = IAsset(BASE_ASSETS[i]);
             }
 
-            // Set up `rotations`
+            // Set up wrapper `rotations`
             // <3.4.0 ERC20 => 3.4.0 Asset
-            // TODO
+            rotations[IERC20(0x184460704886f9F2A7F3A0c2887680867954dC6E)] = IAsset(
+                0xC19f5d60e2Aca1174f3D5Fe189f0A69afaB76f50 // saBasUSDC
+            );
+            rotations[IERC20(0xA694f7177C6c839C951C74C797283B35D0A486c8)] = IAsset(
+                0xf7a9D27c3B60c78c6F6e2c2d6ED6E8B94b352461 // wcUSDCv3
+            );
+            rotations[IERC20(0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22)] = IAsset(
+                0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D // cbETH
+            );
+            rotations[IERC20(0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22)] = IAsset(
+                0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D // cbETH
+            );
+            rotations[IERC20(0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452)] = IAsset(
+                0x8b4374005291B8FCD14C4E947604b2FB3C660A73 // wstETH
+            );
+            rotations[IERC20(0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452)] = IAsset(
+                0x8b4374005291B8FCD14C4E947604b2FB3C660A73 // wstETH
+            );
         }
     }
 
