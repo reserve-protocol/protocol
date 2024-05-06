@@ -13,7 +13,7 @@ import { shiftl_toFix, FIX_ONE, FixLib, CEIL } from "../../../libraries/Fixed.so
 /**
  * @title MorphoSelfReferentialCollateral
  * @notice Collateral plugin for a Morpho pool with self referential collateral, like WETH
- * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
