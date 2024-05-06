@@ -329,7 +329,7 @@ contract Upgrade3_4_0 {
         // Scale the reward downwards by the blocktime
         // This assumption only makes sense if the old Governor is Alexios, which has been checked
         {
-            uint48 blocktime = block.chainid == 8453 ? 2 : 12; // checked prior for else cases
+            uint48 blocktime = mainnet ? 12 : 2;
             proxy.furnace.setRatio(proxy.furnace.ratio() / blocktime);
             TestIStRSR(address(proxy.stRSR)).setRewardRatio(
                 TestIStRSR(address(proxy.stRSR)).rewardRatio() / blocktime
