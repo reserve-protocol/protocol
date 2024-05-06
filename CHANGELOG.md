@@ -2,17 +2,55 @@
 
 # 3.4.0
 
+This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods.
+
 ## Upgrade Steps
 
-TODO
+Upgrade all core contracts and plugins. Call `cacheComponents()` on `BackingManager`, `Broker`, `Distributor`, and both `RevenueTraders`.
 
-Must-do: Upgrade Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s.
+Adjust Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s. For example: divide ratios by 12 for ethereum mainnet.
 
-Should-do: Set Governance as Timelock CANCELLER_ROLE
+Set Governance as Timelock CANCELLER_ROLE.
 
 ## Core Protocol Contracts
 
+Throughout many core contracts negligible gas improvements have been applied. These are excluded from the list below.
+
+- `BackingManager`
+  - Remove requirement for empty block between auctions of same kind (auctions must still be in different blocks)
+- `BasketHandler`
+  - Set max number of backup erc20s: 64
+  - Require all collateral are SOUND during index RToken `setPrimeBasket()`
+- `Broker`
+  - Switch to timestamp-based auctions
+- `Furnace`
+  - Switch to timestamp-based melting
+- `StRSR`
+  - Switch to timestamp-based RSR drip
+- `StRSRP1Votes`
+  - Switch to timestamp-based checkpointing
+  - Add IERC58505 support
+    - `clock() external view returns (uint48)`
+    - `CLOCK_MODE() external view returns (string memory)`
+
 ## Plugins
+
+### Assets
+
+- Deprecate `EURT`
+- Rename `ZeroPrice()` error to `InvalidPrice()`
+- aave-v3
+  - Add try-catch to `StaticATokenV3LM.metaDeposit()`
+- compound-v3
+  - Fix allowance check in `claimTo()` to use `msg.sender`
+- curve/convex
+  - Add `CurveAppreciatingRTokenFiatCollateral` + `CurveAppreciatingRTokenSelfReferentialCollateral` to support `ETH+/ETH` curve pools in non-recursive cases
+  - Add `CurveRecursiveCollateral` + `StakeDAORecursiveCollateral` to support `USDC/USDC+` curve pool in the recursive case. That is: USDC+ will be backed somewhat by its own liquidity against USDC.
+  - Modify `CurveStableRTokenMetapoolCollateral` to check `isReady()` status of underlying RTokens; try-catch asset-registry call.
+- metamorpho
+  - Add `MetaMorphoFiatCollateral` + `MetaMorphoSelfReferentialCollateral` to support `steakUSDC`/`steakUSDP`/`bbUSDT`/`Re7WETH` morpho blue managed vaults
+- frax
+  - Add missing `defaultThreshold != 0` check
 
 ### Trading
 
@@ -20,7 +58,27 @@ Should-do: Set Governance as Timelock CANCELLER_ROLE
   - Switch to timestamp-based model
   - `price(uint256 blockNumber)` -> `price(uint48 timestamp)`
   - Remove `startBlock() returns (uint256)` + `endBlock() returns (uint256)`
-  - Add `startTime() returns (uint48)` (`endTime() returns (uint48)` already existed and is now used in the contract)
+  - Add `startTime() returns (uint48)`
+  - `bid(uint256 blockNumber)` => `bid(uint48 timestamp)`
+
+### Facades
+
+Switch to new Facade singleton model with multiple facets
+
+- `FacadeRead` => `ReadFacet` + `MaxIssuableFacet`
+- `FacadeAct` => `ActFacet`
+
+FacadeMonitor remains independent.
+
+### Governance
+
+Create new Governor Anastasius contract to supersede Governor Alexios. Required to work with new timepoint-based model in StRSRP1Votes.
+
+- `name()`: "Governor Alexios" => "Governor Anastasius"
+- `quorum(uint256 blockNumber)` => `quorum(uint256 timepoint)`
+- Add IERC58505 support
+  - `clock() external view returns (uint48)`
+  - `CLOCK_MODE() external view returns (string memory)`
 
 # 3.3.0
 
