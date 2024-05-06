@@ -86,16 +86,16 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         oracleError: combinedBTCWBTCError.toString(), // 0.25%
         maxTradeVolume: fp('1e6'), // $1m,
-        oracleTimeout: '3600', // 1 hr
+        oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.BTC!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
         erc20: await maWBTC.erc20(),
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.WBTC!,
-      '86400', // 1 hr
+      networkConfig[chainId].chainlinkFeeds.BTC!,
+      '3600', // 1 hr
     ],
     'contracts/plugins/assets/morpho-aave/MorphoNonFiatCollateral.sol:MorphoNonFiatCollateral'
   )

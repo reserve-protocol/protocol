@@ -1,12 +1,14 @@
 import { CollateralFixtureContext, MintCollateralFunc } from '../pluginTestTypes'
 import hre from 'hardhat'
+import { networkConfig } from '#/common/configuration'
 import { BigNumberish, constants } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { whales } from '#/tasks/testing/upgrade-checker-utils/constants'
 import { whileImpersonating } from '#/utils/impersonation'
 import { IERC20 } from '@typechain/IERC20'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'
 import { MorphoAaveV2TokenisedDepositMock } from '@typechain/MorphoAaveV2TokenisedDepositMock'
+import { getChainId } from '#/common/blockchain-utils'
+import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 
 /**
  * Interface representing the context object for the MorphoAaveCollateralFixture.
@@ -32,6 +34,11 @@ export const mintCollateralTo: MintCollateralFunc<MorphoAaveCollateralFixtureCon
   _: SignerWithAddress,
   recipient: string
 ) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+  whales[networkConfig['1'].tokens.USDC!.toLowerCase()] =
+    '0xD6153F5af5679a75cC85D8974463545181f48772'
+
   await whileImpersonating(
     hre,
     whales[ctx.underlyingErc20.address.toLowerCase()],

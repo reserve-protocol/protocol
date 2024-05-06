@@ -57,6 +57,8 @@ export interface ITokens {
   RSR?: string
   CRV?: string
   CVX?: string
+  SDT?: string
+  USDCPLUS?: string
   ETHPLUS?: string
   ankrETH?: string
   frxETH?: string
@@ -65,6 +67,7 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  wcUSDCv3?: string
   cUSDbCv3?: string
   ONDO?: string
   sFRAX?: string
@@ -103,6 +106,8 @@ export interface ITokens {
   Re7WETH?: string
 }
 
+export type ITokensKeys = Array<keyof ITokens>;
+
 export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
@@ -125,11 +130,12 @@ export interface IPools {
   crveUSDFRAXBP?: string
   crvTriCrypto?: string
   crvMIM3Pool?: string
+  sdUSDCUSDCPlus?: string
 }
 
 interface INetworkConfig {
   name: string
-  tokens: ITokens
+  tokens: ITokens & IPools
   chainlinkFeeds: ITokens & ICurrencies & IFeeds
   AAVE_LENDING_POOL?: string
   AAVE_INCENTIVES?: string
@@ -202,6 +208,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
       CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
       CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
+      SDT: '0x73968b9a57c6E53d41345FD57a6E6ae27d6CDB2F',
+      USDCPLUS: '0xFc0B1EEf20e4c68B3DCF36c4537Cfa7Ce46CA70b',
       ETHPLUS: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8',
       ankrETH: '0xE95A203B1a91a908F9B9CE46459d101078c2c3cb',
       frxETH: '0x5E8422345238F34275888049021821E8E08CAa1f',
@@ -210,6 +218,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      wcUSDCv3: '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
@@ -231,6 +240,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
+      sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -327,6 +337,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      wcUSDCv3: '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
@@ -477,6 +488,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       cUSDCv3: '0xb125E6687d4313864e53df431d5425969c15Eb2F',
+      wcUSDCv3: '0xA694f7177C6c839C951C74C797283B35D0A486c8',
       aBasUSDC: '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB',
       saBasUSDC: '0x184460704886f9F2A7F3A0c2887680867954dC6E', // our wrapper
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
@@ -674,6 +686,8 @@ export const MIN_THROTTLE_AMT_RATE = BigNumber.from(10).pow(18)
 export const MAX_THROTTLE_AMT_RATE = BigNumber.from(10).pow(48)
 export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
 export const GNOSIS_MAX_TOKENS = BigNumber.from(7).mul(BigNumber.from(10).pow(28))
+export const MAX_BASKET_SIZE = 100
+export const MAX_BACKUP_SIZE = 64
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1).sub(300)

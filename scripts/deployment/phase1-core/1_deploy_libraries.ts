@@ -1,10 +1,10 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { baseL2Chains, networkConfig } from '../../../common/configuration'
+import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { BasketLibP1, CvxMining, RecollateralizationLibP1 } from '../../../typechain'
+import { BasketLibP1, RecollateralizationLibP1 } from '../../../typechain'
 
 let tradingLib: RecollateralizationLibP1
 let basketLib: BasketLibP1

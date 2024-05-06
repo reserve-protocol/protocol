@@ -23,7 +23,6 @@ export interface IDeployments {
   facade: string
   facets: IFacets
   facadeWriteLib: string
-  cvxMiningLib: string
   facadeWrite: string
   deployer: string
   rsrAsset: string
