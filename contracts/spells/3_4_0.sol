@@ -122,7 +122,6 @@ contract Upgrade3_4_0 {
 
     // <3.4.0 ERC20 => 3.4.0 Asset
     mapping(IERC20 => IAsset) public rotations; // erc20 rotations
-    // an entry pointing to a zero address asset indicates the erc20 should be fully unregistered
 
     // msg.sender => bool
     mapping(address => bool) public oneCast;
