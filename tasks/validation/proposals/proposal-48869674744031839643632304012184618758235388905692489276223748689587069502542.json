@@ -1,0 +1,25 @@
+{
+  "proposalId": "48869674744031839643632304012184618758235388905692489276223748689587069502542",
+  "governor": "0x020cb71181008369c388caaee98b0e69f8f4c471",
+  "calldatas": [
+    "0x4f533b2300000000000000000000000000000000000000000000000000000bac9d386800",
+    "0xd7ccc27500000000000000000000000000000000000000000000000000000bac9d386800"
+  ],
+  "values": [
+    {
+      "type": "BigNumber",
+      "hex": "0x00"
+    },
+    {
+      "type": "BigNumber",
+      "hex": "0x00"
+    }
+  ],
+  "targets": [
+    "0xfe52b7a53aca0e2d155434e2c613f766d140fea8",
+    "0x55230b05d4c1f4a0b4f804dc52919f06355dfbf8"
+  ],
+  "description": "# [IP] USD3 Reward Ratio Change From 2 Weeks to 1 Week \n [https://forum.reserve.org/t/rfc-usd3-reward-ratio-change-from-2-weeks-to-1-week/704](https://forum.reserve.org/t/rfc-usd3-reward-ratio-change-from-2-weeks-to-1-week/704) \n **Summary**\n\nChange the Reward ratio from 2 weeks to 1 week.\n\nCurrent Reward Ratio:\n2 weeks or 0.0000064180294\n\nNew Reward Ratio:\n1 week or 0.000012836",
+  "rtoken": "0x0d86883FAf4FfD7aEb116390af37746F45b6f378",
+  "timelock": "0xE0289984F709fc7150E646B672bfaDC879a15f14"
+}

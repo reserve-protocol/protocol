@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -123,7 +121,8 @@ contract Upgrade3_4_0 {
     mapping(IERC20 => IAsset) public assets; // ALL 3.4.0 assets
 
     // <3.4.0 ERC20 => 3.4.0 Asset
-    mapping(IERC20 => IAsset) public rotations; // wrapper rotations
+    mapping(IERC20 => IAsset) public rotations; // erc20 rotations
+    // an entry pointing to a zero address asset indicates the erc20 should be fully unregistered
 
     // msg.sender => bool
     mapping(address => bool) public oneCast;
@@ -193,11 +192,20 @@ contract Upgrade3_4_0 {
             rotations[IERC20(0x093c07787920eB34A0A0c7a09823510725Aee4Af)] = IAsset(
                 0x33Ba1BC07b0fafb4BBC1520B330081b91ca6bdf0 // wcUSDCv3
             );
+            rotations[IERC20(0x7e1e077b289c0153b5ceAD9F264d66215341c9Ab)] = IAsset(
+                0x33Ba1BC07b0fafb4BBC1520B330081b91ca6bdf0 // wcUSDCv3
+            );
             rotations[IERC20(0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1)] = IAsset(
                 0xE529B59C1764d6E5a274099Eb660DD9e130A5481 // cvxeUSDFRAXBP
             );
             rotations[IERC20(0x3BECE5EC596331033726E5C6C188c313Ff4E3fE5)] = IAsset(
                 0xE529B59C1764d6E5a274099Eb660DD9e130A5481 // cvxeUSDFRAXBP
+            );
+            rotations[IERC20(0x3C0a9143063Fc306F7D3cBB923ff4879d70Cf1EA)] = IAsset(
+                0xB58D95003Af73CF76Ce349103726a51D4Ec8af17 // fUSDC
+            );
+            rotations[IERC20(0x6D05CB2CB647B58189FA16f81784C05B4bcd4fe9)] = IAsset(
+                0xB58D95003Af73CF76Ce349103726a51D4Ec8af17 // fUSDC
             );
         } else {
             // Set up `deployer`
@@ -345,19 +353,19 @@ contract Upgrade3_4_0 {
         {
             IERC20[] memory erc20s = proxy.assetRegistry.erc20s();
             for (uint256 i = 0; i < erc20s.length; i++) {
-                IERC20Metadata erc20 = IERC20Metadata(address(erc20s[i]));
+                IERC20 erc20 = erc20s[i];
                 if (address(erc20) == address(rToken)) continue;
                 if (assets[erc20] != IAsset(address(0))) {
                     // if we have a new asset with that erc20, swapRegistered()
                     proxy.assetRegistry.swapRegistered(assets[erc20]);
-                } else {
-                    // if we have a rotated asset, register() a new asset
-                    if (rotations[erc20] != IAsset(address(0))) {
-                        proxy.assetRegistry.register(rotations[erc20]);
-                    } else {
-                        // assets being deprecated will be skipped
-                    }
+                } else if (
+                    // if we have a rotated asset
+                    rotations[erc20] != IAsset(address(0)) &&
+                    !proxy.assetRegistry.isRegistered(rotations[erc20].erc20())
+                ) {
+                    proxy.assetRegistry.register(rotations[erc20]);
                 }
+                // assets being deprecated in 3.4.0 will be skipped and left in baskets
             }
 
             // RTokenAsset -- always do last since could depend on everything else
@@ -384,21 +392,16 @@ contract Upgrade3_4_0 {
 
             bool newBasket;
             for (uint256 i = 0; i < primeERC20s.length; i++) {
-                if (assets[primeERC20s[i]] != IAsset(address(0))) continue;
-
                 if (rotations[primeERC20s[i]] != IAsset(address(0))) {
-                    IERC20Metadata primeERC20 = IERC20Metadata(
-                        address(rotations[primeERC20s[i]].erc20())
-                    );
-                    primeERC20s[i] = primeERC20;
+                    primeERC20s[i] = IERC20(address(rotations[primeERC20s[i]].erc20()));
                     newBasket = true;
                 }
             }
 
-            // Set prime basket
-            if (newBasket) proxy.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
-
-            // Set reference basket
+            // Set baskets
+            if (newBasket) {
+                proxy.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
+            }
             proxy.basketHandler.refreshBasket();
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         }
@@ -422,6 +425,7 @@ contract Upgrade3_4_0 {
     /// @param rToken The RToken to upgrade
     /// @param anastasius The corresponding Governor for the RToken
     /// @dev Requirement: has administration of RToken. revoked at end of execution
+    ///      Assumption: revenue for the RToken has been processed completely
     function castSpell2(IRToken rToken, IGovernor anastasius) external {
         require(oneCast[msg.sender], "step 1 not cast");
 
@@ -438,16 +442,22 @@ contract Upgrade3_4_0 {
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
 
         IAssetRegistry assetRegistry = main.assetRegistry();
-        IERC20[] memory erc20s = assetRegistry.erc20s();
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            IERC20Metadata erc20 = IERC20Metadata(address(erc20s[i]));
+        IBasketHandler basketHandler = main.basketHandler();
+        Registry memory reg = assetRegistry.getRegistry();
+        for (uint256 i = 0; i < reg.erc20s.length; i++) {
+            IERC20 erc20 = reg.erc20s[i];
+            if (!reg.assets[i].isCollateral()) continue; // skip pure assets
 
-            // if we have a rotated asset, unregister it now
-            if (rotations[erc20] != IAsset(address(0))) {
-                assetRegistry.unregister(assetRegistry.toAsset(erc20));
+            if (
+                rotations[erc20] != IAsset(address(0)) ||
+                (assets[erc20] == IAsset(address(0)) && basketHandler.quantity(erc20) == 0)
+            ) {
+                // unregister rotated assets and non-3.4.0 assets not in the reference basket
+                assetRegistry.unregister(reg.assets[i]);
             }
         }
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
+        // check we did not unregister anything in the basket
 
         // Renounce adminships
         TimelockController timelock = TimelockController(payable(msg.sender));

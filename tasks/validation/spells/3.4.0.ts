@@ -28,6 +28,9 @@ task(
 
   const deployments = network == 'base' ? BASE_DEPLOYMENTS : MAINNET_DEPLOYMENTS
   for (const deployment of deployments) {
+    const rToken = await hre.ethers.getContractAt('RTokenP1', deployment.rToken)
+    console.log('\n', await rToken.symbol())
+
     const alexios = await hre.ethers.getContractAt('Governance', deployment.governor)
     const step1 = await proposal_3_4_0_step_1(
       hre,
@@ -62,8 +65,6 @@ task(
     ) {
       throw new Error('governor rekt')
     }
-
-    const rToken = await hre.ethers.getContractAt('RTokenP1', deployment.rToken)
     if ((await rToken.version()) != '3.4.0') throw new Error('Failed to upgrade to 3.4.0')
 
     // All registered collateral should be SOUND

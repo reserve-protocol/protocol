@@ -83,7 +83,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       await main.assetRegistry()
     )
     const basketHandler = await hre.ethers.getContractAt(
-      'IBasketHandler',
+      'TestIBasketHandler',
       await main.basketHandler()
     )
     const backingManager = await hre.ethers.getContractAt(
@@ -102,8 +102,27 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       throw new Error('Basket is not fully collateralized')
     }
     console.log('💪 Basket is SOUND and fully collateralized!')
+    console.log('\n', 'Basket:')
+    const [primeBasketERC20s] = await basketHandler.getPrimeBasket()
+    const [refBasketERC20s] = await basketHandler.quote(fp('1e18'), 0)
+    if (primeBasketERC20s.length != refBasketERC20s.length) {
+      throw new Error('Reference basket length != prime basket length')
+    }
+    for (let i = 0; i < primeBasketERC20s.length; i++) {
+      if (primeBasketERC20s[i] != refBasketERC20s[i]) {
+        throw new Error(`ref erc20 ${refBasketERC20s[i]} != prime erc20 ${primeBasketERC20s[i]}`)
+      }
+      const erc20 = await hre.ethers.getContractAt('IERC20Metadata', primeBasketERC20s[i])
+      const asset = await hre.ethers.getContractAt(
+        'IVersioned',
+        await assetRegistry.toAsset(primeBasketERC20s[i])
+      )
+      console.log(
+        `  ${i + 1}: ${await erc20.symbol()} ${await asset.version()} (${primeBasketERC20s[i]})`
+      )
+    }
 
-    console.log('Core Contracts')
+    console.log('\n', 'Core Contracts')
     console.log('  - main:', await main.version())
     console.log('  - assetRegistry:', await assetRegistry.version())
     console.log('  - basketHandler:', await basketHandler.version())

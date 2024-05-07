@@ -71,6 +71,7 @@ const tokens: { [key: string]: string } = {
   ['0xfE0D6D83033e313691E96909d2188C150b834285'.toLowerCase()]: 'iUSDC',
   ['0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d'.toLowerCase()]: 'Vaya',
   ['0x641B0453487C9D14c5df96d45a481ef1dc84e31f'.toLowerCase()]: 'MAAT',
+  ['0x093c07787920eb34a0a0c7a09823510725aee4af'.toLowerCase()]: 'wcUSDCv3',
 }
 
 export const logToken = (tokenAddress: string) => {
