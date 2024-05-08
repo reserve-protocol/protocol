@@ -221,6 +221,9 @@ export const getTokens = async (
     case '0x684AA4faf9b07d5091B88c6e0a8160aCa5e6d17b'.toLowerCase(): // >=3.4.0 saUSDT mainnet
       await getStaticAToken(hre, tokenAddress, amount, recipient)
       break
+    case '0x6f6f81e5e66f503184f2202d83a79650c3285759'.toLocaleLowerCase(): // >= 3.4.0 saBasUSDC base
+      await getStaticATokenV3(hre, tokenAddress, amount, recipient)
+      break
     case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase(): // cUSDCVault mainnet
     case '0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase(): // cUSDTVault mainnet
       await getCTokenVault(hre, tokenAddress, amount, recipient)
@@ -314,6 +317,40 @@ const getStaticAToken = async (
     const bal = await aToken.balanceOf(recipientSigner.address)
     await aToken.connect(recipientSigner).approve(collateral.address, bal)
     await collateral.connect(recipientSigner).deposit(recipient, bal, 0, false)
+  })
+}
+
+// get a specific amount of static aTokens V3
+const getStaticATokenV3 = async (
+  hre: HardhatRuntimeEnvironment,
+  tokenAddress: string,
+  amount: BigNumber,
+  recipient: string
+) => {
+  const chainId = await getChainId(hre)
+  const whales: Whales = getWhalesFile(chainId).tokens
+
+  const collateral = await hre.ethers.getContractAt('StaticATokenV3LM', tokenAddress)
+  const requiredAmt = await collateral.previewMint(amount)
+
+  const aToken = await hre.ethers.getContractAt(
+    'contracts/plugins/assets/aave-v3/vendor/interfaces/IAToken.sol:IAToken',
+    await collateral.aToken()
+  )
+
+  const baseToken = await hre.ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+    await aToken.UNDERLYING_ASSET_ADDRESS()
+  )
+
+  // Impersonate holder
+  await whileImpersonating(hre, whales[baseToken.address.toLowerCase()], async (whaleSigner) => {
+    await baseToken
+      .connect(whaleSigner)
+      .approve(collateral.address, hre.ethers.constants.MaxUint256)
+    await collateral
+      .connect(whaleSigner)
+      ['deposit(uint256,address,uint16,bool)'](requiredAmt, recipient, 0, true)
   })
 }
 
@@ -411,7 +448,32 @@ const getERC20Tokens = async (
       })
     }
   } else {
-    // Base
-    // TODO
+    const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
+    const wcUSDCv3AddressOld = '0xA694f7177C6c839C951C74C797283B35D0A486c8'.toLowerCase()
+    const aUSDCv3Address = networkConfig[chainId].tokens.saBasUSDC!.toLowerCase()
+    const aUSDCv3AddressOld = '0x184460704886f9F2A7F3A0c2887680867954dC6E'.toLowerCase()
+
+    const tokAddress = tokenAddress.toLowerCase()
+
+    // Solutions for wrappers without whales
+    if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
+        const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+
+        await whileImpersonating(
+          hre,
+          whales[networkConfig[chainId].tokens.cUSDCv3!.toLowerCase()],
+          async (whaleSigner) => {
+            const cUSDCv3 = await hre.ethers.getContractAt(
+              'ERC20Mock',
+              networkConfig[chainId].tokens.cUSDCv3!
+            )
+            await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
+            await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
+            await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(150).div(100))
+            const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
+            await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
+          }
+        )
+    }
   }
 }
