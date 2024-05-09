@@ -242,12 +242,6 @@ contract Upgrade3_4_0 {
             rotations[IERC20(0xA694f7177C6c839C951C74C797283B35D0A486c8)] = IAsset(
                 0xf7a9D27c3B60c78c6F6e2c2d6ED6E8B94b352461 // wcUSDCv3
             );
-            rotations[IERC20(0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22)] = IAsset(
-                0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D // cbETH
-            );
-            rotations[IERC20(0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452)] = IAsset(
-                0x8b4374005291B8FCD14C4E947604b2FB3C660A73 // wstETH
-            );
         }
     }
 
