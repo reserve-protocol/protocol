@@ -42,7 +42,9 @@ export const processRevenue = async (hre: HardhatRuntimeEnvironment, rtokenAddre
       await backingManager.claimRewardsSingle(rewards[i])
       successCount++
     } catch (e) {
-      console.log(`❌ failed to claim rewards for asset ${assets[i]}`)
+      console.log(
+        `❌ failed to claim rewards for asset ${assets[i]} - review, may be a false positive`
+      )
     }
   }
   const emoji = successCount == rewards.length ? '✅' : '❌'
@@ -55,10 +57,6 @@ export const processRevenue = async (hre: HardhatRuntimeEnvironment, rtokenAddre
 
   await rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION])
   await runBatchTrade(hre, rsrTrader, rToken.address, false)
-
-  console.log("Calling payoutRewards()")
-  console.log("Balance of RSR in StRSR", await rsr.balanceOf(strsr.address))
-  console.log("Draft rsr", (await strsr.getDraftRSR()).add(await strsr.getStakeRSR()))
 
   await strsr.payoutRewards()
   await advanceBlocks(hre, 100)

@@ -441,39 +441,46 @@ const getERC20Tokens = async (
         await token.connect(whaleSigner).transfer(recipient, amount)
       })
     } else {
+      // Directly get tokens from whale
       const addr = whales[token.address.toLowerCase()]
       if (!addr) throw new Error('missing whale for ' + tokenAddress)
       await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
         await token.connect(whaleSigner).transfer(recipient, amount)
       })
     }
-  } else {
+  } else if (chainId == '8453' || chainId == '84531') {
+    // Base
     const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
     const wcUSDCv3AddressOld = '0xA694f7177C6c839C951C74C797283B35D0A486c8'.toLowerCase()
-    const aUSDCv3Address = networkConfig[chainId].tokens.saBasUSDC!.toLowerCase()
-    const aUSDCv3AddressOld = '0x184460704886f9F2A7F3A0c2887680867954dC6E'.toLowerCase()
 
     const tokAddress = tokenAddress.toLowerCase()
 
     // Solutions for wrappers without whales
     if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
-        const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+      const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
 
-        await whileImpersonating(
-          hre,
-          whales[networkConfig[chainId].tokens.cUSDCv3!.toLowerCase()],
-          async (whaleSigner) => {
-            const cUSDCv3 = await hre.ethers.getContractAt(
-              'ERC20Mock',
-              networkConfig[chainId].tokens.cUSDCv3!
-            )
-            await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
-            await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
-            await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(150).div(100))
-            const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
-            await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
-          }
-        )
+      await whileImpersonating(
+        hre,
+        whales[networkConfig[chainId].tokens.cUSDCv3!.toLowerCase()],
+        async (whaleSigner) => {
+          const cUSDCv3 = await hre.ethers.getContractAt(
+            'ERC20Mock',
+            networkConfig[chainId].tokens.cUSDCv3!
+          )
+          await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
+          await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
+          await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(150).div(100))
+          const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
+          await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
+        }
+      )
+    } else {
+      // Directly get tokens from whale
+      const addr = whales[token.address.toLowerCase()]
+      if (!addr) throw new Error('missing whale for ' + tokenAddress)
+      await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
+        await token.connect(whaleSigner).transfer(recipient, amount)
+      })
     }
   }
 }
