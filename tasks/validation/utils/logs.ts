@@ -45,6 +45,9 @@ const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.aEthPyUSD!.toLowerCase()]: 'aEthPyUSD',
   [networkConfig['1'].tokens.saEthPyUSD!.toLowerCase()]: 'saEthPyUSD',
   [networkConfig['1'].tokens.cUSDCv3!.toLowerCase()]: 'cUSDCv3',
+  [networkConfig['8453'].tokens.WETH!.toLowerCase()]: 'WETH',
+  [networkConfig['8453'].tokens.wstETH!.toLowerCase()]: 'wstETH',
+  [networkConfig['8453'].tokens.RSR!.toLowerCase()]: 'RSR',
   ['0xaa91d24c2f7dbb6487f61869cd8cd8afd5c5cab2'.toLowerCase()]: 'mrp-aUSDT',
   ['0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()]: 'saUSDC',
   ['0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()]: 'saUSDT',
@@ -72,6 +75,10 @@ const tokens: { [key: string]: string } = {
   ['0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d'.toLowerCase()]: 'Vaya',
   ['0x641B0453487C9D14c5df96d45a481ef1dc84e31f'.toLowerCase()]: 'MAAT',
   ['0x093c07787920eb34a0a0c7a09823510725aee4af'.toLowerCase()]: 'wcUSDCv3',
+  ['0xa694f7177c6c839c951c74c797283b35d0a486c8'.toLowerCase()]: 'wcUSDCv3 (base)',
+  ['0x53f1df4e5591ae35bf738742981669c3767241fa'.toLowerCase()]: 'wcUSDCv3 (base)',
+  ['0x6f6f81e5e66f503184f2202d83a79650c3285759'.toLowerCase()]: 'saBasUSDC (base)',
+  ['0x184460704886f9f2a7f3a0c2887680867954dc6e'.toLowerCase()]: 'saBasUSDC (base)',
 }
 
 export const logToken = (tokenAddress: string) => {

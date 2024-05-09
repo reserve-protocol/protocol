@@ -15,6 +15,7 @@ import {
   executeProposal,
   proposeUpgrade,
   stakeAndDelegateRsr,
+  unstakeAndWithdrawRsr,
   moveProposalToActive,
   voteProposal,
 } from './utils/governance'
@@ -30,6 +31,7 @@ import { StRSRP1Votes } from '@typechain/StRSRP1Votes'
 import { IMain } from '@typechain/IMain'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
 import { proposal_3_4_0_step_1, proposal_3_4_0_step_2 } from './proposals/3_4_0'
+import { validateSubgraphURL, Network } from '#/utils/fork'
 
 interface Params {
   proposalid?: string
@@ -53,9 +55,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     }
 
     // make sure subgraph is configured
-    if (params.proposalid && !useEnv('SUBGRAPH_URL')) {
-      throw new Error('SUBGRAPH_URL required for subgraph queries')
-    }
+    if (params.proposalid) validateSubgraphURL(useEnv('FORK_NETWORK') as Network)
 
     console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
@@ -249,7 +249,7 @@ task('run-validations', 'Runs all validations')
       claim rewards
     */
 
-    await rToken.connect(tester).transfer(await main.rsrTrader(), mintAmt)
+    await rToken.connect(tester).transfer(await main.rsrTrader(), mintAmt.div(10))
     await processRevenue(hre, params.rtoken)
 
     await pushOraclesForward(hre, params.rtoken, [])
@@ -274,7 +274,7 @@ const runCheck_stakeUnstake = async (
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
   await whileImpersonating(
     hre,
-    whales[networkConfig['1'].tokens.RSR!.toLowerCase()],
+    whales[networkConfig[chainId].tokens.RSR!.toLowerCase()],
     async (rsrSigner) => {
       await rsr.connect(rsrSigner).transfer(tester.address, stakeAmount)
     }
@@ -288,6 +288,11 @@ const runCheck_stakeUnstake = async (
 
   expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(testerBal))
   expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
+
+  // Unstake and withdraw
+  await unstakeAndWithdrawRsr(hre, rToken.address, tester.address)
+
+  console.log('Successfully staked and unstaked RSR')
 }
 
 const runCheck_redeem = async (

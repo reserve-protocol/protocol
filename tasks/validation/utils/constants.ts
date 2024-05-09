@@ -90,24 +90,24 @@ export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
     governor: '0xc8e63d3501A246fa1ddBAbe4ad0B50e9d32aA8bb',
     timelock: '0xf093d7f00f3dCe6d415Be564f41Cb4bc032fb367',
   },
-  // {
-  //   rToken: '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff', // bsdETH
-  //   governor: '0xB05C6a7242595f2E23CC6a0aB20699d63D0939Fd',
-  //   timelock: '0x321f7493B8B675dFfE2570Bd0F164237D445b9E8',
-  // },
-  // {
-  //   rToken: '0xfE0D6D83033e313691E96909d2188C150b834285', // iUSDC
-  //   governor: '0xfe637F7D5B848392c19052631d68F8AC859F71cF',
-  //   timelock: '0xd18ED37CA912bbf1EDE93d27459d03DC4343dea1',
-  // },
-  // {
-  //   rToken: '0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d', // Vaya
-  //   governor: '0xEb583EA06501f92E994C353aD2741A35582987aA',
-  //   timelock: '0xeE3eC997A37e661a42673D7A489Fbf0E5ed0C223',
-  // },
-  // {
-  //   rToken: '0x641B0453487C9D14c5df96d45a481ef1dc84e31f', // MAAT
-  //   governor: '0x0f7f1442dA7F687BB877Fbee0539FA8D6e4d1a02',
-  //   timelock: '0xE67cEb03EfdF9B3fb5C3FeBF3103e2efd3a76A1b',
-  // },
+  {
+    rToken: '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff', // bsdETH
+    governor: '0xB05C6a7242595f2E23CC6a0aB20699d63D0939Fd',
+    timelock: '0x321f7493B8B675dFfE2570Bd0F164237D445b9E8',
+  },
+  {
+    rToken: '0xfE0D6D83033e313691E96909d2188C150b834285', // iUSDC - Assets skipped (USDbC)
+    governor: '0xfe637F7D5B848392c19052631d68F8AC859F71cF',
+    timelock: '0xd18ED37CA912bbf1EDE93d27459d03DC4343dea1',
+  },
+  {
+    rToken: '0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d', // Vaya - Assets skipped (USDbC)
+    governor: '0xEb583EA06501f92E994C353aD2741A35582987aA',
+    timelock: '0xeE3eC997A37e661a42673D7A489Fbf0E5ed0C223',
+  },
+  {
+    rToken: '0x641B0453487C9D14c5df96d45a481ef1dc84e31f', // MAAT
+    governor: '0x0f7f1442dA7F687BB877Fbee0539FA8D6e4d1a02',
+    timelock: '0xE67cEb03EfdF9B3fb5C3FeBF3103e2efd3a76A1b',
+  },
 ]

@@ -206,9 +206,28 @@ export const stakeAndDelegateRsr = async (
 
   await whileImpersonating(hre, user, async (signer) => {
     const bal = await rsr.balanceOf(signer.address)
-    await rsr.approve(stRSR.address, bal)
-    await stRSR.stake(bal)
-    await stRSR.delegate(signer.address)
+    await rsr.connect(signer).approve(stRSR.address, bal)
+    await stRSR.connect(signer).stake(bal)
+    await stRSR.connect(signer).delegate(signer.address)
+  })
+}
+
+export const unstakeAndWithdrawRsr = async (
+  hre: HardhatRuntimeEnvironment,
+  rtokenAddress: string,
+  user: string
+) => {
+  const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
+  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
+  const unstakingDelay = await stRSR.unstakingDelay()
+
+  await whileImpersonating(hre, user, async (signer) => {
+    const bal = await stRSR.balanceOf(signer.address)
+    await stRSR.connect(signer).unstake(bal)
+    await advanceTime(hre, unstakingDelay + 2)
+    await pushOraclesForward(hre, rToken.address, []) // required to withdraw
+    await stRSR.connect(signer).withdraw(signer.address, 0)
   })
 }
 
@@ -245,6 +264,7 @@ export const proposeUpgrade = async (
   const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
   const amount = (await stRSR.getStakeRSR()).div(100) // 1% increase in staked RSR
 
+  // Stake and delegate
   await hre.run('give-rsr', { address: tester.address, amount: amount.toString() })
   await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
