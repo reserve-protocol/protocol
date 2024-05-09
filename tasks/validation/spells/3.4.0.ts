@@ -3,6 +3,7 @@ import { task } from 'hardhat/config'
 import { BigNumber } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { BASE_DEPLOYMENTS, MAINNET_DEPLOYMENTS } from '../utils/constants'
+import { resetFork } from '#/utils/chain'
 import {
   proposal_3_4_0_step_1,
   proposal_3_4_0_step_2,
@@ -16,20 +17,26 @@ task(
   '3.4.0',
   "Check the implementation to figure out what this does; it's always in flux"
 ).setAction(async (params, hre) => {
-  console.log('Part 1')
-
   const network = useEnv('FORK_NETWORK').toLowerCase()
-
-  // Deploy 3.4.0 Upgrade spell
-  console.log('Deploying 3.4.0 Upgrade spell...')
-  const SpellFactory = await hre.ethers.getContractFactory('Upgrade3_4_0')
-  const spell = await SpellFactory.deploy(network != 'base')
-  console.log('Deployed!')
 
   const deployments = network == 'base' ? BASE_DEPLOYMENTS : MAINNET_DEPLOYMENTS
   for (const deployment of deployments) {
+    // reset fork
+    await resetFork(hre, Number(process.env.FORK_BLOCK))
+
     const rToken = await hre.ethers.getContractAt('RTokenP1', deployment.rToken)
-    console.log('\n', await rToken.symbol())
+    console.log(
+      '\n',
+      `/*****  3.4.0 Upgrade - RToken: ${await rToken.symbol()} - Address: ${rToken.address} ****/`
+    )
+
+    // Deploy 3.4.0 Upgrade spell (done multiple times due to fork reset - only one deployment needed)
+    console.log('Deploying 3.4.0 Upgrade spell...')
+    const SpellFactory = await hre.ethers.getContractFactory('Upgrade3_4_0')
+    const spell = await SpellFactory.deploy(network != 'base')
+    console.log('Deployed!')
+
+    console.log('Part 1')
 
     const alexios = await hre.ethers.getContractAt('Governance', deployment.governor)
     const step1 = await proposal_3_4_0_step_1(

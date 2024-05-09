@@ -1,4 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { forkRpcs, Network } from '#/utils/fork'
+import { useEnv } from '#/utils/env'
 
 export const resetFork = async (hre: HardhatRuntimeEnvironment, forkBlock: number) => {
   await hre.network.provider.request({
@@ -6,7 +8,7 @@ export const resetFork = async (hre: HardhatRuntimeEnvironment, forkBlock: numbe
     params: [
       {
         forking: {
-          jsonRpcUrl: process.env.MAINNET_RPC_URL,
+          jsonRpcUrl: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
           blockNumber: forkBlock,
         },
       },

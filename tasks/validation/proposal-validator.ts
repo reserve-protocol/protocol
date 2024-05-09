@@ -15,6 +15,7 @@ import {
   executeProposal,
   proposeUpgrade,
   stakeAndDelegateRsr,
+  unstakeAndWithdrawRsr,
   moveProposalToActive,
   voteProposal,
 } from './utils/governance'
@@ -248,7 +249,7 @@ task('run-validations', 'Runs all validations')
       claim rewards
     */
 
-    await rToken.connect(tester).transfer(await main.rsrTrader(), mintAmt)
+    await rToken.connect(tester).transfer(await main.rsrTrader(), mintAmt.div(10))
     await processRevenue(hre, params.rtoken)
 
     await pushOraclesForward(hre, params.rtoken, [])
@@ -287,6 +288,11 @@ const runCheck_stakeUnstake = async (
 
   expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(testerBal))
   expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
+
+  // Unstake and withdraw
+  await unstakeAndWithdrawRsr(hre, rToken.address, tester.address)
+
+  console.log('Successfully staked and unstaked RSR')
 }
 
 const runCheck_redeem = async (
