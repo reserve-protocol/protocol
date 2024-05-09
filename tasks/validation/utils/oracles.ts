@@ -93,6 +93,18 @@ export const pushOracleForward = async (
 
   // targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, refPerTokenChainlinkFeed
   try {
+    const assetContractLido = await hre.ethers.getContractAt('L2LSDCollateral', asset)
+    const feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractLido.exchangeRateChainlinkFeed()
+    )
+    await updateAnswer(feed)
+  } catch {
+    // console.error('❌ exchangeRateChainlinkFeed not found for:', asset, 'skipping...')
+  }
+
+  // targetPerRefChainlinkFeed, uoaPerTargetChainlinkFeed, refPerTokenChainlinkFeed
+  try {
     const assetContractLido = await hre.ethers.getContractAt('L2LidoStakedEthCollateral', asset)
     let feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
@@ -107,6 +119,11 @@ export const pushOracleForward = async (
     feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
       await assetContractLido.refPerTokenChainlinkFeed()
+    )
+    await updateAnswer(feed)
+    feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      await assetContractLido.exchangeRateChainlinkFeed()
     )
     await updateAnswer(feed)
   } catch {
