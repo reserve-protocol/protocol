@@ -5,6 +5,7 @@ import {
   ERC20Mock,
   MockV3Aggregator,
   TestICollateral,
+  IConvexRewardPool,
 } from '../../../../typechain'
 import { CollateralOpts } from '../pluginTestTypes'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -14,7 +15,7 @@ type Fixture<T> = () => Promise<T>
 
 export interface CurveBase {
   curvePool: CurvePoolMock
-  wrapper: ConvexStakingWrapper
+  wrapper: ConvexStakingWrapper | IConvexRewardPool
 }
 
 // The basic fixture context used in the Curve collateral plugin tests
@@ -88,4 +89,7 @@ export interface CurveCollateralTestSuiteFixtures<T extends CurveCollateralFixtu
 
   // the name of the collateral plugin being tested
   collateralName: string
+
+  // the target network to run the collaterals tests on (only runs if forking this network)
+  targetNetwork?: string
 }
