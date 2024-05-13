@@ -434,6 +434,8 @@ contract Upgrade3_4_0 {
         IAssetRegistry assetRegistry = main.assetRegistry();
         IBasketHandler basketHandler = main.basketHandler();
         Registry memory reg = assetRegistry.getRegistry();
+        require(basketHandler.fullyCollateralized(), "not fully collateralized");
+
         for (uint256 i = 0; i < reg.erc20s.length; i++) {
             IERC20 erc20 = reg.erc20s[i];
             if (!reg.assets[i].isCollateral()) continue; // skip pure assets
