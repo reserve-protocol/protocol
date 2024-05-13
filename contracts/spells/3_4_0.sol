@@ -409,20 +409,14 @@ contract Upgrade3_4_0 {
 
     // Cast once-per-sender, which is assumed to be the timelock
     /// @param rToken The RToken to upgrade
-    /// @param anastasius The corresponding Governor for the RToken
     /// @dev Requirement: has administration of RToken. revoked at end of execution
     ///      Assumption: no balances above minTradeVolume of non-basket assets
-    function castSpell2(IRToken rToken, IGovernor anastasius) external {
+    function castSpell2(IRToken rToken) external {
         require(oneCast[msg.sender], "step 1 not cast");
 
         // Can only cast once
         require(!twoCast[msg.sender], "repeat cast");
         twoCast[msg.sender] = true;
-
-        require(
-            keccak256(abi.encodePacked(anastasius.name())) == ANASTASIUS_HASH,
-            "not anastasius"
-        );
 
         IMain main = rToken.main();
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");

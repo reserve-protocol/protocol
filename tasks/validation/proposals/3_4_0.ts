@@ -80,7 +80,7 @@ export const proposal_3_4_0_step_2 = async (
   // Build proposal
   const txs = [
     await main.populateTransaction.grantRole(MAIN_OWNER_ROLE, spell.address),
-    await spell.populateTransaction.castSpell2(rTokenAddress, governorAddress),
+    await spell.populateTransaction.castSpell2(rTokenAddress),
   ]
 
   const description = '3.4.0 Upgrade (2/2) - Cleanup'
