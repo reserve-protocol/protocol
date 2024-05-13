@@ -316,10 +316,6 @@ contract Upgrade3_4_0 {
 
             // cacheComponents()
             ICachedComponent(address(proxy.broker)).cacheComponents();
-            ICachedComponent(address(proxy.backingManager)).cacheComponents();
-            ICachedComponent(address(proxy.distributor)).cacheComponents();
-            ICachedComponent(address(proxy.rTokenTrader)).cacheComponents();
-            ICachedComponent(address(proxy.rsrTrader)).cacheComponents();
         }
 
         // Scale the reward downwards by the blocktime
