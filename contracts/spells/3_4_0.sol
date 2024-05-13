@@ -290,12 +290,6 @@ contract Upgrade3_4_0 {
                 Components memory compImpls,
                 TradePlugins memory tradingImpls
             ) = deployer.implementations();
-            IBackingManager backingManager = main.backingManager();
-            IBroker broker = main.broker();
-            IDistributor distributor = main.distributor();
-            IRevenueTrader rTokenTrader = main.rTokenTrader();
-            IRevenueTrader rsrTrader = main.rsrTrader();
-
             UUPSUpgradeable(address(main)).upgradeTo(address(mainImpl));
             UUPSUpgradeable(address(proxy.assetRegistry)).upgradeTo(
                 address(compImpls.assetRegistry)
@@ -315,15 +309,17 @@ contract Upgrade3_4_0 {
             UUPSUpgradeable(address(proxy.rToken)).upgradeTo(address(compImpls.rToken));
 
             // Trading plugins
-            TestIBroker(address(broker)).setDutchTradeImplementation(tradingImpls.dutchTrade);
-            TestIBroker(address(broker)).setBatchTradeImplementation(tradingImpls.gnosisTrade);
+            TestIBroker(address(proxy.broker)).setDutchTradeImplementation(tradingImpls.dutchTrade);
+            TestIBroker(address(proxy.broker)).setBatchTradeImplementation(
+                tradingImpls.gnosisTrade
+            );
 
             // cacheComponents()
-            ICachedComponent(address(broker)).cacheComponents();
-            ICachedComponent(address(backingManager)).cacheComponents();
-            ICachedComponent(address(distributor)).cacheComponents();
-            ICachedComponent(address(rTokenTrader)).cacheComponents();
-            ICachedComponent(address(rsrTrader)).cacheComponents();
+            ICachedComponent(address(proxy.broker)).cacheComponents();
+            ICachedComponent(address(proxy.backingManager)).cacheComponents();
+            ICachedComponent(address(proxy.distributor)).cacheComponents();
+            ICachedComponent(address(proxy.rTokenTrader)).cacheComponents();
+            ICachedComponent(address(proxy.rsrTrader)).cacheComponents();
         }
 
         // Scale the reward downwards by the blocktime
