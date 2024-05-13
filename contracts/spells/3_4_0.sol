@@ -350,7 +350,7 @@ contract Upgrade3_4_0 {
                 // assets being deprecated in 3.4.0 will be skipped and left in baskets
             }
 
-            // RTokenAsset -- always do last since could depend on everything else
+            // RTokenAsset
             proxy.assetRegistry.swapRegistered(
                 deployer.deployRTokenAsset(
                     rToken,
