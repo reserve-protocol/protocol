@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -115,6 +116,8 @@ contract Upgrade3_4_0 {
 
     // =======================================================================================
 
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
     TestIDeployer public deployer;
 
     // RToken address => Anastasius Governor
@@ -131,6 +134,9 @@ contract Upgrade3_4_0 {
     mapping(address => bool) public twoCast;
 
     bool public mainnet; // !mainnet | base
+
+    // empty between txs
+    EnumerableSet.Bytes32Set private uniqueTargetNames;
 
     // =======================================================================================
 
@@ -366,24 +372,47 @@ contract Upgrade3_4_0 {
             }
         }
 
-        // Set new prime basket with rotated collateral
+        // Rotate ERC20s in basket
         {
-            (IERC20[] memory primeERC20s, , uint192[] memory targetAmts) = TestIBasketHandler(
-                address(proxy.basketHandler)
-            ).getPrimeBasket();
+            (
+                IERC20[] memory primeERC20s,
+                bytes32[] memory targetNames,
+                uint192[] memory targetAmts
+            ) = TestIBasketHandler(address(proxy.basketHandler)).getPrimeBasket();
 
+            // Rotate ERC20s in prime basket
             bool newBasket;
             for (uint256 i = 0; i < primeERC20s.length; i++) {
                 if (rotations[primeERC20s[i]] != IAsset(address(0))) {
                     primeERC20s[i] = IERC20(address(rotations[primeERC20s[i]].erc20()));
                     newBasket = true;
                 }
+
+                uniqueTargetNames.add(targetNames[i]);
+            }
+            if (newBasket) proxy.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
+
+            // Rotate ERC20s in backup configs
+            while (uniqueTargetNames.length() != 0) {
+                bytes32 targetName = uniqueTargetNames.at(0);
+                uniqueTargetNames.remove(targetName);
+
+                (IERC20[] memory backupERC20s, uint256 max) = TestIBasketHandler(
+                    address(proxy.basketHandler)
+                ).getBackupConfig(targetName);
+
+                // Rotate backupERC20s
+                bool newBackup;
+                for (uint256 i = 0; i < backupERC20s.length; i++) {
+                    if (rotations[backupERC20s[i]] != IAsset(address(0))) {
+                        backupERC20s[i] = IERC20(address(rotations[backupERC20s[i]].erc20()));
+                        newBackup = true;
+                    }
+                }
+                if (newBackup) proxy.basketHandler.setBackupConfig(targetName, max, backupERC20s);
             }
 
-            // Set baskets
-            if (newBasket) {
-                proxy.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
-            }
+            // Refresh basket
             proxy.basketHandler.refreshBasket();
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         }

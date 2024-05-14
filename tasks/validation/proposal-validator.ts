@@ -137,10 +137,36 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
 
     const [erc20s, assets] = await assetRegistry.getRegistry()
     console.log('\n', `Assets (${assets.length})`)
+    const targetNames: string[] = []
     for (let i = 0; i < assets.length; i++) {
       const erc20 = await hre.ethers.getContractAt('IERC20Metadata', erc20s[i])
       const asset = await hre.ethers.getContractAt('IVersioned', assets[i])
       console.log(`  - ${await erc20.symbol()}: ${await asset.version()}`)
+
+      const coll = await hre.ethers.getContractAt('ICollateral', assets[i])
+      if (!(await coll.isCollateral())) continue
+
+      const targetName = await coll.targetName()
+      if (!targetNames.includes(targetName)) {
+        targetNames.push(targetName)
+      }
+    }
+
+    for (const targetName of targetNames) {
+      const [backupERC20s] = await basketHandler.getBackupConfig(targetName)
+      console.log('\n', `Backup Config (${targetName})`)
+      for (let i = 0; i < backupERC20s.length; i++) {
+        const erc20 = await hre.ethers.getContractAt('IERC20Metadata', backupERC20s[i])
+        const isRegistered = await assetRegistry.isRegistered(backupERC20s[i])
+
+        if (!isRegistered) {
+          console.log(`  - ${await erc20.symbol()}: NOT REGISTERED`)
+        } else {
+          const assetAddr = await assetRegistry.toAsset(erc20.address)
+          const asset = await hre.ethers.getContractAt('IVersioned', assetAddr)
+          console.log(`  - ${await erc20.symbol()}: ${await asset.version()} `)
+        }
+      }
     }
   })
 
