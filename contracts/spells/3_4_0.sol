@@ -268,7 +268,7 @@ contract Upgrade3_4_0 {
 
         // Validations
         require(keccak256(abi.encodePacked(alexios.name())) == ALEXIOS_HASH, "not alexios");
-        require(timelock.hasRole(PROPOSER_ROLE, address(alexios)), "alexios not timelock admin");
+        require(timelock.hasRole(PROPOSER_ROLE, address(alexios)), "alexios not timelock proposer");
         require(timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), "must be timelock admin");
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
         require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "must be owner of Main");
