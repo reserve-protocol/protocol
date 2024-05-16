@@ -30,6 +30,9 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
 
     IRToken internal immutable rToken; // token1
 
+    // does not become nonzero until after first refresh()
+    uint192 internal poolVirtualPrice; // {lpToken@t=0/lpToken} max virtual price sub revenue hiding
+
     /// @param config.erc20 must be of type ConvexStakingWrapper or CurveGaugeWrapper
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
@@ -80,24 +83,41 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
     function refresh() public virtual override {
         CollateralStatus oldStatus = status();
 
-        try this.underlyingRefPerTok() returns (uint192) {
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
             // Instead of ensuring the underlyingRefPerTok is up-only, solely check
             // that the pool's virtual price is up-only. Otherwise this collateral
-            // would create default cascades.
+            // would create default cascades when basketsNeeded()/totalSupply() falls.
 
-            // {ref/tok}
+            // === Check for virtualPrice hard default ===
+
+            // {lpToken@t=0/lpToken}
             uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
 
-            // {ref/tok} = {ref/tok} * {1}
-            uint192 hiddenReferencePrice = virtualPrice.mul(revenueShowing);
+            // {lpToken@t=0/lpToken}
+            uint192 hiddenVirtualPrice = virtualPrice.mul(revenueShowing);
 
             // uint192(<) is equivalent to Fix.lt
-            if (virtualPrice < exposedReferencePrice) {
-                exposedReferencePrice = virtualPrice;
+            if (virtualPrice < poolVirtualPrice) {
+                poolVirtualPrice = virtualPrice;
                 markStatus(CollateralStatus.DISABLED);
+            } else if (hiddenVirtualPrice > poolVirtualPrice) {
+                poolVirtualPrice = hiddenVirtualPrice;
+            }
+
+            // === Update exposedReferencePrice, ignoring default ===
+
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
+
+            // uint192(<) is equivalent to Fix.lt
+            if (underlyingRefPerTok_ < exposedReferencePrice) {
+                exposedReferencePrice = underlyingRefPerTok_;
+                // markStatus(CollateralStatus.DISABLED); // don't DISABLE
             } else if (hiddenReferencePrice > exposedReferencePrice) {
                 exposedReferencePrice = hiddenReferencePrice;
             }
+
+            // === Check for soft default ===
 
             // Check for soft default + save prices
             try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
