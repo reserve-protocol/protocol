@@ -38,9 +38,6 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         PTConfiguration memory ptConfig
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token1));
-
-        // {ref/tok} LP token's virtual price
-        exposedReferencePrice = _safeWrap(curvePool.get_virtual_price()).mul(revenueShowing);
     }
 
     /// Can revert, used by other contract functions in order to catch errors
