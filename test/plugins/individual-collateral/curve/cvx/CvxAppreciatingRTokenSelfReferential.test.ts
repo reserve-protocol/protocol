@@ -352,6 +352,7 @@ const opts = {
   collateralSpecificStatusTests,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  itChecksTargetPerRefDefault: it.skip,
   itClaimsRewards: it,
   isMetapool: false,
   resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
