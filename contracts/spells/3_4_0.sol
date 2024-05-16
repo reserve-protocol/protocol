@@ -209,9 +209,6 @@ contract Upgrade3_4_0 {
             rotations[IERC20(0x3BECE5EC596331033726E5C6C188c313Ff4E3fE5)] = IAsset(
                 0xE529B59C1764d6E5a274099Eb660DD9e130A5481 // cvxeUSDFRAXBP
             );
-            rotations[IERC20(0x3C0a9143063Fc306F7D3cBB923ff4879d70Cf1EA)] = IAsset(
-                0xB58D95003Af73CF76Ce349103726a51D4Ec8af17 // fUSDC
-            );
             rotations[IERC20(0x6D05CB2CB647B58189FA16f81784C05B4bcd4fe9)] = IAsset(
                 0xB58D95003Af73CF76Ce349103726a51D4Ec8af17 // fUSDC
             );
