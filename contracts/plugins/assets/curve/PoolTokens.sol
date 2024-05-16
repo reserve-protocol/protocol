@@ -9,6 +9,16 @@ import "contracts/libraries/Fixed.sol";
 
 // solhint-disable func-name-mixedcase
 interface ICurvePool {
+    // reentrancy check -- use with ETH / WETH pools
+    function claim_admin_fees() external;
+
+    function remove_liquidity(
+        uint256 _amount,
+        uint256[2] calldata min_amounts,
+        bool use_eth,
+        address receiver
+    ) external;
+
     // For Curve Plain Pools and V2 Metapools
     function coins(uint256) external view returns (address);
 

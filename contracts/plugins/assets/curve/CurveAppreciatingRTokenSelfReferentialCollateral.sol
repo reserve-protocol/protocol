@@ -19,8 +19,9 @@ import "./CurveAppreciatingRTokenFiatCollateral.sol";
  * tar = ETH
  * UoA = USD
  *
- * @notice Curve pools with native ETH or ERC777 should be avoided,
- *  see docs/collateral.md for information
+ * @notice This Curve Pool contains WETH, which can be used to intercept execution by providing
+ *         `use_eth=true` to remove_liquidity()/remove_liquidity_one_coin(). It is guarded against
+ *          by the recommended method of calling `claim_admin_fees()`.
  */
 contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -36,7 +37,12 @@ contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRT
         PTConfiguration memory ptConfig
     ) CurveAppreciatingRTokenFiatCollateral(config, revenueHiding, ptConfig) {}
 
-    // solhint-enable no-empty-blocks
+    /// Should not revert (unless CurvePool is re-entrant!)
+    /// Refresh exchange rates and update default status.
+    function refresh() public virtual override {
+        curvePool.claim_admin_fees(); // revert if curve pool is re-entrant
+        super.refresh();
+    }
 
     // === Internal ===
 

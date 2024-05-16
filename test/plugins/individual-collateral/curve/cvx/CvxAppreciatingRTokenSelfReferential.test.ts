@@ -340,6 +340,23 @@ const collateralSpecificStatusTests = () => {
     await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged').withArgs(1, 0)
     expect(await collateral.status()).to.equal(0)
   })
+
+  it('Read-only reentrancy', async () => {
+    const [collateral] = await deployCollateral({})
+    const factory = await ethers.getContractFactory('CurveReentrantReceiver')
+    const reentrantReceiver = await factory.deploy(collateral.address)
+
+    await whileImpersonating(ETHPLUS_ETH_HOLDER, async (whale) => {
+      const amt = bn('1e18')
+      const token = await ethers.getContractAt('IERC20Metadata', ETHPLUS_BP_TOKEN)
+      await token.connect(whale).approve(ETHPLUS_BP_POOL, amt)
+      const pool = await ethers.getContractAt('ICurvePool', ETHPLUS_BP_POOL)
+
+      await expect(
+        pool.connect(whale).remove_liquidity(amt, [1, 1], true, reentrantReceiver.address)
+      ).to.be.revertedWith('refresh() reverted')
+    })
+  })
 }
 
 /*
