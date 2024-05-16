@@ -91,9 +91,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
 
                 // Check RToken status
                 try pairedBasketHandler.isReady() returns (bool isReady) {
-                    if (!isReady) {
-                        markStatus(CollateralStatus.IFFY);
-                    } else if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+                    if (!isReady || low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
                         // If the price is below the default-threshold price, default eventually
                         // uint192(+/-) is the same as Fix.plus/minus
                         markStatus(CollateralStatus.IFFY);
