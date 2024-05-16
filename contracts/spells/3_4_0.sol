@@ -19,9 +19,11 @@ interface ICachedComponent {
  * Before spell 1 this contract must be admin of the timelock and owner of Main.
  *
  * Before spell 2 this contract must be owner of Main. It does not need to be admin of timelock.
- * WARNING: Only cast spell 2 after all balances have been fully processed for non-backing assets.
- *          That means any collateral assets no longer in the basket, and all non-collateral assets
- *          More specifically: All non-backing assets should have a balance under minTradeVolume.
+ * WARNING: Only cast spell 2 after
+ *          (i) all reward tokens have been claimed
+ *          (ii) all rebalancing + revenue auctions have been fully processed.
+ *          More specifically: All non-backing assets should have a balance under minTradeVolume,
+ *                             and there should be no more non-backing assets to claim.
  *
  *
  *
@@ -435,7 +437,7 @@ contract Upgrade3_4_0 {
     // Cast once-per-sender, which is assumed to be the timelock
     /// @param rToken The RToken to upgrade
     /// @dev Requirement: has administration of RToken. revoked at end of execution
-    ///      Assumption: no balances above minTradeVolume of non-basket assets
+    ///      Assumption: all reward tokens claimed and no surplus balances above minTradeVolume
     function castSpell2(IRToken rToken) external {
         require(oneCast[msg.sender], "step 1 not cast");
 
