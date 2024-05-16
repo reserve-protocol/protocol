@@ -465,7 +465,7 @@ contract Upgrade3_4_0 {
                 assetRegistry.unregister(reg.assets[i]);
             }
         }
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         // check we did not unregister anything in the basket
 
         // Renounce adminships
