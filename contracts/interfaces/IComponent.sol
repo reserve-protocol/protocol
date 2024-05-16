@@ -12,4 +12,6 @@ import "./IVersioned.sol";
  */
 interface IComponent is IVersioned {
     function main() external view returns (IMain);
+
+    function upgradeTo(address newImplementation) external;
 }
