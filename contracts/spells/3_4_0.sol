@@ -392,7 +392,7 @@ contract Upgrade3_4_0 {
 
                 uniqueTargetNames.add(targetNames[i]);
             }
-            if (newBasket) proxy.basketHandler.setPrimeBasket(primeERC20s, targetAmts);
+            if (newBasket) proxy.basketHandler.forceSetPrimeBasket(primeERC20s, targetAmts);
 
             // Rotate ERC20s in backup configs
             while (uniqueTargetNames.length() != 0) {
