@@ -18,6 +18,8 @@ import "../OracleLib.sol";
  *      - The RToken _must_ be the same RToken using this plugin as collateral!
  *      - The RToken SHOULD have an RSR overcollateralization layer. DO NOT USE WITHOUT RSR!
  *      - The LP token should be worth ~2x the reference token. Do not use with 1x lpTokens.
+ *      - Lastly: Do NOT deploy an RToken with this collateral! It can only be swapped
+ *                in at a later date once the RToken has nonzero issuance.
  *
  * tok = ConvexStakingWrapper or CurveGaugeWrapper
  * ref = coins(0) in the pool
