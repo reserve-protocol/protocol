@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-// solhint-disable func-name-mixedcase
+// solhint-disable func-param-name-mixedcase, func-name-mixedcase
 interface ICurvePool {
     // reentrancy check -- use with ETH / WETH pools
     function claim_admin_fees() external;
