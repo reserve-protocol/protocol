@@ -240,7 +240,7 @@ const increaseTargetPerRef = async (
   await changeTargetPerRef(ctx, bn(pctDecrease))
 }
 
-const reduceRefPerTok = async (, pctDecrease: BigNumberish) => {
+const reduceRefPerTok = async (ctx: ApxEthCollateralFixtureContext, pctDecrease: BigNumberish) => {
   await hre.network.provider.send('evm_mine', [])
 }
 
