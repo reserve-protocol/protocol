@@ -104,9 +104,12 @@ export interface ITokens {
   bbUSDT?: string
   steakPYUSD?: string
   Re7WETH?: string
+
+  pxETH?: string
+  apxETH?: string
 }
 
-export type ITokensKeys = Array<keyof ITokens>;
+export type ITokensKeys = Array<keyof ITokens>
 
 export interface IFeeds {
   stETHETH?: string
@@ -217,6 +220,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
+      pxETH: '0x04C154b66CB340F3Ae24111CC767e0184Ed00Cc6',
+      apxETH: '0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       wcUSDCv3: '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
@@ -267,6 +272,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
       frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
+      apxETH: '0x19219BC90F48DeE4d5cF202E09c438FAacFd8Bea', // apxETH/ETH
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
