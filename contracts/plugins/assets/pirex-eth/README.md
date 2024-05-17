@@ -26,4 +26,4 @@ Upon depositing ETH into the Dinero protocol through Pirex ETH, users receive `p
 
 #### refPerTok {ref/tok}
 
-This function returns rate of `pxETH/apxETH`, getting from [assetsPerShare()](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) function in wstETH contract.
+This function returns rate of `pxETH/apxETH`, getting from [assetsPerShare()](https://etherscan.io/token/0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6#readContract) function in wstETH contract.
