@@ -174,20 +174,13 @@ const deployCollateralApxEthMockContext = async (
 
   const MockFactory = await ethers.getContractFactory('ApxEthMock')
   const erc20 = (await MockFactory.deploy()) as ApxEthMock
-  let currentAPS = await (await ethers.getContractAt('IApxETH', APXETH)).assetsPerShare()
+  const currentAPS = await (await ethers.getContractAt('IApxETH', APXETH)).assetsPerShare()
   await erc20.setAssetsPerShare(currentAPS)
 
   const targetPerTokChainlinkFeed = <MockV3Aggregator>(
     await MockV3AggregatorFactory.deploy(18, refPerTokChainlinkDefaultAnswer)
   )
   collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
-
-  // const collateral = await deployCollateral({
-  //   erc20: erc20.address,
-  //   revenueHiding: fp('0.01'),
-  //   chainlinkFeed: chainlinkFeed.address,
-  //   targetPerTokChainlinkFeed: targetPerTokChainlinkFeed.address
-  // })
 
   const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
   const pxEth = (await ethers.getContractAt('ERC20Mock', PXETH)) as ERC20Mock
@@ -247,7 +240,7 @@ const increaseTargetPerRef = async (
   await changeTargetPerRef(ctx, bn(pctDecrease))
 }
 
-const reduceRefPerTok = async (ctx: ApxEthCollateralFixtureContext, pctDecrease: BigNumberish) => {
+const reduceRefPerTok = async (, pctDecrease: BigNumberish) => {
   await hre.network.provider.send('evm_mine', [])
 }
 
@@ -269,7 +262,7 @@ const increaseRefPerTok = async (
   })
 
   // push chainlink oracles forward so that tryPrice() still works
-  let latestRoundData = await ctx.chainlinkFeed.latestRoundData()
+  const latestRoundData = await ctx.chainlinkFeed.latestRoundData()
   await ctx.chainlinkFeed.updateAnswer(latestRoundData.answer)
  
   // Adjust apxETH/ETH price as well
@@ -316,7 +309,7 @@ const collateralSpecificStatusTests = () => {
       revenueHiding: fp('0.01'),
     })
 
-    let currentAPS = await (await ethers.getContractAt('IApxETH', APXETH)).assetsPerShare()
+    const currentAPS = await (await ethers.getContractAt('IApxETH', APXETH)).assetsPerShare()
 
     // Should remain SOUND after a 1% decrease
     let refPerTok = await collateral.refPerTok()
