@@ -42,6 +42,7 @@ import {
   ETHPLUS,
   ETHPLUS_ASSET_REGISTRY,
   ETHPLUS_BASKET_HANDLER,
+  ETHPLUS_BACKING_MANAGER,
   ETHPLUS_TIMELOCK,
 } from '../constants'
 import { whileImpersonating } from '../../../../utils/impersonation'
@@ -261,20 +262,25 @@ const collateralSpecificStatusTests = () => {
     expect(await mockRTokenAsset.stale()).to.be.false
   })
 
-  it('Regression test -- becomes IFFY when inner RToken is IFFY', async () => {
-    const [collateral] = await deployCollateral({})
+  it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
+    const [collateral, opts] = await deployCollateral({})
     const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
       ETHPLUS_ASSET_REGISTRY
     )
     const ethplusBasketHandler = await ethers.getContractAt(
-      'IBasketHandler',
+      'TestIBasketHandler',
       ETHPLUS_BASKET_HANDLER
     )
     const wstETHCollateral = await ethers.getContractAt(
       'LidoStakedEthCollateral',
       await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.wstETH!)
     )
+    const rethCollateral = await ethers.getContractAt(
+      'RethCollateral',
+      await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.rETH!)
+    )
+
     const initialPrice = await wstETHCollateral.price()
     expect(initialPrice[0]).to.be.gt(0)
     expect(initialPrice[1]).to.be.lt(MAX_UINT192)
@@ -285,6 +291,9 @@ const collateralSpecificStatusTests = () => {
     const targetPerRefOracle = await overrideOracle(targetPerRefFeed)
     const latestAnswer = await targetPerRefOracle.latestAnswer()
     await targetPerRefOracle.updateAnswer(latestAnswer.mul(4).div(5))
+    const uoaPerRefFeed = await wstETHCollateral.chainlinkFeed()
+    const uoaPerRefOracle = await overrideOracle(uoaPerRefFeed)
+    await uoaPerRefOracle.updateAnswer(await uoaPerRefOracle.latestAnswer())
 
     // wstETHCollateral + CurveAppreciatingRTokenSelfReferentialCollateral should
     // become IFFY through the top-level refresh
@@ -310,34 +319,55 @@ const collateralSpecificStatusTests = () => {
     ])
     expect(await wstETHCollateral.status()).to.equal(1)
     expect(await collateral.status()).to.equal(1)
+    expect(await ethplusBasketHandler.status()).to.equal(1)
     expect(await ethplusBasketHandler.isReady()).to.equal(false)
 
-    // Should remain IFFY for the warmupPeriod even after wstETHCollateral is SOUND
-    await targetPerRefOracle.updateAnswer(latestAnswer)
-    await expectEvents(collateral.refresh(), [
-      {
-        contract: ethplusBasketHandler,
-        name: 'BasketStatusChanged',
-        args: [1, 0],
-        emitted: true,
-      },
-      {
-        contract: wstETHCollateral,
-        name: 'CollateralStatusChanged',
-        args: [1, 0],
-        emitted: true,
-      },
-      {
-        contract: collateral,
-        name: 'CollateralStatusChanged',
-        emitted: false,
-      },
-    ])
+    // Should remain IFFY while rebalancing
+    await advanceTime((await wstETHCollateral.delayUntilDefault()) + 1) // 24h
+
+    // prevent oracles from becoming stale
+    for (const feedAddr of opts.feeds!) {
+      const feed = await ethers.getContractAt('MockV3Aggregator', feedAddr[0])
+      await feed.updateAnswer(await feed.latestAnswer())
+    }
+    const ethOracle = await overrideOracle(WETH_USD_FEED)
+    await ethOracle.updateAnswer(await ethOracle.latestAnswer())
+    await targetPerRefOracle.updateAnswer(await targetPerRefOracle.latestAnswer())
+    await uoaPerRefOracle.updateAnswer(await uoaPerRefOracle.latestAnswer())
+    const rethOracle = await overrideOracle(await rethCollateral.chainlinkFeed())
+    await rethOracle.updateAnswer(await rethOracle.latestAnswer())
+    const rethTargetPerTokOracle = await overrideOracle(
+      await rethCollateral.targetPerTokChainlinkFeed()
+    )
+    await rethTargetPerTokOracle.updateAnswer(await rethTargetPerTokOracle.latestAnswer())
+
+    // Should remain IFFY
+    expect(await ethplusBasketHandler.status()).to.equal(2)
+    expect(await wstETHCollateral.status()).to.equal(2)
+    expect(await collateral.status()).to.equal(1)
+    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+    await ethplusBasketHandler.refreshBasket() // swaps WETH into basket in place of wstETH
+    expect(await ethplusBasketHandler.status()).to.equal(0)
+    expect(await ethplusBasketHandler.isReady()).to.equal(false)
+    expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
+
+    // Advancing the warmupPeriod should not change anything while rebalancing
+    await advanceTime((await ethplusBasketHandler.warmupPeriod()) + 1)
+    expect(await ethplusBasketHandler.isReady()).to.equal(true)
+    await collateral.refresh()
+    expect(await ethplusBasketHandler.status()).to.equal(0)
+    expect(await wstETHCollateral.status()).to.equal(2)
     expect(await collateral.status()).to.equal(1)
 
-    // Goes back to SOUND after warmupPeriod
-    await advanceTime(1000)
-    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged').withArgs(1, 0)
+    // Should go back to SOUND after fullyCollateralized again -- backs up to WETH
+    const weth = await ethers.getContractAt('IERC20Metadata', networkConfig['1'].tokens.WETH!)
+    await whileImpersonating('0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E', async (whale) => {
+      await weth
+        .connect(whale)
+        .transfer(ETHPLUS_BACKING_MANAGER, await weth.balanceOf(whale.address))
+    })
+    expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(true)
+    await collateral.refresh()
     expect(await collateral.status()).to.equal(0)
   })
 

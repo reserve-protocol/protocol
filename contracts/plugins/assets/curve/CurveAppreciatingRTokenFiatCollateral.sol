@@ -87,9 +87,16 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
                     assert(low == 0);
                 }
 
-                // Check RToken status
+                // Check pool status: inner RToken must be both isReady() and
+                // fullyCollateralized() to prevent injection of bad debt.
                 try pairedBasketHandler.isReady() returns (bool isReady) {
-                    if (!isReady || low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+                    if (
+                        !isReady ||
+                        low == 0 ||
+                        _anyDepeggedInPool() ||
+                        _anyDepeggedOutsidePool() ||
+                        !pairedBasketHandler.fullyCollateralized()
+                    ) {
                         // If the price is below the default-threshold price, default eventually
                         // uint192(+/-) is the same as Fix.plus/minus
                         markStatus(CollateralStatus.IFFY);
