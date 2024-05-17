@@ -10,13 +10,11 @@ import {
   EXECUTOR_ROLE,
   PROPOSER_ROLE,
   CANCELLER_ROLE,
+  MAIN_OWNER_ROLE,
 } from '../proposals/3_4_0'
 
 // Use this once to serialize a proposal
-task(
-  '3.4.0',
-  "Check the implementation to figure out what this does; it's always in flux"
-).setAction(async (params, hre) => {
+task('3.4.0', 'Upgrade to 3.4.0').setAction(async (params, hre) => {
   const network = useEnv('FORK_NETWORK').toLowerCase()
 
   const deployments = network == 'base' ? BASE_DEPLOYMENTS : MAINNET_DEPLOYMENTS
@@ -64,18 +62,30 @@ task(
       proposalid: step1.proposalId,
     })
 
-    const timelock = await hre.ethers.getContractAt('TimelockController', deployment.timelock)
+    const [anastasiusAddr, newTimelockAddr] = await spell.newGovs(deployment.rToken)
+    console.log(`New governor: ${anastasiusAddr}, new timelock: ${newTimelockAddr}`)
+
+    const newTimelock = await hre.ethers.getContractAt('TimelockController', newTimelockAddr)
+    const anastasius = await hre.ethers.getContractAt('Governance', anastasiusAddr)
+
     if (
-      (await timelock.hasRole(PROPOSER_ROLE, alexios.address)) ||
-      (await timelock.hasRole(EXECUTOR_ROLE, alexios.address)) ||
-      (await timelock.hasRole(CANCELLER_ROLE, alexios.address))
+      (await newTimelock.hasRole(PROPOSER_ROLE, alexios.address)) ||
+      (await newTimelock.hasRole(EXECUTOR_ROLE, alexios.address)) ||
+      (await newTimelock.hasRole(CANCELLER_ROLE, alexios.address))
     ) {
       throw new Error('governor rekt')
+    }
+
+    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    if (
+      (await main.hasRole(MAIN_OWNER_ROLE, deployment.timelock)) ||
+      !(await main.hasRole(MAIN_OWNER_ROLE, newTimelock.address))
+    ) {
+      throw new Error('RToken rekt')
     }
     if ((await rToken.version()) != '3.4.0') throw new Error('Failed to upgrade to 3.4.0')
 
     // All registered collateral should be SOUND
-    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const assetRegistry = await hre.ethers.getContractAt(
       'AssetRegistryP1',
       await main.assetRegistry()
@@ -89,22 +99,17 @@ task(
     }
 
     console.log('Part 2')
-
-    const anastasius = await hre.ethers.getContractAt(
-      'Governance',
-      await spell.anastasiuses(deployment.rToken)
-    )
     const step2 = await proposal_3_4_0_step_2(
       hre,
       deployment.rToken,
       anastasius.address,
-      deployment.timelock,
+      newTimelock.address,
       spell.address
     )
 
     step2.rtoken = deployment.rToken
     step2.governor = anastasius.address
-    step2.timelock = deployment.timelock
+    step2.timelock = newTimelock.address
 
     descHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(step2.description))
     step2.proposalId = BigNumber.from(

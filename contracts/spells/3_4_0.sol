@@ -14,17 +14,24 @@ interface ICachedComponent {
 }
 
 /**
- * The upgrade contract for the 3.4.0 release. Each spell can only be cast once per msg.sender.
+ * The upgrade contract for the 3.4.0 release. Each spell can only be cast once per RToken.
  *
- * Before spell 1 this contract must be admin of the timelock and owner of Main.
+ * Before casting: this contract must have MAIN_OWNER_ROLE of Main
  *
- * Before spell 2 this contract must be owner of Main. It does not need to be admin of timelock.
+ * After casting spell 2 this contract will revoke its adminship of Main.
+ * The intermediate adminship is acceptable because the contract is a simple 3-state machine:
+ *   1. Neither spells have been run for the RToken
+ *   2. Spell 1 has been run for the RToken
+ *   3. Spell 1 and 2 have been run for the RToken
+ *
+ * Only the current timelock of the RToken can cast any of the spells. It is safe to
+ * give the contract adminship of Main and not take immediate action.
+ *
  * WARNING: Only cast spell 2 after
- *          (i) all reward tokens have been claimed
+ *          (i) all reward tokens have been claimed AND
  *          (ii) all rebalancing + revenue auctions have been fully processed.
  *          More specifically: All non-backing assets should have a balance under minTradeVolume,
  *                             and there should be no more non-backing assets to claim.
- *
  *
  *
  * Only works on Mainnet and Base. Only supports RTokens listed on the Register as of May 1, 2024
@@ -120,8 +127,13 @@ contract Upgrade3_4_0 {
 
     TestIDeployer public deployer;
 
-    // RToken address => Anastasius Governor
-    mapping(IRToken => IGovernor) public anastasiuses;
+    struct NewGovernance {
+        IGovernor anastasius;
+        TimelockController timelock;
+    }
+
+    // RToken => [IGovernor, TimelockController]
+    mapping(IRToken => NewGovernance) public newGovs;
 
     // 3.4.0 ERC20 => 3.4.0 Asset
     mapping(IERC20 => IAsset) public assets; // ALL 3.4.0 assets
@@ -129,9 +141,9 @@ contract Upgrade3_4_0 {
     // <3.4.0 ERC20 => 3.4.0 Asset
     mapping(IERC20 => IAsset) public rotations; // erc20 rotations
 
-    // msg.sender => bool
-    mapping(address => bool) public oneCast;
-    mapping(address => bool) public twoCast;
+    // RToken => bool
+    mapping(IRToken => bool) public oneCast;
+    mapping(IRToken => bool) public twoCast;
 
     bool public mainnet; // !mainnet | base
 
@@ -153,24 +165,41 @@ contract Upgrade3_4_0 {
             // Set up `deployer`
             deployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
 
-            // Set up `anastasiuses`
-            anastasiuses[IRToken(0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)] = IGovernor(
-                0xfa4Cc3c65c5CCe085Fc78dD262d00500cf7546CD // eUSD
+            // Set up `newGovs`
+            // eUSD
+            newGovs[IRToken(0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)] = NewGovernance(
+                IGovernor(0xf4A9288D5dEb0EaE987e5926795094BF6f4662F8),
+                TimelockController(payable(0x7BEa807798313fE8F557780dBD6b829c1E3aD560))
             );
-            anastasiuses[IRToken(0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8)] = IGovernor(
-                0x991c13ff5e8bd3FFc59244A8cF13E0253C78d2bD // ETH+
+
+            // ETH+
+            newGovs[IRToken(0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8)] = NewGovernance(
+                IGovernor(0x868Fe81C276d730A1995Dc84b642E795dFb8F753),
+                TimelockController(payable(0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556))
             );
-            anastasiuses[IRToken(0xaCdf0DBA4B9839b96221a8487e9ca660a48212be)] = IGovernor(
-                0xb79434b4778E5C1930672053f4bE88D11BbD1f97 // hyUSD (mainnet)
+
+            // hyUSD (mainnet)
+            newGovs[IRToken(0xaCdf0DBA4B9839b96221a8487e9ca660a48212be)] = NewGovernance(
+                IGovernor(0x3F26EF1460D21A99425569Ef3148Ca6059a7eEAe),
+                TimelockController(payable(0x788Fd297B4d497e44e4BF25d642fbecA3018B5d2))
             );
-            anastasiuses[IRToken(0xFc0B1EEf20e4c68B3DCF36c4537Cfa7Ce46CA70b)] = IGovernor(
-                0x6814F3489cbE3EB32b27508a75821073C85C12b7 // USDC+
+
+            // USDC+
+            newGovs[IRToken(0xFc0B1EEf20e4c68B3DCF36c4537Cfa7Ce46CA70b)] = NewGovernance(
+                IGovernor(0xfB4b59f89657B76f2AdBCFf5786369f0890c0E6e),
+                TimelockController(payable(0x9D769914eD962C4E609C8d7e4965940799C2D6C0))
             );
-            anastasiuses[IRToken(0x0d86883FAf4FfD7aEb116390af37746F45b6f378)] = IGovernor(
-                0x16a0F420426FD102a85A7CcA4BA25f6be1E98cFc // USD3
+
+            // USD3
+            newGovs[IRToken(0x0d86883FAf4FfD7aEb116390af37746F45b6f378)] = NewGovernance(
+                IGovernor(0x441808e20E625e0094b01B40F84af89436229279),
+                TimelockController(payable(0x12e4F043c6464984A45173E0444105058b6C3c7B))
             );
-            anastasiuses[IRToken(0x78da5799CF427Fee11e9996982F4150eCe7a99A7)] = IGovernor(
-                0xE5D337258a1e8046fa87Ca687e3455Eb8b626e1F // rgUSD
+
+            // rgUSD
+            newGovs[IRToken(0x78da5799CF427Fee11e9996982F4150eCe7a99A7)] = NewGovernance(
+                IGovernor(0xA82Df5F4c8669a358CE54b8784103854a7f11dAf),
+                TimelockController(payable(0xf33b8F2284BCa1B1A78142aE609F2a3Ad30358f3))
             );
 
             // Set up `assets`
@@ -216,21 +245,35 @@ contract Upgrade3_4_0 {
             // Set up `deployer`
             deployer = TestIDeployer(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
 
-            // Set up `anastasius`
-            anastasiuses[IRToken(0xCc7FF230365bD730eE4B352cC2492CEdAC49383e)] = IGovernor(
-                0x5Ef74A083Ac932b5f050bf41cDe1F67c659b4b88 // hyUSD (base)
+            // Set up `newGovs`
+            // hyUSD (base)
+            newGovs[IRToken(0xCc7FF230365bD730eE4B352cC2492CEdAC49383e)] = NewGovernance(
+                IGovernor(0xffef97179f58a582dEf73e6d2e4BcD2BDC8ca128),
+                TimelockController(payable(0x4284D76a03F9B398FF7aEc58C9dEc94b289070CF))
             );
-            anastasiuses[IRToken(0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff)] = IGovernor(
-                0x8A11D590B32186E1236B5E75F2d8D72c280dc880 // bsdETH
+
+            // bsdETH
+            newGovs[IRToken(0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff)] = NewGovernance(
+                IGovernor(0x21fBa52dA03e1F964fa521532f8B8951fC212055),
+                TimelockController(payable(0xe664d294824C2A8C952A10c4034e1105d2907F46))
             );
-            anastasiuses[IRToken(0xfE0D6D83033e313691E96909d2188C150b834285)] = IGovernor(
-                0xaeCa35F0cB9d12D68adC4d734D4383593F109654 // iUSDC
+
+            // iUSDC
+            newGovs[IRToken(0xfE0D6D83033e313691E96909d2188C150b834285)] = NewGovernance(
+                IGovernor(0xB5Cf3238b6EdDf8e264D44593099C5fAaFC3F96D),
+                TimelockController(payable(0x520CF948147C3DF196B8a21cd3687e7f17555032))
             );
-            anastasiuses[IRToken(0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d)] = IGovernor(
-                0xC8f487B34251Eb76761168B70Dc10fA38B0Bd90b // Vaya
+
+            // Vaya
+            newGovs[IRToken(0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d)] = NewGovernance(
+                IGovernor(0xA6Fa215AB89e24310dc27aD86111803C443186Eb),
+                TimelockController(payable(0x48f4EA2c10E6665A7B77Ad6B9BD928b21CBe176F))
             );
-            anastasiuses[IRToken(0x641B0453487C9D14c5df96d45a481ef1dc84e31f)] = IGovernor(
-                0x437b525F96A2Da0A4b165efe27c61bea5c8d3CD4 // MAAT
+
+            // MAAT
+            newGovs[IRToken(0x641B0453487C9D14c5df96d45a481ef1dc84e31f)] = NewGovernance(
+                IGovernor(0x382Ee5dBaCA900211D0B64D2FdB180C4B276E5ce),
+                TimelockController(payable(0x88CF647f1CE5a83E699157b9D84b5a39266F010D))
             );
 
             // Set up `assets`
@@ -251,28 +294,38 @@ contract Upgrade3_4_0 {
         }
     }
 
-    // Cast once-per-sender, which is assumed to be the timelock
+    // Cast once-per-rToken. Caller MUST be the timelock owning Main.
     /// @param rToken The RToken to upgrade
-    /// @param alexios The corresponding Governor Alexios for the RToken
-    /// @dev Requirement: has administration of Timelock and RToken. revoked at end of execution
-    function castSpell1(IRToken rToken, IGovernor alexios) external {
+    /// @dev Requirement: this contract has admin of RToken via MAIN_OWNER_ROLE
+    function castSpell1(IRToken rToken) external {
         // Can only cast once
-        require(!oneCast[msg.sender], "repeat cast");
-        oneCast[msg.sender] = true;
-
-        IMain main = rToken.main();
-        TimelockController timelock = TimelockController(payable(msg.sender));
+        require(!oneCast[rToken], "repeat cast");
+        oneCast[rToken] = true;
 
         // Validations
-        require(keccak256(abi.encodePacked(alexios.name())) == ALEXIOS_HASH, "not alexios");
-        require(timelock.hasRole(PROPOSER_ROLE, address(alexios)), "alexios not timelock proposer");
-        require(timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), "must be timelock admin");
-        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
+        IMain main = rToken.main();
+        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "caller does not own Main"); // crux
         require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "must be owner of Main");
 
-        // Determine which anastasius to use for the RToken
-        IGovernor anastasius = anastasiuses[rToken];
-        require(address(anastasius) != address(0), "unsupported RToken");
+        // Validate new timelock
+        NewGovernance storage newGov = newGovs[rToken];
+        require(address(newGov.anastasius) != address(0), "unsupported RToken");
+        require(
+            newGov.timelock.hasRole(PROPOSER_ROLE, address(newGov.anastasius)),
+            "anastasius not proposer"
+        );
+        require(
+            newGov.timelock.hasRole(CANCELLER_ROLE, address(newGov.anastasius)),
+            "not canceller"
+        );
+        require(
+            newGov.timelock.hasRole(EXECUTOR_ROLE, address(newGov.anastasius)),
+            "anastasius not executor"
+        );
+        require(
+            newGov.timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(newGov.timelock)),
+            "timelock not admin of itself"
+        );
 
         Components memory proxy;
         proxy.assetRegistry = main.assetRegistry();
@@ -414,40 +467,34 @@ contract Upgrade3_4_0 {
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         }
 
-        // Replace Alexios with Anastasius
-        timelock.revokeRole(EXECUTOR_ROLE, address(alexios));
-        timelock.revokeRole(PROPOSER_ROLE, address(alexios));
-        timelock.revokeRole(CANCELLER_ROLE, address(alexios));
-        timelock.grantRole(EXECUTOR_ROLE, address(anastasius));
-        timelock.grantRole(PROPOSER_ROLE, address(anastasius));
-        timelock.grantRole(CANCELLER_ROLE, address(anastasius));
-
-        // Renounce adminships
-        main.renounceRole(MAIN_OWNER_ROLE, address(this));
-        assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
-        timelock.renounceRole(TIMELOCK_ADMIN_ROLE, address(this));
-        assert(!timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)));
+        // Rotate timelocks
+        main.grantRole(MAIN_OWNER_ROLE, address(newGov.timelock));
+        assert(main.hasRole(MAIN_OWNER_ROLE, address(newGov.timelock)));
+        main.revokeRole(MAIN_OWNER_ROLE, address(msg.sender));
+        assert(!main.hasRole(MAIN_OWNER_ROLE, address(msg.sender)));
+        // address(this) still has MAIN_OWNER_ROLE at end of execution
     }
 
-    // Cast once-per-sender, which is assumed to be the timelock
+    // Cast once-per-rToken. Caller MUST be the (new) timelock owning Main.
     /// @param rToken The RToken to upgrade
-    /// @dev Requirement: has administration of RToken. revoked at end of execution
-    ///      Assumption: all reward tokens claimed and no surplus balances above minTradeVolume
+    /// @dev Requirement: this contract has admin of RToken via MAIN_OWNER_ROLE
+    /// @dev Assumption: all reward tokens claimed and no surplus balances above minTradeVolume
     function castSpell2(IRToken rToken) external {
-        require(oneCast[msg.sender], "step 1 not cast");
+        require(oneCast[rToken], "step 1 not cast");
 
         // Can only cast once
-        require(!twoCast[msg.sender], "repeat cast");
-        twoCast[msg.sender] = true;
+        require(!twoCast[rToken], "repeat cast");
+        twoCast[rToken] = true;
 
         IMain main = rToken.main();
-        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "timelock does not own Main");
+        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "caller does not own Main");
 
         IAssetRegistry assetRegistry = main.assetRegistry();
         IBasketHandler basketHandler = main.basketHandler();
         Registry memory reg = assetRegistry.getRegistry();
         require(basketHandler.fullyCollateralized(), "not fully collateralized");
 
+        // Unregister rotated assets and non-3.4.0 assets not in the reference basket
         for (uint256 i = 0; i < reg.erc20s.length; i++) {
             IERC20 erc20 = reg.erc20s[i];
             if (!reg.assets[i].isCollateral()) continue; // skip pure assets
@@ -456,18 +503,15 @@ contract Upgrade3_4_0 {
                 rotations[erc20] != IAsset(address(0)) ||
                 (assets[erc20] == IAsset(address(0)) && basketHandler.quantity(erc20) == 0)
             ) {
-                // unregister rotated assets and non-3.4.0 assets not in the reference basket
                 assetRegistry.unregister(reg.assets[i]);
             }
         }
+
         require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
         // check we did not unregister anything in the basket
 
-        // Renounce adminships
-        TimelockController timelock = TimelockController(payable(msg.sender));
+        // Renounce adminship
         main.renounceRole(MAIN_OWNER_ROLE, address(this));
         assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
-        timelock.renounceRole(TIMELOCK_ADMIN_ROLE, address(this));
-        assert(!timelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this))); // execessive revoke
     }
 }
