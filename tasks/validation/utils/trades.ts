@@ -213,7 +213,7 @@ export const getTokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  console.log('Acquiring tokens...', logToken(tokenAddress))
+  console.log(`Acquiring tokens... ${logToken(tokenAddress)}: ${tokenAddress}`)
   switch (tokenAddress.toLowerCase()) {
     case '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase(): // <3.4.0 saUSDC mainnet
     case '0xa8157BF67Fd7BcDCC139CB9Bf1bd7Eb921A779D3'.toLowerCase(): // >=3.4.0 saUSDC mainnet
@@ -469,7 +469,7 @@ const getERC20Tokens = async (
           )
           await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, 0)
           await cUSDCv3.connect(whaleSigner).approve(wcUSDCv3.address, MAX_UINT256)
-          await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(150).div(100))
+          await wcUSDCv3.connect(whaleSigner).deposit(amount.mul(120).div(100))
           const bal = await wcUSDCv3.balanceOf(whaleSigner.address)
           await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
         }
