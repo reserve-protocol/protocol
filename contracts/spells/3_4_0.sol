@@ -130,8 +130,10 @@ contract Upgrade3_4_0 {
     // RToken => [IGovernor, TimelockController]
     mapping(IRToken => NewGovernance) public newGovs;
 
-    // Invariant: assets[erc20] == address(0) XOR rotations[erc20] == IAsset(address(0)
-    // checked in constructor
+    // Invariant
+    // for each erc20 to be included in 3.4.0:
+    //   assets[erc20] == address(0) XOR rotations[erc20] == address(0)
+    // (checked in constructor)
 
     // 3.4.0 ERC20 => 3.4.0 Asset
     mapping(IERC20 => IAsset) public assets; // ALL 3.4.0 assets
@@ -497,7 +499,7 @@ contract Upgrade3_4_0 {
         Registry memory reg = assetRegistry.getRegistry();
         require(basketHandler.fullyCollateralized(), "not fully collateralized");
 
-        // Unregister rotated collateral and non-3.4.0 assets not in the reference basket
+        // Unregister rotated and <3.4.0 collateral not in the reference basket
         for (uint256 i = 0; i < reg.erc20s.length; i++) {
             IERC20 erc20 = reg.erc20s[i];
             if (!reg.assets[i].isCollateral()) continue; // skip pure assets
