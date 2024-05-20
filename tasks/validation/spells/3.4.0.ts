@@ -78,6 +78,7 @@ task('3.4.0', 'Upgrade to 3.4.0').setAction(async (params, hre) => {
 
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     if (
+      (await main.hasRole(MAIN_OWNER_ROLE, spell.address)) ||
       (await main.hasRole(MAIN_OWNER_ROLE, deployment.timelock)) ||
       !(await main.hasRole(MAIN_OWNER_ROLE, newTimelock.address))
     ) {

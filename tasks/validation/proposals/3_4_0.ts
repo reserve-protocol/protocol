@@ -69,10 +69,15 @@ export const proposal_3_4_0_step_2 = async (
   if (!(await timelock.hasRole(CANCELLER_ROLE, newGovernorAddress)))
     throw new Error('missing CANCELLER_ROLE')
 
+  const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
+  const main = await hre.ethers.getContractAt('MainP1', await rToken.main())
   const spell = await hre.ethers.getContractAt('Upgrade3_4_0', spellAddress)
 
   // Build proposal
-  const txs = [await spell.populateTransaction.castSpell2(rTokenAddress)]
+  const txs = [
+    await main.populateTransaction.grantRole(MAIN_OWNER_ROLE, spell.address),
+    await spell.populateTransaction.castSpell2(rTokenAddress),
+  ]
 
   const description = '3.4.0 Upgrade (2/2) - Cleanup'
 

@@ -14,18 +14,13 @@ interface ICachedComponent {
 }
 
 /**
- * The upgrade contract for the 3.4.0 release. Each spell can only be cast once per RToken.
+ * The upgrade contract for the 3.4.0 release. Each spell function can only be cast once per RToken.
  *
- * Before casting: this contract must have MAIN_OWNER_ROLE of Main
+ * Before casting each spell() function this contract must have MAIN_OWNER_ROLE of Main.
+ * After casting each spell this contract will revoke its adminship of Main.
  *
- * After casting spell 2 this contract will revoke its adminship of Main.
- * The intermediate adminship is acceptable because the contract is a simple 3-state machine:
- *   1. Neither spells have been run for the RToken
- *   2. Spell 1 has been run for the RToken
- *   3. Spell 1 and 2 have been run for the RToken
- *
- * Only the current timelock of the RToken can cast any of the spells. It is safe to
- * give the contract adminship of Main and not take immediate action.
+ * The spell function should be called by the timelock owning Main. Governance should NOT
+ * grant this spell ownership without immediately executing one of the spell functions after.
  *
  * WARNING: Only cast spell 2 after
  *          (i) all reward tokens have been claimed AND
@@ -477,7 +472,10 @@ contract Upgrade3_4_0 {
         assert(main.hasRole(MAIN_OWNER_ROLE, address(newGov.timelock)));
         main.revokeRole(MAIN_OWNER_ROLE, address(msg.sender));
         assert(!main.hasRole(MAIN_OWNER_ROLE, address(msg.sender)));
-        // address(this) still has MAIN_OWNER_ROLE at end of execution
+
+        // Renounce adminship
+        main.renounceRole(MAIN_OWNER_ROLE, address(this));
+        assert(!main.hasRole(MAIN_OWNER_ROLE, address(this)));
     }
 
     // Cast once-per-rToken. Caller MUST be the (new) timelock owning Main.
