@@ -1,7 +1,7 @@
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { arbitrumL2Chains, developmentChains, networkConfig } from '../../../common/configuration'
-import { bn } from '../../../common/numbers'
+import { bn, fp } from '../../../common/numbers'
 import { ONE_ADDRESS } from '../../../common/constants'
 import {
   getDeploymentFile,
@@ -9,7 +9,7 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
-import { revenueHiding } from '../../deployment/utils'
+import { combinedError, revenueHiding } from '../../deployment/utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -112,7 +112,9 @@ async function main() {
           oracleError: bn('1'), // unused but cannot be zero
           oracleTimeout: ARB_USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
           maxTradeVolume: MAX_TRADE_VOL,
-          defaultThreshold: DEFAULT_THRESHOLD,
+          defaultThreshold: combinedError(ARB_crvUSD_ORACLE_ERROR, ARB_USDC_ORACLE_ERROR)
+            .add(fp('0.01'))
+            .toString(),
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         revenueHiding.toString(),
