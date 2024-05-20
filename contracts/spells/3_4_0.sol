@@ -135,6 +135,9 @@ contract Upgrade3_4_0 {
     // RToken => [IGovernor, TimelockController]
     mapping(IRToken => NewGovernance) public newGovs;
 
+    // Invariant: assets[erc20] == address(0) XOR rotations[erc20] == IAsset(address(0)
+    // checked in constructor
+
     // 3.4.0 ERC20 => 3.4.0 Asset
     mapping(IERC20 => IAsset) public assets; // ALL 3.4.0 assets
 
@@ -160,12 +163,12 @@ contract Upgrade3_4_0 {
         );
         mainnet = _mainnet;
 
-        // Set up `assets` array
+        // Setup `assets` array
         if (_mainnet) {
-            // Set up `deployer`
+            // Setup `deployer`
             deployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
 
-            // Set up `newGovs`
+            // Setup `newGovs`
             // eUSD
             newGovs[IRToken(0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)] = NewGovernance(
                 IGovernor(0xf4A9288D5dEb0EaE987e5926795094BF6f4662F8),
@@ -202,14 +205,7 @@ contract Upgrade3_4_0 {
                 TimelockController(payable(0xf33b8F2284BCa1B1A78142aE609F2a3Ad30358f3))
             );
 
-            // Set up `assets`
-            for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
-                IERC20 erc20 = MAINNET_ASSETS[i].erc20();
-                require(assets[erc20] == IAsset(address(0)), "duplicate asset");
-                assets[erc20] = IAsset(MAINNET_ASSETS[i]);
-            }
-
-            // Set up wrapper `rotations`
+            // Setup wrapper `rotations`
             // <3.4.0 ERC20 => 3.4.0 Asset
             rotations[IERC20(0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9)] = IAsset(
                 0x8d753659D4E4e4b4601c7F01Dc1c920cA538E333 // saUSDT
@@ -241,11 +237,19 @@ contract Upgrade3_4_0 {
             rotations[IERC20(0x6D05CB2CB647B58189FA16f81784C05B4bcd4fe9)] = IAsset(
                 0xB58D95003Af73CF76Ce349103726a51D4Ec8af17 // fUSDC
             );
+
+            // Setup updated `assets`
+            for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
+                IERC20 erc20 = MAINNET_ASSETS[i].erc20();
+                require(address(assets[erc20]) == address(0), "duplicate asset");
+                require(address(rotations[erc20]) == address(0), "duplicate rotation/update");
+                assets[erc20] = MAINNET_ASSETS[i];
+            }
         } else {
-            // Set up `deployer`
+            // Setup `deployer`
             deployer = TestIDeployer(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
 
-            // Set up `newGovs`
+            // Setup `newGovs`
             // hyUSD (base)
             newGovs[IRToken(0xCc7FF230365bD730eE4B352cC2492CEdAC49383e)] = NewGovernance(
                 IGovernor(0xffef97179f58a582dEf73e6d2e4BcD2BDC8ca128),
@@ -276,14 +280,7 @@ contract Upgrade3_4_0 {
                 TimelockController(payable(0x88CF647f1CE5a83E699157b9D84b5a39266F010D))
             );
 
-            // Set up `assets`
-            for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
-                IERC20 erc20 = BASE_ASSETS[i].erc20();
-                require(assets[erc20] == IAsset(address(0)), "duplicate asset");
-                assets[erc20] = IAsset(BASE_ASSETS[i]);
-            }
-
-            // Set up wrapper `rotations`
+            // Setup wrapper `rotations`
             // <3.4.0 ERC20 => 3.4.0 Asset
             rotations[IERC20(0x184460704886f9F2A7F3A0c2887680867954dC6E)] = IAsset(
                 0xC19f5d60e2Aca1174f3D5Fe189f0A69afaB76f50 // saBasUSDC
@@ -291,6 +288,14 @@ contract Upgrade3_4_0 {
             rotations[IERC20(0xA694f7177C6c839C951C74C797283B35D0A486c8)] = IAsset(
                 0xf7a9D27c3B60c78c6F6e2c2d6ED6E8B94b352461 // wcUSDCv3
             );
+
+            // Setup updated `assets`
+            for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
+                IERC20 erc20 = BASE_ASSETS[i].erc20();
+                require(address(assets[erc20]) == address(0), "duplicate asset");
+                require(address(rotations[erc20]) == address(0), "duplicate rotation/update");
+                assets[erc20] = BASE_ASSETS[i];
+            }
         }
     }
 
@@ -494,7 +499,7 @@ contract Upgrade3_4_0 {
         Registry memory reg = assetRegistry.getRegistry();
         require(basketHandler.fullyCollateralized(), "not fully collateralized");
 
-        // Unregister rotated assets and non-3.4.0 assets not in the reference basket
+        // Unregister rotated collateral and non-3.4.0 assets not in the reference basket
         for (uint256 i = 0; i < reg.erc20s.length; i++) {
             IERC20 erc20 = reg.erc20s[i];
             if (!reg.assets[i].isCollateral()) continue; // skip pure assets
