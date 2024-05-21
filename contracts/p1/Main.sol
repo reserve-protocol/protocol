@@ -69,25 +69,37 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         return super.hasRole(role, account);
     }
 
-    function upgradeRTokenTo(bytes32 versionHash) external onlyRole(OWNER) {
-        require(address(versionRegistry) != address(0), "no VersionRegistry");
+    /**
+     * @dev Upgrading from a prior version to 4.0.0, this must happen in the Governance proposal.
+     */
+    function upgradeMainTo(bytes32 versionHash) external onlyRole(OWNER) {
+        require(address(versionRegistry) != address(0), "no registry");
 
         Implementations memory implementation = versionRegistry.getImplementationForVersion(
             versionHash
         );
 
-        // TODO: Does self upgrades work? Can we upgrade Main as a part of Main?
-        // (Probably not, what if we need Main functionality for upgrades?)
-        rToken.upgradeTo(address(implementation.components.rToken));
-        stRSR.upgradeTo(address(implementation.components.stRSR));
-        assetRegistry.upgradeTo(address(implementation.components.assetRegistry));
-        basketHandler.upgradeTo(address(implementation.components.basketHandler));
-        backingManager.upgradeTo(address(implementation.components.backingManager));
-        distributor.upgradeTo(address(implementation.components.distributor));
-        furnace.upgradeTo(address(implementation.components.furnace));
-        broker.upgradeTo(address(implementation.components.broker));
-        rsrTrader.upgradeTo(address(implementation.components.rsrTrader));
-        rTokenTrader.upgradeTo(address(implementation.components.rTokenTrader));
+        this.upgradeTo(address(implementation.main));
+    }
+
+    function upgradeRTokenTo(bytes32 versionHash) external onlyRole(OWNER) {
+        require(address(versionRegistry) != address(0), "no registry");
+        require(keccak256(abi.encodePacked(this.version())) == versionHash, "upgrade main first");
+
+        Implementations memory implementation = versionRegistry.getImplementationForVersion(
+            versionHash
+        );
+
+        _upgradeProxy(address(rToken), address(implementation.components.rToken));
+        _upgradeProxy(address(stRSR), address(implementation.components.stRSR));
+        _upgradeProxy(address(assetRegistry), address(implementation.components.assetRegistry));
+        _upgradeProxy(address(basketHandler), address(implementation.components.basketHandler));
+        _upgradeProxy(address(backingManager), address(implementation.components.backingManager));
+        _upgradeProxy(address(distributor), address(implementation.components.distributor));
+        _upgradeProxy(address(furnace), address(implementation.components.furnace));
+        _upgradeProxy(address(broker), address(implementation.components.broker));
+        _upgradeProxy(address(rsrTrader), address(implementation.components.rsrTrader));
+        _upgradeProxy(address(rTokenTrader), address(implementation.components.rTokenTrader));
 
         broker.setBatchTradeImplementation(implementation.trading.gnosisTrade);
         broker.setDutchTradeImplementation(implementation.trading.dutchTrade);
@@ -96,6 +108,13 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
     // === Upgradeability ===
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(OWNER) {}
+
+    function _upgradeProxy(address proxy, address implementation) internal {
+        (bool success, ) = proxy.call(
+            abi.encodeWithSelector(UUPSUpgradeable.upgradeTo.selector, implementation)
+        );
+        require(success, "upgrade failed");
+    }
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
