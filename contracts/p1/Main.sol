@@ -10,6 +10,7 @@ import "../mixins/ComponentRegistry.sol";
 import "../mixins/Auth.sol";
 import "../mixins/Versioned.sol";
 import "../registry/VersionRegistry.sol";
+import "../interfaces/IBroker.sol";
 
 /**
  * @title Main
@@ -101,8 +102,12 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         _upgradeProxy(address(rsrTrader), address(implementation.components.rsrTrader));
         _upgradeProxy(address(rTokenTrader), address(implementation.components.rTokenTrader));
 
-        broker.setBatchTradeImplementation(implementation.trading.gnosisTrade);
-        broker.setDutchTradeImplementation(implementation.trading.dutchTrade);
+        IExtendedBroker(address(broker)).setBatchTradeImplementation(
+            implementation.trading.gnosisTrade
+        );
+        IExtendedBroker(address(broker)).setDutchTradeImplementation(
+            implementation.trading.dutchTrade
+        );
     }
 
     // === Upgradeability ===
