@@ -493,6 +493,7 @@ contract Upgrade3_4_0 {
 
         IMain main = rToken.main();
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "caller does not own Main");
+        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "must be owner of Main");
 
         IAssetRegistry assetRegistry = main.assetRegistry();
         IBasketHandler basketHandler = main.basketHandler();
