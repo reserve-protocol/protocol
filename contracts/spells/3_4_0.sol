@@ -484,6 +484,7 @@ contract Upgrade3_4_0 {
     /// @param rToken The RToken to upgrade
     /// @dev Requirement: this contract has admin of RToken via MAIN_OWNER_ROLE
     /// @dev Assumption: all reward tokens claimed and no surplus balances above minTradeVolume
+    /// @dev Warning: after casting an RToken may lose access to rewards earned by <3.4.0 assets
     function castSpell2(IRToken rToken) external {
         require(oneCast[rToken], "step 1 not cast");
 
@@ -501,6 +502,8 @@ contract Upgrade3_4_0 {
         require(basketHandler.fullyCollateralized(), "not fully collateralized");
 
         // Unregister rotated and <3.4.0 collateral not in the reference basket
+        // Warning: it is possible in principle that a <3.3.0 asset that earns rewards does not
+        // contain a call to `erc20.claimRewards()` in its own claimRewards() function.
         for (uint256 i = 0; i < reg.erc20s.length; i++) {
             IERC20 erc20 = reg.erc20s[i];
             if (!reg.assets[i].isCollateral()) continue; // skip pure assets
