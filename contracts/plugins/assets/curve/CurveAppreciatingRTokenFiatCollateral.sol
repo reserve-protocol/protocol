@@ -126,6 +126,7 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
     }
 
     /// @dev Not up-only! The RToken can devalue its exchange rate peg
+    /// @dev Assumption: The RToken BU is intended to equal the reference token in value
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         // {ref/tok} = quantity of the reference unit token in the pool per LP token
