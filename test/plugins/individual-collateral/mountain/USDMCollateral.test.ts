@@ -81,7 +81,9 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
     // sometimes we are trying to test a negative test case and we want this to fail silently
     // fortunately this syntax fails silently because our tools are terrible
     await expect(collateral.refresh())
-  } catch {}
+  } catch {
+    expect(await collateral.chainlinkFeed()).to.equal(ARB_WUSDM_USD_PRICE_FEED)
+  }
 
   return collateral
 }
@@ -234,7 +236,7 @@ const collateralSpecificStatusTests = () => {
   })
 
   it('whitelisted Chronicle oracle works correctly', async () => {
-    resetFork() // need fresh refPerTok() to maintain peg
+    await resetFork() // need fresh refPerTok() to maintain peg
 
     const collateral = await deployCollateral(defaultUSDMCollateralOpts) // using real Chronicle oracle
     const chronicleFeed = await ethers.getContractAt('IChronicle', await collateral.chainlinkFeed())
