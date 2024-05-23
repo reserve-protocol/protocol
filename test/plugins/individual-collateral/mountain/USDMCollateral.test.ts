@@ -11,9 +11,14 @@ import {
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../typechain'
-import { pushOracleForward } from '../../../utils/oracles'
-import { bn, fp } from '../../../../common/numbers'
-import { ONE_ADDRESS, ZERO_ADDRESS } from '../../../../common/constants'
+import { expectUnpriced, pushOracleForward } from '../../../utils/oracles'
+import { bn, fp, toBNDecimals } from '../../../../common/numbers'
+import {
+  BN_SCALE_FACTOR,
+  ONE_ADDRESS,
+  ZERO_ADDRESS,
+  CollateralStatus,
+} from '../../../../common/constants'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -26,6 +31,7 @@ import {
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
+  ARB_CHRONICLE_FEED_AUTH,
 } from './constants'
 
 /*
@@ -67,12 +73,15 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
   )
   await collateral.deployed()
 
-  // Push forward chainlink feed
-  await pushOracleForward(opts.chainlinkFeed!)
+  // It might revert if using real Chronicle oracle and not whitelisted (skip refresh())
+  try {
+    // Push forward feed
+    await pushOracleForward(opts.chainlinkFeed!)
 
-  // sometimes we are trying to test a negative test case and we want this to fail silently
-  // fortunately this syntax fails silently because our tools are terrible
-  await expect(collateral.refresh())
+    // sometimes we are trying to test a negative test case and we want this to fail silently
+    // fortunately this syntax fails silently because our tools are terrible
+    await expect(collateral.refresh())
+  } catch {}
 
   return collateral
 }
@@ -141,7 +150,6 @@ const reduceRefPerTok = async (
   ctx: CollateralFixtureContext,
   pctDecrease: BigNumberish
 ) => {
-
   const usdm = <IERC20Metadata>await ethers.getContractAt("IERC20Metadata", ARB_USDM)
   const currentBal = await usdm.balanceOf(ctx.tok.address)
   const removeBal = currentBal.mul(pctDecrease).div(100)
@@ -178,10 +186,7 @@ const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumbe
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
   return clData.answer.mul(bn(10).pow(18 - clDecimals))
-  // .mul(refPerTok)
-  // .div(fp('1'))
 }
 
 /*
@@ -192,7 +197,72 @@ const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumbe
 const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
+const collateralSpecificStatusTests = () => {
+  it('does revenue hiding correctly', async () => {
+    const [, alice] = await ethers.getSigners()
+    const tempCtx = await makeCollateralFixtureContext(alice, {
+      erc20: ARB_WUSDM,
+      revenueHiding: fp('0.01'),
+    })()
+
+    // Set correct price to maintain peg
+    const newPrice = fp('1')
+      .mul(await tempCtx.collateral.underlyingRefPerTok())
+      .div(BN_SCALE_FACTOR)
+    await tempCtx.chainlinkFeed.updateAnswer(toBNDecimals(newPrice, 8))
+    await tempCtx.collateral.refresh()
+    expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.SOUND)
+
+    // Should remain SOUND after a 1% decrease
+    let refPerTok = await tempCtx.collateral.refPerTok()
+    await reduceRefPerTok(tempCtx, 1)
+    await tempCtx.collateral.refresh()
+    expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.SOUND)
+
+    // refPerTok should be unchanged
+    expect(await tempCtx.collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
+
+    // Should become DISABLED if drops another 1%
+    refPerTok = await tempCtx.collateral.refPerTok()
+    await reduceRefPerTok(tempCtx, bn(1))
+    await tempCtx.collateral.refresh()
+    expect(await tempCtx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+    // refPerTok should have fallen 1%
+    refPerTok = refPerTok.sub(refPerTok.div(100))
+    expect(await tempCtx.collateral.refPerTok()).to.be.closeTo(refPerTok, refPerTok.div(bn('1e3'))) // within 1-part-in-1-thousand
+  })
+
+  it('whitelisted Chronicle oracle works correctly', async () => {
+    resetFork() // need fresh refPerTok() to maintain peg
+
+    const collateral = await deployCollateral(defaultUSDMCollateralOpts) // using real Chronicle oracle
+    const chronicleFeed = await ethers.getContractAt('IChronicle', await collateral.chainlinkFeed())
+
+    // Unpriced if not whitelisted
+    await expectUnpriced(collateral.address)
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+    // Refresh sets collateral to IFFY
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+    // Whitelist plugin in Chronicle oracle
+    await whileImpersonating(ARB_CHRONICLE_FEED_AUTH, async (authSigner) => {
+      await chronicleFeed.connect(authSigner).kiss(collateral.address)
+    })
+
+    // Should have a price now
+    const [low, high] = await collateral.price()
+    expect(low).to.be.closeTo(fp('1.02'), fp('0.01')) // close to $1.03 (chainlink answer in this block)
+    expect(high).to.be.closeTo(fp('1.04'), fp('0.01'))
+    expect(high).to.be.gt(low)
+
+    // Refresh sets it back to SOUND
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const beforeEachRewardsTest = async () => {}
@@ -219,7 +289,7 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itHasRevenueHiding: it.skip,
+  itHasRevenueHiding: it.skip, // implemented in this file
   collateralName: 'USDM Collateral',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
