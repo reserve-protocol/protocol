@@ -415,13 +415,6 @@ contract Upgrade3_4_0 {
                     proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
                 )
             );
-
-            // Unregister TUSD if registered -- oracle is fully offline as of at least May 4th, 2024
-            if (
-                proxy.assetRegistry.isRegistered(IERC20(0x0000000000085d4780B73119b644AE5ecd22b376))
-            ) {
-                proxy.assetRegistry.unregister(IAsset(0x7F9999B2C9D310a5f48dfD070eb5129e1e8565E2));
-            }
         }
 
         // Rotate ERC20s in basket
@@ -462,6 +455,13 @@ contract Upgrade3_4_0 {
                     }
                 }
                 if (newBackup) proxy.basketHandler.setBackupConfig(targetName, max, backupERC20s);
+            }
+
+            // Unregister TUSD if registered -- oracle is fully offline as of at least May 4th, 2024
+            if (
+                proxy.assetRegistry.isRegistered(IERC20(0x0000000000085d4780B73119b644AE5ecd22b376))
+            ) {
+                proxy.assetRegistry.unregister(IAsset(0x7F9999B2C9D310a5f48dfD070eb5129e1e8565E2));
             }
 
             // Refresh basket
