@@ -5,11 +5,14 @@ import { CollateralConfig } from "../AppreciatingFiatCollateral.sol";
 import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
 
 /**
- * @title USDeCollateral (Ethena)
- * @notice Collateral plugin for a Ethena Usde
- * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
- *
+ * @title USDe Collateral
+ * @notice Collateral plugin for USDe (Ethena)
+ * tok = sUSDe (ERC4626 vault)
+ * ref = USDe
+ * tar = USD
+ * UoA = USD
  */
+
 contract USDeCollateral is ERC4626FiatCollateral {
     /// config.erc20 must be sUSDe
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
