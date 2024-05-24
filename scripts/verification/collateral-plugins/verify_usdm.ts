@@ -1,7 +1,7 @@
 import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
-import { fp, bn } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -48,7 +48,7 @@ async function main() {
         defaultThreshold: DEFAULT_THRESHOLD.toString(),
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
-      bn(0),
+      fp('1e-6'),
     ],
     'contracts/plugins/assets/mountain/USDMCollateral.sol:USDMCollateral'
   )

@@ -11,6 +11,8 @@ import "../ERC4626FiatCollateral.sol";
  * ref = USDM
  * tar = USD
  * UoA = USD
+ *
+ * Note: Uses a Chronicle Oracle, which requires the plugin address to be whitelisted
  */
 
 contract USDMCollateral is ERC4626FiatCollateral {
@@ -19,7 +21,7 @@ contract USDMCollateral is ERC4626FiatCollateral {
 
     // solhint-disable no-empty-blocks
 
-    /// @param config.chainlinkFeed - {UoA/tok}
+    /// @param config.chainlinkFeed - {UoA/tok} - Chronicle oracle - Requires whitelisting!
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         ERC4626FiatCollateral(config, revenueHiding)
     {
@@ -43,7 +45,7 @@ contract USDMCollateral is ERC4626FiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok} = {target/tok}
+        // {UoA/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout);
         uint192 err = p.mul(oracleError, CEIL);
 
@@ -51,7 +53,7 @@ contract USDMCollateral is ERC4626FiatCollateral {
         high = p + err;
         // assert(low <= high); obviously true just by inspection
 
-        // {target/ref} = {target/tok} / {ref/tok}
+        // {target/ref} = {UoA/ref} = {UoA/tok} / {ref/tok}
         pegPrice = p.div(underlyingRefPerTok());
     }
 }

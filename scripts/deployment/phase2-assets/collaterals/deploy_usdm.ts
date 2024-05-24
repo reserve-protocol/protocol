@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { arbitrumL2Chains, networkConfig } from '../../../../common/configuration'
-import { bn, fp } from '../../../../common/numbers'
+import { fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
@@ -67,7 +67,7 @@ async function main() {
         defaultThreshold: DEFAULT_THRESHOLD.toString(),
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
       },
-      bn(0) // does not require revenue hiding
+      fp('1e-6')
     )
   } else {
     throw new Error(`Unsupported chainId: ${chainId}`)
