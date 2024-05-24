@@ -20,7 +20,7 @@ export const ETH_ORACLE_ERROR = fp('0.005')
 export const APXETH_ORACLE_ERROR = fp('0.01') // 1%
 export const APXETH_ORACLE_TIMEOUT = bn(86400) // 24 hs
 
-export const DEFAULT_THRESHOLD = bn(5).mul(bn(10).pow(16)) // 0.05
+export const DEFAULT_THRESHOLD = fp('0.05') // 5%
 export const DELAY_UNTIL_DEFAULT = bn(86400)
 export const MAX_TRADE_VOL = bn(1000)
 
