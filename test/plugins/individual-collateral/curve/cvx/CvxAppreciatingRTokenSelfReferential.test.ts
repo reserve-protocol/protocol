@@ -268,6 +268,7 @@ const collateralSpecificStatusTests = () => {
       'IAssetRegistry',
       ETHPLUS_ASSET_REGISTRY
     )
+    const ethplus = await ethers.getContractAt('TestIRToken', ETHPLUS)
     const ethplusBasketHandler = await ethers.getContractAt(
       'TestIBasketHandler',
       ETHPLUS_BASKET_HANDLER
@@ -281,6 +282,7 @@ const collateralSpecificStatusTests = () => {
       await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.rETH!)
     )
 
+    const initialRefPerTok = await collateral.refPerTok()
     const initialPrice = await wstETHCollateral.price()
     expect(initialPrice[0]).to.be.gt(0)
     expect(initialPrice[1]).to.be.lt(MAX_UINT192)
@@ -321,8 +323,9 @@ const collateralSpecificStatusTests = () => {
     expect(await collateral.status()).to.equal(1)
     expect(await ethplusBasketHandler.status()).to.equal(1)
     expect(await ethplusBasketHandler.isReady()).to.equal(false)
+    expect(await collateral.refPerTok()).to.equal(initialRefPerTok) // refPerTok does not fall
 
-    // Should remain IFFY while rebalancing
+    // Should remain IFFY while ETH+ is rebalancing
     await advanceTime((await wstETHCollateral.delayUntilDefault()) + 1) // 24h
 
     // prevent oracles from becoming stale
@@ -350,6 +353,7 @@ const collateralSpecificStatusTests = () => {
     expect(await ethplusBasketHandler.status()).to.equal(0)
     expect(await ethplusBasketHandler.isReady()).to.equal(false)
     expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
+    expect(await collateral.refPerTok()).to.equal(initialRefPerTok) // refPerTok does not fall
 
     // Advancing the warmupPeriod should not change anything while rebalancing
     await advanceTime((await ethplusBasketHandler.warmupPeriod()) + 1)
@@ -358,17 +362,33 @@ const collateralSpecificStatusTests = () => {
     expect(await ethplusBasketHandler.status()).to.equal(0)
     expect(await wstETHCollateral.status()).to.equal(2)
     expect(await collateral.status()).to.equal(1)
+    expect(await collateral.refPerTok()).to.equal(initialRefPerTok) // refPerTok does not fall
 
     // Should go back to SOUND after fullyCollateralized again -- backs up to WETH
     const weth = await ethers.getContractAt('IERC20Metadata', networkConfig['1'].tokens.WETH!)
-    await whileImpersonating('0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E', async (whale) => {
-      await weth
-        .connect(whale)
-        .transfer(ETHPLUS_BACKING_MANAGER, await weth.balanceOf(whale.address))
+    const whale = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+    const whaleBal = await weth.balanceOf(whale)
+    await whileImpersonating(whale, async (whaleSigner) => {
+      await weth.connect(whaleSigner).transfer(ETHPLUS_BACKING_MANAGER, whaleBal)
     })
     expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(true)
     await collateral.refresh()
+    expect(await ethplusBasketHandler.status()).to.equal(0)
     expect(await collateral.status()).to.equal(0)
+    expect(await collateral.refPerTok()).to.equal(initialRefPerTok) // refPerTok does not fall
+
+    // refPerTok should finally fall after a 50% haircut
+    const basketsNeeded = await ethplus.basketsNeeded()
+    await whileImpersonating(ETHPLUS_BACKING_MANAGER, async (bm) => {
+      await weth.connect(bm).transfer(whale, whaleBal.sub(basketsNeeded.div(2))) // leave 50% behind
+      expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
+      await ethplus.connect(bm).setBasketsNeeded(basketsNeeded.div(2))
+    })
+    expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(true)
+    await collateral.refresh()
+    expect(await ethplusBasketHandler.status()).to.equal(0)
+    expect(await collateral.status()).to.equal(0)
+    expect(await collateral.refPerTok()).to.be.lt(initialRefPerTok.mul(51).div(100)) // refPerTok should fall
   })
 
   it('Read-only reentrancy', async () => {
