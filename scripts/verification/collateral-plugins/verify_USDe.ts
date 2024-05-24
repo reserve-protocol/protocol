@@ -12,7 +12,6 @@ import {
   PRICE_TIMEOUT,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
-  DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
 } from '../../../test/plugins/individual-collateral/ethena/constants'
 
@@ -45,12 +44,12 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD.toString(),
+        defaultThreshold: bn(0),
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
       bn(0),
     ],
-    'contracts/plugins/assets/ethena/USDeCollateral.sol:USDeCollateral'
+    'contracts/plugins/assets/ethena/USDeSelfReferentialCollateral.sol:USDeSelfReferentialCollateral'
   )
 }
 

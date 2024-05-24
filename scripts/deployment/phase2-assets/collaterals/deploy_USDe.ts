@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
-import { fp } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
@@ -12,10 +12,9 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { USDeCollateral } from '../../../../typechain'
+import { USDeSelfReferentialCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 import {
-  DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   PRICE_TIMEOUT,
   ORACLE_TIMEOUT,
@@ -47,13 +46,15 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy USDe Collateral - sUSDe  **************************/
-  let collateral: USDeCollateral
+  let collateral: USDeSelfReferentialCollateral
 
-  const USDeCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'USDeCollateral'
+  const USDeSelfRefCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'USDeSelfReferentialCollateral'
   )
 
-  collateral = <USDeCollateral>await USDeCollateralFactory.connect(deployer).deploy(
+  collateral = <USDeSelfReferentialCollateral>await USDeSelfRefCollateralFactory.connect(
+    deployer
+  ).deploy(
     {
       priceTimeout: PRICE_TIMEOUT.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDe,
@@ -62,7 +63,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: ORACLE_TIMEOUT.toString(), // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: DEFAULT_THRESHOLD.toString(),
+      defaultThreshold: bn(0), // USDe
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
     },
     fp('1e-6').toString()
