@@ -241,6 +241,7 @@ const increaseTargetPerRef = async (
   await changeTargetPerRef(ctx, bn(pctDecrease))
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const reduceRefPerTok = async (ctx: ApxEthCollateralFixtureContext, pctDecrease: BigNumberish) => {
   await hre.network.provider.send('evm_mine', [])
 }
