@@ -380,15 +380,20 @@ const collateralSpecificStatusTests = () => {
     // refPerTok should finally fall after a 50% haircut
     const basketsNeeded = await ethplus.basketsNeeded()
     await whileImpersonating(ETHPLUS_BACKING_MANAGER, async (bm) => {
-      await weth.connect(bm).transfer(whale, whaleBal.sub(basketsNeeded.div(2))) // leave 50% behind
+      console.log('whale', whaleBal, basketsNeeded, await weth.balanceOf(bm.address))
+      await weth.connect(bm).transfer(whale, whaleBal.sub(basketsNeeded.mul(26).div(100))) // leave >25% WETH backing
       expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
-      await ethplus.connect(bm).setBasketsNeeded(basketsNeeded.div(2))
+      await ethplus.connect(bm).setBasketsNeeded(basketsNeeded.div(2)) // 50% haircut = WETH backing is sufficient
     })
     expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(true)
     await collateral.refresh()
     expect(await ethplusBasketHandler.status()).to.equal(0)
-    expect(await collateral.status()).to.equal(0)
-    expect(await collateral.refPerTok()).to.be.lt(initialRefPerTok.mul(51).div(100)) // refPerTok should fall
+
+    // ETH+/ETH collateral should finally become DISABLED once refPerTok falls
+    expect(await collateral.status()).to.equal(2)
+    expect(await collateral.refPerTok()).to.be.gt(initialRefPerTok.mul(70).div(100))
+    expect(await collateral.refPerTok()).to.be.lt(initialRefPerTok.mul(71).div(100))
+    // 70% < refPerTok < 71%, since sqrt(0.5) = 0.707
   })
 
   it('Read-only reentrancy', async () => {
