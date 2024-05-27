@@ -3,6 +3,8 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../registry/AssetPluginRegistry.sol";
+import "../registry/VersionRegistry.sol";
 import "./IAssetRegistry.sol";
 import "./IBasketHandler.sol";
 import "./IBackingManager.sol";
@@ -174,6 +176,10 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
     ) external;
 
     function rsr() external view returns (IERC20);
+
+    function assetPluginRegistry() external view returns (AssetPluginRegistry);
+
+    function versionRegistry() external view returns (VersionRegistry);
 }
 
 interface TestIMain is IMain {

@@ -6,15 +6,19 @@ import { IDeployer, Implementations } from "../interfaces/IDeployer.sol";
 
 /**
  * @title VersionRegistry
- * @notice A tiny contract for tracking deployments over time, from an EOA.
- * @dev Does not allow overwriting without deregistration
+ * @notice A tiny contract for tracking deployments versions
  */
 contract VersionRegistry is Ownable {
     mapping(bytes32 => IDeployer) public deployments;
+    mapping(bytes32 => bool) public isDeprecated;
     bytes32 private latestVersion;
 
     error VersionRegistry__ZeroAddress();
     error VersionRegistry__InvalidRegistration();
+    error VersionRegistry__AlreadyDeprecated();
+
+    event VersionRegistered(bytes32 versionHash, IDeployer deployer);
+    event VersionDeprecated(bytes32 versionHash);
 
     constructor(address owner_) Ownable() {
         _transferOwnership(owner_);
@@ -36,6 +40,17 @@ contract VersionRegistry is Ownable {
 
         deployments[versionHash] = deployer;
         latestVersion = versionHash;
+
+        emit VersionRegistered(versionHash, deployer);
+    }
+
+    function deprecatedVersion(bytes32 versionHash) external onlyOwner {
+        if (isDeprecated[versionHash]) {
+            revert VersionRegistry__AlreadyDeprecated();
+        }
+        isDeprecated[versionHash] = true;
+
+        emit VersionDeprecated(versionHash);
     }
 
     function getLatestVersion()
@@ -44,12 +59,14 @@ contract VersionRegistry is Ownable {
         returns (
             bytes32 versionHash,
             string memory version,
-            IDeployer deployer
+            IDeployer deployer,
+            bool deprecated
         )
     {
         versionHash = latestVersion;
         deployer = deployments[versionHash];
         version = deployer.version();
+        deprecated = isDeprecated[versionHash];
     }
 
     function getImplementationForVersion(bytes32 versionHash)
