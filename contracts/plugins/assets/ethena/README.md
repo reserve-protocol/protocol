@@ -18,7 +18,7 @@ This plugin allows `sUSDe` holders to use their tokens as collateral in the Rese
 
 | tok   | ref  | target | UoA |
 | ----- | ---- | ------ | --- |
-| sUSDe | USDe |  USD   | USD |
+| sUSDe | USDe | USD    | USD |
 
 ### Functions
 

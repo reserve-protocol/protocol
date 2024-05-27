@@ -25,7 +25,7 @@ import {
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DELAY_UNTIL_DEFAULT,
-  DEFAULT_THRESHOLD
+  DEFAULT_THRESHOLD,
 } from './constants'
 
 /*

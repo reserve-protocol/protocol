@@ -13,7 +13,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   DELAY_UNTIL_DEFAULT,
-  DEFAULT_THRESHOLD
+  DEFAULT_THRESHOLD,
 } from '../../../test/plugins/individual-collateral/ethena/constants'
 
 let deployments: IAssetCollDeployments

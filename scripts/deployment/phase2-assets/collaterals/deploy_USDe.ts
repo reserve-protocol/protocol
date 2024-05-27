@@ -19,7 +19,7 @@ import {
   PRICE_TIMEOUT,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
-  DEFAULT_THRESHOLD
+  DEFAULT_THRESHOLD,
 } from '../../../../test/plugins/individual-collateral/ethena/constants'
 
 async function main() {
@@ -53,9 +53,7 @@ async function main() {
     'USDeFiatCollateral'
   )
 
-  collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(
-    deployer
-  ).deploy(
+  collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: PRICE_TIMEOUT.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDe,
