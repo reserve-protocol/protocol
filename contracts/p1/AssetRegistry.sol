@@ -180,7 +180,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
                     keccak256(abi.encodePacked(this.version())),
                     address(asset)
                 ),
-                "invalid asset"
+                "unsupported asset"
             );
         }
     }
@@ -221,7 +221,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
                 keccak256(abi.encodePacked(this.version())),
                 address(asset)
             ),
-            "unsupported collateral"
+            "unsupported asset"
         );
 
         IERC20Metadata erc20 = asset.erc20();
