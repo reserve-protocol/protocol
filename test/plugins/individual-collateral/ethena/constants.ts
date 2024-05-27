@@ -11,7 +11,8 @@ export const sUSDe_HOLDER = '0x4139cDC6345aFFbaC0692b43bed4D059Df3e6d65'
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours in seconds
 export const ORACLE_ERROR = fp('0.005') // 0.5%
-export const DELAY_UNTIL_DEFAULT = bn(86400)
+export const DEFAULT_THRESHOLD = fp('0.05') // 5%
+export const DELAY_UNTIL_DEFAULT = bn(259200) // 72 hs
 export const MAX_TRADE_VOL = bn(1000)
 
 export const FORK_BLOCK = 19933080

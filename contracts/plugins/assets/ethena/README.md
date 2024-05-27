@@ -16,11 +16,9 @@ This plugin allows `sUSDe` holders to use their tokens as collateral in the Rese
 
 ### Units
 
-Plugin can be implemented as a self-referential collateral as default checks should be avoided.
-
 | tok   | ref  | target | UoA |
 | ----- | ---- | ------ | --- |
-| sUSDe | USDe | USDe   | USD |
+| sUSDe | USDe |  USD   | USD |
 
 ### Functions
 

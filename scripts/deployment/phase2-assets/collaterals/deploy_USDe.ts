@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
-import { bn, fp } from '../../../../common/numbers'
+import { fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
@@ -12,13 +12,14 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { USDeSelfReferentialCollateral } from '../../../../typechain'
+import { USDeFiatCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 import {
   DELAY_UNTIL_DEFAULT,
   PRICE_TIMEOUT,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
+  DEFAULT_THRESHOLD
 } from '../../../../test/plugins/individual-collateral/ethena/constants'
 
 async function main() {
@@ -46,13 +47,13 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy USDe Collateral - sUSDe  **************************/
-  let collateral: USDeSelfReferentialCollateral
+  let collateral: USDeFiatCollateral
 
-  const USDeSelfRefCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'USDeSelfReferentialCollateral'
+  const USDeFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'USDeFiatCollateral'
   )
 
-  collateral = <USDeSelfReferentialCollateral>await USDeSelfRefCollateralFactory.connect(
+  collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(
     deployer
   ).deploy(
     {
@@ -63,7 +64,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: ORACLE_TIMEOUT.toString(), // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: bn(0), // USDe
+      defaultThreshold: DEFAULT_THRESHOLD.toString(), // 5%
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
     },
     fp('1e-6').toString()

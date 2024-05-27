@@ -1,7 +1,7 @@
 import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
-import { fp, bn } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -13,6 +13,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   DELAY_UNTIL_DEFAULT,
+  DEFAULT_THRESHOLD
 } from '../../../test/plugins/individual-collateral/ethena/constants'
 
 let deployments: IAssetCollDeployments
@@ -44,12 +45,12 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: bn(0),
+        defaultThreshold: DEFAULT_THRESHOLD.toString(),
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
-      bn(0),
+      fp('1e-6').toString(),
     ],
-    'contracts/plugins/assets/ethena/USDeSelfReferentialCollateral.sol:USDeSelfReferentialCollateral'
+    'contracts/plugins/assets/ethena/USDeFiatCollateral.sol:USDeFiatCollateral'
   )
 }
 

@@ -25,6 +25,7 @@ import {
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DELAY_UNTIL_DEFAULT,
+  DEFAULT_THRESHOLD
 } from './constants'
 
 /*
@@ -40,7 +41,7 @@ export const defaultUSDeCollateralOpts: CollateralOpts = {
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: bn(0), // USDe (avoid default checks)
+  defaultThreshold: DEFAULT_THRESHOLD, // 72 hs
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
 }
@@ -48,10 +49,10 @@ export const defaultUSDeCollateralOpts: CollateralOpts = {
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultUSDeCollateralOpts, ...opts }
 
-  const USDeSelfRefCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'USDeSelfReferentialCollateral'
+  const USDeFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'USDeFiatCollateral'
   )
-  const collateral = <TestICollateral>await USDeSelfRefCollateralFactory.deploy(
+  const collateral = <TestICollateral>await USDeFiatCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -180,13 +181,7 @@ const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumbe
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {
-  it('does not allow >0 defaultThreshold', async () => {
-    await expect(deployCollateral({ defaultThreshold: bn('1') })).to.be.revertedWith(
-      'defaultThreshold not zero'
-    )
-  })
-}
+const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}
@@ -211,13 +206,13 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
-  itChecksTargetPerRefDefaultUp: it.skip,
+  itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it.skip,
+  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
-  collateralName: 'USDe Self Referential Collateral',
+  collateralName: 'USDe Fiat Collateral',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
   resetFork,
