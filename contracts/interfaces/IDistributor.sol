@@ -37,7 +37,11 @@ interface IDistributor is IComponent {
     event RevenueDistributed(IERC20 indexed erc20, address indexed source, uint256 amount);
 
     // Initialization
-    function init(IMain main_, RevenueShare memory dist) external;
+    function init(
+        IMain main_,
+        RevenueShare memory dist,
+        uint16 daoFee
+    ) external;
 
     /// @custom:governance
     function setDistribution(address dest, RevenueShare memory share) external;

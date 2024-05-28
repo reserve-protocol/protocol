@@ -30,6 +30,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
+    address public constant DAO_FEE = address(3);
 
     uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS; // 100
 
@@ -40,13 +41,18 @@ contract DistributorP1 is ComponentP1, IDistributor {
     address private rTokenTrader;
     address private rsrTrader;
 
-    function init(IMain main_, RevenueShare calldata dist) external initializer {
+    function init(
+        IMain main_,
+        RevenueShare calldata dist,
+        uint16 daoFee
+    ) external initializer {
         __Component_init(main_);
         cacheComponents();
 
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
+        _setDistribution(DAO_FEE, RevenueShare(0, daoFee)); // Doing this math onchain is expensive
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
@@ -63,8 +69,30 @@ contract DistributorP1 is ComponentP1, IDistributor {
         try main.rTokenTrader().distributeTokenToBuy() {} catch {}
 
         _setDistribution(dest, share);
+
         RevenueTotals memory revTotals = totals();
         _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
+        _validateDistributionTable();
+    }
+
+    function setDistributions(address[] calldata dest, RevenueShare[] calldata share)
+        external
+        governance
+    {
+        require(dest.length == share.length, "array length mismatch");
+
+        // solhint-disable-next-line no-empty-blocks
+        try main.rsrTrader().distributeTokenToBuy() {} catch {}
+        // solhint-disable-next-line no-empty-blocks
+        try main.rTokenTrader().distributeTokenToBuy() {} catch {}
+
+        for (uint256 i = 0; i < dest.length; ++i) {
+            _setDistribution(dest[i], share[i]);
+        }
+
+        RevenueTotals memory revTotals = totals();
+        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
+        _validateDistributionTable();
     }
 
     struct Transfer {
@@ -127,6 +155,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
                 if (transferAmt != 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSRAddr;
+                if (transferAmt != 0) accountRewards = true;
+            } else if (addrTo == DAO_FEE) {
+                addrTo = main.daoFeeRegistry().feeRecipient();
                 if (transferAmt != 0) accountRewards = true;
             }
 
@@ -199,6 +230,33 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // checks: at least one of its arguments is nonzero
     function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
         require(rTokenDist != 0 || rsrDist != 0, "no distribution defined");
+    }
+
+    function _validateDistributionTable() internal view {
+        uint256 dLen = destinations.length();
+        DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
+        require(destinations.length() > 0, "no destinations");
+
+        RevenueTotals memory revTotals;
+        uint24 daoTotals;
+
+        for (uint256 i = 0; i < dLen; ++i) {
+            address dest = destinations.at(i);
+            RevenueShare storage share = distribution[dest];
+            revTotals.rTokenTotal += share.rTokenDist;
+            revTotals.rsrTotal += share.rsrDist;
+
+            if (dest == DAO_FEE) {
+                daoTotals += share.rsrDist;
+            }
+        }
+
+        require(
+            daoTotals >
+                ((revTotals.rTokenTotal + revTotals.rsrTotal) * daoFeeRegistry.feeNumerator()) /
+                    1e4,
+            "dao fee conditions not met"
+        );
     }
 
     /// Call after upgrade to >= 3.0.0

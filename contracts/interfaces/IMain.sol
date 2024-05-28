@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../registry/AssetPluginRegistry.sol";
 import "../registry/VersionRegistry.sol";
+import "../registry/DAOFeeRegistry.sol";
 import "./IAssetRegistry.sol";
 import "./IBasketHandler.sol";
 import "./IBackingManager.sol";
@@ -180,6 +181,8 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
     function assetPluginRegistry() external view returns (AssetPluginRegistry);
 
     function versionRegistry() external view returns (VersionRegistry);
+
+    function daoFeeRegistry() external view returns (DAOFeeRegistry);
 }
 
 interface TestIMain is IMain {

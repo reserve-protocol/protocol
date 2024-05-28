@@ -11,6 +11,7 @@ import "../mixins/Auth.sol";
 import "../mixins/Versioned.sol";
 import "../registry/VersionRegistry.sol";
 import "../registry/AssetPluginRegistry.sol";
+import "../registry/DAOFeeRegistry.sol";
 import "../interfaces/IBroker.sol";
 
 /**
@@ -22,6 +23,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
     IERC20 public rsr;
     VersionRegistry public versionRegistry;
     AssetPluginRegistry public assetPluginRegistry;
+    DAOFeeRegistry public daoFeeRegistry;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     // solhint-disable-next-line no-empty-blocks
@@ -70,6 +72,15 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         require(address(assetPluginRegistry) == address(0), "already set");
 
         assetPluginRegistry = AssetPluginRegistry(registry_);
+    }
+
+    /// Set DAO Fee Registry
+    /// @dev Can only be called once.
+    function setDAOFeeRegistry(DAOFeeRegistry feeRegistry_) external onlyRole(OWNER) {
+        require(address(feeRegistry_) != address(0), "invalid registry address");
+        require(address(daoFeeRegistry) == address(0), "already set");
+
+        daoFeeRegistry = DAOFeeRegistry(feeRegistry_);
     }
 
     function hasRole(bytes32 role, address account)
