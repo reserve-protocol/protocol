@@ -53,6 +53,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
         _setDistribution(DAO_FEE, RevenueShare(0, daoFee)); // Doing this math onchain is expensive
+        _validateDistributionTable();
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to

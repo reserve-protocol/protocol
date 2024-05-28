@@ -55,4 +55,8 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
     function versionRegistry() external pure returns (VersionRegistry) {
         return VersionRegistry(address(0));
     }
+
+    function daoFeeRegistry() external pure returns (DAOFeeRegistry) {
+        return DAOFeeRegistry(address(0));
+    }
 }

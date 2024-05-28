@@ -23,8 +23,13 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
     uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS; // 100
 
-    function init(IMain main_, RevenueShare memory dist) public initializer {
+    function init(
+        IMain main_,
+        RevenueShare memory dist,
+        uint16
+    ) public initializer {
         __Component_init(main_);
+
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
