@@ -241,17 +241,37 @@ const collateralSpecificStatusTests = () => {
     const collateral = await deployCollateral(defaultUSDMCollateralOpts) // using real Chronicle oracle
     const chronicleFeed = await ethers.getContractAt('IChronicle', await collateral.chainlinkFeed())
 
-    // Unpriced if not whitelisted
+    // Oracle reverts when attempting to read price from Plugin (specific error - non-empty)
+    await whileImpersonating(collateral.address, async (pluginSigner) => {
+      await expect(chronicleFeed.connect(pluginSigner).read()).to.be.revertedWithCustomError(
+        chronicleFeed,
+        'NotTolled'
+      )
+      await expect(
+        chronicleFeed.connect(pluginSigner).latestRoundData()
+      ).to.be.revertedWithCustomError(chronicleFeed, 'NotTolled')
+    })
+
+    // Plugin is unpriced if not whitelisted
     await expectUnpriced(collateral.address)
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-    // Refresh sets collateral to IFFY
+    // Refresh sets collateral to IFFY if not whitelisted
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
     // Whitelist plugin in Chronicle oracle
     await whileImpersonating(ARB_CHRONICLE_FEED_AUTH, async (authSigner) => {
-      await chronicleFeed.connect(authSigner).kiss(collateral.address)
+      await expect(chronicleFeed.connect(authSigner).kiss(collateral.address)).to.emit(
+        chronicleFeed,
+        'TollGranted'
+      )
+    })
+
+    // Plugin can now read
+    await whileImpersonating(collateral.address, async (pluginSigner) => {
+      await expect(chronicleFeed.connect(pluginSigner).read()).to.not.be.reverted
+      await expect(chronicleFeed.connect(pluginSigner).latestRoundData()).to.not.be.reverted
     })
 
     // Should have a price now
@@ -260,7 +280,7 @@ const collateralSpecificStatusTests = () => {
     expect(high).to.be.closeTo(fp('1.04'), fp('0.01'))
     expect(high).to.be.gt(low)
 
-    // Refresh sets it back to SOUND
+    // Refresh sets it back to SOUND now that it's whitelisted
     await collateral.refresh()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
   })

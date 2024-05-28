@@ -3,6 +3,15 @@ pragma solidity ^0.8.19;
 
 /// Toll (whitelist)
 interface IToll {
+    /// @notice Thrown by protected function if caller not tolled.
+    /// @param caller The caller's address.
+    error NotTolled(address caller);
+
+    /// @notice Emitted when toll granted to address.
+    /// @param caller The caller's address.
+    /// @param who The address toll got granted to.
+    event TollGranted(address indexed caller, address indexed who);
+
     /// @notice Grants address `who` toll.
     /// @dev Only callable by auth'ed address.
     /// @param who The address to grant toll.
