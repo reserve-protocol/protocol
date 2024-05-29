@@ -28,11 +28,11 @@ task('3.4.0', 'Upgrade to 3.4.0').setAction(async (params, hre) => {
       `/*****  3.4.0 Upgrade - RToken: ${await rToken.symbol()} - Address: ${rToken.address} ****/`
     )
 
-    // Deploy 3.4.0 Upgrade spell (done multiple times due to fork reset - only one deployment needed)
-    console.log('Deploying 3.4.0 Upgrade spell...')
-    const SpellFactory = await hre.ethers.getContractFactory('Upgrade3_4_0')
-    const spell = await SpellFactory.deploy(network != 'base')
-    console.log('Deployed!')
+    const spellAddr =
+      network == 'base'
+        ? '0x1744c9933feb8e76563fce63d5c95a4e7f967c2a'
+        : '0xB1Df3a104D73FF86F9AAaB60B491A5c44b090391'
+    const spell = await hre.ethers.getContractAt('Upgrade3_4_0', spellAddr)
 
     console.log('Part 1')
 
