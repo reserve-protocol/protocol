@@ -107,7 +107,7 @@ export const runDutchTrade = async (
   }
 
   const buyTokenAddress = await trade.buy()
-  console.log('=========')
+  console.log('=================================================================================')
   console.log(
     `Running Dutch Trade: Selling ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
   )
@@ -188,15 +188,15 @@ export const callAndGetNextTrade = async (
     if (parsedLog && parsedLog.name == 'TradeStarted') {
       // TODO: Improve this to include proper token details and parsing.
 
-      console.log(
-        `
-       ====== Trade Started: Selling ${logToken(parsedLog.args.sell)} / Buying ${logToken(
-          parsedLog.args.buy
-        )} ======
-       minBuyAmount: ${parsedLog.args.minBuyAmount}
-       sellAmount: ${parsedLog.args.sellAmount}
-      `.trim()
-      )
+      // console.log(
+      //   `
+      //  ====== Trade Started: Selling ${logToken(parsedLog.args.sell)} / Buying ${logToken(
+      //     parsedLog.args.buy
+      //   )} ======
+      //  minBuyAmount: ${parsedLog.args.minBuyAmount}
+      //  sellAmount: ${parsedLog.args.sellAmount}
+      // `.trim()
+      // )
 
       tradesRemain = true
       newSellToken = parsedLog.args.sell

@@ -149,7 +149,7 @@ export const pushOracleForward = async (
   if (
     asset == '0x890FAa00C16EAD6AA76F18A1A7fe9C40838F9122' ||
     asset == '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac' ||
-    asset == '0xE529B59C1764d6E5a274099Eb660DD9e130A5481'
+    asset == '0x994455cE66Fd984e2A0A0aca453e637810a8f032'
   ) {
     const feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
