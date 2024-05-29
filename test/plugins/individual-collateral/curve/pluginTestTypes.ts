@@ -76,6 +76,9 @@ export interface CurveCollateralTestSuiteFixtures<T extends CurveCollateralFixtu
   // toggle on or off: tests that claim rewards (off if the plugin does not receive rewards)
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
 
+  // toggle on or off: tests that focus on a targetPerRef default
+  itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // a function to deploy and return the plugin-specific test suite context
   makeCollateralFixtureContext: MakeCurveCollateralFixtureFunc<T>
 

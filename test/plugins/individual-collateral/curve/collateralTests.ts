@@ -64,8 +64,6 @@ import { IMPLEMENTATION, Implementation, ORACLE_ERROR, PRICE_TIMEOUT } from '../
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
-const describeFork = useEnv('FORK') ? describe : describe.skip
-
 const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
@@ -82,6 +80,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     isMetapool,
     resetFork,
     collateralName,
+    itChecksTargetPerRefDefault,
     itClaimsRewards,
     targetNetwork,
   } = fixtures
@@ -559,78 +558,87 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        it('enters IFFY state when reference unit depegs below low threshold', async () => {
-          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters IFFY state when reference unit depegs below low threshold',
+          async () => {
+            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg first feed - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
-          await updateAnswerTx.wait()
+            // Depeg first feed - Reducing price by 20% from 1 to 0.8
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+            await updateAnswerTx.wait()
 
-          // Check status + whenDefault
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+            // Check status + whenDefault
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-          await expect(ctx.collateral.refresh())
-            .to.emit(ctx.collateral, 'CollateralStatusChanged')
-            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
-          expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-        })
+            await expect(ctx.collateral.refresh())
+              .to.emit(ctx.collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+            expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+          }
+        )
 
-        it('enters IFFY state when reference unit depegs above high threshold', async () => {
-          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters IFFY state when reference unit depegs above high threshold',
+          async () => {
+            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg first feed - Raising price by 20% from 1 to 1.2
-          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
-          await updateAnswerTx.wait()
+            // Depeg first feed - Raising price by 20% from 1 to 1.2
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
+            await updateAnswerTx.wait()
 
-          // Check status + whenDefault
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+            // Check status + whenDefault
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-          await expect(ctx.collateral.refresh())
-            .to.emit(ctx.collateral, 'CollateralStatusChanged')
-            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
-          expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-        })
+            await expect(ctx.collateral.refresh())
+              .to.emit(ctx.collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+            expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+          }
+        )
 
-        it('enters DISABLED state when reference unit depegs for too long', async () => {
-          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters DISABLED state when reference unit depegs for too long',
+          async () => {
+            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg first feed - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
-          await updateAnswerTx.wait()
+            // Depeg first feed - Reducing price by 20% from 1 to 0.8
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+            await updateAnswerTx.wait()
 
-          // Check status + whenDefault
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+            // Check status + whenDefault
+            await ctx.collateral.refresh()
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 
-          // Move time forward past delayUntilDefault
-          await advanceTime(delayUntilDefault)
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+            // Move time forward past delayUntilDefault
+            await advanceTime(delayUntilDefault)
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
 
-          // Nothing changes if attempt to refresh after default
-          const prevWhenDefault: bigint = (await ctx.collateral.whenDefault()).toBigInt()
-          await expect(ctx.collateral.refresh()).to.not.emit(
-            ctx.collateral,
-            'CollateralStatusChanged'
-          )
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
-          expect(await ctx.collateral.whenDefault()).to.equal(prevWhenDefault)
-        })
+            // Nothing changes if attempt to refresh after default
+            const prevWhenDefault: bigint = (await ctx.collateral.whenDefault()).toBigInt()
+            await expect(ctx.collateral.refresh()).to.not.emit(
+              ctx.collateral,
+              'CollateralStatusChanged'
+            )
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+            expect(await ctx.collateral.whenDefault()).to.equal(prevWhenDefault)
+          }
+        )
 
         it('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
