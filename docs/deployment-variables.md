@@ -15,7 +15,7 @@ The minimum sized trade that can be performed, in terms of the unit of account.
 
 Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
 
-Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `batchAuctionLength` seconds.
+Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `batchAuctionLength` seconds in the event of urgent recollateralization.
 
 This variable should NOT be interpreted to mean that auction sizes above this value will necessarily clear. It could be the case that gas frictions are so high that auctions launched at this size are not worthy of bids.
 
@@ -32,7 +32,7 @@ The maximum sized trade for any trade involving RToken, in terms of the unit of 
 
 This parameter can be set to zero.
 
-Default value: `1e24` = $1M
+Default value: `1e24` = $1m
 Reasonable range: 1e22 to 1e27.
 
 ### `rewardRatio`
@@ -150,7 +150,7 @@ Reasonable range: 0 to 25e16 (0 to 25%)
 In order to restrict the system to organic patterns of behavior, we maintain two supply throttles, one for net issuance and one for net redemption. When a supply change occurs, a check is performed to ensure this does not move the supply more than an acceptable range over a period; a period is fixed to be an hour. The acceptable range (per throttle) is a function of the `amtRate` and `pctRate` variables. **It is the maximum of whichever variable provides the larger rate.**
 
 The recommended starting values (amt-rate normalized to $USD) for these parameters are as follows:
-|**Parameter**|**Value**|
+|**Parameter**|**USD Value**|
 |-------------|---------|
 |issuanceThrottle.amtRate|$2m|
 |issuanceThrottle.pctRate|10%|

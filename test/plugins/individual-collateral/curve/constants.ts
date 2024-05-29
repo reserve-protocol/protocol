@@ -1,5 +1,21 @@
 import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
+import { useEnv } from '#/utils/env'
+
+const forkNetwork = useEnv('FORK_NETWORK') ?? 'mainnet'
+let chainId
+
+switch (forkNetwork) {
+  case 'mainnet':
+    chainId = '1'
+    break
+  case 'arbitrum':
+    chainId = '42161'
+    break
+  default:
+    chainId = '1'
+    break
+}
 
 // Mainnet Addresses
 
@@ -48,7 +64,7 @@ export const MIM_ORACLE_ERROR = fp('0.005') // 0.5%
 export const MIM_DEFAULT_THRESHOLD = fp('0.055') // 5.5%
 
 // crvUSD
-export const crvUSD_USD_FEED = networkConfig['1'].chainlinkFeeds.crvUSD!
+export const crvUSD_USD_FEED = networkConfig[chainId].chainlinkFeeds.crvUSD!
 export const crvUSD_ORACLE_TIMEOUT = bn('86400')
 export const crvUSD_ORACLE_ERROR = fp('0.005')
 
@@ -59,21 +75,22 @@ export const pyUSD_ORACLE_ERROR = fp('0.003')
 
 // Tokens
 export const DAI = networkConfig['1'].tokens.DAI!
-export const USDC = networkConfig['1'].tokens.USDC!
-export const USDT = networkConfig['1'].tokens.USDT!
+export const USDC = networkConfig[chainId].tokens.USDC!
+export const USDT = networkConfig[chainId].tokens.USDT!
 export const SUSD = networkConfig['1'].tokens.sUSD!
 export const FRAX = networkConfig['1'].tokens.FRAX!
 export const MIM = networkConfig['1'].tokens.MIM!
 export const eUSD = networkConfig['1'].tokens.eUSD!
 export const WETH = networkConfig['1'].tokens.WETH!
 export const WBTC = networkConfig['1'].tokens.WBTC!
-export const crvUSD = networkConfig['1'].tokens.crvUSD!
+export const crvUSD = networkConfig[chainId].tokens.crvUSD!
 export const pyUSD = networkConfig['1'].tokens.pyUSD!
 
 export const RSR = networkConfig['1'].tokens.RSR!
-export const CRV = networkConfig['1'].tokens.CRV!
-export const CVX = networkConfig['1'].tokens.CVX!
+export const CRV = networkConfig[chainId].tokens.CRV!
+export const CVX = networkConfig[chainId].tokens.CVX!
 export const SDT = networkConfig['1'].tokens.SDT!
+export const ARB = networkConfig[chainId].tokens.ARB!
 
 // ETH+
 export const ETHPLUS = networkConfig['1'].tokens.ETHPLUS!
@@ -160,6 +177,37 @@ export const CURVE_MINTER = '0xd061d61a4d941c39e5453435b6345dc261c2fce0'
 
 // RTokenMetapool-specific
 export const RTOKEN_DELAY_UNTIL_DEFAULT = bn('259200') // 72h
+
+// Arbitrum addresses
+
+// Arbitrum crvUSD/USDC
+export const ARB_crvUSD_USDC = '0xec090cf6DD891D2d014beA6edAda6e05E025D93d'
+export const ARB_Convex_crvUSD_USDC = '0xBFEE9F3E015adC754066424AEd535313dc764116'
+export const ARB_crvUSD_USDC_POOL_ID = 16
+export const ARB_crvUSD_USDC_HOLDER = '0xccf343eef0c5f2590ee30efc9f564b33aeb3c7e6'
+
+// Arbitrum crvUSD/USDT
+export const ARB_crvUSD_USDT = '0x73af1150f265419ef8a5db41908b700c32d49135'
+export const ARB_Convex_crvUSD_USDT = '0xf74d4C9b0F49fb70D8Ff6706ddF39e3a16D61E67'
+export const ARB_crvUSD_USDT_POOL_ID = 18
+export const ARB_crvUSD_USDT_HOLDER = '0x171c53d55b1bcb725f660677d9e8bad7fd084282'
+
+// Arbitrum USDC
+export const ARB_USDC_USD_FEED = networkConfig['42161'].chainlinkFeeds.USDC!
+export const ARB_USDC_ORACLE_TIMEOUT = bn('86400')
+export const ARB_USDC_ORACLE_ERROR = fp('0.001')
+
+// Arbitrum USDT
+export const ARB_USDT_USD_FEED = networkConfig['42161'].chainlinkFeeds.USDT!
+export const ARB_USDT_ORACLE_TIMEOUT = bn('86400')
+export const ARB_USDT_ORACLE_ERROR = fp('0.001')
+
+// Arbitrum crvUSD
+export const ARB_crvUSD_USD_FEED = networkConfig['42161'].chainlinkFeeds.crvUSD!
+export const ARB_crvUSD_ORACLE_TIMEOUT = bn('86400')
+export const ARB_crvUSD_ORACLE_ERROR = fp('0.005')
+
+export const FORK_BLOCK_ARBITRUM = 206398900
 
 // Common
 export const FIX_ONE = 1n * 10n ** 18n

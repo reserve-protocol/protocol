@@ -1,8 +1,21 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../CurveRecursiveCollateral.sol";
-import "./IStakeDAO.sol";
+
+interface IStakeDAOGauge is IERC20Metadata {
+    // solhint-disable-next-line func-name-mixedcase
+    function claim_rewards() external;
+
+    function deposit(uint256 amount) external;
+
+    // solhint-disable-next-line func-name-mixedcase
+    function reward_count() external view returns (uint256);
+
+    // solhint-disable-next-line func-name-mixedcase
+    function reward_tokens(uint256 index) external view returns (IERC20Metadata);
+}
 
 /**
  * @title StakeDAORecursiveCollateral
@@ -20,7 +33,6 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
     using FixLib for uint192;
 
     IStakeDAOGauge internal immutable gauge; // typed erc20 variable
-    IStakeDAOClaimer internal immutable claimer;
 
     /// @param config.erc20 must be of type IStakeDAOGauge
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
@@ -30,7 +42,6 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
         PTConfiguration memory ptConfig
     ) CurveRecursiveCollateral(config, revenueHiding, ptConfig) {
         gauge = IStakeDAOGauge(address(config.erc20));
-        claimer = gauge.claimer();
     }
 
     /// @custom:delegate-call
@@ -46,9 +57,7 @@ contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
         }
 
         // Do actual claim
-        address[] memory gauges = new address[](1);
-        gauges[0] = address(gauge);
-        claimer.claimRewards(gauges, false);
+        gauge.claim_rewards();
 
         // Emit balance changes
         for (uint256 i = 0; i < rewardTokens.length; i++) {

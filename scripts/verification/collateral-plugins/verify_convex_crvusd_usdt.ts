@@ -16,20 +16,20 @@ import {
   DELAY_UNTIL_DEFAULT,
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
-  crvUSD_USDC,
-  USDC_ORACLE_ERROR,
-  USDC_ORACLE_TIMEOUT,
-  USDC_USD_FEED,
+  crvUSD_USDT,
+  USDT_ORACLE_ERROR,
+  USDT_ORACLE_TIMEOUT,
+  USDT_USD_FEED,
   crvUSD_ORACLE_ERROR,
   crvUSD_ORACLE_TIMEOUT,
   crvUSD_USD_FEED,
-  ARB_crvUSD_USDC,
+  ARB_crvUSD_USDT,
   ARB_crvUSD_ORACLE_ERROR,
   ARB_crvUSD_ORACLE_TIMEOUT,
   ARB_crvUSD_USD_FEED,
-  ARB_USDC_ORACLE_ERROR,
-  ARB_USDC_ORACLE_TIMEOUT,
-  ARB_USDC_USD_FEED,
+  ARB_USDT_ORACLE_ERROR,
+  ARB_USDT_ORACLE_TIMEOUT,
+  ARB_USDT_USD_FEED,
 } from '../../../test/plugins/individual-collateral/curve/constants'
 
 let deployments: IAssetCollDeployments
@@ -48,18 +48,18 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
+  const crvUsdUSDTPoolCollateral = await ethers.getContractAt(
+    'CurveStableCollateral',
+    deployments.collateral.cvxCrvUSDUSDT as string
+  )
+
   // Perform verification based on network (no wrapper in L2)
   if (!arbitrumL2Chains.includes(hre.network.name)) {
-    const crvUsdUSDCPoolCollateral = await ethers.getContractAt(
-      'CurveStableCollateral',
-      deployments.collateral.cvxCrvUSDUSDC as string
-    )
-
     /********  Verify ConvexStakingWrapper  **************************/
 
     await verifyContract(
       chainId,
-      await crvUsdUSDCPoolCollateral.erc20(),
+      await crvUsdUSDTPoolCollateral.erc20(),
       [],
       'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
     )
@@ -67,15 +67,15 @@ async function main() {
     /********  Verify crvUSD-USDC plugin  **************************/
     await verifyContract(
       chainId,
-      deployments.collateral.cvxCrvUSDUSDC,
+      deployments.collateral.cvxCrvUSDUSDT,
       [
         {
-          erc20: await crvUsdUSDCPoolCollateral.erc20(),
+          erc20: await crvUsdUSDTPoolCollateral.erc20(),
           targetName: ethers.utils.formatBytes32String('USD'),
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
           oracleError: bn('1'), // unused but cannot be zero
-          oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+          oracleTimeout: USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
           maxTradeVolume: MAX_TRADE_VOL,
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -83,36 +83,31 @@ async function main() {
         revenueHiding.toString(),
         {
           nTokens: 2,
-          curvePool: crvUSD_USDC,
+          curvePool: crvUSD_USDT,
           poolType: CurvePoolType.Plain,
-          feeds: [[USDC_USD_FEED], [crvUSD_USD_FEED]],
-          oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [crvUSD_ORACLE_TIMEOUT]],
-          oracleErrors: [[USDC_ORACLE_ERROR], [crvUSD_ORACLE_ERROR]],
-          lpToken: crvUSD_USDC,
+          feeds: [[USDT_USD_FEED], [crvUSD_USD_FEED]],
+          oracleTimeouts: [[USDT_ORACLE_TIMEOUT], [crvUSD_ORACLE_TIMEOUT]],
+          oracleErrors: [[USDT_ORACLE_ERROR], [crvUSD_ORACLE_ERROR]],
+          lpToken: crvUSD_USDT,
         },
       ],
       'contracts/plugins/assets/curve/CurveStableCollateral.sol:CurveStableCollateral'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    const crvUsdUSDCPoolCollateral = await ethers.getContractAt(
-      'L2ConvexStableCollateral',
-      deployments.collateral.cvxCrvUSDUSDC as string
-    )
-
     /********  Verify crvUSD-USDC plugin  **************************/
     await verifyContract(
       chainId,
-      deployments.collateral.cvxCrvUSDUSDC,
+      deployments.collateral.cvxCrvUSDUSDT,
       [
         {
-          erc20: await crvUsdUSDCPoolCollateral.erc20(),
+          erc20: await crvUsdUSDTPoolCollateral.erc20(),
           targetName: ethers.utils.formatBytes32String('USD'),
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
           oracleError: bn('1'), // unused but cannot be zero
-          oracleTimeout: ARB_USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+          oracleTimeout: ARB_USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
           maxTradeVolume: MAX_TRADE_VOL,
-          defaultThreshold: combinedError(ARB_crvUSD_ORACLE_ERROR, ARB_USDC_ORACLE_ERROR)
+          defaultThreshold: combinedError(ARB_crvUSD_ORACLE_ERROR, ARB_USDT_ORACLE_ERROR)
             .add(fp('0.01'))
             .toString(),
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -120,12 +115,12 @@ async function main() {
         revenueHiding.toString(),
         {
           nTokens: 2,
-          curvePool: ARB_crvUSD_USDC,
+          curvePool: ARB_crvUSD_USDT,
           poolType: CurvePoolType.Plain,
-          feeds: [[ARB_crvUSD_USD_FEED], [ARB_USDC_USD_FEED]],
-          oracleTimeouts: [[ARB_crvUSD_ORACLE_TIMEOUT], [ARB_USDC_ORACLE_TIMEOUT]],
-          oracleErrors: [[ARB_crvUSD_ORACLE_ERROR], [ARB_USDC_ORACLE_ERROR]],
-          lpToken: ARB_crvUSD_USDC,
+          feeds: [[ARB_crvUSD_USD_FEED], [ARB_USDT_USD_FEED]],
+          oracleTimeouts: [[ARB_crvUSD_ORACLE_TIMEOUT], [ARB_USDT_ORACLE_TIMEOUT]],
+          oracleErrors: [[ARB_crvUSD_ORACLE_ERROR], [ARB_USDT_ORACLE_ERROR]],
+          lpToken: ARB_crvUSD_USDT,
         },
       ],
       'contracts/plugins/assets/curve/L2ConvexStableCollateral.sol:L2ConvexStableCollateral'
