@@ -6,11 +6,13 @@ This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` t
 
 ## Upgrade Steps
 
-Upgrade all core contracts and plugins. Call `cacheComponents()` on `BackingManager`, `Broker`, `Distributor`, and both `RevenueTraders`.
+Upgrade all core contracts and plugins. Call `cacheComponents()` on `Broker` if upgrading from >=3.0.0, and also on `BackingManager`, `Distributor`, and both `RevenueTraders`, if upgrading from <3.0.0.
 
 Adjust Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s. For example: divide ratios by 12 for ethereum mainnet.
 
 Set Governance as Timelock CANCELLER_ROLE.
+
+This is all implemented in the 3.4.0 upgrade spell, so that governors do not have to think about the details of the upgrade.
 
 ## Core Protocol Contracts
 
@@ -45,8 +47,7 @@ Throughout many core contracts negligible gas improvements have been applied. Th
   - Fix allowance check in `claimTo()` to use `msg.sender`
 - curve/convex
   - Add `CurveAppreciatingRTokenFiatCollateral` + `CurveAppreciatingRTokenSelfReferentialCollateral` to support `ETH+/ETH` curve pools in non-recursive cases
-  - Add `CurveRecursiveCollateral` + `StakeDAORecursiveCollateral` to support `USDC/USDC+` curve pool in the recursive case. That is: USDC+ will be backed somewhat by its own liquidity against USDC.
-  - Modify `CurveStableRTokenMetapoolCollateral` to check `isReady()` status of underlying RTokens; try-catch asset-registry call.
+  - Modify `CurveStableRTokenMetapoolCollateral` to check `isReady()` and `fullyCollateralized()` status of underlying RTokens; try-catch asset-registry refresh call.
 - metamorpho
   - Add `MetaMorphoFiatCollateral` + `MetaMorphoSelfReferentialCollateral` to support `steakUSDC`/`steakUSDP`/`bbUSDT`/`Re7WETH` morpho blue managed vaults
 - frax
