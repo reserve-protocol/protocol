@@ -30,7 +30,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
-    address public constant DAO_FEE = address(3);
 
     uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS; // 100
 
