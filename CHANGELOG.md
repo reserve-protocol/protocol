@@ -2,17 +2,20 @@
 
 # 3.4.0
 
-This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods.
+This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods. This changes the interface of the governance voting token StRSR, making this a complicated and nuanced upgrade to get right.
 
 ## Upgrade Steps
 
-Upgrade all core contracts and plugins. Call `cacheComponents()` on `Broker` if upgrading from >=3.0.0, and also on `BackingManager`, `Distributor`, and both `RevenueTraders`, if upgrading from <3.0.0.
+Warning: Do not attempt to execute the steps below manually. They are only a high-level overview of the changes made in this release. It is recommended to use the 3.4.0 Upgrade spell located at `spells/3_4_0.sol` and deployed to mainnet at `0xb1df3a104d73ff86f9aaab60b491a5c44b090391` and base at `0x1744c9933feb8e76563fce63d5c95a4e7f967c2a`. These deployments will only work for the 11 RTokens: eUSD, ETH+, hyUSD (mainnet), USDC+, USD3, rgUSD, hyUSD (base), bsdETH, iUSDC, Vaya, and MAAT.
 
-Adjust Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s. For example: divide ratios by 12 for ethereum mainnet.
+High-level overview:
 
-Set Governance as Timelock CANCELLER_ROLE.
-
-This is all implemented in the 3.4.0 upgrade spell, so that governors do not have to think about the details of the upgrade.
+- Upgrade all core contracts and plugins. This includes ALL assets and trading plugins, including the RTokenAsset itself
+- Update 3.4.0 ERC20s via `setPrimeBasket()` + `setBackupConfig()`
+- Call `cacheComponents()` on `Broker` if upgrading from >=3.0.0, and also on `BackingManager`, `Distributor`, and both `RevenueTraders`, if upgrading from <3.0.0
+- Adjust Furnace melt + StRSR drip ratios to be based on 1s. For example: divide ratios by 12 if upgrading an RToken on ethereum mainnet
+- Deploy new TimelockController + Governance contracts and rotate adminship of RTokens. This effectively creates a new DAO for each RToken
+- The `tradingDelay` can also be safely set to 0. It was a training wheel and is no longer necessary
 
 ## Core Protocol Contracts
 
