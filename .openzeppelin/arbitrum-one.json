@@ -2,11 +2,6 @@
   "manifestVersion": "3.2",
   "proxies": [
     {
-      "address": "0x2C0004F83E988511b6640636DDFC2F7d22AFDDb0",
-      "txHash": "0xed26c09b757bc77ee475134403218100eacb436aab2490eec6bb49b6441d1ecf",
-      "kind": "uups"
-    },
-    {
       "address": "0xCbBa7E1F29F31d6C83C3814b0E5d0687EC7Df177",
       "txHash": "0x7af602fbc5adaf2e4f1876cdec22f79ceb34b39c0bce4cb0863da3d9407f860c",
       "kind": "uups"
@@ -885,10 +880,7 @@
           },
           "t_enum(TradeKind)31898": {
             "label": "enum TradeKind",
-            "members": [
-              "DUTCH_AUCTION",
-              "BATCH_AUCTION"
-            ],
+            "members": ["DUTCH_AUCTION", "BATCH_AUCTION"],
             "numberOfBytes": "1"
           },
           "t_mapping(t_contract(IERC20)16806,t_contract(ITrade)34075)": {
@@ -1201,11 +1193,7 @@
           },
           "t_enum(CollateralStatus)31279": {
             "label": "enum CollateralStatus",
-            "members": [
-              "SOUND",
-              "IFFY",
-              "DISABLED"
-            ],
+            "members": ["SOUND", "IFFY", "DISABLED"],
             "numberOfBytes": "1"
           },
           "t_mapping(t_bytes32,t_bytes32)": {
