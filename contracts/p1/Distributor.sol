@@ -41,19 +41,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
     address private rTokenTrader;
     address private rsrTrader;
 
-    function init(
-        IMain main_,
-        RevenueShare calldata dist,
-        uint16 daoFee
-    ) external initializer {
+    function init(IMain main_, RevenueShare calldata dist) external initializer {
         __Component_init(main_);
         cacheComponents();
 
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
-        _setDistribution(DAO_FEE, RevenueShare(0, daoFee)); // Doing this math onchain is expensive
-        _validateDistributionTable();
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
@@ -73,7 +67,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         RevenueTotals memory revTotals = totals();
         _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
-        _validateDistributionTable();
     }
 
     function setDistributions(address[] calldata dest, RevenueShare[] calldata share)
@@ -93,7 +86,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         RevenueTotals memory revTotals = totals();
         _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
-        _validateDistributionTable();
     }
 
     struct Transfer {
@@ -123,24 +115,23 @@ contract DistributorP1 is ComponentP1, IDistributor {
         require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
+
         uint256 tokensPerShare;
+        uint256 totalShares;
         {
             RevenueTotals memory revTotals = totals();
-            uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
+            totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
             if (totalShares != 0) tokensPerShare = amount / totalShares;
             require(tokensPerShare != 0, "nothing to distribute");
         }
-
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
 
         Transfer[] memory transfers = new Transfer[](destinations.length());
         uint256 numTransfers;
 
-        address furnaceAddr = address(furnace); // gas-saver
-        address stRSRAddr = address(stRSR); // gas-saver
-
         bool accountRewards = false;
+        uint256 paidOutShares;
 
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
@@ -150,15 +141,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
                 : distribution[addrTo].rTokenDist;
             if (numberOfShares == 0) continue;
             uint256 transferAmt = tokensPerShare * numberOfShares;
+            paidOutShares += numberOfShares;
 
             if (addrTo == FURNACE) {
-                addrTo = furnaceAddr;
+                addrTo = address(furnace);
                 if (transferAmt != 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
-                addrTo = stRSRAddr;
-                if (transferAmt != 0) accountRewards = true;
-            } else if (addrTo == DAO_FEE) {
-                addrTo = main.daoFeeRegistry().feeRecipient();
+                addrTo = address(stRSR);
                 if (transferAmt != 0) accountRewards = true;
             }
 
@@ -167,10 +156,24 @@ contract DistributorP1 is ComponentP1, IDistributor {
         }
         emit RevenueDistributed(erc20, caller, amount);
 
+        // DAO Fee
+        if (isRSR) {
+            (address recipient, ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
+
+            transfers[numTransfers] = Transfer({
+                addrTo: recipient,
+                amount: tokensPerShare * (totalShares - paidOutShares)
+            });
+            ++numTransfers;
+        }
+
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; ++i) {
-            Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
+            IERC20Upgradeable(address(erc20)).safeTransferFrom(
+                caller,
+                transfers[i].addrTo,
+                transfers[i].amount
+            );
         }
 
         // Perform reward accounting
@@ -192,6 +195,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
             revTotals.rTokenTotal += share.rTokenDist;
             revTotals.rsrTotal += share.rsrDist;
         }
+
+        // DAO Fee
+        (, uint256 feeNumerator) = main.daoFeeRegistry().getFeeDetails(address(rToken));
+        revTotals.rsrTotal += uint24(
+            (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /
+                (1e4 - feeNumerator)
+        );
     }
 
     // ==== Internal ====
@@ -231,33 +241,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // checks: at least one of its arguments is nonzero
     function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
         require(rTokenDist != 0 || rsrDist != 0, "no distribution defined");
-    }
-
-    function _validateDistributionTable() internal view {
-        uint256 dLen = destinations.length();
-        DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
-        require(destinations.length() > 0, "no destinations");
-
-        RevenueTotals memory revTotals;
-        uint24 daoTotals;
-
-        for (uint256 i = 0; i < dLen; ++i) {
-            address dest = destinations.at(i);
-            RevenueShare storage share = distribution[dest];
-            revTotals.rTokenTotal += share.rTokenDist;
-            revTotals.rsrTotal += share.rsrDist;
-
-            if (dest == DAO_FEE) {
-                daoTotals += share.rsrDist;
-            }
-        }
-
-        require(
-            daoTotals >
-                ((revTotals.rTokenTotal + revTotals.rsrTotal) * daoFeeRegistry.feeNumerator()) /
-                    1e4,
-            "dao fee conditions not met"
-        );
     }
 
     /// Call after upgrade to >= 3.0.0

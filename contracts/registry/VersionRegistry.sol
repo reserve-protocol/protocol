@@ -44,7 +44,7 @@ contract VersionRegistry is Ownable {
         emit VersionRegistered(versionHash, deployer);
     }
 
-    function deprecatedVersion(bytes32 versionHash) external onlyOwner {
+    function deprecateVersion(bytes32 versionHash) external onlyOwner {
         if (isDeprecated[versionHash]) {
             revert VersionRegistry__AlreadyDeprecated();
         }

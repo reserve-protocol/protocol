@@ -204,7 +204,7 @@ contract DeployerP1 is IDeployer, Versioned {
         );
 
         // Init Distributor
-        components.distributor.init(main, params.dist, params.daoFee);
+        components.distributor.init(main, params.dist);
 
         // Init Furnace
         components.furnace.init(main, params.rewardRatio);

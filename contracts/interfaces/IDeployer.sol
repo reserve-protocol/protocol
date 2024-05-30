@@ -20,7 +20,6 @@ import "./IVersioned.sol";
 struct DeploymentParams {
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR
-    uint16 daoFee; // {revShare} the fraction of RSR that is sent to the DAO
     //
     // === Trade sizing ===
     uint192 minTradeVolume; // {UoA}
@@ -127,12 +126,5 @@ interface TestIDeployer is IDeployer {
 
     function rsrAsset() external view returns (IAsset);
 
-    function implementations()
-        external
-        view
-        returns (
-            IMain,
-            Components memory,
-            TradePlugins memory
-        );
+    function implementations() external view returns (Implementations memory);
 }
