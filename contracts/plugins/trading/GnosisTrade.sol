@@ -139,7 +139,7 @@ contract GnosisTrade is ITrade, Versioned {
         //
         // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
         // amount is > 0 and < type(uint256).max.
-        AllowanceLib.safeApproveFallbackToMax(address(sell), address(gnosis), initBal);
+        AllowanceLib.safeApproveFallbackToMax(address(sell), address(gnosis), req.sellAmount);
 
         auctionId = gnosis.initiateAuction(
             sell,
