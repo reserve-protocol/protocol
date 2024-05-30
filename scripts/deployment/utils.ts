@@ -115,21 +115,20 @@ export async function verifyContract(
     if (baseL2Chains.includes(hre.network.name)) {
       const BASESCAN_API_KEY = useEnv('BASESCAN_API_KEY')
       // Base L2
-      url = `${getCustomVerificationURL(
+      url = `${getVerificationURL(
         chainId
-      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${BASESCAN_API_KEY}`
+      )}?module=contract&action=getsourcecode&address=${address}&apikey=${BASESCAN_API_KEY}`
     } else if (arbitrumL2Chains.includes(hre.network.name)) {
       const ARBISCAN_API_KEY = useEnv('ARBISCAN_API_KEY')
       // Arbitrum L2
-      url = `${getCustomVerificationURL(
+      url = `${getVerificationURL(
         chainId
-      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${ARBISCAN_API_KEY}`
+      )}?module=contract&action=getsourcecode&address=${address}&apikey=${ARBISCAN_API_KEY}`
     } else {
       // Ethereum
-      url = `${getEtherscanBaseURL(
-        chainId,
-        true
-      )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+      url = `${getVerificationURL(
+        chainId
+      )}/api?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
     }
 
     // Check to see if already verified
@@ -154,7 +153,7 @@ export async function verifyContract(
       } catch (e) {
         console.log(
           `IMPORTANT: failed to verify ${contract}. 
-        ${getEtherscanBaseURL(chainId)}/address/${address}#code`,
+        ${getVerificationURL(chainId)}/address/${address}#code`,
           e
         )
       }
@@ -163,14 +162,9 @@ export async function verifyContract(
   }
 }
 
-export const getEtherscanBaseURL = (chainId: number, api = false) => {
-  let prefix: string
-  if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
-  else prefix = chainId == 1 ? '' : `${hre.network.name}.`
-  return `https://${prefix}etherscan.io`
-}
+export const getVerificationURL = (chainId: number) => {
+  if (chainId == 1) return 'https://api.etherscan.io'
 
-export const getCustomVerificationURL = (chainId: number) => {
   // For Base, get URL from HH config
   const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
   if (!chainConfig || !chainConfig.urls) {
@@ -188,10 +182,9 @@ export const getEmptyDeployment = (): IDeployments => {
     },
     tradingLib: '',
     basketLib: '',
-    facets: { actFacet: '', readFacet: '' },
+    facets: { actFacet: '', readFacet: '', maxIssuableFacet: '' },
     facade: '',
     facadeWriteLib: '',
-    cvxMiningLib: '',
     facadeWrite: '',
     deployer: '',
     rsrAsset: '',

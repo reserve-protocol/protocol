@@ -23,7 +23,7 @@ try:
     if file_orig.exists():
         rename(file_orig, file_temp)
 
-    # run slither from inside the tools directory
+    # run slither from inside the tools directory (includes slitherin detectors)
     args = argv[1:]
     run(["slither", "../", *args], cwd=project / "tools")
 

@@ -3,7 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-import { IConfig, MAX_ORACLE_TIMEOUT, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
+import {
+  IConfig,
+  MAX_ORACLE_TIMEOUT,
+  MAX_THROTTLE_AMT_RATE,
+  MAX_BASKET_SIZE,
+  MAX_BACKUP_SIZE,
+} from '../common/configuration'
 import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString, toBNDecimals, divCeil } from '../common/numbers'
 import {
@@ -365,11 +371,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     if (SLOW) {
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
-        [1, 100], // basket size
+        [1, MAX_BASKET_SIZE], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
         [8, 18], // collateral decimals
         [fp('1e9'), fp('1').add(fp('1e-9'))], // exchange rate at appreciation
-        [1, 100], // how many collateral assets appreciate (up to)
+        [1, MAX_BASKET_SIZE], // how many collateral assets appreciate (up to)
         [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
       ]
     } else {
@@ -515,7 +521,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     if (SLOW) {
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
-        [1, 100], // basket size
+        [1, MAX_BASKET_SIZE], // basket size
         [1, 2], // num reward tokens
         [bn('0'), bn('1e11'), bn('1e6')], // reward amount (whole tokens), up to 100B supply tokens
         [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
@@ -638,11 +644,14 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         primeBasket.map((c) => c.address),
         targetAmts
       )
+
+      const bkpSize = basketSize <= MAX_BACKUP_SIZE ? basketSize : MAX_BACKUP_SIZE
       await basketHandler.connect(owner).setBackupConfig(
         ethers.utils.formatBytes32String('USD'),
-        basketSize,
-        primeBasket.map((c) => c.address)
+        bkpSize,
+        primeBasket.slice(-1 * bkpSize).map((c) => c.address)
       )
+
       await basketHandler.connect(owner).refreshBasket()
       await advanceTime(Number(config.warmupPeriod) + 1)
 
@@ -680,10 +689,10 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     if (SLOW) {
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
-        [2, 100], // basket size
+        [2, MAX_BASKET_SIZE], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
         [8, 18], // collateral decimals
-        [1, 99], // how many collateral assets default (up to)
+        [1, MAX_BASKET_SIZE - 1], // how many collateral assets default (up to)
       ]
     } else {
       dimensions = [
@@ -796,7 +805,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
       for (let i = 0; i < targetUnits; i++) {
         const targetUnit = ethers.utils.formatBytes32String(i.toString())
-        await basketHandler.setBackupConfig(targetUnit, numPrimeTokens, backups[i])
+        await basketHandler.setBackupConfig(targetUnit, numBackupTokens, backups[i])
       }
 
       // Set prime basket with all collateral
@@ -813,11 +822,12 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
     }
 
-    const size = SLOW ? 100 : 4 // Currently 100 takes >5 minutes to execute 32 cases
+    const size = SLOW ? MAX_BASKET_SIZE : 4 // Currently 100 takes >5 minutes to execute 32 cases
+    const bkpsize = SLOW ? MAX_BACKUP_SIZE : 4
 
     const primeTokens = [size, 1]
 
-    const backupTokens = [size, 0]
+    const backupTokens = [bkpsize, 0]
 
     const targetUnits = [size, 1]
 

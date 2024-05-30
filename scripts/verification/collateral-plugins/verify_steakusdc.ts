@@ -48,7 +48,7 @@ async function main() {
         defaultThreshold: USDC_ORACLE_ERROR.add(fp('0.01')).toString(), // +1% buffer rule
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
-      fp('1e-6'), // small admin fee uncertainty
+      fp('1e-4'), // can have small drawdowns
     ],
     'contracts/plugins/assets/meta-morpho/MetaMorphoFiatCollateral.sol:MetaMorphoFiatCollateral'
   )

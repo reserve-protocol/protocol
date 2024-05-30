@@ -64,8 +64,6 @@ import { IMPLEMENTATION, Implementation, ORACLE_ERROR, PRICE_TIMEOUT } from '../
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
-const describeFork = useEnv('FORK') ? describe : describe.skip
-
 const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
@@ -82,10 +80,12 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     isMetapool,
     resetFork,
     collateralName,
+    itChecksTargetPerRefDefault,
     itClaimsRewards,
+    targetNetwork,
   } = fixtures
 
-  describeFork(`Collateral: ${collateralName}`, () => {
+  getDescribeFork(targetNetwork)(`Collateral: ${collateralName}`, () => {
     let defaultOpts: CurveCollateralOpts
     let mockERC20: ERC20Mock
     let collateral: TestICollateral
@@ -558,78 +558,87 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        it('enters IFFY state when reference unit depegs below low threshold', async () => {
-          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters IFFY state when reference unit depegs below low threshold',
+          async () => {
+            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg first feed - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
-          await updateAnswerTx.wait()
+            // Depeg first feed - Reducing price by 20% from 1 to 0.8
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+            await updateAnswerTx.wait()
 
-          // Check status + whenDefault
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+            // Check status + whenDefault
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-          await expect(ctx.collateral.refresh())
-            .to.emit(ctx.collateral, 'CollateralStatusChanged')
-            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
-          expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-        })
+            await expect(ctx.collateral.refresh())
+              .to.emit(ctx.collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+            expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+          }
+        )
 
-        it('enters IFFY state when reference unit depegs above high threshold', async () => {
-          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters IFFY state when reference unit depegs above high threshold',
+          async () => {
+            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg first feed - Raising price by 20% from 1 to 1.2
-          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
-          await updateAnswerTx.wait()
+            // Depeg first feed - Raising price by 20% from 1 to 1.2
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
+            await updateAnswerTx.wait()
 
-          // Check status + whenDefault
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+            // Check status + whenDefault
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-          await expect(ctx.collateral.refresh())
-            .to.emit(ctx.collateral, 'CollateralStatusChanged')
-            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
-          expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-        })
+            await expect(ctx.collateral.refresh())
+              .to.emit(ctx.collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+            expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+          }
+        )
 
-        it('enters DISABLED state when reference unit depegs for too long', async () => {
-          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters DISABLED state when reference unit depegs for too long',
+          async () => {
+            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg first feed - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
-          await updateAnswerTx.wait()
+            // Depeg first feed - Reducing price by 20% from 1 to 0.8
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+            await updateAnswerTx.wait()
 
-          // Check status + whenDefault
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+            // Check status + whenDefault
+            await ctx.collateral.refresh()
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 
-          // Move time forward past delayUntilDefault
-          await advanceTime(delayUntilDefault)
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+            // Move time forward past delayUntilDefault
+            await advanceTime(delayUntilDefault)
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
 
-          // Nothing changes if attempt to refresh after default
-          const prevWhenDefault: bigint = (await ctx.collateral.whenDefault()).toBigInt()
-          await expect(ctx.collateral.refresh()).to.not.emit(
-            ctx.collateral,
-            'CollateralStatusChanged'
-          )
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
-          expect(await ctx.collateral.whenDefault()).to.equal(prevWhenDefault)
-        })
+            // Nothing changes if attempt to refresh after default
+            const prevWhenDefault: bigint = (await ctx.collateral.whenDefault()).toBigInt()
+            await expect(ctx.collateral.refresh()).to.not.emit(
+              ctx.collateral,
+              'CollateralStatusChanged'
+            )
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+            expect(await ctx.collateral.whenDefault()).to.equal(prevWhenDefault)
+          }
+        )
 
         it('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
@@ -780,7 +789,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
     // Only run full protocol integration tests on mainnet
     // Protocol integration fixture not currently set up to deploy onto base
-    getDescribeFork('mainnet')('integration tests', () => {
+    getDescribeFork(targetNetwork)('integration tests', () => {
       before(resetFork)
 
       let ctx: X
@@ -1057,13 +1066,22 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await MockV3AggregatorFactory.deploy(8, bn('1e8'))
         )
 
+        let chainId = await getChainId(hre)
+        if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
+        if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = 42161
+
         if (target == ethers.utils.formatBytes32String('USD')) {
           // USD
           const erc20 = await ethers.getContractAt(
             'IERC20Metadata',
             networkConfig[chainId].tokens.USDC!
           )
-          await whileImpersonating('0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf', async (signer) => {
+
+          const usdcHolder =
+            chainId == 42161
+              ? '0x47c031236e19d024b42f8ae6780e44a573170703'
+              : '0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf'
+          await whileImpersonating(usdcHolder, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
@@ -1088,7 +1106,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WETH!
           )
-          await whileImpersonating('0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E', async (signer) => {
+          const wethHolder =
+            chainId == 42161
+              ? '0x70d95587d40a2caf56bd97485ab3eec10bee6336'
+              : '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+          await whileImpersonating(wethHolder, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))
@@ -1116,7 +1138,12 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WBTC!
           )
-          await whileImpersonating('0xccf4429db6322d5c611ee964527d42e5d685dd6a', async (signer) => {
+          const wbtcHolder =
+            chainId == 42161
+              ? '0x47c031236e19d024b42f8ae6780e44a573170703'
+              : '0xccf4429db6322d5c611ee964527d42e5d685dd6a'
+
+          await whileImpersonating(wbtcHolder, async (signer) => {
             await erc20
               .connect(signer)
               .transfer(addr1.address, await erc20.balanceOf(signer.address))

@@ -8,7 +8,6 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  IDeployments,
   getDeploymentFilename,
   fileExists,
 } from '../../common'
@@ -59,7 +58,6 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
-  const deployments = <IDeployments>getDeploymentFile(phase1File)
 
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)

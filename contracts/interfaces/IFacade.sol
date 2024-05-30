@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "./IActFacet.sol";
-import "./IReadFacet.sol";
+import "../facade/facets/ActFacet.sol";
+import "../facade/facets/ReadFacet.sol";
+import "../facade/facets/MaxIssuableFacet.sol";
 
 interface IFacade {
     event SelectorSaved(address indexed facet, bytes4 indexed selector);
@@ -14,6 +15,6 @@ interface IFacade {
 }
 
 // solhint-disable-next-line no-empty-blocks
-interface TestIFacade is IFacade, IActFacet, IReadFacet {
+abstract contract TestIFacade is IFacade, ActFacet, MaxIssuableFacet, ReadFacet {
 
 }

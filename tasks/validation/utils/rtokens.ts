@@ -10,7 +10,7 @@ import { callAndGetNextTrade, runBatchTrade, runDutchTrade } from './trades'
 import { CollateralStatus } from '#/common/constants'
 import { ActFacet } from '@typechain/ActFacet'
 import { ReadFacet } from '@typechain/ReadFacet'
-import { pushOraclesForward } from '../upgrade-checker-utils/oracles'
+import { pushOraclesForward } from './oracles'
 
 type Balances = { [key: string]: BigNumber }
 
