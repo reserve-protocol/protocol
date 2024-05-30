@@ -210,9 +210,6 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await aTokenCollateral.exposedReferencePrice()).to.equal(
-        await aTokenCollateral.refPerTok()
-      )
       await expectPrice(aTokenCollateral.address, fp('1'), ORACLE_ERROR, true)
       await expect(aTokenCollateral.claimRewards())
         .to.emit(aToken, 'RewardsClaimed')
@@ -234,9 +231,6 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4).mul(50))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
       expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await cTokenCollateral.exposedReferencePrice()).to.equal(
-        await cTokenCollateral.refPerTok()
-      )
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenCollateral.claimRewards())
         .to.emit(cTokenCollateral, 'RewardsClaimed')
@@ -1763,9 +1757,6 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.02'))
       expect(await cTokenNonFiatCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await cTokenNonFiatCollateral.exposedReferencePrice()).to.equal(
-        await cTokenNonFiatCollateral.refPerTok()
-      )
 
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true) // 0.02 of 20k
       await expect(cTokenNonFiatCollateral.claimRewards())
@@ -2204,9 +2195,6 @@ describe('Collateral contracts', () => {
       expect(await cTokenSelfReferentialCollateral.bal(owner.address)).to.equal(amt)
       expect(await cTokenSelfReferentialCollateral.refPerTok()).to.equal(fp('0.02'))
       expect(await cTokenSelfReferentialCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await cTokenSelfReferentialCollateral.exposedReferencePrice()).to.equal(
-        await cTokenSelfReferentialCollateral.refPerTok()
-      )
 
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenSelfReferentialCollateral.claimRewards())

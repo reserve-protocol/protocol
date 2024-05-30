@@ -1,3 +1,4 @@
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import { ethers } from 'hardhat'
 import { BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -23,7 +24,6 @@ import {
   THREE_POOL_CVX_POOL_ID,
   SUSD_POOL,
   SUSD_POOL_CVX_POOL_ID,
-  FORK_BLOCK,
   WBTC,
   WETH,
   TRI_CRYPTO,
@@ -37,6 +37,11 @@ import {
   MIM_THREE_POOL,
   MIM_THREE_POOL_POOL_ID,
   MIM_THREE_POOL_HOLDER,
+  ETHPLUS,
+  ETHPLUS_BP_POOL,
+  ETHPLUS_BP_POOL_ID,
+  ETHPLUS_ASSET_REGISTRY,
+  ETHPLUS_TIMELOCK,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
 
@@ -187,7 +192,19 @@ export const mintWPool = async (
   await cvxWrapper.connect(user).deposit(amount, recipient)
 }
 
-export const resetFork = getResetFork(FORK_BLOCK)
+export const mintL2Pool = async (
+  ctx: CurveBase,
+  amount: BigNumberish,
+  recipient: string,
+  holder: string
+) => {
+  const cvxLPToken = ctx.wrapper
+  await whileImpersonating(holder, async (signer) => {
+    await cvxLPToken.connect(signer).transfer(recipient, amount)
+  })
+}
+
+export const resetFork = getResetFork(forkBlockNumber['old-curve-plugins'])
 
 export type Numeric = number | bigint
 
@@ -338,6 +355,76 @@ export const mintWMIM3Pool = async (
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
     await cvxWrapper.curveToken()
   )
+  await whileImpersonating(holder, async (signer) => {
+    await lpToken.connect(signer).transfer(user.address, amount)
+  })
+
+  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
+  await ctx.wrapper.connect(user).deposit(amount, recipient)
+}
+
+// ===== ETH+/ETH
+
+export interface WrappedETHPlusETHFixture {
+  ethplus: ERC20Mock
+  weth: ERC20Mock
+  curvePool: CurvePoolMock
+  wPool: ConvexStakingWrapper
+}
+
+export const makeWETHPlusETH = async (
+  ethplusFeed: MockV3Aggregator
+): Promise<WrappedETHPlusETHFixture> => {
+  // Make a fake RTokenAsset and register it with ETH+'s assetRegistry
+  const AssetFactory = await ethers.getContractFactory('Asset')
+  const mockRTokenAsset = await AssetFactory.deploy(
+    bn('604800'),
+    ethplusFeed.address,
+    fp('0.01'),
+    ETHPLUS,
+    fp('1e6'),
+    bn('1e1')
+  )
+  const ethplusAssetRegistry = await ethers.getContractAt('IAssetRegistry', ETHPLUS_ASSET_REGISTRY)
+  await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
+    await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+  })
+
+  // Use real reference ERC20s
+  const ethplus = await ethers.getContractAt('ERC20Mock', ETHPLUS)
+  const weth = await ethers.getContractAt('ERC20Mock', WETH)
+
+  // Get real ETH+ pool
+  const realCurvePool = await ethers.getContractAt('ICurvePool', ETHPLUS_BP_POOL)
+
+  // Use mock curvePool seeded with initial balances
+  const CurveMockFactory = await ethers.getContractFactory('CurvePoolMock')
+  const curvePool = await CurveMockFactory.deploy(
+    [await realCurvePool.balances(0), await realCurvePool.balances(1)],
+    [await realCurvePool.coins(0), await realCurvePool.coins(1)]
+  )
+  await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
+
+  // Deploy Wrapper
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+  const wPool = await wrapperFactory.deploy()
+  await wPool.initialize(ETHPLUS_BP_POOL_ID)
+  return { ethplus, weth, curvePool, wPool }
+}
+
+export const mintWETHPlusETH = async (
+  ctx: CurveBase,
+  amount: BigNumberish,
+  user: SignerWithAddress,
+  recipient: string,
+  holder: string
+) => {
+  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const lpToken = await ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+    await cvxWrapper.curveToken()
+  )
+
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
   })

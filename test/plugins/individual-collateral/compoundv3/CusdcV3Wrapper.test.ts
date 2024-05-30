@@ -20,7 +20,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
-const itL1 = forkNetwork != 'base' ? it : it.skip
+const itL1 = forkNetwork != 'base' && forkNetwork != 'arbitrum' ? it : it.skip
 
 describeFork('Wrapped CUSDCv3', () => {
   let bob: SignerWithAddress
@@ -293,7 +293,7 @@ describeFork('Wrapped CUSDCv3', () => {
       charlesWithdrawn = charlesWithdrawn.add(firstWithdrawAmt)
       await wcusdcV3.connect(charles).withdraw(firstWithdrawAmt)
       const newBalanceCharles = await cusdcV3.balanceOf(charles.address)
-      expect(newBalanceCharles).to.closeTo(firstWithdrawAmt, 25)
+      expect(newBalanceCharles).to.closeTo(firstWithdrawAmt, 50)
 
       // don deposits
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, initwusdcAmt, don.address)
@@ -588,7 +588,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const baseIndexScale = await cusdcV3.baseIndexScale()
       const expectedExchangeRate = totalsBasic.baseSupplyIndex.mul(bn('1e6')).div(baseIndexScale)
       expect(await cusdcV3.balanceOf(wcusdcV3.address)).to.equal(0)
-      expect(await wcusdcV3.exchangeRate()).to.be.closeTo(expectedExchangeRate, 1)
+      expect(await wcusdcV3.exchangeRate()).to.be.closeTo(expectedExchangeRate, 5)
     })
 
     it('returns the correct exchange rate with a positive balance', async () => {

@@ -3,13 +3,7 @@ import { expect } from 'chai'
 import { Wallet, ContractFactory, constants } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import {
-  advanceBlocks,
-  advanceTime,
-  getLatestBlockTimestamp,
-  getLatestBlockNumber,
-  setNextBlockTimestamp,
-} from '../utils/time'
+import { advanceTime, getLatestBlockTimestamp, advanceToTimestamp } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -619,7 +613,7 @@ describe('Assets contracts #fast', () => {
         'DutchTrade',
         await backingManager.trades(aToken.address)
       )
-      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()))
+      await advanceToTimestamp(await trade.endTime())
       await expect(backingManager.settleTrade(aToken.address)).to.emit(
         backingManager,
         'TradeSettled'
@@ -628,7 +622,7 @@ describe('Assets contracts #fast', () => {
       await expectExactPrice(rTokenAsset.address, [low1, fp('1.01')])
 
       // Launching the trade a second time, this time Batch Auction, should not change price
-      await setNextBlockTimestamp((await trade.endTime()) + 13)
+      await advanceToTimestamp((await trade.endTime()) + 13)
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
         backingManager,
         'TradeStarted'
@@ -663,9 +657,9 @@ describe('Assets contracts #fast', () => {
 
       // Settle 3rd auction for full volume
       trade = await ethers.getContractAt('DutchTrade', await backingManager.trades(cToken.address))
-      const buyAmt = await trade.bidAmount(await trade.endBlock())
+      const buyAmt = await trade.bidAmount(await trade.endTime())
       await usdc.approve(trade.address, buyAmt)
-      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+      await advanceToTimestamp((await trade.endTime()) - 1)
 
       await expect(router.bid(trade.address, await router.signer.getAddress())).to.emit(
         backingManager,
@@ -886,7 +880,7 @@ describe('Assets contracts #fast', () => {
       expect(highPrice3).to.be.gt(highPrice2)
 
       // Advance block, price keeps widening
-      await advanceBlocks(1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
       const [lowPrice4, highPrice4] = await rsrAsset.price()
       expect(lowPrice4).to.be.lt(lowPrice3)
       expect(highPrice4).to.be.gt(highPrice3)
@@ -975,8 +969,7 @@ describe('Assets contracts #fast', () => {
 
       it('refresh() after oracle timeout', async () => {
         const oracleTimeout = await rsrAsset.oracleTimeout()
-        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-        await advanceBlocks(bn(oracleTimeout).div(12))
+        await advanceToTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
       })
 
       it('refresh() after full price timeout', async () => {

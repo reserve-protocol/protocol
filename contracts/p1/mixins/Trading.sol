@@ -2,13 +2,12 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../../interfaces/ITrade.sol";
 import "../../interfaces/ITrading.sol";
 import "../../libraries/Allowance.sol";
 import "../../libraries/Fixed.sol";
+import "../../vendor/oz/Multicall.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 
@@ -19,7 +18,6 @@ import "./RewardableLib.sol";
 ///   It should be fine to leave the non-upgradeable Multicall here permanently.
 abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
     using FixLib for uint192;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint192 public constant MAX_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
@@ -136,8 +134,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;
-        tradesOpen++;
-        tradesNonce++;
+        ++tradesOpen;
+        ++tradesNonce;
 
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }

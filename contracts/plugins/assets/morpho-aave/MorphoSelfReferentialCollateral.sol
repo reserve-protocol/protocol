@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
-// solhint-disable-next-line max-line-length
+// solhint-disable max-line-length
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { AppreciatingFiatCollateral, CollateralConfig } from "../AppreciatingFiatCollateral.sol";
+import { Asset, AppreciatingFiatCollateral, CollateralConfig, IRewardable } from "../AppreciatingFiatCollateral.sol";
 import { MorphoTokenisedDeposit } from "./MorphoTokenisedDeposit.sol";
 import { OracleLib } from "../OracleLib.sol";
-// solhint-disable-next-line max-line-length
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { shiftl_toFix, FIX_ONE, FixLib, CEIL } from "../../../libraries/Fixed.sol";
+
+// solhint-enable max-line-length
 
 /**
  * @title MorphoSelfReferentialCollateral
  * @notice Collateral plugin for a Morpho pool with self referential collateral, like WETH
- * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     MorphoTokenisedDeposit public immutable vault;
+    IERC20Metadata private immutable morpho; // MORPHO token
     uint256 private immutable oneShare;
     int8 private immutable refDecimals;
 
@@ -31,6 +33,7 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
         require(config.defaultThreshold == 0, "default threshold not supported");
         require(address(config.erc20) != address(0), "missing erc20");
         vault = MorphoTokenisedDeposit(address(config.erc20));
+        morpho = IERC20Metadata(address(vault.rewardToken()));
         oneShare = 10**vault.decimals();
         refDecimals = int8(uint8(IERC20Metadata(vault.asset()).decimals()));
     }
@@ -63,5 +66,13 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals);
+    }
+
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @custom:delegate-call
+    function claimRewards() external virtual override(Asset, IRewardable) {
+        uint256 _bal = morpho.balanceOf(address(this));
+        IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - _bal);
     }
 }

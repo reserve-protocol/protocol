@@ -114,6 +114,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
     uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
+    uint256 internal constant MAX_BACKUP_ERC20S = 64;
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
     // event. config is only modified by governance through setPrimeBasket and setBackupConfig
@@ -332,6 +333,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 max,
         IERC20[] calldata erc20s
     ) external governance {
+        require(max <= MAX_BACKUP_ERC20S, "max too large");
+        require(erc20s.length <= MAX_BACKUP_ERC20S, "erc20s too large");
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -855,6 +858,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192 newP; // {UoA/BU}
         for (uint256 i = 0; i < len; ++i) {
             ICollateral coll = main.assetRegistry().toColl(erc20s[i]); // reverts if unregistered
+            require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
 
             (low, high) = coll.price(); // {UoA/tok}
             require(low > 0 && high < FIX_MAX, "invalid price");

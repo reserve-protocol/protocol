@@ -26,20 +26,20 @@ contract FacadeWrite is IFacadeWrite {
         returns (address)
     {
         // Perform validations
-        require(setup.primaryBasket.length > 0, "no collateral");
+        require(setup.primaryBasket.length != 0, "no collateral");
         require(setup.primaryBasket.length == setup.weights.length, "invalid length");
 
         // Validate backups
         for (uint256 i = 0; i < setup.backups.length; ++i) {
-            require(setup.backups[i].backupCollateral.length > 0, "no backup collateral");
+            require(setup.backups[i].backupCollateral.length != 0, "no backup collateral");
         }
 
         // Validate beneficiaries
         for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
             require(
                 setup.beneficiaries[i].beneficiary != address(0) &&
-                    (setup.beneficiaries[i].revShare.rTokenDist > 0 ||
-                        setup.beneficiaries[i].revShare.rsrDist > 0),
+                    (setup.beneficiaries[i].revShare.rTokenDist != 0 ||
+                        setup.beneficiaries[i].revShare.rsrDist != 0),
                 "beneficiary revShare mismatch"
             );
         }
@@ -148,7 +148,8 @@ contract FacadeWrite is IFacadeWrite {
             TimelockController timelock = new TimelockController(
                 govParams.timelockDelay,
                 new address[](0),
-                new address[](0)
+                new address[](0),
+                address(this)
             );
 
             // Deploy Governance contract
@@ -163,9 +164,9 @@ contract FacadeWrite is IFacadeWrite {
             emit GovernanceCreated(rToken, governance, address(timelock));
 
             // Setup Roles
+            timelock.grantRole(timelock.CANCELLER_ROLE(), governance); // Gov can cancel
+            timelock.grantRole(timelock.CANCELLER_ROLE(), govRoles.guardian); // Guardian can cancel
             timelock.grantRole(timelock.PROPOSER_ROLE(), governance); // Gov only proposer
-            // Set Guardian as canceller, if address(0) then no one can cancel
-            timelock.grantRole(timelock.CANCELLER_ROLE(), govRoles.guardian);
             timelock.grantRole(timelock.EXECUTOR_ROLE(), governance); // Gov only executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 

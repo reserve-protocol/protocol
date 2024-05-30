@@ -12,6 +12,8 @@ export interface IPrerequisites {
 export interface IFacets {
   actFacet: string
   readFacet: string
+  // individiual function facets
+  maxIssuableFacet: string
 }
 
 export interface IDeployments {
@@ -21,7 +23,6 @@ export interface IDeployments {
   facade: string
   facets: IFacets
   facadeWriteLib: string
-  cvxMiningLib: string
   facadeWrite: string
   deployer: string
   rsrAsset: string

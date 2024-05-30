@@ -11,7 +11,6 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager
@@ -21,11 +20,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_TRADING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
-
-    // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -34,19 +30,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     mapping(IERC20 => uint192) private tokensOut; // {tok} token balances out in ITrades
 
-    constructor() {
-        ONE_BLOCK = NetworkConfigLib.blocktime();
-    }
-
     function init(
         IMain main_,
         uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
-        uint192 maxTradeVolume_
+        uint192 minTradeVolume_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, maxTradeVolume_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -60,7 +52,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
-    /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// Settle a single trade. If the caller is the trade, try rebalance()
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
@@ -90,9 +82,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
         main.assetRegistry().refresh();
 
-        // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
+        // DoS prevention:
+        // unless caller is self, require that the next auction is not in same block
         require(
-            _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
+            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp,
             "already rebalancing"
         );
 
@@ -246,10 +239,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Private ===
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
-    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
-    function compromiseBasketsNeeded(uint192 wholeBasketsHeld) private {
+    /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
+    function compromiseBasketsNeeded(uint192 basketsHeldBottom) private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
-        main.rToken().setBasketsNeeded(wholeBasketsHeld);
+        main.rToken().setBasketsNeeded(basketsHeldBottom);
         assert(main.basketHandler().fullyCollateralized());
     }
 

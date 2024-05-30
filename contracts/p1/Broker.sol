@@ -8,7 +8,6 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
@@ -23,10 +22,10 @@ contract BrokerP1 is ComponentP1, IBroker {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Clones for address;
 
-    uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
+    uint48 public constant MAX_AUCTION_LENGTH = 60 * 60 * 24 * 7; // {s} max valid duration, 1 week
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 20 blocks, based on network
+    uint48 public constant MIN_AUCTION_LENGTH = 60; // {s} 60 seconds auction min duration
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;
@@ -69,11 +68,6 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
-    }
 
     // effects: initial parameters are set
     function init(
@@ -120,6 +114,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradePrices memory prices
     ) external returns (ITrade) {
         address caller = _msgSender();
+
         require(
             caller == address(backingManager) ||
                 caller == address(rsrTrader) ||
@@ -233,7 +228,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
         require(!batchTradeDisabled, "batch auctions disabled");
-        require(batchAuctionLength > 0, "batch auctions not enabled");
+        require(batchAuctionLength != 0, "batch auctions not enabled");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
 
@@ -265,7 +260,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
             "dutch auctions disabled for token pair"
         );
-        require(dutchAuctionLength > 0, "dutch auctions not enabled");
+        require(dutchAuctionLength != 0, "dutch auctions not enabled");
         require(
             priceNotDecayed(req.sell) && priceNotDecayed(req.buy),
             "dutch auctions require live prices"

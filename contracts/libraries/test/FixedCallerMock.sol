@@ -129,6 +129,10 @@ contract FixedCallerMock {
         return FixLib.powu(x, y);
     }
 
+    function sqrt(uint192 x) public pure returns (uint192) {
+        return FixLib.sqrt(x);
+    }
+
     function lt(uint192 x, uint192 y) public pure returns (bool) {
         return FixLib.lt(x, y);
     }

@@ -1,14 +1,19 @@
 import collateralTests from '../collateralTests'
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import {
   CurveCollateralFixtureContext,
   CurveMetapoolCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
+import { expectEvents } from '../../../../../common/events'
+import { overrideOracle } from '../../../../utils/oracles'
 import { ORACLE_TIMEOUT_BUFFER } from '../../fixtures'
-import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
+import { makeWeUSDFraxBP, mintWeUSDFraxBP } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
+import { getResetFork } from '../../helpers'
+import { networkConfig } from '../../../../../common/configuration'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -29,6 +34,7 @@ import {
   USDC_USD_FEED,
   USDC_ORACLE_TIMEOUT,
   USDC_ORACLE_ERROR,
+  USDT_USD_FEED,
   FRAX_USD_FEED,
   FRAX_ORACLE_TIMEOUT,
   FRAX_ORACLE_ERROR,
@@ -37,6 +43,9 @@ import {
   RTOKEN_DELAY_UNTIL_DEFAULT,
   CurvePoolType,
   CRV,
+  EUSD_ASSET_REGISTRY,
+  EUSD_BASKET_HANDLER,
+  eUSD_BACKING_MANAGER,
   eUSD_FRAX_HOLDER,
   eUSD,
 } from '../constants'
@@ -279,6 +288,97 @@ const collateralSpecificStatusTests = () => {
     // Stale should be false again
     expect(await mockRTokenAsset.stale()).to.be.false
   })
+
+  it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
+    const [collateral, opts] = await deployCollateral({})
+    const eusdAssetRegistry = await ethers.getContractAt('IAssetRegistry', EUSD_ASSET_REGISTRY)
+    const eusdBasketHandler = await ethers.getContractAt('TestIBasketHandler', EUSD_BASKET_HANDLER)
+    const cUSDTCollateral = await ethers.getContractAt(
+      'CTokenFiatCollateral',
+      await eusdAssetRegistry.toAsset(networkConfig['1'].tokens.cUSDT!)
+    )
+    const initialPrice = await cUSDTCollateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
+    expect(await cUSDTCollateral.status()).to.equal(0)
+
+    // De-peg oracle 20%
+    const chainlinkFeed = await cUSDTCollateral.chainlinkFeed()
+    const oracle = await overrideOracle(chainlinkFeed)
+    const latestAnswer = await oracle.latestAnswer()
+    await oracle.updateAnswer(latestAnswer.mul(4).div(5))
+
+    // CTokenFiatCollateral + CurveStableRTokenMetapoolCollateral should
+    // become IFFY through the top-level refresh
+    await expectEvents(collateral.refresh(), [
+      {
+        contract: eusdBasketHandler,
+        name: 'BasketStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+      {
+        contract: cUSDTCollateral,
+        name: 'CollateralStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        args: [0, 1],
+        emitted: true,
+      },
+    ])
+    expect(await cUSDTCollateral.status()).to.equal(1)
+    expect(await collateral.status()).to.equal(1)
+    expect(await eusdBasketHandler.status()).to.equal(1)
+    expect(await eusdBasketHandler.isReady()).to.equal(false)
+
+    // Should remain IFFY while rebalancing
+    await advanceTime((await cUSDTCollateral.delayUntilDefault()) + 1) // 24h
+
+    // prevent oracles from becoming stale
+    for (const feedAddr of opts.feeds!) {
+      const feed = await ethers.getContractAt('MockV3Aggregator', feedAddr[0])
+      await feed.updateAnswer(await feed.latestAnswer())
+    }
+    const usdcOracle = await overrideOracle(USDC_USD_FEED)
+    await usdcOracle.updateAnswer(await usdcOracle.latestAnswer())
+    const usdtOracle = await overrideOracle(USDT_USD_FEED)
+    await usdtOracle.updateAnswer(await usdtOracle.latestAnswer())
+
+    // Should remain IFFY
+    expect(await eusdBasketHandler.status()).to.equal(2)
+    expect(await cUSDTCollateral.status()).to.equal(2)
+    expect(await collateral.status()).to.equal(1)
+    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+    await eusdBasketHandler.refreshBasket() // swaps WETH into basket in place of wstETH
+    expect(await eusdBasketHandler.status()).to.equal(0)
+    expect(await eusdBasketHandler.isReady()).to.equal(false)
+    expect(await eusdBasketHandler.fullyCollateralized()).to.equal(false)
+
+    // Advancing the warmupPeriod should not change anything while rebalancing
+    await advanceTime((await eusdBasketHandler.warmupPeriod()) + 1)
+    expect(await eusdBasketHandler.isReady()).to.equal(true)
+    await collateral.refresh()
+    expect(await eusdBasketHandler.status()).to.equal(0)
+    expect(await cUSDTCollateral.status()).to.equal(2)
+    expect(await collateral.status()).to.equal(1)
+
+    // Should go back to SOUND after fullyCollateralized again -- backs up to USDC + USDT
+    const usdc = await ethers.getContractAt('IERC20Metadata', networkConfig['1'].tokens.USDC!)
+    await whileImpersonating('0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa', async (whale) => {
+      await usdc.connect(whale).transfer(eUSD_BACKING_MANAGER, await usdc.balanceOf(whale.address))
+    })
+    const usdt = await ethers.getContractAt('IERC20Metadata', networkConfig['1'].tokens.USDT!)
+    await whileImpersonating('0xF977814e90dA44bFA03b6295A0616a897441aceC', async (whale) => {
+      await usdt.connect(whale).transfer(eUSD_BACKING_MANAGER, await usdt.balanceOf(whale.address))
+    })
+    expect(await eusdBasketHandler.fullyCollateralized()).to.equal(true)
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(0)
+  })
 }
 
 /*
@@ -292,12 +392,9 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   itChecksTargetPerRefDefault: it,
-  itChecksTargetPerRefDefaultUp: it,
-  itChecksRefPerTokDefault: it,
-  itHasRevenueHiding: it,
   itClaimsRewards: it,
   isMetapool: true,
-  resetFork,
+  resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
   collateralName: 'CurveStableRTokenMetapoolCollateral - ConvexStakingWrapper',
 }
 

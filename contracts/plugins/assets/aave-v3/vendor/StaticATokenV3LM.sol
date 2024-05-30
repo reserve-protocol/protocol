@@ -33,7 +33,7 @@ import { IRewardable } from "../../../../interfaces/IRewardable.sol";
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * It supports claiming liquidity mining rewards from the Aave system.
  * @author BGD Labs
- * From https://github.com/bgd-labs/static-a-token-v3/blob/b9f6f86b6d89c7407eeb0013af248d3c5f4d09c8/src/StaticATokenLM.sol
+ * From https://github.com/bgd-labs/static-a-token-v3/blob/457adba559ba9c2f1699b937220f2732f9db48f1/src/StaticATokenLM.sol
  * Original source was formally verified
  * https://github.com/bgd-labs/static-a-token-v3/blob/b9f6f86b6d89c7407eeb0013af248d3c5f4d09c8/audits/Formal_Verification_Report_staticAToken.pdf
  * @dev This contract has been further modified by Reserve to include the claimRewards() function. This is the only change.
@@ -101,7 +101,7 @@ contract StaticATokenV3LM is
     ///@inheritdoc IStaticATokenV3LM
     function refreshRewardTokens() public override {
         address[] memory rewards = INCENTIVES_CONTROLLER.getRewardsByAsset(address(_aToken));
-        for (uint256 i = 0; i < rewards.length; i++) {
+        for (uint256 i = 0; i < rewards.length; ++i) {
             _registerRewardToken(rewards[i]);
         }
     }
@@ -168,15 +168,17 @@ contract StaticATokenV3LM is
         }
         // assume if deadline 0 no permit was supplied
         if (permit.deadline != 0) {
-            IERC20Permit(depositToAave ? address(_aTokenUnderlying) : address(_aToken)).permit(
-                depositor,
-                address(this),
-                permit.value,
-                permit.deadline,
-                permit.v,
-                permit.r,
-                permit.s
-            );
+            try
+                IERC20Permit(depositToAave ? address(_aTokenUnderlying) : address(_aToken)).permit(
+                    depositor,
+                    address(this),
+                    permit.value,
+                    permit.deadline,
+                    permit.v,
+                    permit.r,
+                    permit.s
+                )
+            {} catch {}
         }
         (uint256 shares, ) = _deposit(depositor, receiver, 0, assets, referralCode, depositToAave);
         return shares;
@@ -283,9 +285,9 @@ contract StaticATokenV3LM is
 
     /// @dev Added by Reserve
     function claimRewards() external {
-        address[] memory rewardsList = INCENTIVES_CONTROLLER.getRewardsList();
+        address[] memory rewardsList = INCENTIVES_CONTROLLER.getRewardsByAsset(address(_aToken));
 
-        for (uint256 i = 0; i < rewardsList.length; i++) {
+        for (uint256 i = 0; i < rewardsList.length; ++i) {
             address currentReward = rewardsList[i];
 
             uint256 prevBalance = IERC20(currentReward).balanceOf(msg.sender);
@@ -370,6 +372,7 @@ contract StaticATokenV3LM is
     ///@inheritdoc IERC4626
     function maxMint(address) public view virtual returns (uint256) {
         uint256 assets = maxDeposit(address(0));
+        if (assets == type(uint256).max) return type(uint256).max;
         return _convertToShares(assets, Rounding.DOWN);
     }
 
@@ -486,7 +489,7 @@ contract StaticATokenV3LM is
 
         uint256 assets = _assets;
         uint256 shares = _shares;
-        if (shares > 0) {
+        if (shares != 0) {
             if (depositToAave) {
                 require(shares <= maxMint(receiver), "ERC4626: mint more than max");
             }
@@ -528,7 +531,7 @@ contract StaticATokenV3LM is
         uint256 assets = _assets;
         uint256 shares = _shares;
 
-        if (shares > 0) {
+        if (shares != 0) {
             if (withdrawFromAave) {
                 require(shares <= maxRedeem(owner), "ERC4626: redeem more than max");
             }
@@ -569,7 +572,7 @@ contract StaticATokenV3LM is
         address to,
         uint256
     ) internal override {
-        for (uint256 i = 0; i < _rewardTokens.length; i++) {
+        for (uint256 i = 0; i < _rewardTokens.length; ++i) {
             address rewardToken = address(_rewardTokens[i]);
             uint256 rewardsIndex = getCurrentRewardsIndex(rewardToken);
             if (from != address(0)) {
@@ -593,7 +596,7 @@ contract StaticATokenV3LM is
         address rewardToken
     ) internal {
         uint256 balance = balanceOf[user];
-        if (balance > 0) {
+        if (balance != 0) {
             _userRewardsData[user][rewardToken].unclaimedRewards = _getClaimableRewards(
                 user,
                 rewardToken,
@@ -666,7 +669,7 @@ contract StaticATokenV3LM is
         address receiver,
         address[] memory rewards
     ) internal {
-        for (uint256 i = 0; i < rewards.length; i++) {
+        for (uint256 i = 0; i < rewards.length; ++i) {
             if (address(rewards[i]) == address(0)) {
                 continue;
             }
@@ -689,7 +692,7 @@ contract StaticATokenV3LM is
                 unclaimedReward = userReward - totalRewardTokenBalance;
                 userReward = totalRewardTokenBalance;
             }
-            if (userReward > 0) {
+            if (userReward != 0) {
                 _userRewardsData[onBehalfOf][rewards[i]].unclaimedRewards = unclaimedReward
                 .toUint128();
                 _userRewardsData[onBehalfOf][rewards[i]]

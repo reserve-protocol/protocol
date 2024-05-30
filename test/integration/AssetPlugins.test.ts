@@ -576,9 +576,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             fp('0.001')
           )
           expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
 
           await expectPrice(
             ctkInf.cTokenCollateral.address,
@@ -677,10 +674,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           expect(await atkInf.aTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.095'))
 
           expect(await atkInf.aTokenCollateral.targetPerRef()).to.equal(fp('1'))
-          expect(await atkInf.aTokenCollateral.exposedReferencePrice()).to.be.closeTo(
-            await atkInf.aTokenCollateral.refPerTok(),
-            fp('0.000005')
-          )
 
           await expectPrice(
             atkInf.aTokenCollateral.address,
@@ -826,10 +819,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           )
           expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
 
-          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
-
           // close to $633 usd
           await expectPrice(
             ctkInf.cTokenCollateral.address,
@@ -946,9 +935,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             fp('0.001')
           )
           expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
 
           await expectPrice(
             ctkInf.cTokenCollateral.address,
@@ -987,8 +973,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             eurFiatTokenDecimals: 6,
             eurFiatTokenAddress: networkConfig[chainId].tokens.EURT || '',
             eurFiatTokenCollateral: eurtCollateral,
-            targetPrice: fp('1.07025'), // approx price EUR-USD June 6, 2022
-            refPrice: fp('1.073'), // approx price EURT-USD June 6, 2022
+            targetPrice: fp('1.07025'), // mimic ref price
+            refPrice: fp('1.07025'), // approx price EURT-USD June 6, 2022
             targetName: 'EUR',
           },
         ]
@@ -2182,7 +2168,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expectPrice(cETHCollateral.address, cETHPrice, ORACLE_ERROR, true, bn('1e5'))
 
         // EURT
-        const eurPrice = fp('1.073') // approx price EUR-USD June 6, 2022
+        const eurPrice = fp('1.07025') // approx price EURT-USD June 6, 2022
         await expectPrice(eurtCollateral.address, eurPrice, ORACLE_ERROR, true, bn('1e5')) // ref price approx 1.07
 
         // Aproximate total price of Basket in USD

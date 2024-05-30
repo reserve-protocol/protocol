@@ -51,7 +51,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                 // {UoA/tok}, {UoA/tok}, {target/ref}
 
                 // high can't be FIX_MAX in this contract, but inheritors might mess this up
-                if (high < FIX_MAX) {
+                if (high != FIX_MAX) {
                     // Save prices
                     savedLowPrice = low;
                     savedHighPrice = high;

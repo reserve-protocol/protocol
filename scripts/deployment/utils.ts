@@ -4,7 +4,7 @@ import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
-import { IComponents, baseL2Chains } from '../../common/configuration'
+import { IComponents, arbitrumL2Chains, baseL2Chains } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
@@ -113,21 +113,28 @@ export async function verifyContract(
 
     let url: string
     if (baseL2Chains.includes(hre.network.name)) {
+      const BASESCAN_API_KEY = useEnv('BASESCAN_API_KEY')
       // Base L2
-      url = `${getBasescanURL(
+      url = `${getVerificationURL(
         chainId
-      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+      )}?module=contract&action=getsourcecode&address=${address}&apikey=${BASESCAN_API_KEY}`
+    } else if (arbitrumL2Chains.includes(hre.network.name)) {
+      const ARBISCAN_API_KEY = useEnv('ARBISCAN_API_KEY')
+      // Arbitrum L2
+      url = `${getVerificationURL(
+        chainId
+      )}?module=contract&action=getsourcecode&address=${address}&apikey=${ARBISCAN_API_KEY}`
     } else {
       // Ethereum
-      url = `${getEtherscanBaseURL(
-        chainId,
-        true
-      )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+      url = `${getVerificationURL(
+        chainId
+      )}/api?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
     }
 
     // Check to see if already verified
     const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
     if (status != 200 || data['status'] != '1') {
+      console.log(data)
       throw new Error("Can't communicate with Etherscan API")
     }
 
@@ -146,7 +153,7 @@ export async function verifyContract(
       } catch (e) {
         console.log(
           `IMPORTANT: failed to verify ${contract}. 
-        ${getEtherscanBaseURL(chainId)}/address/${address}#code`,
+        ${getVerificationURL(chainId)}/address/${address}#code`,
           e
         )
       }
@@ -155,14 +162,9 @@ export async function verifyContract(
   }
 }
 
-export const getEtherscanBaseURL = (chainId: number, api = false) => {
-  let prefix: string
-  if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
-  else prefix = chainId == 1 ? '' : `${hre.network.name}.`
-  return `https://${prefix}etherscan.io`
-}
+export const getVerificationURL = (chainId: number) => {
+  if (chainId == 1) return 'https://api.etherscan.io'
 
-export const getBasescanURL = (chainId: number) => {
   // For Base, get URL from HH config
   const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
   if (!chainConfig || !chainConfig.urls) {
@@ -180,11 +182,9 @@ export const getEmptyDeployment = (): IDeployments => {
     },
     tradingLib: '',
     basketLib: '',
-    actFacet: '',
-    readFacet: '',
+    facets: { actFacet: '', readFacet: '', maxIssuableFacet: '' },
     facade: '',
     facadeWriteLib: '',
-    cvxMiningLib: '',
     facadeWrite: '',
     deployer: '',
     rsrAsset: '',
@@ -223,5 +223,55 @@ export const prompt = async (query: string): Promise<string> => {
     )
   } else {
     return ''
+  }
+}
+
+export const getUsdcOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.001') // 0.1% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    return fp('0.003') // 0.3% base
+  } else {
+    return fp('0.0025') // 0.25% mainnet
+  }
+}
+
+export const getArbOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.0005') // 0.05% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    throw new Error('not a valid chain')
+  } else {
+    return fp('0.02') // 2% mainnet
+  }
+}
+
+export const getDaiOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.001') // 0.1% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    return fp('0.003') // 0.3% base
+  } else {
+    return fp('0.0025') // 0.25% mainnet
+  }
+}
+
+export const getDaiOracleTimeout = (network: string): string => {
+  if (arbitrumL2Chains.includes(network)) {
+    return '86400' // 24 hr
+  } else if (baseL2Chains.includes(network)) {
+    return '86400' // 24 hr
+  } else {
+    return '3600' // 1 hr
+  }
+}
+
+export const getUsdtOracleError = (network: string): BigNumber => {
+  if (arbitrumL2Chains.includes(network)) {
+    return fp('0.001') // 0.1% arbitrum
+  } else if (baseL2Chains.includes(network)) {
+    return fp('0.003') // 0.3% base
+  } else {
+    return fp('0.0025') // 0.25% mainnet
   }
 }

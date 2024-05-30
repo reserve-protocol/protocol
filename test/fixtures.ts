@@ -46,6 +46,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   MainP1,
+  MaxIssuableFacet,
   MockV3Aggregator,
   RevenueTraderP1,
   RTokenAsset,
@@ -94,7 +95,7 @@ export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 // This will have to be updated on each release
-export const VERSION = '3.3.0'
+export const VERSION = '3.4.0'
 
 export type Collateral =
   | FiatCollateral
@@ -411,6 +412,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: TestIFacade
   readFacet: ReadFacet
   actFacet: ActFacet
+  maxIssuableFacet: MaxIssuableFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -450,7 +452,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
+    rewardRatio: bn('89139297916'), // per second. approx half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     withdrawalLeak: fp('0'), // 0%; always refresh
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
@@ -751,6 +753,18 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
   )
 
+  // Save MaxIssuableFacet to Facade
+  const MaxIssuableFacetFactory: ContractFactory = await ethers.getContractFactory(
+    'MaxIssuableFacet'
+  )
+  const maxIssuableFacet = <MaxIssuableFacet>await MaxIssuableFacetFactory.deploy()
+  await facade.save(
+    maxIssuableFacet.address,
+    Object.entries(maxIssuableFacet.functions).map(([fn]) =>
+      maxIssuableFacet.interface.getSighash(fn)
+    )
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -782,6 +796,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     readFacet,
     actFacet,
+    maxIssuableFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,

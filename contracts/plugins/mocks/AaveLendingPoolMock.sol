@@ -33,7 +33,7 @@ contract AaveLendingPoolMock is IAaveLendingPool {
     }
 
     function getReserveNormalizedIncome(address asset) external view returns (uint256) {
-        return _normalizedIncome[asset] > 0 ? _normalizedIncome[asset] : 1e27;
+        return _normalizedIncome[asset] != 0 ? _normalizedIncome[asset] : 1e27;
     }
 
     function setNormalizedIncome(address asset, uint256 newRate) external {

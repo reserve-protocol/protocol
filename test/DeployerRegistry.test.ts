@@ -146,7 +146,7 @@ describe(`DeployerRegistry contract #fast`, () => {
         .withArgs('1.0.0', deployer.address)
 
       // Deployment unregistered
-      expect(await deployerRegistry.latestDeployment()).to.equal(deployer.address)
+      expect(await deployerRegistry.latestDeployment()).to.equal(ZERO_ADDRESS)
       expect(await deployerRegistry.deployments('1.0.0')).to.equal(ZERO_ADDRESS)
     })
   })

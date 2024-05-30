@@ -7,7 +7,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, oracleTimeout, verifyContract } from '../../deployment/utils'
+import { priceTimeout, verifyContract } from '../../deployment/utils'
 import {
   PRICE_PER_SHARE_HELPER,
   YVUSDC_LP_TOKEN,
@@ -40,7 +40,7 @@ async function main() {
         oracleError: fp('0.0025').toString(), // not used but can't be empty
         erc20: networkConfig[chainId].tokens.yvCurveUSDCcrvUSD,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24hr -- max of all oracleTimeouts
+        oracleTimeout: '86400', // 24hr -- max of all oracleTimeouts
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.015').toString(), // 1.5% = max oracleError + 1%
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -51,14 +51,11 @@ async function main() {
         curvePool: YVUSDC_LP_TOKEN,
         poolType: '0',
         feeds: [
-          networkConfig[chainId].chainlinkFeeds.USDC,
-          networkConfig[chainId].chainlinkFeeds.crvUSD,
+          [networkConfig[chainId].chainlinkFeeds.USDC],
+          [networkConfig[chainId].chainlinkFeeds.crvUSD],
         ],
-        oracleTimeouts: [
-          oracleTimeout(chainId, '86400').toString(),
-          oracleTimeout(chainId, '86400').toString(),
-        ],
-        oracleErrors: [fp('0.0025').toString(), fp('0.005').toString()],
+        oracleTimeouts: [['86400'], ['86400']],
+        oracleErrors: [[fp('0.0025').toString()], [fp('0.005').toString()]],
         lpToken: YVUSDC_LP_TOKEN,
       },
       PRICE_PER_SHARE_HELPER,

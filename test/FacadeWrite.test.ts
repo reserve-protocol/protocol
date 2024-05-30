@@ -20,6 +20,7 @@ import {
   OWNER,
   PAUSER,
   ZERO_ADDRESS,
+  ONE_DAY,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
@@ -193,8 +194,8 @@ describe('FacadeWrite contract', () => {
 
     // Set governance params
     govParams = {
-      votingDelay: bn(7200), // 1 day
-      votingPeriod: bn(21600), // 3 days
+      votingDelay: ONE_DAY, // 1 day
+      votingPeriod: ONE_DAY.mul(3), // 3 days
       proposalThresholdAsMicroPercent: bn(1e6), // 1%
       quorumPercent: bn(4), // 4%
       timelockDelay: bn(60 * 60 * 24), // 1 day
@@ -689,6 +690,9 @@ describe('FacadeWrite contract', () => {
           expect(await timelock.hasRole(await timelock.EXECUTOR_ROLE(), governor.address)).to.equal(
             true
           )
+          expect(
+            await timelock.hasRole(await timelock.CANCELLER_ROLE(), governor.address)
+          ).to.equal(true)
         })
 
         it('Should setup owner, freezer and pauser correctly', async () => {
@@ -739,7 +743,7 @@ describe('FacadeWrite contract', () => {
             expect(await governor.proposalThreshold()).to.equal(0)
             expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(0)
           }
-          expect(await governor.name()).to.equal('Governor Alexios')
+          expect(await governor.name()).to.equal('Governor Anastasius')
 
           // Quorum
           expect(await governor['quorumNumerator()']()).to.equal(govParams.quorumPercent)

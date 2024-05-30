@@ -30,7 +30,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
         comp = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         cometDecimals = comet.decimals();
@@ -38,9 +38,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
 
     /// @custom:delegate-call
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 bal = comp.balanceOf(address(this));
+        uint256 _bal = comp.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - bal);
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - _bal);
     }
 
     function underlyingRefPerTok() public view virtual override returns (uint192) {
@@ -76,7 +76,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
                 // Save prices if priced
-                if (high < FIX_MAX) {
+                if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);

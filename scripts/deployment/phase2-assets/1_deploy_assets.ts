@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { baseL2Chains, networkConfig } from '../../../common/configuration'
+import { arbitrumL2Chains, baseL2Chains, networkConfig } from '../../../common/configuration'
 import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
@@ -37,7 +37,7 @@ async function main() {
   const deployedAssets: string[] = []
 
   /********  Deploy StkAAVE Asset **************************/
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
@@ -53,11 +53,13 @@ async function main() {
     deployedAssets.push(stkAAVEAsset.toString())
   }
 
+  const oracleError = arbitrumL2Chains.includes(hre.network.name) ? fp('0.005') : fp('0.01')
+
   /********  Deploy Comp Asset **************************/
   const { asset: compAsset } = await hre.run('deploy-asset', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
-    oracleError: fp('0.01').toString(), // 1%
+    oracleError: oracleError.toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.COMP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: '3600', // 1 hr

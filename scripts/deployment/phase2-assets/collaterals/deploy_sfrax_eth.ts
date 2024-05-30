@@ -41,7 +41,7 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy SFRAX ETH Collateral - sFraxETH  **************************/
-  let sFraxEthOracleAddress: string = networkConfig[chainId].CURVE_POOL_WETH_FRXETH!
+  const sFraxEthOracleAddress: string = networkConfig[chainId].CURVE_POOL_WETH_FRXETH!
   const SFraxEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'SFraxEthCollateral'
   )
