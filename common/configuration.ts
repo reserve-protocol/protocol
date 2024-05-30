@@ -106,7 +106,7 @@ export interface ITokens {
   Re7WETH?: string
 }
 
-export type ITokensKeys = Array<keyof ITokens>;
+export type ITokensKeys = Array<keyof ITokens>
 
 export interface IFeeds {
   stETHETH?: string
@@ -218,7 +218,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
-      wcUSDCv3: '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A',
+      wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
@@ -488,9 +488,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       cUSDCv3: '0xb125E6687d4313864e53df431d5425969c15Eb2F',
-      wcUSDCv3: '0xA694f7177C6c839C951C74C797283B35D0A486c8',
+      wcUSDCv3: '0x53f1Df4E5591Ae35Bf738742981669c3767241FA',
       aBasUSDC: '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB',
-      saBasUSDC: '0x184460704886f9F2A7F3A0c2887680867954dC6E', // our wrapper
+      saBasUSDC: '0x6F6f81e5E66f503184f2202D83a79650c3285759', // our wrapper
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
