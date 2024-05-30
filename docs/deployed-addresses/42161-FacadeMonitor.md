@@ -4,4 +4,4 @@
 
 | Contract              | Address                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| FacadeMonitor (Proxy) | [0x5bfc6df700ef23741B2e01Bd45826E4c9735ae60](https://basescan.org/address/0x5bfc6df700ef23741B2e01Bd45826E4c9735ae60) |
+| FacadeMonitor (Proxy) | [0xCbBa7E1F29F31d6C83C3814b0E5d0687EC7Df177](https://arbiscan.io/address/0xCbBa7E1F29F31d6C83C3814b0E5d0687EC7Df177) |
