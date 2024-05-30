@@ -3,6 +3,8 @@ pragma solidity 0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+uint256 constant FEE_DENOMINATOR = 100_00;
+
 contract DAOFeeRegistry is Ownable {
     address private feeRecipient;
     uint256 private defaultFeeNumerator; // 1e4 = 100% fee
@@ -36,11 +38,16 @@ contract DAOFeeRegistry is Ownable {
     function getFeeDetails(address rToken)
         external
         view
-        returns (address recipient, uint256 feeNumerator)
+        returns (
+            address recipient,
+            uint256 feeNumerator,
+            uint256 feeDenominator
+        )
     {
         recipient = feeRecipient;
         feeNumerator = rTokenFeeNumerator[rToken] == 0
             ? defaultFeeNumerator
             : rTokenFeeNumerator[rToken];
+        feeDenominator = FEE_DENOMINATOR;
     }
 }

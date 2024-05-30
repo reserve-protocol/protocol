@@ -155,23 +155,23 @@ contract DistributorP1 is ComponentP1, IDistributor {
         }
         emit RevenueDistributed(erc20, caller, amount);
 
-        // DAO Fee
-        if (isRSR) {
-            (address recipient, ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
-
-            transfers[numTransfers] = Transfer({
-                addrTo: recipient,
-                amount: tokensPerShare * (totalShares - paidOutShares)
-            });
-            ++numTransfers;
-        }
-
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; ++i) {
             IERC20Upgradeable(address(erc20)).safeTransferFrom(
                 caller,
                 transfers[i].addrTo,
                 transfers[i].amount
+            );
+        }
+
+        // DAO Fee
+        if (isRSR) {
+            (address recipient, , ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
+
+            IERC20Upgradeable(address(erc20)).safeTransferFrom(
+                caller,
+                recipient,
+                tokensPerShare * (totalShares - paidOutShares)
             );
         }
 
@@ -196,10 +196,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
         }
 
         // DAO Fee
-        (, uint256 feeNumerator) = main.daoFeeRegistry().getFeeDetails(address(rToken));
+        (, uint256 feeNumerator, uint256 feeDenominator) = main.daoFeeRegistry().getFeeDetails(
+            address(rToken)
+        );
         revTotals.rsrTotal += uint24(
             (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /
-                (1e4 - feeNumerator)
+                (feeDenominator - feeNumerator)
         );
     }
 
