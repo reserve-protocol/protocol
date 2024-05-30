@@ -19,7 +19,9 @@ type IEnvVars =
   | 'ONLY_FAST'
   | 'JOBS'
   | 'EXTREME'
-  | 'SUBGRAPH_URL'
+  | 'MAINNET_SUBGRAPH_URL'
+  | 'BASE_SUBGRAPH_URL'
+  | 'ARBITRUM_SUBGRAPH_URL'
   | 'TENDERLY_RPC_URL'
   | 'SKIP_PROMPT'
   | 'BASE_GOERLI_RPC_URL'
@@ -28,6 +30,7 @@ type IEnvVars =
   | 'ARBITRUM_RPC_URL'
   | 'FORK_NETWORK'
   | 'FORK_BLOCK'
+  | 'FORCE_WHALE_REFRESH'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {

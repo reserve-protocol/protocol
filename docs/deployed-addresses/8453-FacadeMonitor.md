@@ -1,4 +1,3 @@
-8453-FacadeMonitor.md
 # FacadeMonitor (Base)
 
 ## Facade Monitor Proxy

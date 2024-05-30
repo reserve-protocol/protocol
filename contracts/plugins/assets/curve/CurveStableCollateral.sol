@@ -10,6 +10,10 @@ import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
 import "../curve/PoolTokens.sol";
 
+// Note: Needs to be changed if we ever use this contract on something other than mainnet
+IERC20 constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+IERC20 constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
 /**
  * @title CurveStableCollateral
  *  This plugin contract is fully general to any number of (fiat) tokens in a Curve stable pool,
@@ -29,12 +33,6 @@ import "../curve/PoolTokens.sol";
 contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
-
-    // I don't love hard-coding these, but I prefer it to dynamically reading from either
-    // a CurveGaugeWrapper or ConvexStakingWrapper. If we ever use this contract
-    // on something other than mainnet we'll have to change this.
-    IERC20 internal constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    IERC20 internal constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper

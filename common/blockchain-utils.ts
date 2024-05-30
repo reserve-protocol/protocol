@@ -1,8 +1,9 @@
+import { useEnv } from '#/utils/env'
 import { BigNumber } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 // getChainId: Returns current chain Id
-export const getChainId = async (hre: HardhatRuntimeEnvironment) => {
+export const getChainId = async (hre: HardhatRuntimeEnvironment): Promise<string> => {
   let _chainId
   try {
     _chainId = await hre.network.provider.send('eth_chainId')
@@ -16,6 +17,20 @@ export const getChainId = async (hre: HardhatRuntimeEnvironment) => {
   }
   if (_chainId.startsWith('0x')) {
     _chainId = BigNumber.from(_chainId).toString()
+  }
+
+  if (useEnv('FORK') && _chainId === '31337') {
+    switch (useEnv('FORK_NETWORK').toLowerCase()) {
+      case 'mainnet':
+        _chainId = '1'
+        break;
+      case 'base':
+        _chainId = '8453'
+        break;
+      case 'arbitrum':
+        _chainId = '42161'
+        break;
+    }
   }
   return _chainId
 }

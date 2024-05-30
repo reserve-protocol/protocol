@@ -3,13 +3,14 @@
 We're using:
 
 - [Hardhat](hardhat.org) to compile, test, and deploy our smart contracts.
-- [Slither][] and [Echidna][], from the [Trail of Bits contract security toolkit][tob-suite] for static analysis, fuzz checking, and differential testing.
+- [Slither][], [Slitherin][], and [Echidna][], from the [Trail of Bits contract security toolkit][tob-suite] for static analysis, fuzz checking, and differential testing.
 - [Prettier][] to auto-format both Solidity and Typescript (test) code
 - [Solhint][] for Solidity linting
 - [ESlint][] for Typescript linting
 
 [echidna]: https://github.com/crytic/echidna
 [slither]: https://github.com/crytic/slither
+[slitherin]: https://github.com/pessimistic-io/slitherin
 [tob-suite]: https://blog.trailofbits.com/2018/03/23/use-our-suite-of-ethereum-security-tools/
 [prettier]: https://prettier.io/
 [solhint]: https://protofire.github.io/solhint/
@@ -56,11 +57,14 @@ tenderly login --authentication-method access-key --access-key {your_access_key}
 
 ### Slither
 
-You should also setup `slither`. The [Trail of Bits tools][tob-suite] require solc-select. Check [the installation instructions](https://github.com/crytic/solc-select) to ensure you have all prerequisites. Then:
+You should also setup `slither` and `slitherin`. The [Trail of Bits tools][tob-suite] require solc-select. Check [the installation instructions](https://github.com/crytic/solc-select) to ensure you have all prerequisites. Then:
 
 ```bash
 # Install solc-select and slither
 pip3 install solc-select slither-analyzer
+
+# Include slitherin detectors within slither
+pip3 install slitherin
 
 # Install and use solc version 0.8.19
 solc-select install 0.8.19
@@ -68,6 +72,9 @@ solc-select use 0.8.19
 
 # Double-check that your slither version is at least 0.8.3!
 hash -r && slither --version
+
+# Slitherin version should be at least 0.7.0
+slitherin --version
 ```
 
 ## Usage
@@ -83,7 +90,7 @@ hash -r && slither --version
   - Run integration tests: `yarn test:integration`
   - Run tests and report test coverage: `yarn test:coverage`
 - Lint Solidity + Typescript code: `yarn lint`
-- Run the Slither static checker: `yarn slither`
+- Run the Slither static checker: `yarn slither` (will include Slitherin detectors)
 - Run a local mainnet fork devchain: `yarn devchain`
 - Deploy to devchain: `yarn deploy:run --network localhost`
 
@@ -107,7 +114,6 @@ We _have_ some tooling for testing with Echidna, but it is specifically in `fuzz
 
 See our [deployment documentation](deployment.md).
 
-## Slither Analysis
+## Slither/Slitherin Analysis
 
-The ToB Sliter tool is run on any pull request, and is expected to be checked by devs for any unexpected high or medium issues raised.
-
+The ToB Sliter tool is run on any pull request, and is expected to be checked by devs for any unexpected high or medium issues raised. It also includes the additional Slitherin detectors developed by Pessimistic.

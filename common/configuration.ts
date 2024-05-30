@@ -67,6 +67,7 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  wcUSDCv3?: string
   cUSDbCv3?: string
   ONDO?: string
   sFRAX?: string
@@ -105,6 +106,8 @@ export interface ITokens {
   Re7WETH?: string
 }
 
+export type ITokensKeys = Array<keyof ITokens>
+
 export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
@@ -127,11 +130,12 @@ export interface IPools {
   crveUSDFRAXBP?: string
   crvTriCrypto?: string
   crvMIM3Pool?: string
+  sdUSDCUSDCPlus?: string
 }
 
 interface INetworkConfig {
   name: string
-  tokens: ITokens
+  tokens: ITokens & IPools
   chainlinkFeeds: ITokens & ICurrencies & IFeeds
   AAVE_LENDING_POOL?: string
   AAVE_INCENTIVES?: string
@@ -214,6 +218,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
@@ -235,6 +240,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
+      sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -331,6 +337,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      wcUSDCv3: '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
@@ -481,8 +488,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       cUSDCv3: '0xb125E6687d4313864e53df431d5425969c15Eb2F',
+      wcUSDCv3: '0x53f1Df4E5591Ae35Bf738742981669c3767241FA',
       aBasUSDC: '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB',
-      saBasUSDC: '0x184460704886f9F2A7F3A0c2887680867954dC6E', // our wrapper
+      saBasUSDC: '0x6F6f81e5E66f503184f2202D83a79650c3285759', // our wrapper
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
@@ -517,13 +525,18 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
   '42161': {
     name: 'arbitrum',
     tokens: {
-      ARB: '0x912ce59144191c1204e64559fe8253a0e49e6548',
+      ARB: '0x912CE59144191C1204E64559FE8253a0e49E6548',
+      CRV: '0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978',
+      CVX: '0xaAFcFD42c9954C6689ef1901e03db742520829c5',
+      crvUSD: '0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5',
       DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
       COMP: '0x354A6dA3fcde098F8389cad84b0182725c6C91dE',
       RSR: '0xCa5Ca9083702c56b481D1eec86F1776FDbd2e594',
       USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
       USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
       cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      WETH: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
+      WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
       aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
       saArbUSDCn: '', // TODO our wrapper. remove from deployment script after placing here
       aArbUSDT: '0x6ab707aca953edaefbc4fd23ba73294241490620',
@@ -536,6 +549,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
       USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
+      crvUSD: '0x0a32255dd4BB6177C994bAAc73E0606fDD568f66',
     },
     GNOSIS_EASY_AUCTION: '0xcD033976a011F41D2AB6ef47984041568F818E73', // our deployment
     COMET_REWARDS: '0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae',
@@ -678,6 +692,8 @@ export const MIN_THROTTLE_AMT_RATE = BigNumber.from(10).pow(18)
 export const MAX_THROTTLE_AMT_RATE = BigNumber.from(10).pow(48)
 export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
 export const GNOSIS_MAX_TOKENS = BigNumber.from(7).mul(BigNumber.from(10).pow(28))
+export const MAX_BASKET_SIZE = 100
+export const MAX_BACKUP_SIZE = 64
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1).sub(300)

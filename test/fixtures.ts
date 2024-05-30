@@ -46,6 +46,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   MainP1,
+  MaxIssuableFacet,
   MockV3Aggregator,
   RevenueTraderP1,
   RTokenAsset,
@@ -411,6 +412,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: TestIFacade
   readFacet: ReadFacet
   actFacet: ActFacet
+  maxIssuableFacet: MaxIssuableFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -751,6 +753,18 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
   )
 
+  // Save MaxIssuableFacet to Facade
+  const MaxIssuableFacetFactory: ContractFactory = await ethers.getContractFactory(
+    'MaxIssuableFacet'
+  )
+  const maxIssuableFacet = <MaxIssuableFacet>await MaxIssuableFacetFactory.deploy()
+  await facade.save(
+    maxIssuableFacet.address,
+    Object.entries(maxIssuableFacet.functions).map(([fn]) =>
+      maxIssuableFacet.interface.getSighash(fn)
+    )
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -782,6 +796,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facade,
     readFacet,
     actFacet,
+    maxIssuableFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,

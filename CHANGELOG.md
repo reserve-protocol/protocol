@@ -2,17 +2,59 @@
 
 # 3.4.0
 
+This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods. This changes the interface of the governance voting token StRSR, making this a complicated and nuanced upgrade to get right.
+
 ## Upgrade Steps
 
-TODO
+Warning: Do not attempt to execute the steps below manually. They are only a high-level overview of the changes made in this release. It is recommended to use the 3.4.0 Upgrade spell located at `spells/3_4_0.sol` and deployed to mainnet at `0xb1df3a104d73ff86f9aaab60b491a5c44b090391` and base at `0x1744c9933feb8e76563fce63d5c95a4e7f967c2a`. These deployments will only work for the 11 RTokens: eUSD, ETH+, hyUSD (mainnet), USDC+, USD3, rgUSD, hyUSD (base), bsdETH, iUSDC, Vaya, and MAAT.
 
-Must-do: Upgrade Furnace melt + StRSR drip ratios at time of upgrade to be based on 1s.
+High-level overview:
 
-Should-do: Set Governance as Timelock CANCELLER_ROLE
+- Upgrade all core contracts and plugins. This includes ALL assets and trading plugins, including the RTokenAsset itself
+- Update 3.4.0 ERC20s via `setPrimeBasket()` + `setBackupConfig()`
+- Call `cacheComponents()` on `Broker` if upgrading from >=3.0.0, and also on `BackingManager`, `Distributor`, and both `RevenueTraders`, if upgrading from <3.0.0
+- Adjust Furnace melt + StRSR drip ratios to be based on 1s. For example: divide ratios by 12 if upgrading an RToken on ethereum mainnet
+- Deploy new TimelockController + Governance contracts and rotate adminship of RTokens. This effectively creates a new DAO for each RToken
+- The `tradingDelay` can also be safely set to 0. It was a training wheel and is no longer necessary
 
 ## Core Protocol Contracts
 
+Throughout many core contracts negligible gas improvements have been applied. These are excluded from the list below.
+
+- `BackingManager`
+  - Remove requirement for empty block between auctions of same kind (auctions must still be in different blocks)
+- `BasketHandler`
+  - Set max number of backup erc20s: 64
+  - Require all collateral are SOUND during index RToken `setPrimeBasket()`
+- `Broker`
+  - Switch to timestamp-based auctions
+- `Furnace`
+  - Switch to timestamp-based melting
+- `StRSR`
+  - Switch to timestamp-based RSR drip
+- `StRSRP1Votes`
+  - Switch to timestamp-based checkpointing
+  - Add IERC58505 support
+    - `clock() external view returns (uint48)`
+    - `CLOCK_MODE() external view returns (string memory)`
+
 ## Plugins
+
+### Assets
+
+- Deprecate `EURT`
+- Rename `ZeroPrice()` error to `InvalidPrice()`
+- aave-v3
+  - Add try-catch to `StaticATokenV3LM.metaDeposit()`
+- compound-v3
+  - Fix allowance check in `claimTo()` to use `msg.sender`
+- curve/convex
+  - Add `CurveAppreciatingRTokenFiatCollateral` + `CurveAppreciatingRTokenSelfReferentialCollateral` to support `ETH+/ETH` curve pools in non-recursive cases
+  - Modify `CurveStableRTokenMetapoolCollateral` to check `isReady()` and `fullyCollateralized()` status of underlying RTokens; try-catch asset-registry refresh call.
+- metamorpho
+  - Add `MetaMorphoFiatCollateral` + `MetaMorphoSelfReferentialCollateral` to support `steakUSDC`/`steakUSDP`/`bbUSDT`/`Re7WETH` morpho blue managed vaults
+- frax
+  - Add missing `defaultThreshold != 0` check
 
 ### Trading
 
@@ -20,7 +62,27 @@ Should-do: Set Governance as Timelock CANCELLER_ROLE
   - Switch to timestamp-based model
   - `price(uint256 blockNumber)` -> `price(uint48 timestamp)`
   - Remove `startBlock() returns (uint256)` + `endBlock() returns (uint256)`
-  - Add `startTime() returns (uint48)` (`endTime() returns (uint48)` already existed and is now used in the contract)
+  - Add `startTime() returns (uint48)`
+  - `bid(uint256 blockNumber)` => `bid(uint48 timestamp)`
+
+### Facades
+
+Switch to new Facade singleton model with multiple facets
+
+- `FacadeRead` => `ReadFacet` + `MaxIssuableFacet`
+- `FacadeAct` => `ActFacet`
+
+FacadeMonitor remains independent.
+
+### Governance
+
+Create new Governor Anastasius contract to supersede Governor Alexios. Required to work with new timepoint-based model in StRSRP1Votes.
+
+- `name()`: "Governor Alexios" => "Governor Anastasius"
+- `quorum(uint256 blockNumber)` => `quorum(uint256 timepoint)`
+- Add IERC58505 support
+  - `clock() external view returns (uint48)`
+  - `CLOCK_MODE() external view returns (string memory)`
 
 # 3.3.0
 

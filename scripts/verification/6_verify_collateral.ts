@@ -7,7 +7,6 @@ import {
   networkConfig,
 } from '../../common/configuration'
 import { fp, bn } from '../../common/numbers'
-import { USDC_ARBITRUM_ORACLE_ERROR } from '../../test/plugins/individual-collateral/aave-v3/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -69,13 +68,13 @@ async function main() {
   if (baseL2Chains.includes(hre.network.name)) {
     await verifyContract(
       chainId,
-      deployments.collateral.USDbC,
+      deployments.collateral.USDC,
       [
         {
           priceTimeout: priceTimeout.toString(),
           chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
           oracleError: usdcOracleError.toString(),
-          erc20: networkConfig[chainId].tokens.USDbC,
+          erc20: networkConfig[chainId].tokens.USDC,
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: usdcOracleTimeout,
           targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -87,7 +86,7 @@ async function main() {
     )
   }
 
-  if (!arbitrumL2Chains.includes(hre.network.name)) {
+  if (!arbitrumL2Chains.includes(hre.network.name) && !baseL2Chains.includes(hre.network.name)) {
     /********  Verify StaticATokenLM - aDAI  **************************/
     // Get AToken to retrieve name and symbol
     const aToken: ATokenMock = <ATokenMock>(
@@ -106,7 +105,7 @@ async function main() {
         'Static ' + (await aToken.name()),
         's' + (await aToken.symbol()),
       ],
-      'contracts/plugins/assets/aave/vendor/StaticATokenLM.sol:StaticATokenLM'
+      'contracts/plugins/assets/aave/StaticATokenLM.sol:StaticATokenLM'
     )
     /********  Verify ATokenFiatCollateral - aDAI  **************************/
     await verifyContract(
@@ -217,52 +216,30 @@ async function main() {
       ],
       'contracts/plugins/assets/NonFiatCollateral.sol:NonFiatCollateral'
     )
-
-    /********************** Verify SelfReferentialCollateral - WETH  ****************************************/
-    const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? 1200 : 3600 // 20 min (Base) or 1 hr
-    const ethOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.0015') : fp('0.005') // 0.15% (Base) or 0.5%
-
-    await verifyContract(
-      chainId,
-      deployments.collateral.WETH,
-      [
-        {
-          priceTimeout: priceTimeout.toString(),
-          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-          oracleError: ethOracleError.toString(), // 0.5%
-          erc20: networkConfig[chainId].tokens.WETH,
-          maxTradeVolume: fp('1e6').toString(), // $1m,
-          oracleTimeout: ethOracleTimeout,
-          targetName: hre.ethers.utils.formatBytes32String('ETH'),
-          defaultThreshold: '0',
-          delayUntilDefault: '0',
-        },
-      ],
-      'contracts/plugins/assets/SelfReferentialCollateral.sol:SelfReferentialCollateral'
-    )
-
-    /********************** Verify EURFiatCollateral - EURT  ****************************************/
-    await verifyContract(
-      chainId,
-      deployments.collateral.EURT,
-      [
-        {
-          priceTimeout: priceTimeout.toString(),
-          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.EURT,
-          oracleError: fp('0.02').toString(), // 2%
-          erc20: networkConfig[chainId].tokens.EURT,
-          maxTradeVolume: fp('1e6').toString(), // $1m,
-          oracleTimeout: '86400', // 24hr
-          targetName: ethers.utils.formatBytes32String('EUR'),
-          defaultThreshold: fp('0.03').toString(), // 3%
-          delayUntilDefault: bn('86400').toString(), // 24h
-        },
-        networkConfig[chainId].chainlinkFeeds.EUR,
-        '86400',
-      ],
-      'contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral'
-    )
   }
+
+  /********************** Verify SelfReferentialCollateral - WETH  ****************************************/
+  const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? 1200 : 3600 // 20 min (Base) or 1 hr
+  const ethOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.0015') : fp('0.005') // 0.15% (Base) or 0.5%
+
+  await verifyContract(
+    chainId,
+    deployments.collateral.WETH,
+    [
+      {
+        priceTimeout: priceTimeout.toString(),
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+        oracleError: ethOracleError.toString(), // 0.5%
+        erc20: networkConfig[chainId].tokens.WETH,
+        maxTradeVolume: fp('1e6').toString(), // $1m,
+        oracleTimeout: ethOracleTimeout,
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: '0',
+        delayUntilDefault: '0',
+      },
+    ],
+    'contracts/plugins/assets/SelfReferentialCollateral.sol:SelfReferentialCollateral'
+  )
 }
 
 main().catch((error) => {

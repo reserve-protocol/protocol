@@ -126,4 +126,13 @@ interface TestIDeployer is IDeployer {
     function gnosis() external view returns (IGnosis);
 
     function rsrAsset() external view returns (IAsset);
+
+    function implementations()
+        external
+        view
+        returns (
+            IMain,
+            Components memory,
+            TradePlugins memory
+        );
 }

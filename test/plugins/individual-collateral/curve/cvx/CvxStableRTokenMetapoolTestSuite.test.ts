@@ -34,6 +34,7 @@ import {
   USDC_USD_FEED,
   USDC_ORACLE_TIMEOUT,
   USDC_ORACLE_ERROR,
+  USDT_USD_FEED,
   FRAX_USD_FEED,
   FRAX_ORACLE_TIMEOUT,
   FRAX_ORACLE_ERROR,
@@ -42,13 +43,13 @@ import {
   RTOKEN_DELAY_UNTIL_DEFAULT,
   CurvePoolType,
   CRV,
+  EUSD_ASSET_REGISTRY,
+  EUSD_BASKET_HANDLER,
+  eUSD_BACKING_MANAGER,
   eUSD_FRAX_HOLDER,
   eUSD,
 } from '../constants'
 import { whileImpersonating } from '../../../../utils/impersonation'
-
-const EUSD_ASSET_REGISTRY = '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
-const EUSD_BASKET_HANDLER = '0x6d309297ddDFeA104A6E89a132e2f05ce3828e07'
 
 type Fixture<T> = () => Promise<T>
 
@@ -288,10 +289,10 @@ const collateralSpecificStatusTests = () => {
     expect(await mockRTokenAsset.stale()).to.be.false
   })
 
-  it('Regression test -- becomes IFFY when inner RToken is IFFY', async () => {
-    const [collateral] = await deployCollateral({})
+  it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
+    const [collateral, opts] = await deployCollateral({})
     const eusdAssetRegistry = await ethers.getContractAt('IAssetRegistry', EUSD_ASSET_REGISTRY)
-    const eusdBasketHandler = await ethers.getContractAt('IBasketHandler', EUSD_BASKET_HANDLER)
+    const eusdBasketHandler = await ethers.getContractAt('TestIBasketHandler', EUSD_BASKET_HANDLER)
     const cUSDTCollateral = await ethers.getContractAt(
       'CTokenFiatCollateral',
       await eusdAssetRegistry.toAsset(networkConfig['1'].tokens.cUSDT!)
@@ -331,34 +332,51 @@ const collateralSpecificStatusTests = () => {
     ])
     expect(await cUSDTCollateral.status()).to.equal(1)
     expect(await collateral.status()).to.equal(1)
+    expect(await eusdBasketHandler.status()).to.equal(1)
     expect(await eusdBasketHandler.isReady()).to.equal(false)
 
-    // Should remain IFFY for the warmupPeriod even after cUSDTCollateral is SOUND again
-    await oracle.updateAnswer(latestAnswer)
-    await expectEvents(collateral.refresh(), [
-      {
-        contract: eusdBasketHandler,
-        name: 'BasketStatusChanged',
-        args: [1, 0],
-        emitted: true,
-      },
-      {
-        contract: cUSDTCollateral,
-        name: 'CollateralStatusChanged',
-        args: [1, 0],
-        emitted: true,
-      },
-      {
-        contract: collateral,
-        name: 'CollateralStatusChanged',
-        emitted: false,
-      },
-    ])
+    // Should remain IFFY while rebalancing
+    await advanceTime((await cUSDTCollateral.delayUntilDefault()) + 1) // 24h
+
+    // prevent oracles from becoming stale
+    for (const feedAddr of opts.feeds!) {
+      const feed = await ethers.getContractAt('MockV3Aggregator', feedAddr[0])
+      await feed.updateAnswer(await feed.latestAnswer())
+    }
+    const usdcOracle = await overrideOracle(USDC_USD_FEED)
+    await usdcOracle.updateAnswer(await usdcOracle.latestAnswer())
+    const usdtOracle = await overrideOracle(USDT_USD_FEED)
+    await usdtOracle.updateAnswer(await usdtOracle.latestAnswer())
+
+    // Should remain IFFY
+    expect(await eusdBasketHandler.status()).to.equal(2)
+    expect(await cUSDTCollateral.status()).to.equal(2)
+    expect(await collateral.status()).to.equal(1)
+    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+    await eusdBasketHandler.refreshBasket() // swaps WETH into basket in place of wstETH
+    expect(await eusdBasketHandler.status()).to.equal(0)
+    expect(await eusdBasketHandler.isReady()).to.equal(false)
+    expect(await eusdBasketHandler.fullyCollateralized()).to.equal(false)
+
+    // Advancing the warmupPeriod should not change anything while rebalancing
+    await advanceTime((await eusdBasketHandler.warmupPeriod()) + 1)
+    expect(await eusdBasketHandler.isReady()).to.equal(true)
+    await collateral.refresh()
+    expect(await eusdBasketHandler.status()).to.equal(0)
+    expect(await cUSDTCollateral.status()).to.equal(2)
     expect(await collateral.status()).to.equal(1)
 
-    // Goes back to SOUND after warmupPeriod
-    await advanceTime(1000)
-    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged').withArgs(1, 0)
+    // Should go back to SOUND after fullyCollateralized again -- backs up to USDC + USDT
+    const usdc = await ethers.getContractAt('IERC20Metadata', networkConfig['1'].tokens.USDC!)
+    await whileImpersonating('0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa', async (whale) => {
+      await usdc.connect(whale).transfer(eUSD_BACKING_MANAGER, await usdc.balanceOf(whale.address))
+    })
+    const usdt = await ethers.getContractAt('IERC20Metadata', networkConfig['1'].tokens.USDT!)
+    await whileImpersonating('0xF977814e90dA44bFA03b6295A0616a897441aceC', async (whale) => {
+      await usdt.connect(whale).transfer(eUSD_BACKING_MANAGER, await usdt.balanceOf(whale.address))
+    })
+    expect(await eusdBasketHandler.fullyCollateralized()).to.equal(true)
+    await collateral.refresh()
     expect(await collateral.status()).to.equal(0)
   })
 }
@@ -373,6 +391,7 @@ const opts = {
   collateralSpecificStatusTests,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  itChecksTargetPerRefDefault: it,
   itClaimsRewards: it,
   isMetapool: true,
   resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
