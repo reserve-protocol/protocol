@@ -24,6 +24,8 @@ const rTokensToTest: RTokenParams[] = [
   },
 ]
 
+const v4VersionHash = '0x81ed76178093786cbe0cb79744f6e7ca3336fbb9fe7d1ddff1f0157b63e09813'
+
 async function _confirmVersion(address: string, target: string) {
   const versionedTarget = await ethers.getContractAt('Versioned', address)
   expect(await versionedTarget.version()).to.eq(target)
@@ -113,7 +115,7 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
       const TIMELOCK_ADDRESS = rTokensToTest[i].timelockAddress
       const MAIN_ADDRESS = rTokensToTest[i].mainAddress
 
-      it(`Upgrading: ${rTokensToTest[i].name}`, async () => {
+      it(`Double Upgrade Check: ${rTokensToTest[i].name}`, async () => {
         const RTokenMain = await ethers.getContractAt('MainP1', MAIN_ADDRESS)
         const TimelockController = await ethers.getContractAt(
           'TimelockController',
@@ -133,11 +135,7 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
           await RTokenMain.connect(signer).grantRole(await RTokenMain.OWNER_ROLE(), MAIN_ADDRESS)
 
           // Upgrade RToken
-          await RTokenMain.connect(signer).upgradeRTokenTo(
-            '0x81ed76178093786cbe0cb79744f6e7ca3336fbb9fe7d1ddff1f0157b63e09813', // 4.0.0 specific
-            false,
-            false
-          )
+          await RTokenMain.connect(signer).upgradeRTokenTo(v4VersionHash, false, false)
 
           // TODO: This is a test, do we still revoke the OWNER role?
         })
@@ -165,6 +163,17 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
           implementations.trading.gnosisTrade
         )
         expect(await broker.dutchTradeImplementation()).to.equal(implementations.trading.dutchTrade)
+
+        // So, let's upgrade the RToken _again_ to verify the process flow works.
+        await whileImpersonating(hre, TimelockController.address, async (signer) => {
+          // Upgrade Main to 4.0.0's Main
+          await RTokenMain.connect(signer).upgradeMainTo(v4VersionHash)
+
+          // Upgrade RToken
+          await RTokenMain.connect(signer).upgradeRTokenTo(v4VersionHash, true, true)
+
+          // ^^ This is how the upgrade would look like for future versions.
+        })
       })
     }
   })
