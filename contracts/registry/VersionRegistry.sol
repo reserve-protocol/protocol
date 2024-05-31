@@ -6,7 +6,7 @@ import { IDeployer, Implementations } from "../interfaces/IDeployer.sol";
 
 /**
  * @title VersionRegistry
- * @notice A tiny contract for tracking deployments versions
+ * @notice A tiny contract for tracking deployment versions
  */
 contract VersionRegistry is Ownable {
     mapping(bytes32 => IDeployer) public deployments;
