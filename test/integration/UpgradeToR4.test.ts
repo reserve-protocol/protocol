@@ -132,12 +132,19 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
           await RTokenMain.connect(signer).setDAOFeeRegistry(daoFeeRegistry.address)
 
           // Grant OWNER to Main
-          await RTokenMain.connect(signer).grantRole(await RTokenMain.OWNER_ROLE(), MAIN_ADDRESS)
+          await RTokenMain.connect(signer).grantRole(
+            await RTokenMain.OWNER_ROLE(),
+            RTokenMain.address
+          )
 
           // Upgrade RToken
           await RTokenMain.connect(signer).upgradeRTokenTo(v4VersionHash, false, false)
 
-          // TODO: This is a test, do we still revoke the OWNER role?
+          // Revoke OWNER from Main
+          await RTokenMain.connect(signer).revokeRole(
+            await RTokenMain.OWNER_ROLE(),
+            RTokenMain.address
+          )
         })
 
         const targetsToVerify = [

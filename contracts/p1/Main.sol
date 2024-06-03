@@ -65,7 +65,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         versionRegistry = VersionRegistry(versionRegistry_);
     }
 
-    /// Set Collateral Registry
+    /// Set Asset Plugin Registry
     /// @dev Can only be called once.
     function setAssetPluginRegistry(AssetPluginRegistry registry_) external onlyRole(OWNER) {
         require(address(registry_) != address(0), "invalid registry address");
@@ -104,13 +104,13 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
             versionHash
         );
 
-        this.upgradeTo(address(implementation.main));
+        _upgradeProxy(address(this), address(implementation.main));
     }
 
     function upgradeRTokenTo(
         bytes32 versionHash,
-        bool forwardValidation,
-        bool backwardsValidation
+        bool preValidation,
+        bool postValidation
     ) external onlyRole(OWNER) {
         require(address(versionRegistry) != address(0), "no registry");
         require(keccak256(abi.encodePacked(this.version())) == versionHash, "upgrade main first");
@@ -119,7 +119,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
             versionHash
         );
 
-        if (forwardValidation) {
+        if (preValidation) {
             // Validate before the upgrade.
             assetRegistry.validateCurrentAssets();
         }
@@ -135,7 +135,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         _upgradeProxy(address(rsrTrader), address(implementation.components.rsrTrader));
         _upgradeProxy(address(rTokenTrader), address(implementation.components.rTokenTrader));
 
-        if (backwardsValidation) {
+        if (postValidation) {
             // ...then validate after the upgrade.
             assetRegistry.validateCurrentAssets();
         }

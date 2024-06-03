@@ -169,7 +169,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setBatchTradeImplementation(ITrade newTradeImplementation) public governance {
+    function setBatchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
             address(newTradeImplementation) != address(0),
             "invalid batchTradeImplementation address"
@@ -191,7 +191,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setDutchTradeImplementation(ITrade newTradeImplementation) public governance {
+    function setDutchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
             address(newTradeImplementation) != address(0),
             "invalid dutchTradeImplementation address"

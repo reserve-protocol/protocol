@@ -15,6 +15,7 @@ contract AssetPluginRegistry is Ownable {
 
     constructor(address _versionRegistry) Ownable() {
         versionRegistry = VersionRegistry(_versionRegistry);
+
         _transferOwnership(versionRegistry.owner());
     }
 
