@@ -216,13 +216,16 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             );
         }
 
-        require(
-            main.assetPluginRegistry().isValidAsset(
-                keccak256(abi.encodePacked(this.version())),
-                address(asset)
-            ),
-            "unsupported asset"
-        );
+        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+        if (address(assetPluginRegistry) != address(0)) {
+            require(
+                main.assetPluginRegistry().isValidAsset(
+                    keccak256(abi.encodePacked(this.version())),
+                    address(asset)
+                ),
+                "unsupported asset"
+            );
+        }
 
         IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
