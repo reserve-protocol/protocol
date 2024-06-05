@@ -1424,6 +1424,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
 
+      const MAX_BUY_TOKEN_SCALED = toBNDecimals(MAX_ERC20_SUPPLY, Number(buyTokDecimals))
+      const MAX_SELL_TOKEN_SCALED = toBNDecimals(MAX_ERC20_SUPPLY, Number(sellTokDecimals))
+
       // Max out throttles
       const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
       const redemptionThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
@@ -1432,12 +1435,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       await advanceTime(3600)
 
       // Mint coll tokens to addr1
-      await buyTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
-      await sellTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(owner).mint(addr1.address, MAX_BUY_TOKEN_SCALED)
+      await sellTok.connect(owner).mint(addr1.address, MAX_SELL_TOKEN_SCALED)
 
       // Issue RToken
-      await buyTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
-      await sellTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(addr1).approve(rToken.address, MAX_BUY_TOKEN_SCALED)
+      await sellTok.connect(addr1).approve(rToken.address, MAX_SELL_TOKEN_SCALED)
       await rToken.connect(addr1).issue(MAX_ERC20_SUPPLY.div(2))
 
       // Burn buyTok from backingManager and send extra sellTok
@@ -1446,7 +1449,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         bn(10).pow(sellTokDecimals)
       )
       await buyTok.burn(backingManager.address, burnAmount)
-      await sellTok.connect(addr1).transfer(backingManager.address, auctionSellAmt.mul(10))
+      await sellTok
+        .connect(addr1)
+        .transfer(backingManager.address, auctionSellAmt.mul(bn(10).pow(sellTokDecimals)))
 
       // Rebalance should cause backingManager to trade about auctionSellAmt, though not exactly
       await backingManager.setMaxTradeSlippage(bn('0'))
@@ -1483,7 +1488,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
         await router.connect(addr1).bid(trade.address, addr1.address)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
-        await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+        await buyTok.connect(addr1).approve(tradeAddr, MAX_BUY_TOKEN_SCALED)
         await trade.connect(addr1).bid()
       }
       await advanceBlocks(1)
@@ -1506,7 +1511,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18'), bn('21'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
