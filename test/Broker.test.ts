@@ -742,7 +742,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             config.batchAuctionLength,
             tradeRequest
           )
-        ).to.be.revertedWith('initBal too large')
+        ).to.be.revertedWith('sellAmount too large')
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {

@@ -92,9 +92,9 @@ contract GnosisTrade is ITrade, Versioned {
         sell = req.sell.erc20();
         buy = req.buy.erc20();
         initBal = sell.balanceOf(address(this)); // {qSellTok}
-        sellAmount = shiftl_toFix(initBal, -int8(sell.decimals())); // {sellTok}
+        sellAmount = shiftl_toFix(req.sellAmount, -int8(sell.decimals())); // {sellTok}
 
-        require(initBal <= type(uint96).max, "initBal too large");
+        require(req.sellAmount <= type(uint96).max, "sellAmount too large");
         require(initBal >= req.sellAmount, "unfunded trade");
 
         assert(origin_ != address(0));
