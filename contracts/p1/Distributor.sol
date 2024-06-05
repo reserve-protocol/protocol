@@ -63,6 +63,26 @@ contract DistributorP1 is ComponentP1, IDistributor {
         try main.rTokenTrader().distributeTokenToBuy() {} catch {}
 
         _setDistribution(dest, share);
+
+        RevenueTotals memory revTotals = totals();
+        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
+    }
+
+    function setDistributions(address[] calldata dest, RevenueShare[] calldata share)
+        external
+        governance
+    {
+        require(dest.length == share.length, "array length mismatch");
+
+        // solhint-disable-next-line no-empty-blocks
+        try main.rsrTrader().distributeTokenToBuy() {} catch {}
+        // solhint-disable-next-line no-empty-blocks
+        try main.rTokenTrader().distributeTokenToBuy() {} catch {}
+
+        for (uint256 i = 0; i < dest.length; ++i) {
+            _setDistribution(dest[i], share[i]);
+        }
+
         RevenueTotals memory revTotals = totals();
         _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
@@ -94,24 +114,23 @@ contract DistributorP1 is ComponentP1, IDistributor {
         require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
+
         uint256 tokensPerShare;
+        uint256 totalShares;
         {
             RevenueTotals memory revTotals = totals();
-            uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
+            totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
             if (totalShares != 0) tokensPerShare = amount / totalShares;
             require(tokensPerShare != 0, "nothing to distribute");
         }
-
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
 
         Transfer[] memory transfers = new Transfer[](destinations.length());
         uint256 numTransfers;
 
-        address furnaceAddr = address(furnace); // gas-saver
-        address stRSRAddr = address(stRSR); // gas-saver
-
         bool accountRewards = false;
+        uint256 paidOutShares;
 
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
@@ -121,12 +140,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
                 : distribution[addrTo].rTokenDist;
             if (numberOfShares == 0) continue;
             uint256 transferAmt = tokensPerShare * numberOfShares;
+            paidOutShares += numberOfShares;
 
             if (addrTo == FURNACE) {
-                addrTo = furnaceAddr;
+                addrTo = address(furnace);
                 if (transferAmt != 0) accountRewards = true;
             } else if (addrTo == ST_RSR) {
-                addrTo = stRSRAddr;
+                addrTo = address(stRSR);
                 if (transferAmt != 0) accountRewards = true;
             }
 
@@ -137,8 +157,25 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; ++i) {
-            Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
+            IERC20Upgradeable(address(erc20)).safeTransferFrom(
+                caller,
+                transfers[i].addrTo,
+                transfers[i].amount
+            );
+        }
+
+        DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
+        if (address(daoFeeRegistry) != address(0)) {
+            // DAO Fee
+            if (isRSR) {
+                (address recipient, , ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
+
+                IERC20Upgradeable(address(erc20)).safeTransferFrom(
+                    caller,
+                    recipient,
+                    tokensPerShare * (totalShares - paidOutShares)
+                );
+            }
         }
 
         // Perform reward accounting
@@ -159,6 +196,18 @@ contract DistributorP1 is ComponentP1, IDistributor {
             RevenueShare storage share = distribution[destinations.at(i)];
             revTotals.rTokenTotal += share.rTokenDist;
             revTotals.rsrTotal += share.rsrDist;
+        }
+
+        DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
+        if (address(daoFeeRegistry) != address(0)) {
+            // DAO Fee
+            (, uint256 feeNumerator, uint256 feeDenominator) = main.daoFeeRegistry().getFeeDetails(
+                address(rToken)
+            );
+            revTotals.rsrTotal += uint24(
+                (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /
+                    (feeDenominator - feeNumerator)
+            );
         }
     }
 

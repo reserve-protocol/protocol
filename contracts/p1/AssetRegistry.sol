@@ -156,13 +156,32 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// Returns keys(assets), values(assets) as (duplicate-free) lists.
     // returns: [keys(assets)], [values(assets)] without duplicates.
     /// @return reg The list of registered ERC20s and Assets, in the same order
-    function getRegistry() external view returns (Registry memory reg) {
+    function getRegistry() public view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
         reg.assets = new IAsset[](length);
         for (uint256 i = 0; i < length; ++i) {
             reg.erc20s[i] = IERC20(_erc20s.at(i));
             reg.assets[i] = assets[IERC20(_erc20s.at(i))];
+        }
+    }
+
+    /// @inheritdoc IAssetRegistry
+    function validateCurrentAssets() external view {
+        Registry memory registry = getRegistry();
+        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+
+        uint256 assetLen = registry.assets.length;
+        for (uint256 i = 0; i < assetLen; ++i) {
+            IAsset asset = registry.assets[i];
+
+            require(
+                assetPluginRegistry.isValidAsset(
+                    keccak256(abi.encodePacked(this.version())),
+                    address(asset)
+                ),
+                "unsupported asset"
+            );
         }
     }
 
@@ -194,6 +213,17 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             require(
                 ICollateral(address(asset)).status() == CollateralStatus.SOUND,
                 "collateral not sound"
+            );
+        }
+
+        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+        if (address(assetPluginRegistry) != address(0)) {
+            require(
+                main.assetPluginRegistry().isValidAsset(
+                    keccak256(abi.encodePacked(this.version())),
+                    address(asset)
+                ),
+                "unsupported asset"
             );
         }
 

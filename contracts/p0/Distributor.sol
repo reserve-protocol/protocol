@@ -25,6 +25,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
     function init(IMain main_, RevenueShare memory dist) public initializer {
         __Component_init(main_);
+
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
