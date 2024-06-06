@@ -840,7 +840,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     // ==== Generate the tests ====
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18'), bn('21'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('1'), bn('1595439874635'), bn('987321984732198435645846513')]
