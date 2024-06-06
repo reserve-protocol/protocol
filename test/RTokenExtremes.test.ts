@@ -6,7 +6,7 @@ import { ethers } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { bn, fp, shortString } from '../common/numbers'
 import {
-  ERC20Mock,
+  ERC20MockDecimals,
   FiatCollateral,
   IAssetRegistry,
   MockV3Aggregator,
@@ -53,9 +53,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
     // makeColl: Deploy and register a new constant-price collateral
-    async function makeColl(index: number | string): Promise<ERC20Mock> {
-      const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-      const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
+    async function makeColl(index: number | string, decimals: number): Promise<ERC20MockDecimals> {
+      const ERC20: ContractFactory = await ethers.getContractFactory('ERC20MockDecimals')
+      const erc20: ERC20MockDecimals = <ERC20MockDecimals>(
+        await ERC20.deploy('Token ' + index, 'T' + index, decimals)
+      )
       const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
       await oracle.deployed() // fix extreme value tests failing
@@ -93,6 +95,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       weightRest, // another target amount per asset (weight of second+ assets)
       issuancePctAmt, // range under test: [.000_001 to 1.0]
       redemptionPctAmt, // range under test: [.000_001 to 1.0]
+      collateralDecimals,
     ]: BigNumber[]) {
       // skip nonsense cases
       if (
@@ -106,11 +109,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Deploy and register basket collateral
 
       const N = numBasketAssets.toNumber()
-      const erc20s: ERC20Mock[] = []
+      const erc20s: ERC20MockDecimals[] = []
       const weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
-        const erc20 = await makeColl(i)
+        const erc20 = await makeColl(i, Number(collateralDecimals))
         erc20s.push(erc20)
         const currWeight = i == 0 ? weightFirst : weightRest
         weights.push(currWeight)
@@ -134,7 +137,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const toIssue0 = totalSupply.sub(toIssue)
       const e18 = BN_SCALE_FACTOR
       for (let i = 0; i < N; i++) {
-        const erc20: ERC20Mock = erc20s[i]
+        const erc20: ERC20MockDecimals = erc20s[i]
         // user owner starts with enough basket assets to issue (totalSupply - toIssue)
         const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(owner.address, toMint0)
@@ -207,6 +210,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
         [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
         [MIN_REDEMPTION_PCT, fp('1e-2'), fp(1)], // redemptionThrottle.pctRate
+        [bn(8), bn(18), bn(21), bn(27)], // collateralDecimals
       ]
 
       paramList = cartesianProduct(...bounds)
@@ -220,6 +224,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT], // weightRest
         [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
         [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
+        [bn(8), bn(18), bn(21), bn(27)], // collateralDecimals
       ]
       paramList = cartesianProduct(...bounds)
     }
