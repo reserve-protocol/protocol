@@ -23,6 +23,7 @@ describe('Version Registry', () => {
   let versionRegistry: VersionRegistry
   let deployerMock: DeployerMock
   let owner: SignerWithAddress
+  let other: SignerWithAddress
 
   before(async () => {
     ;({ versionRegistry, owner } = await loadFixture(createVersionRegistry))
@@ -36,10 +37,11 @@ describe('Version Registry', () => {
 
   describe('Version Management', () => {
     before(async () => {
+      ;[, other] = await ethers.getSigners()
       const DeployerMockFactory = await ethers.getContractFactory('DeployerMock')
       deployerMock = await DeployerMockFactory.deploy()
 
-      await versionRegistry.registerVersion(deployerMock.address)
+      await versionRegistry.connect(owner).registerVersion(deployerMock.address)
     })
 
     it('Registered version correctly', async () => {
@@ -61,7 +63,7 @@ describe('Version Registry', () => {
       const DeployerMockV2Factory = await ethers.getContractFactory('DeployerMockV2')
       const deployerMockV2 = await DeployerMockV2Factory.deploy()
       const expectedV2Hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('V2'))
-      await expect(versionRegistry.registerVersion(deployerMockV2.address))
+      await expect(versionRegistry.connect(owner).registerVersion(deployerMockV2.address))
         .to.emit(versionRegistry, 'VersionRegistered')
         .withArgs(expectedV2Hash, deployerMockV2.address)
 
@@ -80,25 +82,28 @@ describe('Version Registry', () => {
     })
 
     it('Denies Duplicate and Invalid Registration', async () => {
+      // If not owner, should be rejected
+      await expect(
+        versionRegistry.connect(other).registerVersion(deployerMock.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
       // Same version, different deployer, should be rejected.
       const DeployerMockFactory = await ethers.getContractFactory('DeployerMock')
       const deployerMockDup = await DeployerMockFactory.deploy()
-
       await expect(
-        versionRegistry.registerVersion(deployerMockDup.address)
+        versionRegistry.connect(owner).registerVersion(deployerMockDup.address)
       ).to.be.revertedWithCustomError(versionRegistry, 'VersionRegistry__InvalidRegistration')
 
       // Invalid registration with zero address is also rejected
-      await expect(versionRegistry.registerVersion(ZERO_ADDRESS)).to.be.revertedWithCustomError(
-        versionRegistry,
-        'VersionRegistry__ZeroAddress'
-      )
+      await expect(
+        versionRegistry.connect(owner).registerVersion(ZERO_ADDRESS)
+      ).to.be.revertedWithCustomError(versionRegistry, 'VersionRegistry__ZeroAddress')
     })
 
     it('Deprecate Version', async () => {
       let versionData = await versionRegistry.getLatestVersion()
 
-      await expect(versionRegistry.deprecateVersion(versionData.versionHash))
+      await expect(versionRegistry.connect(owner).deprecateVersion(versionData.versionHash))
         .to.emit(versionRegistry, 'VersionDeprecated')
         .withArgs(versionData.versionHash)
       versionData = await versionRegistry.getLatestVersion()
@@ -108,7 +113,7 @@ describe('Version Registry', () => {
 
       // Cannot deprecate again
       await expect(
-        versionRegistry.deprecateVersion(versionData.versionHash)
+        versionRegistry.connect(owner).deprecateVersion(versionData.versionHash)
       ).to.be.revertedWithCustomError(versionRegistry, 'VersionRegistry__AlreadyDeprecated')
     })
 
