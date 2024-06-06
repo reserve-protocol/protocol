@@ -113,7 +113,7 @@ describe('Version Registry', () => {
     })
 
     it('Returns implementations correctly', async () => {
-      let versionData = await versionRegistry.getLatestVersion()
+      const versionData = await versionRegistry.getLatestVersion()
       const implementations: IImplementations = await versionRegistry.getImplementationForVersion(
         versionData.versionHash
       )
