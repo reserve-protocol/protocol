@@ -4,13 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ZERO_ADDRESS } from '#/common/constants'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from '../fixtures'
-import {
-  Asset,
-  AssetPluginRegistry,
-  TestIDeployer,
-  VersionRegistry,
-  DeployerMock,
-} from '../../typechain'
+import { AssetPluginRegistry, TestIDeployer, VersionRegistry, DeployerMock } from '../../typechain'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -21,9 +15,6 @@ describeP1('Asset Plugin Registry', () => {
   // Assets
   let tokenAsset: Collateral
   let usdcAsset: Collateral
-  let aTokenAsset: Collateral
-  let cTokenAsset: Collateral
-  let rsrAsset: Asset
   let basket: Collateral[]
 
   // Deployers
@@ -39,7 +30,7 @@ describeP1('Asset Plugin Registry', () => {
     ;[owner, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ deployer, rsrAsset, basket } = await loadFixture(defaultFixture))
+    ;({ deployer, basket } = await loadFixture(defaultFixture))
 
     const versionRegistryFactory = await ethers.getContractFactory('VersionRegistry')
     versionRegistry = await versionRegistryFactory.deploy(await owner.getAddress())
@@ -48,7 +39,7 @@ describeP1('Asset Plugin Registry', () => {
     assetPluginRegistry = await assetPluginRegistryFactory.deploy(versionRegistry.address)
 
     // Get assets and tokens
-    ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
+    ;[tokenAsset, usdcAsset] = basket
 
     const DeployerMockFactoryV1 = await ethers.getContractFactory('DeployerMock')
     deployerMockV1 = await DeployerMockFactoryV1.deploy()
@@ -128,7 +119,6 @@ describeP1('Asset Plugin Registry', () => {
       const versionHash = ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes(await tokenAsset.version())
       )
-
       // Fails if deployment not registered
       await expect(
         assetPluginRegistry.connect(owner).registerAsset(tokenAsset.address, [versionHash])
@@ -145,7 +135,7 @@ describeP1('Asset Plugin Registry', () => {
       // Invalid registration with zero address is also rejected
       await expect(
         assetPluginRegistry.connect(owner).registerAsset(ZERO_ADDRESS, [versionHash])
-      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__ZeroAddress')
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidAsset')
 
       // Fails if any of the versions is not registered
       const versionV1Hash = ethers.utils.keccak256(
@@ -165,7 +155,80 @@ describeP1('Asset Plugin Registry', () => {
       )
     })
 
-    it('Update version by asset (with validations)', async () => {
+    it('Updates versions by asset', async () => {
+      const versionHash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await tokenAsset.version())
+      )
+      const versionV1Hash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await deployerMockV1.version())
+      )
+
+      // Register deployments
+      await versionRegistry.connect(owner).registerVersion(deployer.address)
+      await versionRegistry.connect(owner).registerVersion(deployerMockV1.address)
+
+      // Register assets
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(
+        false
+      )
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, tokenAsset.address)).to.equal(
+        false
+      )
+
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateVersionsByAsset(tokenAsset.address, [versionHash, versionV1Hash], [true, true])
+      )
+        .to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, tokenAsset.address, true)
+        .and.to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionV1Hash, tokenAsset.address, true)
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(true)
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, tokenAsset.address)).to.equal(
+        true
+      )
+
+      // Allows to override and unregister
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateVersionsByAsset(tokenAsset.address, [versionHash, versionV1Hash], [true, false])
+      )
+        .to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, tokenAsset.address, true)
+        .and.to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionV1Hash, tokenAsset.address, false)
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(true) // remains true
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, tokenAsset.address)).to.equal(
+        false
+      ) // unregistered
+
+      // Set another asset
+      expect(await assetPluginRegistry.isValidAsset(versionHash, usdcAsset.address)).to.equal(false)
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, usdcAsset.address)).to.equal(
+        false
+      )
+
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateVersionsByAsset(usdcAsset.address, [versionHash, versionV1Hash], [true, true])
+      )
+        .to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, usdcAsset.address, true)
+        .and.to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionV1Hash, usdcAsset.address, true)
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, usdcAsset.address)).to.equal(true)
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, usdcAsset.address)).to.equal(
+        true
+      )
+    })
+
+    it('Denies invalid updates (version by asset)', async () => {
       const versionHash = ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes(await tokenAsset.version())
       )
@@ -174,9 +237,130 @@ describeP1('Asset Plugin Registry', () => {
       await expect(
         assetPluginRegistry.updateVersionsByAsset(tokenAsset.address, [versionHash], [true, true])
       ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__LengthMismatch')
+
+      // Invalid registration with zero address is also rejected
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateVersionsByAsset(ZERO_ADDRESS, [versionHash], [true])
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidAsset')
+
+      // Fails if deployment not registered
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateVersionsByAsset(tokenAsset.address, [versionHash], [true])
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidVersion')
+
+      // Register deployment
+      await versionRegistry.connect(owner).registerVersion(deployer.address)
+
+      // If not owner cannot update
+      await expect(
+        assetPluginRegistry
+          .connect(other)
+          .updateVersionsByAsset(tokenAsset.address, [versionHash], [true])
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      // Fails if any of the versions is not registered
+      const versionV1Hash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await deployerMockV1.version())
+      )
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateVersionsByAsset(tokenAsset.address, [versionHash, versionV1Hash], [true, true])
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidVersion')
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(
+        false
+      )
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, tokenAsset.address)).to.equal(
+        false
+      )
     })
 
-    it('Update asset by version (with validations)', async () => {
+    it('Update assets by version', async () => {
+      const versionHash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await tokenAsset.version())
+      )
+
+      // Register deployments
+      await versionRegistry.connect(owner).registerVersion(deployer.address)
+      await versionRegistry.connect(owner).registerVersion(deployerMockV1.address)
+
+      // Register assets
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(
+        false
+      )
+      expect(await assetPluginRegistry.isValidAsset(versionHash, usdcAsset.address)).to.equal(false)
+
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateAssetsByVersion(versionHash, [tokenAsset.address, usdcAsset.address], [true, true])
+      )
+        .to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, tokenAsset.address, true)
+        .and.to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, usdcAsset.address, true)
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(true)
+      expect(await assetPluginRegistry.isValidAsset(versionHash, usdcAsset.address)).to.equal(true)
+
+      // Allows to override and unregister
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateAssetsByVersion(
+            versionHash,
+            [tokenAsset.address, usdcAsset.address],
+            [true, false]
+          )
+      )
+        .to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, tokenAsset.address, true)
+        .and.to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionHash, usdcAsset.address, false)
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(true) // remains true
+      expect(await assetPluginRegistry.isValidAsset(versionHash, usdcAsset.address)).to.equal(false) // unregistered
+
+      // Set another version
+      const versionV1Hash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await deployerMockV1.version())
+      )
+
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, tokenAsset.address)).to.equal(
+        false
+      )
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, usdcAsset.address)).to.equal(
+        false
+      )
+
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateAssetsByVersion(
+            versionV1Hash,
+            [tokenAsset.address, usdcAsset.address],
+            [true, true]
+          )
+      )
+        .to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionV1Hash, tokenAsset.address, true)
+        .and.to.emit(assetPluginRegistry, 'AssetPluginRegistryUpdated')
+        .withArgs(versionV1Hash, usdcAsset.address, true)
+
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, tokenAsset.address)).to.equal(
+        true
+      )
+      expect(await assetPluginRegistry.isValidAsset(versionV1Hash, usdcAsset.address)).to.equal(
+        true
+      )
+    })
+
+    it('Denies invalid updates (asset by version)', async () => {
       const versionHash = ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes(await tokenAsset.version())
       )
@@ -185,6 +369,34 @@ describeP1('Asset Plugin Registry', () => {
       await expect(
         assetPluginRegistry.updateAssetsByVersion(versionHash, [tokenAsset.address], [true, true])
       ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__LengthMismatch')
+
+      // Fails if deployment not registered
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateAssetsByVersion(versionHash, [tokenAsset.address], [true])
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidVersion')
+
+      // Register deployment
+      await versionRegistry.connect(owner).registerVersion(deployer.address)
+
+      // If not owner cannot update
+      await expect(
+        assetPluginRegistry
+          .connect(other)
+          .updateAssetsByVersion(versionHash, [tokenAsset.address], [true])
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      // Fails if any of the assets is zero address
+      await expect(
+        assetPluginRegistry
+          .connect(owner)
+          .updateAssetsByVersion(versionHash, [tokenAsset.address, ZERO_ADDRESS], [true, true])
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidAsset')
+
+      expect(await assetPluginRegistry.isValidAsset(versionHash, tokenAsset.address)).to.equal(
+        false
+      )
     })
   })
 })

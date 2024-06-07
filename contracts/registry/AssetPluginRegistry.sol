@@ -13,7 +13,7 @@ contract AssetPluginRegistry is Ownable {
     // versionHash => asset => isValid
     mapping(bytes32 => mapping(address => bool)) public isValidAsset;
 
-    error AssetPluginRegistry__ZeroAddress();
+    error AssetPluginRegistry__InvalidAsset();
     error AssetPluginRegistry__InvalidVersion();
     error AssetPluginRegistry__LengthMismatch();
 
@@ -27,7 +27,7 @@ contract AssetPluginRegistry is Ownable {
 
     function registerAsset(address _asset, bytes32[] calldata validForVersions) external onlyOwner {
         if (_asset == address(0)) {
-            revert AssetPluginRegistry__ZeroAddress();
+            revert AssetPluginRegistry__InvalidAsset();
         }
 
         for (uint256 i = 0; i < validForVersions.length; ++i) {
@@ -49,6 +49,10 @@ contract AssetPluginRegistry is Ownable {
     ) external onlyOwner {
         if (_versionHashes.length != _validities.length) {
             revert AssetPluginRegistry__LengthMismatch();
+        }
+
+        if (_asset == address(0)) {
+            revert AssetPluginRegistry__InvalidAsset();
         }
 
         for (uint256 i = 0; i < _versionHashes.length; ++i) {
@@ -78,7 +82,9 @@ contract AssetPluginRegistry is Ownable {
 
         for (uint256 i = 0; i < _assets.length; ++i) {
             address asset = _assets[i];
-            require(asset != address(0), "invalid asset");
+            if (asset == address(0)) {
+                revert AssetPluginRegistry__InvalidAsset();
+            }
 
             isValidAsset[_versionHash][asset] = _validities[i];
 

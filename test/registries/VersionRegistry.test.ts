@@ -79,8 +79,6 @@ describeP1('Version Registry', () => {
       const initialVersionData = await versionRegistry.getLatestVersion()
 
       // Register new version
-      const DeployerMockV2Factory = await ethers.getContractFactory('DeployerMockV2')
-      const deployerMockV2 = await DeployerMockV2Factory.deploy()
       const expectedV2Hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('V2'))
       await expect(versionRegistry.connect(owner).registerVersion(deployerMockV2.address))
         .to.emit(versionRegistry, 'VersionRegistered')
