@@ -30,7 +30,7 @@ contract DAOFeeRegistry is Ownable {
 
     function setDefaultFeeNumerator(uint256 feeNumerator_) external onlyOwner {
         // TODO: Need a more sensible max limit here...
-        require(feeNumerator_ != 0 && feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
+        require(feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
 
         defaultFeeNumerator = feeNumerator_;
         emit DefaultFeeNumeratorSet(defaultFeeNumerator);
@@ -38,7 +38,7 @@ contract DAOFeeRegistry is Ownable {
 
     function setRTokenFeeNumerator(address rToken, uint256 feeNumerator_) external onlyOwner {
         // TODO: Need a more sensible max limit here...
-        require(feeNumerator_ != 0 && feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
+        require(feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
 
         rTokenFeeNumerator[rToken] = feeNumerator_;
         rTokenFeeSet[rToken] = true;
