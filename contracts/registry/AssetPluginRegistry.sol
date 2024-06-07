@@ -13,6 +13,12 @@ contract AssetPluginRegistry is Ownable {
     // versionHash => asset => isValid
     mapping(bytes32 => mapping(address => bool)) public isValidAsset;
 
+    error AssetPluginRegistry__ZeroAddress();
+    error AssetPluginRegistry__InvalidVersion();
+    error AssetPluginRegistry__LengthMismatch();
+
+    event AssetPluginRegistryUpdated(bytes32 versionHash, address asset, bool validity);
+
     constructor(address _versionRegistry) Ownable() {
         versionRegistry = VersionRegistry(_versionRegistry);
 
@@ -20,14 +26,19 @@ contract AssetPluginRegistry is Ownable {
     }
 
     function registerAsset(address _asset, bytes32[] calldata validForVersions) external onlyOwner {
+        if (_asset == address(0)) {
+            revert AssetPluginRegistry__ZeroAddress();
+        }
+
         for (uint256 i = 0; i < validForVersions.length; ++i) {
             bytes32 versionHash = validForVersions[i];
-            require(
-                address(versionRegistry.deployments(versionHash)) != address(0),
-                "invalid version"
-            );
+            if (address(versionRegistry.deployments(versionHash)) == address(0)) {
+                revert AssetPluginRegistry__InvalidVersion();
+            }
 
             isValidAsset[versionHash][_asset] = true;
+
+            emit AssetPluginRegistryUpdated(versionHash, _asset, true);
         }
     }
 
@@ -36,16 +47,19 @@ contract AssetPluginRegistry is Ownable {
         bytes32[] calldata _versionHashes,
         bool[] calldata _validities
     ) external onlyOwner {
-        require(_versionHashes.length == _validities.length, "length mismatch");
+        if (_versionHashes.length != _validities.length) {
+            revert AssetPluginRegistry__LengthMismatch();
+        }
 
         for (uint256 i = 0; i < _versionHashes.length; ++i) {
             bytes32 versionHash = _versionHashes[i];
-            require(
-                address(versionRegistry.deployments(versionHash)) != address(0),
-                "invalid version"
-            );
+            if (address(versionRegistry.deployments(versionHash)) == address(0)) {
+                revert AssetPluginRegistry__InvalidVersion();
+            }
 
             isValidAsset[versionHash][_asset] = _validities[i];
+
+            emit AssetPluginRegistryUpdated(versionHash, _asset, _validities[i]);
         }
     }
 
@@ -54,17 +68,21 @@ contract AssetPluginRegistry is Ownable {
         address[] calldata _assets,
         bool[] calldata _validities
     ) external onlyOwner {
-        require(_assets.length == _validities.length, "length mismatch");
-        require(
-            address(versionRegistry.deployments(_versionHash)) != address(0),
-            "invalid version"
-        );
+        if (_assets.length != _validities.length) {
+            revert AssetPluginRegistry__LengthMismatch();
+        }
+
+        if (address(versionRegistry.deployments(_versionHash)) == address(0)) {
+            revert AssetPluginRegistry__InvalidVersion();
+        }
 
         for (uint256 i = 0; i < _assets.length; ++i) {
             address asset = _assets[i];
             require(asset != address(0), "invalid asset");
 
             isValidAsset[_versionHash][asset] = _validities[i];
+
+            emit AssetPluginRegistryUpdated(_versionHash, asset, _validities[i]);
         }
     }
 }
