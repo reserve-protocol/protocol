@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+uint256 constant MAX_FEE_NUMERATOR = 15_00; // max 15% DAO fee
 uint256 constant FEE_DENOMINATOR = 100_00;
 
 contract DAOFeeRegistry is Ownable {
@@ -29,16 +30,14 @@ contract DAOFeeRegistry is Ownable {
     }
 
     function setDefaultFeeNumerator(uint256 feeNumerator_) external onlyOwner {
-        // TODO: Need a more sensible max limit here...
-        require(feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
+        require(feeNumerator_ <= MAX_FEE_NUMERATOR, "invalid fee numerator");
 
         defaultFeeNumerator = feeNumerator_;
         emit DefaultFeeNumeratorSet(defaultFeeNumerator);
     }
 
     function setRTokenFeeNumerator(address rToken, uint256 feeNumerator_) external onlyOwner {
-        // TODO: Need a more sensible max limit here...
-        require(feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
+        require(feeNumerator_ <= MAX_FEE_NUMERATOR, "invalid fee numerator");
 
         rTokenFeeNumerator[rToken] = feeNumerator_;
         rTokenFeeSet[rToken] = true;

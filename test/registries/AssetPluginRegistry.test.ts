@@ -45,7 +45,7 @@ describeP1('Asset Plugin Registry', () => {
     deployerMockV1 = await DeployerMockFactoryV1.deploy()
 
     const DeployerMockFactoryV2 = await ethers.getContractFactory('DeployerMockV2')
-    deployerMockV2 = await DeployerMockFactoryV2.deploy()
+    deployerMockV2 = (await DeployerMockFactoryV2.deploy()) as DeployerMock
   })
 
   describe('Deployment', () => {
