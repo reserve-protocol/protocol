@@ -4039,7 +4039,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it.only('Should handle slight increase in collateral correctly - full cycle', async () => {
+      it('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)

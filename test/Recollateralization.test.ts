@@ -4367,7 +4367,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it.only('Should recollateralize correctly in case of default - Taking Haircut - Multiple Backup tokens', async () => {
+      it('Should recollateralize correctly in case of default - Taking Haircut - Multiple Backup tokens', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
         await assetRegistry.connect(owner).register(backupCollateral2.address)
