@@ -186,6 +186,12 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
 }
 
 interface TestIMain is IMain {
+    function setVersionRegistry(VersionRegistry) external;
+
+    function setAssetPluginRegistry(AssetPluginRegistry) external;
+
+    function setDAOFeeRegistry(DAOFeeRegistry) external;
+
     /// @custom:governance
     function setShortFreeze(uint48) external;
 

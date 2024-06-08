@@ -6,7 +6,7 @@ import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { withinQuad } from '../utils/matchers'
+import { withinTolerance } from '../utils/matchers'
 import { toSellAmt, toMinBuyAmt } from '../utils/trades'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
@@ -232,8 +232,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           anyValue,
           one.rsr.address,
           staticATokenERC20.address,
-          withinQuad(sellAmt),
-          withinQuad(buyAmt)
+          withinTolerance(sellAmt),
+          withinTolerance(buyAmt)
         )
 
       // Verify outer RToken isn't panicking

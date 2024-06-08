@@ -1,5 +1,21 @@
 # Changelog
 
+# 4.0.0
+
+TODO
+
+## Upgrade Steps
+
+TODO
+
+Make sure distributor table sums to >10000.
+
+## Core Protocol Contracts
+
+- `Distributor`
+  - Breaking change: Remove `setDistribution()` in favor of `setDistributions()`
+  - New Invariant: Table must sum to >=10000 for precision reasons
+
 # 3.4.0
 
 This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods. This changes the interface of the governance voting token StRSR, making this a complicated and nuanced upgrade to get right.

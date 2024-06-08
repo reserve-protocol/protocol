@@ -27,7 +27,7 @@ import {
   TestIStRSR,
   TestIDistributor,
 } from '../../typechain'
-import { withinQuad } from '../utils/matchers'
+import { withinTolerance } from '../utils/matchers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Collateral,
@@ -1423,8 +1423,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           anyValue,
           rsr.address,
           wbtc.address,
-          withinQuad(sellAmtRSR),
-          withinQuad(buyAmtBidRSR),
+          withinTolerance(sellAmtRSR),
+          withinTolerance(buyAmtBidRSR),
         ],
         emitted: true,
       },
@@ -1481,7 +1481,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           rsr.address,
           wbtc.address,
           auctionSellAmtRSR,
-          withinQuad(auctionBuyAmtRSR),
+          withinTolerance(auctionBuyAmtRSR),
         ],
         emitted: true,
       },
@@ -1593,7 +1593,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [anyValue, cETH.address, weth.address, withinQuad(sellAmt), withinQuad(minBuyAmt)],
+        args: [
+          anyValue,
+          cETH.address,
+          weth.address,
+          withinTolerance(sellAmt),
+          withinTolerance(minBuyAmt),
+        ],
         emitted: true,
       },
     ])
@@ -1656,8 +1662,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           anyValue,
           cETH.address,
           weth.address,
-          withinQuad(sellAmtRemainder),
-          withinQuad(minBuyAmtRemainder),
+          withinTolerance(sellAmtRemainder),
+          withinTolerance(minBuyAmtRemainder),
         ],
         emitted: true,
       },
@@ -1821,8 +1827,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           anyValue,
           rsr.address,
           weth.address,
-          withinQuad(sellAmtRSR2),
-          withinQuad(buyAmtRSR2),
+          withinTolerance(sellAmtRSR2),
+          withinTolerance(buyAmtRSR2),
         ],
         emitted: true,
       },

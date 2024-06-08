@@ -24,6 +24,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // distribution[ST_RSR].rTokenDist == 0
     // distribution has no more than MAX_DESTINATIONS_ALLOWED key-value entries
     // all distribution-share values are <= MAX_DISTRIBUTION
+    // totals().rTokenTotal + totals().rsrTotal >= MAX_DISTRIBUTION
 
     // ==== destinations:
     // distribution[dest] != (0,0) if and only if dest in destinations
@@ -44,7 +45,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         __Component_init(main_);
         cacheComponents();
 
-        _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
+        _ensureSufficientTotal(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
     }
@@ -56,7 +57,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // effects:
     //   destinations' = destinations.add(dest)
     //   distribution' = distribution.set(dest, share)
-    function setDistribution(address dest, RevenueShare memory share) external governance {
+    function setDistribution(address dest, RevenueShare calldata share) external governance {
         // solhint-disable-next-line no-empty-blocks
         try main.rsrTrader().distributeTokenToBuy() {} catch {}
         // solhint-disable-next-line no-empty-blocks
@@ -65,26 +66,33 @@ contract DistributorP1 is ComponentP1, IDistributor {
         _setDistribution(dest, share);
 
         RevenueTotals memory revTotals = totals();
-        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
+        _ensureSufficientTotal(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
 
-    function setDistributions(address[] calldata dest, RevenueShare[] calldata share)
+    /// Set RevenueShares for destinations. Destinations `FURNACE` and `ST_RSR` refer to
+    /// main.furnace() and main.stRSR().
+    /// @custom:governance
+    // checks: invariants hold in post-state
+    // effects:
+    //   destinations' = dests
+    //   distribution' = shares
+    function setDistributions(address[] calldata dests, RevenueShare[] calldata shares)
         external
         governance
     {
-        require(dest.length == share.length, "array length mismatch");
+        require(dests.length == shares.length, "array length mismatch");
 
         // solhint-disable-next-line no-empty-blocks
         try main.rsrTrader().distributeTokenToBuy() {} catch {}
         // solhint-disable-next-line no-empty-blocks
         try main.rTokenTrader().distributeTokenToBuy() {} catch {}
 
-        for (uint256 i = 0; i < dest.length; ++i) {
-            _setDistribution(dest[i], share[i]);
+        for (uint256 i = 0; i < dests.length; ++i) {
+            _setDistribution(dests[i], shares[i]);
         }
 
         RevenueTotals memory revTotals = totals();
-        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
+        _ensureSufficientTotal(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
 
     struct Transfer {
@@ -169,10 +177,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
             // DAO Fee
             if (isRSR) {
                 (address recipient, , ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
-                uint256 fee = tokensPerShare * (totalShares - paidOutShares);
 
-                if (fee > 0) {
-                    IERC20Upgradeable(address(erc20)).safeTransferFrom(caller, recipient, fee);
+                if (recipient != address(0) && tokensPerShare * (totalShares - paidOutShares) > 0) {
+                    IERC20Upgradeable(address(erc20)).safeTransferFrom(
+                        caller,
+                        recipient,
+                        tokensPerShare * (totalShares - paidOutShares)
+                    );
                 }
             }
         }
@@ -200,13 +211,16 @@ contract DistributorP1 is ComponentP1, IDistributor {
         DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
         if (address(daoFeeRegistry) != address(0)) {
             // DAO Fee
-            (, uint256 feeNumerator, uint256 feeDenominator) = main.daoFeeRegistry().getFeeDetails(
-                address(rToken)
-            );
-            revTotals.rsrTotal += uint24(
-                (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /
-                    (feeDenominator - feeNumerator)
-            );
+            (address feeRecipient, uint256 feeNumerator, uint256 feeDenominator) = main
+            .daoFeeRegistry()
+            .getFeeDetails(address(rToken));
+
+            if (feeRecipient != address(0) && feeNumerator != 0) {
+                revTotals.rsrTotal += uint24(
+                    (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /
+                        (feeDenominator - feeNumerator)
+                );
+            }
         }
     }
 
@@ -227,6 +241,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
             dest != address(furnace) && dest != address(stRSR),
             "destination can not be furnace or strsr directly"
         );
+        require(dest != address(main.daoFeeRegistry()), "destination cannot be daoFeeRegistry");
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= MAX_DISTRIBUTION, "RSR distribution too high");
@@ -243,10 +258,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
         emit DistributionSet(dest, share.rTokenDist, share.rsrDist);
     }
 
-    /// Ensures distribution values are non-zero
-    // checks: at least one of its arguments is nonzero
-    function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
-        require(rTokenDist != 0 || rsrDist != 0, "no distribution defined");
+    /// Ensures distribution values are large enough
+    // checks: sum exceeds MAX_DISTRIBUTION
+    function _ensureSufficientTotal(uint24 rTokenTotal, uint24 rsrTotal) internal pure {
+        require(uint256(rTokenTotal) + uint256(rsrTotal) >= MAX_DISTRIBUTION, "totals too low");
     }
 
     /// Call after upgrade to >= 3.0.0

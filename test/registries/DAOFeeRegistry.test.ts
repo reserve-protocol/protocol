@@ -5,17 +5,27 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ZERO_ADDRESS } from '#/common/constants'
 import { Implementation, IMPLEMENTATION, defaultFixture } from '../fixtures'
-import { DAOFeeRegistry, IRToken } from '../../typechain'
+import { whileImpersonating } from '../utils/impersonation'
+import {
+  DAOFeeRegistry,
+  ERC20Mock,
+  TestIDistributor,
+  TestIRevenueTrader,
+  TestIMain,
+  IRToken,
+} from '../../typechain'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 describeP1('DAO Fee Registry', () => {
-  const veRSRAddr = '0x4d5ef58aAc27d99935E5b6B4A6778ff292059991' // random addr
-
   let owner: SignerWithAddress
   let other: SignerWithAddress
 
+  let distributor: TestIDistributor
+  let main: TestIMain
   let rToken: IRToken
+  let rsr: ERC20Mock
+  let rsrTrader: TestIRevenueTrader
 
   let feeRegistry: DAOFeeRegistry
 
@@ -23,19 +33,20 @@ describeP1('DAO Fee Registry', () => {
     ;[owner, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rToken } = await loadFixture(defaultFixture))
+    ;({ distributor, main, rToken, rsr, rsrTrader } = await loadFixture(defaultFixture))
 
     const DAOFeeRegistryFactory = await ethers.getContractFactory('DAOFeeRegistry')
-    feeRegistry = await DAOFeeRegistryFactory.deploy(await owner.getAddress())
+    feeRegistry = await DAOFeeRegistryFactory.connect(owner).deploy(await owner.getAddress())
+    await main.connect(owner).setDAOFeeRegistry(feeRegistry.address)
   })
 
   describe('Deployment', () => {
     it('should set the owner correctly', async () => {
       expect(await feeRegistry.owner()).to.eq(await owner.getAddress())
     })
-    it('fee should begin zero', async () => {
+    it('fee should begin zero and assigned to owner', async () => {
       const feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-      expect(feeDetails.recipient).to.equal(ZERO_ADDRESS)
+      expect(feeDetails.recipient).to.equal(owner.address)
       expect(feeDetails.feeNumerator).to.equal(0)
       expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
     })
@@ -46,7 +57,7 @@ describeP1('DAO Fee Registry', () => {
       expect(await feeRegistry.owner()).to.eq(await owner.getAddress())
       await feeRegistry.connect(owner).transferOwnership(other.address)
       expect(await feeRegistry.owner()).to.eq(await other.getAddress())
-      await expect(feeRegistry.connect(owner).setFeeRecipient(veRSRAddr)).to.be.revertedWith(
+      await expect(feeRegistry.connect(owner).setFeeRecipient(owner.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
       await expect(feeRegistry.connect(owner).setDefaultFeeNumerator(bn('100'))).to.be.revertedWith(
@@ -60,7 +71,7 @@ describeP1('DAO Fee Registry', () => {
 
   describe('Negative cases', () => {
     it('Should not allow calling setters by anyone other than owner', async () => {
-      await expect(feeRegistry.connect(other).setFeeRecipient(veRSRAddr)).to.be.revertedWith(
+      await expect(feeRegistry.connect(other).setFeeRecipient(owner.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
       await expect(feeRegistry.connect(other).setDefaultFeeNumerator(bn('100'))).to.be.revertedWith(
@@ -75,107 +86,131 @@ describeP1('DAO Fee Registry', () => {
     })
 
     it('Should not allow setting fee recipient to zero address', async () => {
-      await expect(feeRegistry.connect(owner).setFeeRecipient(ZERO_ADDRESS)).to.be.revertedWith(
-        'invalid fee recipient'
-      )
+      await expect(
+        feeRegistry.connect(owner).setFeeRecipient(ZERO_ADDRESS)
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidFeeRecipient')
     })
 
     it('Should not allow setting fee recipient twice', async () => {
-      await feeRegistry.connect(owner).setFeeRecipient(veRSRAddr)
-      await expect(feeRegistry.connect(owner).setFeeRecipient(veRSRAddr)).to.be.revertedWith(
-        'already set'
-      )
+      await expect(
+        feeRegistry.connect(owner).setFeeRecipient(owner.address)
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__FeeRecipientAlreadySet')
     })
 
     it('Should not allow fee numerator above max fee numerator', async () => {
       await expect(
         feeRegistry.connect(owner).setDefaultFeeNumerator(bn('15e2').add(1))
-      ).to.be.revertedWith('invalid fee numerator')
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidFeeNumerator')
       await expect(
         feeRegistry.connect(owner).setDefaultFeeNumerator(bn('2').pow(256).sub(1))
-      ).to.be.revertedWith('invalid fee numerator')
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidFeeNumerator')
     })
   })
 
   describe('Fee Management', () => {
     const defaultFees = [bn('0'), bn('1e3'), bn('15e2')] // test 3 fees: 0%, 10%, 15%
     for (const defaultFee of defaultFees) {
-      it('Should handle complex sequence of fee setting and unsetting', async () => {
-        await expect(feeRegistry.connect(owner).setDefaultFeeNumerator(defaultFee))
-          .to.emit(feeRegistry, 'DefaultFeeNumeratorSet')
-          .withArgs(defaultFee)
+      context(`Default Fee: ${defaultFee.div(100).toString()}%`, () => {
+        beforeEach(async () => {
+          await expect(feeRegistry.connect(owner).setDefaultFeeNumerator(defaultFee))
+            .to.emit(feeRegistry, 'DefaultFeeNumeratorSet')
+            .withArgs(defaultFee)
+        })
 
-        // Should be able to set global fee recipient
-        await expect(feeRegistry.connect(owner).setFeeRecipient(veRSRAddr))
-          .to.emit(feeRegistry, 'FeeRecipientSet')
-          .withArgs(veRSRAddr)
-        let feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-        expect(feeDetails.recipient).to.equal(veRSRAddr)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-        feeDetails = await feeRegistry.getFeeDetails(other.address)
-        expect(feeDetails.recipient).to.equal(veRSRAddr)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+        it('Should handle complex sequence of fee setting and unsetting', async () => {
+          // Should start out as expected
+          let feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+          expect(feeDetails.recipient).to.equal(owner.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          feeDetails = await feeRegistry.getFeeDetails(other.address)
+          expect(feeDetails.recipient).to.equal(owner.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
 
-        // Should be able to set precise fee for specific rToken while keeping recipient
-        await expect(feeRegistry.connect(owner).setRTokenFeeNumerator(rToken.address, bn('1e3')))
-          .to.emit(feeRegistry, 'RTokenFeeNumeratorSet')
-          .withArgs(rToken.address, bn('1e3'), true)
-        feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-        expect(feeDetails.recipient).to.equal(veRSRAddr)
-        expect(feeDetails.feeNumerator).to.equal(bn('1e3'))
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-        feeDetails = await feeRegistry.getFeeDetails(other.address)
-        expect(feeDetails.recipient).to.equal(veRSRAddr)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          // Should be able to set precise fee for specific rToken while keeping recipient
+          await expect(feeRegistry.connect(owner).setRTokenFeeNumerator(rToken.address, bn('1e3')))
+            .to.emit(feeRegistry, 'RTokenFeeNumeratorSet')
+            .withArgs(rToken.address, bn('1e3'), true)
+          feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+          expect(feeDetails.recipient).to.equal(owner.address)
+          expect(feeDetails.feeNumerator).to.equal(bn('1e3'))
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          feeDetails = await feeRegistry.getFeeDetails(other.address)
+          expect(feeDetails.recipient).to.equal(owner.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
 
-        // Should be able to change fee recipient while keeping precise fee
-        await feeRegistry.setFeeRecipient(other.address)
-        feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(bn('1e3'))
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-        feeDetails = await feeRegistry.getFeeDetails(other.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          // Should be able to change fee recipient while keeping precise fee
+          await feeRegistry.setFeeRecipient(other.address)
+          feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(bn('1e3'))
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          feeDetails = await feeRegistry.getFeeDetails(other.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
 
-        // Should be able to set fee to 0
-        await feeRegistry.setRTokenFeeNumerator(rToken.address, 0)
-        feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(0)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-        feeDetails = await feeRegistry.getFeeDetails(other.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          // Should be able to set fee to 0
+          await feeRegistry.setRTokenFeeNumerator(rToken.address, 0)
+          feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(0)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          feeDetails = await feeRegistry.getFeeDetails(other.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
 
-        // Should be able to resetFee to use default fee
-        await expect(feeRegistry.resetRTokenFee(rToken.address))
-          .to.emit(feeRegistry, 'RTokenFeeNumeratorSet')
-          .withArgs(rToken.address, 0, false)
-        feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-        feeDetails = await feeRegistry.getFeeDetails(other.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(defaultFee)
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          // Should be able to resetFee to use default fee
+          await expect(feeRegistry.resetRTokenFee(rToken.address))
+            .to.emit(feeRegistry, 'RTokenFeeNumeratorSet')
+            .withArgs(rToken.address, 0, false)
+          feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          feeDetails = await feeRegistry.getFeeDetails(other.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(defaultFee)
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
 
-        // Should be able to change default fee and update everyone
-        await feeRegistry.setDefaultFeeNumerator(bn('5e2')) // 5%
-        feeDetails = await feeRegistry.getFeeDetails(rToken.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(bn('5e2'))
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-        feeDetails = await feeRegistry.getFeeDetails(other.address)
-        expect(feeDetails.recipient).to.equal(other.address)
-        expect(feeDetails.feeNumerator).to.equal(bn('5e2'))
-        expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          // Should be able to change default fee and update everyone
+          await feeRegistry.setDefaultFeeNumerator(bn('5e2')) // 5%
+          feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(bn('5e2'))
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+          feeDetails = await feeRegistry.getFeeDetails(other.address)
+          expect(feeDetails.recipient).to.equal(other.address)
+          expect(feeDetails.feeNumerator).to.equal(bn('5e2'))
+          expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+        })
+
+        if (defaultFee.gt(0)) {
+          it('Distributor distributions should reflect the fee', async () => {
+            // Check setup
+            const feeDetails = await feeRegistry.getFeeDetails(rToken.address)
+            expect(feeDetails.recipient).to.equal(owner.address)
+            expect(feeDetails.feeNumerator).to.equal(defaultFee)
+            expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
+            expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+
+            // Distribute 1m RSR
+            const amt = bn('1e24')
+            await rsr.mint(rsrTrader.address, amt)
+            await whileImpersonating(rsrTrader.address, async (signer) => {
+              await rsr.connect(signer).approve(distributor.address, amt)
+              expect(await rsr.balanceOf(owner.address)).to.equal(0)
+              await distributor.connect(signer).distribute(rsr.address, amt)
+
+              // Expected returned amount is for the fee times 5/3 to account for rev share split
+              const expectedAmt = amt.mul(defaultFee).div(bn('1e4')).mul(5).div(3)
+              expect(await rsr.balanceOf(owner.address)).to.equal(expectedAmt)
+            })
+          })
+        }
       })
     }
   })
