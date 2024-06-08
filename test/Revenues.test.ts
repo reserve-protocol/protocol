@@ -67,6 +67,8 @@ import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
+const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
+
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -313,14 +315,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .setDistribution(STRSR_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
       ).to.be.revertedWith('StRSR must get 0% of RToken')
 
-      // Cannot set DAO fee explicitly
-      await main.connect(owner).setDAOFeeRegistry(other.address)
-      await expect(
-        distributor
-          .connect(owner)
-          .setDistribution(other.address, { rTokenDist: bn(10000), rsrDist: bn(0) })
-      ).to.be.revertedWith('destination cannot be daoFeeRegistry')
-
       // Cannot set RSR distribution too high
       await expect(
         distributor
@@ -375,6 +369,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .connect(owner)
           .setDistribution(stRSR.address, { rTokenDist: bn(5), rsrDist: bn(5) })
       ).to.be.revertedWith('destination can not be furnace or strsr directly')
+    })
+
+    itP1('Should not allow to set Dao fee explicitly', async () => {
+      // Cannot set DAO fee explicitly
+      await main.connect(owner).setDAOFeeRegistry(other.address)
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(other.address, { rTokenDist: bn(10000), rsrDist: bn(0) })
+      ).to.be.revertedWith('destination cannot be daoFeeRegistry')
     })
 
     it('Should validate number of destinations', async () => {
