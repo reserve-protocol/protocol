@@ -823,7 +823,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
       const config = {
         dist: {
-          rTokenDist: bn(100), // 100% RToken
+          rTokenDist: bn(10000), // 100% RToken
           rsrDist: bn(0), // 0% RSR
         },
         minTradeVolume: bn('0'), // $0
