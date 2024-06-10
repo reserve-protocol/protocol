@@ -1167,6 +1167,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('not enough gas to unregister safely')
     })
 
+    it('Should validate current assets if no Plugin Registry', async () => {
+      expect(await assetRegistry.validateCurrentAssets()).to.not.be.reverted
+    })
+
     it('Should be able to disableBasket during deregistration with basket size of 128', async () => {
       // Set up backup config
       await basketHandler.setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [
