@@ -880,7 +880,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         ;({ collateral } = ctx)
         ;({ deployer, facadeWrite, govParams } = protocol)
 
-        supply = fp('1')
+        supply = fp('10')
 
         // Create a paired collateral of the same targetName
         pairedColl = await makePairedCollateral(await collateral.targetName())
@@ -1026,7 +1026,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
         await mintCollateralTo(
           ctx,
-          mintAmt.gt('150') ? mintAmt : bn('150'),
+          mintAmt.gt('10000') ? mintAmt : bn('10000'),
           addr1,
           backingManager.address
         )

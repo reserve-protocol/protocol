@@ -722,7 +722,7 @@ export default function fn<X extends CollateralFixtureContext>(
         ;({ collateral } = ctx)
         ;({ deployer, facadeWrite, govParams } = protocol)
 
-        supply = fp('1')
+        supply = fp('10')
 
         // Create a paired collateral of the same targetName
         pairedColl = await makePairedCollateral(await collateral.targetName())
@@ -866,7 +866,7 @@ export default function fn<X extends CollateralFixtureContext>(
         await rToken.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
         let mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
-        mintAmt = mintAmt.gt('150') ? mintAmt : bn('150')
+        mintAmt = mintAmt.gt('10000') ? mintAmt : bn('10000')
         await mintCollateralTo(ctx, mintAmt, addr1, backingManager.address)
         await backingManager.forwardRevenue([collateralERC20.address])
         expect(await collateralERC20.balanceOf(rTokenTrader.address)).to.be.gt(0)
