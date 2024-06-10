@@ -1168,7 +1168,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should validate current assets if no Plugin Registry', async () => {
-      expect(await assetRegistry.validateCurrentAssets()).to.not.be.reverted
+      await expect(assetRegistry.validateCurrentAssets()).to.not.be.reverted
     })
 
     it('Should be able to disableBasket during deregistration with basket size of 128', async () => {
