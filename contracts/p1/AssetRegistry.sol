@@ -171,17 +171,19 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         Registry memory registry = getRegistry();
         AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
 
-        uint256 assetLen = registry.assets.length;
-        for (uint256 i = 0; i < assetLen; ++i) {
-            IAsset asset = registry.assets[i];
+        if (address(assetPluginRegistry) != address(0)) {
+            uint256 assetLen = registry.assets.length;
+            for (uint256 i = 0; i < assetLen; ++i) {
+                IAsset asset = registry.assets[i];
 
-            require(
-                assetPluginRegistry.isValidAsset(
-                    keccak256(abi.encodePacked(this.version())),
-                    address(asset)
-                ),
-                "unsupported asset"
-            );
+                require(
+                    assetPluginRegistry.isValidAsset(
+                        keccak256(abi.encodePacked(this.version())),
+                        address(asset)
+                    ),
+                    "unsupported asset"
+                );
+            }
         }
     }
 
