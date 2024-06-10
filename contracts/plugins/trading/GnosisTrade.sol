@@ -45,7 +45,7 @@ contract GnosisTrade is ITrade, Versioned {
     IERC20Metadata public sell; // address of token this trade is selling
     IERC20Metadata public buy; // address of token this trade is buying
     uint256 public initBal; // {qSellTok}, this trade's balance of `sell` when init() was called
-    uint192 public sellAmount; // {sellTok}, quantity of whole tokens being sold; dup with initBal
+    uint192 public sellAmount; // {sellTok}, quantity of whole tokens being sold, != initBal
     uint48 public endTime; // timestamp after which this trade's auction can be settled
     uint192 public worstCasePrice; // {buyTok/sellTok}, the worst price we expect to get at Auction
     // We expect Gnosis Auction either to meet or beat worstCasePrice, or to return the `sell`
@@ -91,10 +91,9 @@ contract GnosisTrade is ITrade, Versioned {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-        initBal = sell.balanceOf(address(this)); // {qSellTok}
-        sellAmount = shiftl_toFix(initBal, -int8(sell.decimals()), FLOOR); // {sellTok}
+        sellAmount = shiftl_toFix(req.sellAmount, -int8(sell.decimals())); // {sellTok}
 
-        require(initBal <= type(uint96).max, "initBal too large");
+        initBal = sell.balanceOf(address(this)); // {qSellTok}
         require(initBal >= req.sellAmount, "unfunded trade");
 
         assert(origin_ != address(0));

@@ -211,14 +211,19 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should allow to update BatchTrade Implementation if Owner and perform validations', async () => {
+      const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
+      const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
+
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
       const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setBatchTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'BatchTradeImplementationSet')
-        .withArgs(anyValue, tradeImpl.address)
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(broker.connect(upgSigner).setBatchTradeImplementation(tradeImpl.address))
+          .to.emit(broker, 'BatchTradeImplementationSet')
+          .withArgs(anyValue, tradeImpl.address)
+      })
 
       // Check existing value
       expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
@@ -226,34 +231,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // If not owner cannot update
       await expect(
         broker.connect(other).setBatchTradeImplementation(mock.address)
-      ).to.be.revertedWith('governance only')
+      ).to.be.revertedWith(errorMsg)
 
       // Check value did not change
       expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(
-        broker.connect(owner).setBatchTradeImplementation(ZERO_ADDRESS)
-      ).to.be.revertedWith('invalid batchTradeImplementation address')
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(
+          broker.connect(upgSigner).setBatchTradeImplementation(ZERO_ADDRESS)
+        ).to.be.revertedWith('invalid batchTradeImplementation address')
 
-      // Update with owner
-      await expect(broker.connect(owner).setBatchTradeImplementation(mock.address))
-        .to.emit(broker, 'BatchTradeImplementationSet')
-        .withArgs(tradeImpl.address, mock.address)
-
+        // Update with owner
+        await expect(broker.connect(upgSigner).setBatchTradeImplementation(mock.address))
+          .to.emit(broker, 'BatchTradeImplementationSet')
+          .withArgs(tradeImpl.address, mock.address)
+      })
       // Check value was updated
       expect(await broker.batchTradeImplementation()).to.equal(mock.address)
     })
 
     it('Should allow to update DutchTrade Implementation if Owner and perform validations', async () => {
+      const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
+      const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
+
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
       const tradeImpl: DutchTrade = <DutchTrade>await TradeFactory.deploy()
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setDutchTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'DutchTradeImplementationSet')
-        .withArgs(anyValue, tradeImpl.address)
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(broker.connect(upgSigner).setDutchTradeImplementation(tradeImpl.address))
+          .to.emit(broker, 'DutchTradeImplementationSet')
+          .withArgs(anyValue, tradeImpl.address)
+      })
 
       // Check existing value
       expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
@@ -261,20 +272,22 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // If not owner cannot update
       await expect(
         broker.connect(other).setDutchTradeImplementation(mock.address)
-      ).to.be.revertedWith('governance only')
+      ).to.be.revertedWith(errorMsg)
 
       // Check value did not change
       expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(
-        broker.connect(owner).setDutchTradeImplementation(ZERO_ADDRESS)
-      ).to.be.revertedWith('invalid dutchTradeImplementation address')
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(
+          broker.connect(upgSigner).setDutchTradeImplementation(ZERO_ADDRESS)
+        ).to.be.revertedWith('invalid dutchTradeImplementation address')
 
-      // Update with owner
-      await expect(broker.connect(owner).setDutchTradeImplementation(mock.address))
-        .to.emit(broker, 'DutchTradeImplementationSet')
-        .withArgs(tradeImpl.address, mock.address)
+        // Update with owner
+        await expect(broker.connect(upgSigner).setDutchTradeImplementation(mock.address))
+          .to.emit(broker, 'DutchTradeImplementationSet')
+          .withArgs(tradeImpl.address, mock.address)
+      })
 
       // Check value was updated
       expect(await broker.dutchTradeImplementation()).to.equal(mock.address)
@@ -742,7 +755,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             config.batchAuctionLength,
             tradeRequest
           )
-        ).to.be.revertedWith('initBal too large')
+        ).to.be.revertedWith('sellAmount too large')
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {

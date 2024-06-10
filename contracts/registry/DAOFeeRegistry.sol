@@ -3,14 +3,19 @@ pragma solidity 0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+uint256 constant MAX_FEE_NUMERATOR = 15_00; // max 15% DAO fee
 uint256 constant FEE_DENOMINATOR = 100_00;
 
 contract DAOFeeRegistry is Ownable {
     address private feeRecipient;
-    uint256 private defaultFeeNumerator; // 1e4 = 100% fee
+    uint256 private defaultFeeNumerator; // 0%
 
     mapping(address => uint256) private rTokenFeeNumerator;
     mapping(address => bool) private rTokenFeeSet;
+
+    error DAOFeeRegistry__FeeRecipientAlreadySet();
+    error DAOFeeRegistry__InvalidFeeRecipient();
+    error DAOFeeRegistry__InvalidFeeNumerator();
 
     event FeeRecipientSet(address indexed feeRecipient);
     event DefaultFeeNumeratorSet(uint256 defaultFeeNumerator);
@@ -18,27 +23,26 @@ contract DAOFeeRegistry is Ownable {
 
     constructor(address owner_) Ownable() {
         _transferOwnership(owner_); // Ownership to DAO
+        feeRecipient = owner_; // DAO as initial fee recipient
     }
 
     function setFeeRecipient(address feeRecipient_) external onlyOwner {
-        require(feeRecipient_ != address(0), "invalid fee recipient");
-        require(feeRecipient_ != feeRecipient, "already set");
+        if (feeRecipient_ == address(0)) revert DAOFeeRegistry__InvalidFeeRecipient();
+        if (feeRecipient_ == feeRecipient) revert DAOFeeRegistry__FeeRecipientAlreadySet();
 
         feeRecipient = feeRecipient_;
         emit FeeRecipientSet(feeRecipient_);
     }
 
     function setDefaultFeeNumerator(uint256 feeNumerator_) external onlyOwner {
-        // TODO: Need a more sensible max limit here...
-        require(feeNumerator_ != 0 && feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
+        if (feeNumerator_ > MAX_FEE_NUMERATOR) revert DAOFeeRegistry__InvalidFeeNumerator();
 
         defaultFeeNumerator = feeNumerator_;
         emit DefaultFeeNumeratorSet(defaultFeeNumerator);
     }
 
     function setRTokenFeeNumerator(address rToken, uint256 feeNumerator_) external onlyOwner {
-        // TODO: Need a more sensible max limit here...
-        require(feeNumerator_ != 0 && feeNumerator_ < FEE_DENOMINATOR, "invalid fee numerator");
+        if (feeNumerator_ > MAX_FEE_NUMERATOR) revert DAOFeeRegistry__InvalidFeeNumerator();
 
         rTokenFeeNumerator[rToken] = feeNumerator_;
         rTokenFeeSet[rToken] = true;

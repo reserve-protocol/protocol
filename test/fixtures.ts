@@ -441,8 +441,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const { gnosis, easyAuction } = await gnosisFixture()
   const gnosisAddr = useEnv('FORK') ? easyAuction.address : gnosis.address
   const dist: IRevenueShare = {
-    rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60), // 3/5 RSR
+    rTokenDist: bn(4000), // 2/5 RToken
+    rsrDist: bn(6000), // 3/5 RSR
   }
 
   // Setup Config
