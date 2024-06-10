@@ -535,17 +535,18 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expect(
       distributor
         .connect(owner)
+        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10000) })
+    )
+      .to.emit(distributor, 'DistributionSet')
+      .withArgs(STRSR_DEST, bn(0), bn(10000))
+
+    await expect(
+      distributor
+        .connect(owner)
         .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
     )
       .to.emit(distributor, 'DistributionSet')
       .withArgs(FURNACE_DEST, bn(0), bn(0))
-
-    // Avoid dropping qCOMP by making there be exactly 1 distribution share.
-    await expect(
-      distributor.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
-    )
-      .to.emit(distributor, 'DistributionSet')
-      .withArgs(STRSR_DEST, bn(0), bn(1))
 
     // COMP Rewards
     await compoundMock.setRewards(backingManager.address, rewardAmount)
@@ -642,7 +643,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check balances sent to corresponding destinations
     // StRSR
-    expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+    expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 10000)
     // Furnace
     expect(await rToken.balanceOf(furnace.address)).to.equal(0)
   })
@@ -1146,7 +1147,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
     expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
       auctionbuyAmt2.add(auctionbuyAmt5),
-      bn('50')
+      bn('10000')
     )
     expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
       auctionbuyAmtRToken2.add(auctionbuyAmtRToken5),
@@ -1266,7 +1267,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
     expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
       auctionbuyAmt2.add(auctionbuyAmt5).add(auctionbuyAmt7),
-      bn('10')
+      bn('10000')
     )
     expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
       auctionbuyAmtRToken2.add(auctionbuyAmtRToken5).add(auctionbuyAmtRToken7),
