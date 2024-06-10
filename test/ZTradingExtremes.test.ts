@@ -272,23 +272,18 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
   const setupTrading = async (stRSRCut: BigNumber) => {
     // Configure Distributor
-    const rsrDist = bn(5).mul(stRSRCut).div(fp('1'))
-    const rTokenDist = bn(5).mul(fp('1').sub(stRSRCut)).div(fp('1'))
-    expect(rsrDist.add(rTokenDist)).to.equal(5)
+    const rsrDist = bn(10000).mul(stRSRCut).div(fp('1'))
+    const rTokenDist = bn(10000).sub(rsrDist)
+    expect(rsrDist.add(rTokenDist)).to.equal(10000)
     await expect(
-      distributor
-        .connect(owner)
-        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: rsrDist })
+      distributor.connect(owner).setDistributions(
+        [STRSR_DEST, FURNACE_DEST],
+        [
+          { rTokenDist: bn(0), rsrDist: rsrDist },
+          { rTokenDist: rTokenDist, rsrDist: bn(0) },
+        ]
+      )
     )
-      .to.emit(distributor, 'DistributionSet')
-      .withArgs(STRSR_DEST, bn(0), rsrDist)
-    await expect(
-      distributor
-        .connect(owner)
-        .setDistribution(FURNACE_DEST, { rTokenDist: rTokenDist, rsrDist: bn(0) })
-    )
-      .to.emit(distributor, 'DistributionSet')
-      .withArgs(FURNACE_DEST, rTokenDist, bn(0))
 
     // Set prices
     await setOraclePrice(rsrAsset.address, bn('1e8'))
