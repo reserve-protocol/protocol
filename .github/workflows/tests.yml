@@ -134,7 +134,7 @@ jobs:
           TS_NODE_SKIP_IGNORE: true
           BASE_RPC_URL: https://base-mainnet.infura.io/v3/${{ secrets.INFURA_BASE_KEY }}
           FORK_NETWORK: base
-          FORK_BLOCK: 15637551
+          FORK_BLOCK: 4446300
           FORK: 1
           PROTO_IMPL: 1
 
@@ -162,7 +162,7 @@ jobs:
           TS_NODE_SKIP_IGNORE: true
           ARBITRUM_RPC_URL: https://arb-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_ARBITRUM_KEY }}
           FORK_NETWORK: arbitrum
-          FORK_BLOCK: 194244696
+          FORK_BLOCK: 220556013
           FORK: 1
           PROTO_IMPL: 1
 

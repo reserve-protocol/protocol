@@ -790,6 +790,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     // Only run full protocol integration tests on mainnet
     // Protocol integration fixture not currently set up to deploy onto base
     getDescribeFork(targetNetwork)('integration tests', () => {
+      const onBase = useEnv('FORK_NETWORK').toLowerCase() == 'base'
       const onArbitrum = useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum'
 
       before(resetFork)

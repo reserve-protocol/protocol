@@ -887,7 +887,7 @@ export default function fn<X extends CollateralFixtureContext>(
         expect(await trade.buy()).to.equal(rsr.address)
         const buyAmt = await trade.bidAmount(await trade.endTime())
         const whale = onBase
-          ? '0x46271115F374E02b5afe357C8E8Dad474c8DE1cF'
+          ? '0x67510E1104112484E73c20BB609070989E4E3f9b'
           : onArbitrum
           ? '0x407ef85920efafda29f8cde388c81f1531cf6684'
           : '0x0774dF07205a5E9261771b19afa62B6e757f7eF8'
