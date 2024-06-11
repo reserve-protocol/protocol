@@ -85,8 +85,8 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // {tok}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-        // We can always assume that the total supply is non-zero
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()), FLOOR);
+        // We can always assume that the total supply is sufficiently non-zero
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);

@@ -13,12 +13,15 @@ import {
 import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString, toBNDecimals, divCeil } from '../common/numbers'
 import {
+  AppreciatingMockDecimals,
+  AppreciatingMockDecimalsCollateral,
   Asset,
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
+  ERC20MockDecimals,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -60,9 +63,13 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
+  let rewardToken21: ERC20MockDecimals
+  let rewardToken27: ERC20MockDecimals
   let rsrAsset: Asset
   let aaveAsset: Asset
   let compAsset: Asset
+
+  let rewardTokensLargeDecimals: { [key: number]: ERC20MockDecimals }
 
   // Trading
   let rsrTrader: TestIRevenueTrader
@@ -81,10 +88,13 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   let distributor: TestIDistributor
 
   let ERC20Mock: ContractFactory
+  let ERC20MockDecimals: ContractFactory
+  let AppreciatingMockDecimalsFactory: ContractFactory
   let ATokenMockFactory: ContractFactory
   let CTokenMockFactory: ContractFactory
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
+  let AppreciatingMockDecimalsCollateralFactory: ContractFactory
 
   const DEFAULT_THRESHOLD = fp('0.01') // 1%
   const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -115,10 +125,28 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     } = await loadFixture(defaultFixtureNoBasket))
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
+    ERC20MockDecimals = await ethers.getContractFactory('ERC20MockDecimals')
+    AppreciatingMockDecimalsFactory = await ethers.getContractFactory('AppreciatingMockDecimals')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+    AppreciatingMockDecimalsCollateralFactory = await ethers.getContractFactory(
+      'AppreciatingMockDecimalsCollateral'
+    )
+
+    // Setup rewards tokens with 21 and 27 decimals (for large decimal extreme test)
+    rewardToken21 = <ERC20MockDecimals>(
+      await ERC20MockDecimals.deploy(`ERC20_REWARD_21`, `ERC20_SYM_REWARD_21`, 21)
+    )
+    rewardToken27 = <ERC20MockDecimals>(
+      await ERC20MockDecimals.deploy(`ERC20_REWARD_27`, `ERC20_SYM_REWARD_27`, 27)
+    )
+
+    rewardTokensLargeDecimals = {
+      21: rewardToken21,
+      27: rewardToken27,
+    }
 
     // Set backingBuffer and minTradeVolume to 0, to make math easy and always trade
     await backingManager.connect(owner).setBackingBuffer(0)
@@ -198,25 +226,64 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     return erc20
   }
 
+  const prepLargeDecimalToken = async (
+    index: number,
+    decimals: number
+  ): Promise<AppreciatingMockDecimals> => {
+    const underlying: ERC20MockDecimals = <ERC20MockDecimals>(
+      await ERC20MockDecimals.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`, decimals)
+    )
+    const erc20: AppreciatingMockDecimals = <AppreciatingMockDecimals>(
+      await AppreciatingMockDecimalsFactory.deploy(
+        `AppreciatingToken_NAME:${index}`,
+        `AppreciatingToken_SYM:${index}`,
+        decimals,
+        underlying.address
+      )
+    )
+
+    await erc20.setExchangeRate(fp('1'))
+
+    await erc20.setRewardToken(rewardTokensLargeDecimals[decimals].address)
+
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+    )
+    const collateral = <AppreciatingMockDecimalsCollateral>(
+      await AppreciatingMockDecimalsCollateralFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: erc20.address,
+          maxTradeVolume: MAX_UOA,
+          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        },
+        REVENUE_HIDING
+      )
+    )
+
+    await assetRegistry.connect(owner).register(collateral.address)
+    return erc20
+  }
+
   const setupTrading = async (stRSRCut: BigNumber) => {
     // Configure Distributor
-    const rsrDist = bn(5).mul(stRSRCut).div(fp('1'))
-    const rTokenDist = bn(5).mul(fp('1').sub(stRSRCut)).div(fp('1'))
-    expect(rsrDist.add(rTokenDist)).to.equal(5)
+    const rsrDist = bn(10000).mul(stRSRCut).div(fp('1'))
+    const rTokenDist = bn(10000).sub(rsrDist)
+    expect(rsrDist.add(rTokenDist)).to.equal(10000)
     await expect(
-      distributor
-        .connect(owner)
-        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: rsrDist })
+      distributor.connect(owner).setDistributions(
+        [STRSR_DEST, FURNACE_DEST],
+        [
+          { rTokenDist: bn(0), rsrDist: rsrDist },
+          { rTokenDist: rTokenDist, rsrDist: bn(0) },
+        ]
+      )
     )
-      .to.emit(distributor, 'DistributionSet')
-      .withArgs(STRSR_DEST, bn(0), rsrDist)
-    await expect(
-      distributor
-        .connect(owner)
-        .setDistribution(FURNACE_DEST, { rTokenDist: rTokenDist, rsrDist: bn(0) })
-    )
-      .to.emit(distributor, 'DistributionSet')
-      .withArgs(FURNACE_DEST, rTokenDist, bn(0))
 
     // Set prices
     await setOraclePrice(rsrAsset.address, bn('1e8'))
@@ -327,8 +394,26 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const primeBasket = []
       const targetAmts = []
       for (let i = 0; i < basketSize; i++) {
-        expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
-        const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
+        expect(
+          collateralDecimals == 8 ||
+            collateralDecimals == 18 ||
+            collateralDecimals == 21 ||
+            collateralDecimals == 27
+        ).to.equal(true)
+        let token: CTokenMock | StaticATokenMock | AppreciatingMockDecimals
+        switch (collateralDecimals) {
+          case 8:
+            token = await prepCToken(i)
+            break
+          case 21:
+          case 27:
+            token = await prepLargeDecimalToken(i, collateralDecimals)
+            break
+          default:
+            token = await prepAToken(i) // 18 decimals
+            break
+        }
+
         primeBasket.push(token)
         targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
         await token.connect(owner).mint(addr1.address, MAX_UINT256)
@@ -373,7 +458,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         [fp('1e-6'), fp('1e30')], // RToken supply
         [1, MAX_BASKET_SIZE], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
-        [8, 18], // collateral decimals
+        [8, 18, 21, 27], // collateral decimals
         [fp('1e9'), fp('1').add(fp('1e-9'))], // exchange rate at appreciation
         [1, MAX_BASKET_SIZE], // how many collateral assets appreciate (up to)
         [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
@@ -383,7 +468,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         [fp('1e-6'), fp('1e30')], // RToken supply
         [7], // basket size
         [fp('1e-6'), fp('1e3')], // prime basket weights
-        [8, 18], // collateral decimals
+        [8, 18, 21, 27], // collateral decimals
         [fp('1e9')], // exchange rate at appreciation
         [1], // how many collateral assets appreciate (up to)
         [fp('0.6')], // StRSR cut (f)
@@ -419,7 +504,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     //
     // 1. RToken supply (including this in order to check 0 supply case)
     // 2. Size of reward-earning basket tokens
-    // 3. Number of reward tokens (1 or 2)
+    // 3. Number of reward tokens (1, 2, 3, or 4)
     // 4. Size of reward
     // 5. StRSR cut (previously: f)
 
@@ -458,17 +543,58 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
       await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
 
+      // Create new reward assets with large decimals (21 and 27)
+
+      const newRewardAsset21: Asset = <Asset>await AssetFactory.deploy(
+        PRICE_TIMEOUT,
+        await aaveAsset.chainlinkFeed(), // reuse
+        ORACLE_ERROR,
+        rewardToken21.address,
+        MAX_UOA,
+        MAX_ORACLE_TIMEOUT
+      )
+
+      const newRewardAsset27: Asset = <Asset>await AssetFactory.deploy(
+        PRICE_TIMEOUT,
+        await aaveAsset.chainlinkFeed(), // reuse
+        ORACLE_ERROR,
+        rewardToken27.address,
+        MAX_UOA,
+        MAX_ORACLE_TIMEOUT
+      )
+
+      await assetRegistry.connect(owner).register(newRewardAsset21.address)
+      await assetRegistry.connect(owner).register(newRewardAsset27.address)
+
       // Set up prime basket
       const primeBasket = []
       const targetAmts = []
       for (let i = 0; i < basketSize; i++) {
-        expect(numRewardTokens == 1 || numRewardTokens == 2).to.equal(true)
+        expect(numRewardTokens <= 4).to.equal(true)
         let token
         if (numRewardTokens == 1) {
           token = await prepCToken(i)
-        } else {
-          token = i % 2 == 0 ? await prepCToken(i) : await prepAToken(i)
+        } else if (numRewardTokens > 1) {
+          const which = i % numRewardTokens
+          switch (which) {
+            case 0:
+              token = await prepCToken(i)
+              break
+            case 1:
+              token = await prepAToken(i)
+              break
+            case 2:
+              token = await prepLargeDecimalToken(i, 21)
+              break
+            case 3:
+              token = await prepLargeDecimalToken(i, 27)
+              break
+            default:
+              token = await prepAToken(i) // 18 decimals
+              break
+          }
         }
+
         primeBasket.push(token)
         targetAmts.push(fp('1').div(basketSize))
         await token.connect(owner).mint(addr1.address, MAX_UINT256)
@@ -498,7 +624,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       // Grant rewards
       for (let i = 0; i < primeBasket.length; i++) {
         const decimals = await primeBasket[i].decimals()
-        expect(decimals == 8 || decimals == 18).to.equal(true)
+        expect(decimals == 8 || decimals == 18 || decimals == 21 || decimals == 27).to.equal(true)
         if (decimals == 8) {
           // cToken
           const oldRewards = await compoundMock.compBalances(backingManager.address)
@@ -510,6 +636,16 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
           const aToken = <StaticATokenMock>primeBasket[i]
           const rewards = rewardTok.mul(bn('1e18')).div(numRewardTokens)
           await aToken.setRewards(backingManager.address, rewards)
+        } else if (decimals == 21) {
+          // large decimal appreciating collateral
+          const appMockDecimals = <AppreciatingMockDecimals>primeBasket[i]
+          const rewards = rewardTok.mul(bn('1e21')).div(numRewardTokens)
+          await appMockDecimals.setRewards(backingManager.address, rewards)
+        } else if (decimals == 27) {
+          // large decimal appreciating collateral
+          const appMockDecimals = <AppreciatingMockDecimals>primeBasket[i]
+          const rewards = rewardTok.mul(bn('1e27')).div(numRewardTokens)
+          await appMockDecimals.setRewards(backingManager.address, rewards)
         }
       }
 
@@ -522,7 +658,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
         [1, MAX_BASKET_SIZE], // basket size
-        [1, 2], // num reward tokens
+        [1, 2, 3, 4], // num reward tokens
         [bn('0'), bn('1e11'), bn('1e6')], // reward amount (whole tokens), up to 100B supply tokens
         [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
       ]
@@ -530,7 +666,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
         [1, 7], // basket size
-        [2], // num reward tokens
+        [2, 4], // num reward tokens
         [bn('1e11')], // reward amount (whole tokens), up to 100B supply tokens
         [fp('0.6')], // StRSR cut (f)
       ]
@@ -631,8 +767,26 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const primeBasket = []
       const targetAmts = []
       for (let i = 0; i < basketSize; i++) {
-        expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
-        const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
+        expect(
+          collateralDecimals == 8 ||
+            collateralDecimals == 18 ||
+            collateralDecimals == 21 ||
+            collateralDecimals == 27
+        ).to.equal(true)
+        let token: CTokenMock | StaticATokenMock | AppreciatingMockDecimals
+        switch (collateralDecimals) {
+          case 8:
+            token = await prepCToken(i)
+            break
+          case 21:
+          case 27:
+            token = await prepLargeDecimalToken(i, collateralDecimals)
+            break
+          default:
+            token = await prepAToken(i) // 18 decimals
+            break
+        }
+
         primeBasket.push(token)
         targetAmts.push(primeWeight.div(basketSize).add(1))
         await token.connect(owner).mint(addr1.address, MAX_UINT256)
@@ -691,7 +845,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         [fp('1e-6'), fp('1e30')], // RToken supply
         [2, MAX_BASKET_SIZE], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
-        [8, 18], // collateral decimals
+        [8, 18, 21, 27], // collateral decimals
         [1, MAX_BASKET_SIZE - 1], // how many collateral assets default (up to)
       ]
     } else {
@@ -699,7 +853,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         [fp('1e-6'), fp('1e30')], // RToken supply
         [7], // basket size
         [fp('1e-6'), fp('1e3')], // prime basket weights
-        [8, 18], // collateral decimals
+        [8, 18, 21, 27], // collateral decimals
         [1], // how many collateral assets default (up to)
       ]
     }
