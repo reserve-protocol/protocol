@@ -896,7 +896,7 @@ export default function fn<X extends CollateralFixtureContext>(
           ? '0x796d2367AF69deB3319B8E10712b8B65957371c3'
           : onArbitrum
           ? '0xBe81e75C579b090428CC5495540541231FD3c0bD'
-          : '0x0774dF07205a5E9261771b19afa62B6e757f7eF8'
+          : '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
         await whileImpersonating(whale, async (signer) => {
           await rsr.connect(signer).transfer(addr1.address, buyAmt)
         })
