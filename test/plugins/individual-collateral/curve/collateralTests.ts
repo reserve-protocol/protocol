@@ -1060,10 +1060,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           ? '0xBe81e75C579b090428CC5495540541231FD3c0bD'
           : '0x0774dF07205a5E9261771b19afa62B6e757f7eF8'
         await whileImpersonating(whale, async (signer) => {
-          console.log('before RSR transfer')
           await rsr.connect(signer).transfer(addr1.address, buyAmt)
         })
-        await rsr.mint(addr1.address, buyAmt)
         await advanceToTimestamp((await trade.endTime()) - 1)
 
         await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(

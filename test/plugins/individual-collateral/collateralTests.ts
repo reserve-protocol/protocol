@@ -900,7 +900,6 @@ export default function fn<X extends CollateralFixtureContext>(
         await whileImpersonating(whale, async (signer) => {
           await rsr.connect(signer).transfer(addr1.address, buyAmt)
         })
-        await rsr.connect(addr1).approve(trade.address, buyAmt)
         await advanceToTimestamp((await trade.endTime()) - 1)
 
         // Bid
