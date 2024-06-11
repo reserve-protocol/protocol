@@ -134,7 +134,7 @@ jobs:
           TS_NODE_SKIP_IGNORE: true
           BASE_RPC_URL: https://base-mainnet.infura.io/v3/${{ secrets.INFURA_BASE_KEY }}
           FORK_NETWORK: base
-          FORK_BLOCK: 4446300
+          FORK_BLOCK: 15637551
           FORK: 1
           PROTO_IMPL: 1
 

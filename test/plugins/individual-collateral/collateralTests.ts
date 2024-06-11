@@ -630,6 +630,9 @@ export default function fn<X extends CollateralFixtureContext>(
     })
 
     describe('integration tests', () => {
+      const onBase = useEnv('FORK_NETWORK').toLowerCase() == 'base'
+      const onArbitrum = useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum'
+
       before(resetFork)
 
       let ctx: X
@@ -654,7 +657,8 @@ export default function fn<X extends CollateralFixtureContext>(
       let assetRegistry: IAssetRegistry
       let backingManager: TestIBackingManager
       let basketHandler: TestIBasketHandler
-      let rTokenTrader: TestIRevenueTrader
+      let rsrTrader: TestIRevenueTrader
+      let rsr: ERC20Mock
 
       let deployer: TestIDeployer
       let facadeWrite: FacadeWrite
@@ -663,8 +667,8 @@ export default function fn<X extends CollateralFixtureContext>(
 
       const config = {
         dist: {
-          rTokenDist: bn(10000), // 100% RToken
-          rsrDist: bn(0), // 0% RSR
+          rTokenDist: bn(0), // 0% RToken
+          rsrDist: bn(10000), // 100% RSR
         },
         minTradeVolume: bn('0'), // $0
         rTokenMaxTradeVolume: MAX_UINT192, // +inf
@@ -720,9 +724,9 @@ export default function fn<X extends CollateralFixtureContext>(
         let protocol: DefaultFixture
         ;({ ctx, protocol } = await loadFixture(integrationFixture))
         ;({ collateral } = ctx)
-        ;({ deployer, facadeWrite, govParams } = protocol)
+        ;({ deployer, facadeWrite, govParams, rsr } = protocol)
 
-        supply = fp('10')
+        supply = fp('1')
 
         // Create a paired collateral of the same targetName
         pairedColl = await makePairedCollateral(await collateral.targetName())
@@ -777,8 +781,8 @@ export default function fn<X extends CollateralFixtureContext>(
           await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
         )
         rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
-        rTokenTrader = <TestIRevenueTrader>(
-          await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
+        rsrTrader = <TestIRevenueTrader>(
+          await ethers.getContractAt('TestIRevenueTrader', await main.rsrTrader())
         )
 
         // Set initial governance roles
@@ -862,43 +866,49 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       it('forwards revenue and sells in a revenue auction', async () => {
+        expect(await collateralERC20.balanceOf(rsrTrader.address)).to.be.eq(0)
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-        await rToken.connect(addr1).approve(router.address, MAX_UINT256)
+        await rsr.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
         let mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
-        mintAmt = mintAmt.gt('10000') ? mintAmt : bn('10000')
+        mintAmt = mintAmt.gt('100000') ? mintAmt : bn('100000') // fewest tokens distributor will transfer
         await mintCollateralTo(ctx, mintAmt, addr1, backingManager.address)
         await backingManager.forwardRevenue([collateralERC20.address])
-        expect(await collateralERC20.balanceOf(rTokenTrader.address)).to.be.gt(0)
+        expect(await collateralERC20.balanceOf(rsrTrader.address)).to.be.gt(0)
 
         // Run revenue auction
-        await expect(
-          rTokenTrader.manageTokens([collateralERC20.address], [TradeKind.DUTCH_AUCTION])
-        )
-          .to.emit(rTokenTrader, 'TradeStarted')
-          .withArgs(anyValue, collateralERC20.address, rToken.address, anyValue, anyValue)
-        const tradeAddr = await rTokenTrader.trades(collateralERC20.address)
+        await expect(rsrTrader.manageTokens([collateralERC20.address], [TradeKind.DUTCH_AUCTION]))
+          .to.emit(rsrTrader, 'TradeStarted')
+          .withArgs(anyValue, collateralERC20.address, rsr.address, anyValue, anyValue)
+        const tradeAddr = await rsrTrader.trades(collateralERC20.address)
         expect(tradeAddr).to.not.equal(ZERO_ADDRESS)
         const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
         expect(await trade.sell()).to.equal(collateralERC20.address)
-        expect(await trade.buy()).to.equal(rToken.address)
+        expect(await trade.buy()).to.equal(rsr.address)
         const buyAmt = await trade.bidAmount(await trade.endTime())
-        await rToken.connect(addr1).approve(trade.address, buyAmt)
+        const whale = onBase
+          ? '0x46271115F374E02b5afe357C8E8Dad474c8DE1cF'
+          : onArbitrum
+          ? '0x407ef85920efafda29f8cde388c81f1531cf6684'
+          : '0x0774dF07205a5E9261771b19afa62B6e757f7eF8'
+        await whileImpersonating(whale, async (signer) => {
+          console.log('before RSR transfer')
+          await rsr.connect(signer).transfer(addr1.address, buyAmt)
+        })
+        await rsr.connect(addr1).approve(trade.address, buyAmt)
         await advanceToTimestamp((await trade.endTime()) - 1)
 
         // Bid
         await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
-          rTokenTrader,
+          rsrTrader,
           'TradeSettled'
         )
-        expect(await rTokenTrader.tradesOpen()).to.equal(0)
+        expect(await rsrTrader.tradesOpen()).to.equal(0)
       })
 
       // === Integration Test Helpers ===
 
       const makePairedCollateral = async (target: string): Promise<TestICollateral> => {
-        const onBase = useEnv('FORK_NETWORK').toLowerCase() == 'base'
-        const onArbitrum = useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum'
         const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
           'MockV3Aggregator'
         )
