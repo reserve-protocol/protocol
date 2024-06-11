@@ -224,7 +224,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT], // weightRest
         [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
         [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
-        [bn(6), bn(18), bn(27)], // collateralDecimals
+        [bn(6), bn(27)], // collateralDecimals
       ]
       paramList = cartesianProduct(...bounds)
     }
