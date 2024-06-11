@@ -888,14 +888,14 @@ export default function fn<X extends CollateralFixtureContext>(
         const buyAmt = await trade.bidAmount(await trade.endTime())
 
         // The base whale below is hyUSDStRSR. This is bad, and generally we don't want to do this. But there
-        // are no RSR holders on Base in size that hold their balance across many different blocks, since
-        // everyone is farming _something_. Since the individual tests each have their own block they use,
-        // this was the easiest way to make everything work. I'm not worried about this too much in this case
-        // because hyUSDStRSR is _not_ the RToken we are testing here, so it has no impact on the test case.
+        // are no RSR holders on Base in size that hold their balance consistently across blocks, since
+        // everyone is farming. Since the individual tests each have their own block they use,
+        // this was the easiest way to make everything work. I'm not worried about this in this case
+        // because hyUSDStRSR is _not_ the RToken we are testing here, so it should have no impact.
         const whale = onBase
           ? '0x796d2367AF69deB3319B8E10712b8B65957371c3'
           : onArbitrum
-          ? '0x407ef85920efafda29f8cde388c81f1531cf6684'
+          ? '0xBe81e75C579b090428CC5495540541231FD3c0bD'
           : '0x0774dF07205a5E9261771b19afa62B6e757f7eF8'
         await whileImpersonating(whale, async (signer) => {
           await rsr.connect(signer).transfer(addr1.address, buyAmt)
