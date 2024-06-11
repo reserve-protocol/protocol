@@ -886,13 +886,18 @@ export default function fn<X extends CollateralFixtureContext>(
         expect(await trade.sell()).to.equal(collateralERC20.address)
         expect(await trade.buy()).to.equal(rsr.address)
         const buyAmt = await trade.bidAmount(await trade.endTime())
+
+        // The base whale below is hyUSDStRSR. This is bad, and generally we don't want to do this. But there
+        // are no RSR holders on Base in size that hold their balance across many different blocks, since
+        // everyone is farming _something_. Since the individual tests each have their own block they use,
+        // this was the easiest way to make everything work. I'm not worried about this too much in this case
+        // because hyUSDStRSR is _not_ the RToken we are testing here, so it has no impact on the test case.
         const whale = onBase
-          ? '0x67510E1104112484E73c20BB609070989E4E3f9b'
+          ? '0x796d2367AF69deB3319B8E10712b8B65957371c3'
           : onArbitrum
           ? '0x407ef85920efafda29f8cde388c81f1531cf6684'
           : '0x0774dF07205a5E9261771b19afa62B6e757f7eF8'
         await whileImpersonating(whale, async (signer) => {
-          console.log('before RSR transfer')
           await rsr.connect(signer).transfer(addr1.address, buyAmt)
         })
         await rsr.connect(addr1).approve(trade.address, buyAmt)
