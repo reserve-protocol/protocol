@@ -104,8 +104,9 @@ contract GnosisTrade is ITrade, Versioned {
         endTime = uint48(block.timestamp) + batchAuctionLength;
 
         // {buyTok/sellTok}
-        worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
-            shiftl_toFix(req.sellAmount, -int8(sell.decimals()))
+        worstCasePrice = divuu(req.minBuyAmount, req.sellAmount).shiftl(
+            int8(sell.decimals()) - int8(buy.decimals()),
+            FLOOR
         );
 
         // Downsize our sell amount to adjust for fee
@@ -211,8 +212,9 @@ contract GnosisTrade is ITrade, Versioned {
             uint256 adjustedBuyAmt = boughtAmt + 1;
 
             // {buyTok/sellTok}
-            uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, -int8(buy.decimals())).div(
-                shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
+            uint192 clearingPrice = divuu(adjustedBuyAmt, adjustedSoldAmt).shiftl(
+                int8(sell.decimals()) - int8(buy.decimals()),
+                FLOOR
             );
 
             if (clearingPrice.lt(worstCasePrice)) {

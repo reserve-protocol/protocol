@@ -8,7 +8,7 @@ import { OracleLib } from "./OracleLib.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import { IERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { shiftl_toFix } from "../../libraries/Fixed.sol";
+import { FLOOR, shiftl_toFix } from "../../libraries/Fixed.sol";
 
 /**
  * @title ERC4626FiatCollateral
@@ -33,7 +33,8 @@ contract ERC4626FiatCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        // already accounts for fees to be taken out
-        return shiftl_toFix(IERC4626(address(erc20)).convertToAssets(oneShare), -refDecimals);
+        // already accounts for fees to be taken out -- FLOOR
+        return
+            shiftl_toFix(IERC4626(address(erc20)).convertToAssets(oneShare), -refDecimals, FLOOR);
     }
 }
