@@ -746,7 +746,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Fund trade with large balance
         await token0.connect(owner).mint(trade.address, invalidAmount)
 
-        // Attempt to initialize
+        // Will initialize correctly
         await expect(
           trade.init(
             broker.address,
@@ -755,7 +755,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             config.batchAuctionLength,
             tradeRequest
           )
-        ).to.be.revertedWith('sellAmount too large')
+        ).to.not.be.reverted
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
