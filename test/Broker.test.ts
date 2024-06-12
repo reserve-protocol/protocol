@@ -1524,7 +1524,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18'), bn('21'), bn('27')]
+    const decimals = [bn('1'), bn('6'), bn('18'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
@@ -1532,12 +1532,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     // auction progression %: these will get rounded to blocks later
     const progression = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
 
-    // total cases is 5 * 5 * 3 * 4 = 300
+    // total cases is 2 * 4 * 4 * 3 * 4 = 384
 
     if (SLOW) {
+      decimals.push(bn('8'), bn('9'), bn('21'))
       progression.push(fp('0.176334768961354965'), fp('0.523449931646439834'))
 
-      // total cases is 5 * 5 * 3 * 6 = 450
+      // total cases is 2 * 7 * 7 * 3 * 6 = 1764
     }
 
     const paramList = cartesianProduct(bidTypes, decimals, decimals, auctionSellAmts, progression)
