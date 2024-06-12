@@ -163,6 +163,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       beforeEach(async () => {
+        await resetFork()
         ;[, alice] = await ethers.getSigners()
         ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
         ;({ chainlinkFeed, collateral } = ctx)
@@ -211,8 +212,6 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('prices', () => {
-        before(resetFork) // important for getting prices/refPerToks to behave predictably
-
         it('enters IFFY state when price becomes stale', async () => {
           const decayDelay = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
           await advanceToTimestamp((await getLatestBlockTimestamp()) + decayDelay)
@@ -360,7 +359,7 @@ export default function fn<X extends CollateralFixtureContext>(
         itHasRevenueHiding('does revenue hiding correctly', async () => {
           const tempCtx = await makeCollateralFixtureContext(alice, {
             erc20: ctx.tok.address,
-            revenueHiding: fp('0.01'),
+            revenueHiding: fp('0.0101'),
           })()
           // ctx.collateral = await deployCollateral()
 
@@ -448,8 +447,6 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('status', () => {
-        before(resetFork)
-
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)

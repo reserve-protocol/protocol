@@ -57,7 +57,7 @@ jobs:
       - run: yarn test:plugins
 
   plugin-tests-mainnet-1:
-    name: 'Plugin Integration Tests (Mainnet) - 1/2'
+    name: 'Plugin Integration Tests (Mainnet) - 1/3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -84,7 +84,7 @@ jobs:
           FORK: 1
 
   plugin-tests-mainnet-2:
-    name: 'Plugin Integration Tests (Mainnet) - 2/2'
+    name: 'Plugin Integration Tests (Mainnet) - 2/3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -101,7 +101,34 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Zd-z]*/*.test.ts
+      - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Ld-l]*/*.test.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=32768'
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          FORK_NETWORK: mainnet
+          PROTO_IMPL: 1
+          FORK: 1
+
+  plugin-tests-mainnet-3:
+    name: 'Plugin Integration Tests (Mainnet) - 3/3'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn hardhat test ./test/plugins/individual-collateral/[M-Zm-z]*/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
