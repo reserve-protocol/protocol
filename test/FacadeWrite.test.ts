@@ -164,8 +164,8 @@ describe('FacadeWrite contract', () => {
 
     // Decrease revenue splits for nicer rounding
     const localConfig = cloneDeep(config)
-    localConfig.dist.rTokenDist = bn('394')
-    localConfig.dist.rsrDist = bn('591')
+    localConfig.dist.rTokenDist = bn('4000')
+    localConfig.dist.rsrDist = bn('6000')
 
     // Set parameters
     rTokenConfig = {

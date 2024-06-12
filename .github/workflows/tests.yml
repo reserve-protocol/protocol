@@ -76,7 +76,7 @@ jobs:
             hardhat-network-fork-
       - run: yarn hardhat test ./test/plugins/individual-collateral/[A-Ca-c]*/*.test.ts ./test/plugins/individual-collateral/[A-Ca-c]*/*/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
@@ -103,7 +103,7 @@ jobs:
             hardhat-network-fork-
       - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Zd-z]*/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
@@ -130,7 +130,7 @@ jobs:
             hardhat-network-fork-
       - run: npx hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido}/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           BASE_RPC_URL: https://base-mainnet.infura.io/v3/${{ secrets.INFURA_BASE_KEY }}
           FORK_NETWORK: base
@@ -158,7 +158,7 @@ jobs:
             hardhat-network-fork-
       - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3,curve/cvx}/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           ARBITRUM_RPC_URL: https://arb-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_ARBITRUM_KEY }}
           FORK_NETWORK: arbitrum
@@ -178,7 +178,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn test:p0
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
 
   p1-tests:
     name: 'P1 Tests'
@@ -192,7 +192,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn test:p1
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
 
   scenario-tests:
     name: 'Scenario Tests'
@@ -206,7 +206,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn test:scenario
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
 
   extreme-tests:
     name: 'Extreme Tests'
@@ -229,7 +229,7 @@ jobs:
             hardhat-network-fork-
       - run: yarn test:extreme:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
@@ -256,7 +256,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn test:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
@@ -281,7 +281,7 @@ jobs:
             hardhat-network-fork-
       - run: npx hardhat test ./test/monitor/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
