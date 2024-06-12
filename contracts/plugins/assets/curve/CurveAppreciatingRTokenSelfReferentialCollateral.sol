@@ -19,8 +19,9 @@ import "./CurveAppreciatingRTokenFiatCollateral.sol";
  * tar = ETH
  * UoA = USD
  *
- * @notice Curve pools with native ETH or ERC777 should be avoided,
- *  see docs/collateral.md for information
+ * @notice This Curve Pool contains WETH, which can be used to intercept execution by providing
+ *         `use_eth=true` to remove_liquidity()/remove_liquidity_one_coin(). It is guarded against
+ *          by the recommended method of calling `claim_admin_fees()`.
  */
 contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -36,46 +37,18 @@ contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRT
         PTConfiguration memory ptConfig
     ) CurveAppreciatingRTokenFiatCollateral(config, revenueHiding, ptConfig) {}
 
-    // solhint-enable no-empty-blocks
+    /// Should not revert (unless CurvePool is re-entrant!)
+    /// Refresh exchange rates and update default status.
+    function refresh() public virtual override {
+        curvePool.claim_admin_fees(); // revert if curve pool is re-entrant
+        super.refresh();
+    }
 
     // === Internal ===
 
     function _anyDepeggedInPool() internal view virtual override returns (bool) {
-        // Assumption: token0 is the RToken; token1 is the reference token
-
-        // Check RToken price against reference token, accounting for appreciation
-        try this.tokenPrice(0) returns (uint192 low0, uint192 high0) {
-            // {UoA/tok} = {UoA/tok} + {UoA/tok}
-            uint192 mid0 = (low0 + high0) / 2;
-
-            // Remove the appreciation portion of the RToken price
-            // {UoA/ref} = {UoA/tok} * {tok} / {ref}
-            mid0 = mid0.muluDivu(rToken.totalSupply(), rToken.basketsNeeded());
-
-            try this.tokenPrice(1) returns (uint192 low1, uint192 high1) {
-                // {UoA/ref} = {UoA/ref} + {UoA/ref}
-                uint192 mid1 = (low1 + high1) / 2;
-
-                // {target/ref} = {UoA/ref} / {UoA/ref} * {target/ref}
-                uint192 ratio = mid0.div(mid1); // * targetPerRef(), but we know it's 1
-
-                // Check price of RToken relative to reference token
-                if (ratio < pegBottom || ratio > pegTop) return true;
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                // untested:
-                //      pattern validated in other plugins, cost to test is high
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                return true;
-            }
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            // untested:
-            //      pattern validated in other plugins, cost to test is high
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            return true;
-        }
-
+        // WETH cannot de-peg against ETH (the price feed we have is ETH/USD)
+        // The RToken does not need to be monitored given more restrictive hard-default checks
         return false;
     }
 }
