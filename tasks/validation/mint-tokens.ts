@@ -97,8 +97,9 @@ task('mint-tokens', 'Mints all the tokens to an address')
     }
   })
 
-task('give-rsr', 'Mints RSR to an address on a tenderly fork')
+task('give-rsr', 'Mints RSR to an address')
   .addParam('address', 'Ethereum address to receive the tokens')
+  .addOptionalParam('amount', 'Amount of RSR to mint', fp('1e9').toString(), types.string)
   .setAction(async (params, hre) => {
     const chainId = await getChainId(hre)
 
@@ -108,11 +109,13 @@ task('give-rsr', 'Mints RSR to an address on a tenderly fork')
     }
 
     const rsr = await hre.ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR!)
-
-    const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
+    const rsrWhale =
+      chainId == '8453'
+        ? '0x95F04B5594e2a944CA91d56933D119841eeF9a99'
+        : '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
     await whileImpersonating(hre, rsrWhale, async (signer) => {
-      await rsr.connect(signer).transfer(params.address, fp('1e9'))
+      await rsr.connect(signer).transfer(params.address, params.amount)
     })
 
-    console.log(`1B RSR sent to ${params.address}`)
+    console.log(`${params.amount} RSR sent to ${params.address}`)
   })
