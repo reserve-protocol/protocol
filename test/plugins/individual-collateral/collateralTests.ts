@@ -359,7 +359,7 @@ export default function fn<X extends CollateralFixtureContext>(
         itHasRevenueHiding('does revenue hiding correctly', async () => {
           const tempCtx = await makeCollateralFixtureContext(alice, {
             erc20: ctx.tok.address,
-            revenueHiding: fp('0.01'),
+            revenueHiding: fp('0.0101'),
           })()
           // ctx.collateral = await deployCollateral()
 
