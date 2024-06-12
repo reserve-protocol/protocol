@@ -793,8 +793,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       const onBase = useEnv('FORK_NETWORK').toLowerCase() == 'base'
       const onArbitrum = useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum'
 
-      before(resetFork)
-
       let ctx: X
       let owner: SignerWithAddress
       let addr1: SignerWithAddress
@@ -879,6 +877,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       beforeEach(async () => {
+        await resetFork()
         let protocol: DefaultFixture
         ;({ ctx, protocol } = await loadFixture(integrationFixture))
         ;({ collateral } = ctx)
