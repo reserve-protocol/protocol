@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { arbitrumL2Chains, networkConfig } from '../../../../common/configuration'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus, ONE_ADDRESS } from '../../../../common/constants'
 import {
@@ -18,7 +18,7 @@ import {
   L2ConvexStableCollateral,
   IConvexRewardPool,
 } from '../../../../typechain'
-import { revenueHiding } from '../../utils'
+import { combinedError, revenueHiding } from '../../utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -129,7 +129,9 @@ async function main() {
         oracleError: bn('1'), // unused but cannot be zero
         oracleTimeout: ARB_USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
         maxTradeVolume: MAX_TRADE_VOL,
-        defaultThreshold: DEFAULT_THRESHOLD,
+        defaultThreshold: combinedError(ARB_crvUSD_ORACLE_ERROR, ARB_USDC_ORACLE_ERROR)
+          .add(fp('0.01'))
+          .toString(),
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       revenueHiding.toString(),

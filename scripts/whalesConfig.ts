@@ -1,5 +1,4 @@
-import { ITokens } from "#/common/configuration"
-import fs from "fs"
+import fs from 'fs'
 
 export interface Whales {
   [key: string]: string
@@ -9,8 +8,8 @@ export interface Updated {
 }
 
 export interface NetworkWhales {
-    tokens: Whales
-    lastUpdated: Updated
+  tokens: Whales
+  lastUpdated: Updated
 }
 
 export interface RTokens {
@@ -45,13 +44,14 @@ export const RTOKENS: RTokens = {
     '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff'.toLowerCase(), // bsdETH
     '0xfE0D6D83033e313691E96909d2188C150b834285'.toLowerCase(), // iUSDC
     '0xC9a3e2B3064c1c0546D3D0edc0A748E9f93Cf18d'.toLowerCase(), // VAYA
+    '0x641B0453487C9D14c5df96d45a481ef1dc84e31f'.toLowerCase(), // MAAT
   ],
   // arbitrum
   '42161': [
     '0x12275DCB9048680c4Be40942eA4D92c74C63b844'.toLowerCase(), // eUSD
     '0x18c14c2d707b2212e17d1579789fc06010cfca23'.toLowerCase(), // ETH+
     '0x96a993f06951b01430523d0d5590192d650ebf3e'.toLowerCase(), // rgUSD
-  ]
+  ],
 }
 
 export function getWhalesFileName(chainId: string | number): string {

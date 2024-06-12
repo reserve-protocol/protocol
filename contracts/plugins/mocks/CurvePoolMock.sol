@@ -15,6 +15,15 @@ contract CurvePoolMock is ICurvePool {
         coins = _coins;
     }
 
+    function claim_admin_fees() external {}
+
+    function remove_liquidity(
+        uint256 _amount,
+        uint256[2] calldata min_amounts,
+        bool use_eth,
+        address receiver
+    ) external {}
+
     function setBalances(uint256[] memory newBalances) external {
         _balances = newBalances;
     }

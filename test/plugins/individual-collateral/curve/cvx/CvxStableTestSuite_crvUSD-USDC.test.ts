@@ -208,6 +208,7 @@ const opts = {
   collateralSpecificStatusTests,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  itChecksTargetPerRefDefault: it,
   itClaimsRewards: it,
   isMetapool: false,
   resetFork: getResetFork(19287000),

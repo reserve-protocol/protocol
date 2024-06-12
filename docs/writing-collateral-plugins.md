@@ -55,8 +55,8 @@ npx hardhat test test/plugins/individual-collateral/<protocol>/<MyNewCollaterPlu
 
 ## Submission
 
-Make a pr against the `master` branch in the Reserve [protocol repo](https://github.com/reserve-protocol/protocol) and tag `larrythecucumber321` as a reviewer.
+Make a pr against the `master` branch in the Reserve [protocol repo](https://github.com/reserve-protocol/protocol).
 
 ## Support
 
-If you need support along the way, join us in the [Reserve discord](https://discord.gg/FYsAUB3m) and tag `@Larry the Cucumber#7595` or any dev that is online.
+If you need support along the way, join us in the [Reserve discord](https://discord.gg/FYsAUB3m) #technical-discussions channel.
