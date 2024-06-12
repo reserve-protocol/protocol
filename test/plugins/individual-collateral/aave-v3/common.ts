@@ -138,7 +138,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
     const staticWrapper = ctx.staticWrapper
     const currentRate = await staticWrapper.rate()
 
-    await staticWrapper.mockSetCustomRate(currentRate.mul(changeFactor).div(100))
+    await staticWrapper.mockSetCustomRate(currentRate.mul(changeFactor).div(100).add(1)) // account for rounding
   }
 
   const reduceRefPerTok = async (
