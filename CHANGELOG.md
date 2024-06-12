@@ -2,7 +2,9 @@
 
 # 4.0.0
 
-TODO
+This release prepares the core protocol for veRSR through the introduction of 3 registries (`DAOFeeRegistry`, `AssetPluginRegistry`, and `VersionRegistry`) and through restricting component upgrades to be handled by `Main`, where upgrade constraints can be enforced.
+
+The release also expands collateral decimal support from 18 to 27.
 
 ## Upgrade Steps
 
@@ -12,9 +14,37 @@ Make sure distributor table sums to >10000.
 
 ## Core Protocol Contracts
 
+- `AssetRegistry`
+  - Prevent registering assets that are not in the `AssetPluginRegistry`
+  - Add `validateCurrentAssets() view`
+- `Broker`
+  - Make setters only callable by `Main`
 - `Distributor`
-  - Breaking change: Remove `setDistribution()` in favor of `setDistributions()`
-  - New Invariant: Table must sum to >=10000 for precision reasons
+  - Add `setDistributions()` function to parallel `setDistribution()`
+  - Take DAO fee out account in `distribute()` and `totals()`
+  - Add new revenue share table invariant: must sum to >=10000 (for precision reasons)
+- `Main`
+  - Add `versionRegistry()`/`assetPluginRegistry()`/`daoFeeRegistry()` getters
+  - Add `setVersionRegistry()`/`setAssetPluginRegistry()`/`setDaoFeeRegistry()` setters
+  - Add `upgradeMainTo()` + `upgradeRTokenTo()` functions to handle upgrade of Main + Components
+  - Make Main the only caller that can upgrade Main
+
+## Plugins
+
+### Assets
+
+No functional change. FLOOR rounding added explicitly to `shiftl_toFix`
+
+### Trading
+
+Small bugfix to `GnosisTrade`. Should prevent donated tokens from causing the trade to revert.
+
+### Facades
+
+- `ActFacet`
+  - Expand to handle 4.0 version numbers
+- `ReadFacet`
+  - Make `shiftl_toFix` rounding in L349 CEIL
 
 # 3.4.0
 
