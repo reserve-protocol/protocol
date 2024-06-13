@@ -64,20 +64,22 @@ export const voteProposal = async (
     if (!proposal) {
       // gather enough whale voters
       let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
-      const startBlock = await governor.proposalSnapshot(proposalId)
-      const quorum = await governor.quorum(startBlock)
+      const quorum = await governor.quorum(await governor.proposalSnapshot(proposalId))
 
       let quorumNotReached = true
       let currentVoteAmount = BigNumber.from(0)
       let i = 0
       while (quorumNotReached) {
         const whale = whales[i]
+        if (!whale) throw new Error(`missing whale at index ${i} for RToken ${rtokenAddress}`)
         currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
         i += 1
+        console.log(`Votes: ${currentVoteAmount} / ${quorum}`)
         if (currentVoteAmount.gt(quorum)) {
           quorumNotReached = false
         }
       }
+      if (quorumNotReached) throw new Error('quorum not reached')
 
       whales = whales.slice(0, i)
 
@@ -173,7 +175,14 @@ export const executeProposal = async (
     console.log('Executing now...')
 
     // Execute
-    await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
+    const tx = await governor.execute(
+      proposal.targets,
+      proposal.values,
+      proposal.calldatas,
+      descriptionHash
+    )
+    const receipt = await tx.wait()
+    console.log('Gas Used:', receipt.gasUsed.toString())
 
     propState = await governor.state(proposalId)
     await validatePropState(propState, ProposalState.Executed)
@@ -196,9 +205,28 @@ export const stakeAndDelegateRsr = async (
 
   await whileImpersonating(hre, user, async (signer) => {
     const bal = await rsr.balanceOf(signer.address)
-    await rsr.approve(stRSR.address, bal)
-    await stRSR.stake(bal)
-    await stRSR.delegate(signer.address)
+    await rsr.connect(signer).approve(stRSR.address, bal)
+    await stRSR.connect(signer).stake(bal)
+    await stRSR.connect(signer).delegate(signer.address)
+  })
+}
+
+export const unstakeAndWithdrawRsr = async (
+  hre: HardhatRuntimeEnvironment,
+  rtokenAddress: string,
+  user: string
+) => {
+  const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
+  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
+  const unstakingDelay = await stRSR.unstakingDelay()
+
+  await whileImpersonating(hre, user, async (signer) => {
+    const bal = await stRSR.balanceOf(signer.address)
+    await stRSR.connect(signer).unstake(bal)
+    await advanceTime(hre, unstakingDelay + 2)
+    await pushOraclesForward(hre, rToken.address, []) // required to withdraw
+    await stRSR.connect(signer).withdraw(signer.address, 0)
   })
 }
 
@@ -230,7 +258,13 @@ export const proposeUpgrade = async (
   console.log(`\nGenerating and proposing proposal...`)
   const [tester] = await hre.ethers.getSigners()
 
-  await hre.run('give-rsr', { address: tester.address })
+  const rToken = await hre.ethers.getContractAt('IRToken', rTokenAddress)
+  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
+  const amount = (await stRSR.getStakeRSR()).div(100) // 1% increase in staked RSR
+
+  // Stake and delegate
+  await hre.run('give-rsr', { address: tester.address, amount: amount.toString() })
   await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)

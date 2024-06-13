@@ -6,14 +6,16 @@ import { Asset, AppreciatingFiatCollateral, CollateralConfig, IRewardable } from
 import { MorphoTokenisedDeposit } from "./MorphoTokenisedDeposit.sol";
 import { OracleLib } from "../OracleLib.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { shiftl_toFix, FIX_ONE, FixLib, CEIL } from "../../../libraries/Fixed.sol";
+import { shiftl_toFix, FIX_ONE, FLOOR, FixLib, CEIL } from "../../../libraries/Fixed.sol";
+
+// solhint-enable max-line-length
 
 // solhint-enable max-line-length
 
 /**
  * @title MorphoSelfReferentialCollateral
  * @notice Collateral plugin for a Morpho pool with self referential collateral, like WETH
- * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -65,7 +67,15 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals);
+        return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals, FLOOR);
+    }
+
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @custom:delegate-call
+    function claimRewards() external virtual override(Asset, IRewardable) {
+        uint256 _bal = morpho.balanceOf(address(this));
+        IRewardable(address(erc20)).claimRewards();
+        emit RewardsClaimed(morpho, morpho.balanceOf(address(this)) - _bal);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

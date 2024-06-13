@@ -11,7 +11,7 @@ import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
 /**
  * @title MetaMorphoSelfReferentialCollateral
  * @notice Collateral plugin for a MetaMorpho vault with self referential collateral, like WETH
- * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  *
  * For example: Re7WETH
  */

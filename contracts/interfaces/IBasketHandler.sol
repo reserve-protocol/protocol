@@ -171,6 +171,20 @@ interface IBasketHandler is IComponent {
 }
 
 interface TestIBasketHandler is IBasketHandler {
+    function getPrimeBasket()
+        external
+        view
+        returns (
+            IERC20[] memory erc20s,
+            bytes32[] memory targetNames,
+            uint192[] memory targetAmts
+        );
+
+    function getBackupConfig(bytes32 targetName)
+        external
+        view
+        returns (IERC20[] memory erc20s, uint256 max);
+
     function lastCollateralized() external view returns (uint48);
 
     function warmupPeriod() external view returns (uint48);

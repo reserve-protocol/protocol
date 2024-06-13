@@ -1,6 +1,7 @@
 import { BigNumber, BigNumberish } from 'ethers'
 import { gql, GraphQLClient } from 'graphql-request'
 import { useEnv } from './env'
+import { subgraphURLs, Network, validateSubgraphURL } from '#/utils/fork'
 
 export interface Delegate {
   delegatedVotesRaw: BigNumberish
@@ -8,7 +9,7 @@ export interface Delegate {
 }
 
 export const getDelegates = async (governance: string): Promise<Array<Delegate>> => {
-  const client = new GraphQLClient(useEnv('SUBGRAPH_URL'))
+  const client = new GraphQLClient(subgraphURLs[(useEnv('FORK_NETWORK') as Network) ?? 'mainnet'])
   const query = gql`
     query getDelegates($governance: String!) {
       delegates(
@@ -29,6 +30,9 @@ export const getDelegates = async (governance: string): Promise<Array<Delegate>>
 }
 
 export interface Proposal {
+  rtoken?: string
+  governor?: string
+  timelock?: string
   targets: Array<string>
   values: Array<BigNumber>
   calldatas: Array<string>
@@ -37,10 +41,10 @@ export interface Proposal {
 }
 
 export const getProposalDetails = async (proposalId: string): Promise<Proposal> => {
-  if (!useEnv('SUBGRAPH_URL')) {
-    throw new Error('Please add a valid SUBGRAPH_URL to your .env')
-  }
-  const client = new GraphQLClient(useEnv('SUBGRAPH_URL'))
+  const network: Network = useEnv('FORK_NETWORK') as Network
+  validateSubgraphURL(network)
+  const subgraphURL = subgraphURLs[network]
+  const client = new GraphQLClient(subgraphURL)
   const query = gql`
     query getProposalDetail($id: String!) {
       proposal(id: $id) {

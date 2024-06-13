@@ -217,30 +217,30 @@ async function main() {
       ],
       'contracts/plugins/assets/NonFiatCollateral.sol:NonFiatCollateral'
     )
-
-    /********************** Verify SelfReferentialCollateral - WETH  ****************************************/
-    const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? 1200 : 3600 // 20 min (Base) or 1 hr
-    const ethOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.0015') : fp('0.005') // 0.15% (Base) or 0.5%
-
-    await verifyContract(
-      chainId,
-      deployments.collateral.WETH,
-      [
-        {
-          priceTimeout: priceTimeout.toString(),
-          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-          oracleError: ethOracleError.toString(), // 0.5%
-          erc20: networkConfig[chainId].tokens.WETH,
-          maxTradeVolume: fp('1e6').toString(), // $1m,
-          oracleTimeout: ethOracleTimeout,
-          targetName: hre.ethers.utils.formatBytes32String('ETH'),
-          defaultThreshold: '0',
-          delayUntilDefault: '0',
-        },
-      ],
-      'contracts/plugins/assets/SelfReferentialCollateral.sol:SelfReferentialCollateral'
-    )
   }
+
+  /********************** Verify SelfReferentialCollateral - WETH  ****************************************/
+  const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? 1200 : 3600 // 20 min (Base) or 1 hr
+  const ethOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.0015') : fp('0.005') // 0.15% (Base) or 0.5%
+
+  await verifyContract(
+    chainId,
+    deployments.collateral.WETH,
+    [
+      {
+        priceTimeout: priceTimeout.toString(),
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+        oracleError: ethOracleError.toString(), // 0.5%
+        erc20: networkConfig[chainId].tokens.WETH,
+        maxTradeVolume: fp('1e6').toString(), // $1m,
+        oracleTimeout: ethOracleTimeout,
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: '0',
+        delayUntilDefault: '0',
+      },
+    ],
+    'contracts/plugins/assets/SelfReferentialCollateral.sol:SelfReferentialCollateral'
+  )
 }
 
 main().catch((error) => {

@@ -125,6 +125,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         assert(reg.erc20s.length == reg.assets.length);
     }
 
+    function validateCurrentAssets() external view {}
+
     /// @return The number of registered ERC20s
     function size() external view returns (uint256) {
         return _erc20s.length();

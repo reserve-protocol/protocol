@@ -201,6 +201,10 @@ const mintCollateralTo: MintCollateralFunc<StargateCollateralFixtureContext> = a
     await ctx.pool.connect(router).mint(user.address, amount)
   })
   await ctx.pool.connect(user).approve(ctx.wpool.address, ethers.constants.MaxUint256)
+<<<<<<< HEAD:test/plugins/individual-collateral/stargate/StargateUSDCTestSuite.test.ts
+=======
+
+>>>>>>> 4.0.0:test/plugins/individual-collateral/stargate/StargateUSDCTestSuite.test.ts_DEPRECATED
   await ctx.wpool.connect(user).deposit(amount, user.address)
   await ctx.wpool.connect(user).transfer(recipient, amount)
   if (ctx.pool.address != SUSDC) {
@@ -259,7 +263,7 @@ const increaseTargetPerRef = async (
 }
 
 const beforeEachRewardsTest = async (ctx: StargateCollateralFixtureContext) => {
-  // switch to propoer network rewards setup
+  // switch to proper network rewards setup
 
   const stargate = <ERC20Mock>await ethers.getContractAt('ERC20Mock', STARGATE)
   const stakingContract = <IStargateLPStaking>(

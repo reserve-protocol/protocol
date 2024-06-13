@@ -79,9 +79,23 @@ contract BrokerP1 is ComponentP1, IBroker {
         cacheComponents();
 
         setGnosis(gnosis_);
-        setBatchTradeImplementation(batchTradeImplementation_);
+
+        require(
+            address(batchTradeImplementation_) != address(0),
+            "invalid batchTradeImplementation address"
+        );
+        require(
+            address(dutchTradeImplementation_) != address(0),
+            "invalid dutchTradeImplementation address"
+        );
+
+        batchTradeImplementation = batchTradeImplementation_;
+        dutchTradeImplementation = dutchTradeImplementation_;
+
+        emit BatchTradeImplementationSet(ITrade(address(0)), batchTradeImplementation_);
+        emit DutchTradeImplementationSet(ITrade(address(0)), dutchTradeImplementation_);
+
         setBatchAuctionLength(batchAuctionLength_);
-        setDutchTradeImplementation(dutchTradeImplementation_);
         setDutchAuctionLength(dutchAuctionLength_);
     }
 
@@ -165,8 +179,8 @@ contract BrokerP1 is ComponentP1, IBroker {
         gnosis = newGnosis;
     }
 
-    /// @custom:governance
-    function setBatchTradeImplementation(ITrade newTradeImplementation) public governance {
+    /// @custom:main
+    function setBatchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
             address(newTradeImplementation) != address(0),
             "invalid batchTradeImplementation address"
@@ -187,8 +201,8 @@ contract BrokerP1 is ComponentP1, IBroker {
         batchAuctionLength = newAuctionLength;
     }
 
-    /// @custom:governance
-    function setDutchTradeImplementation(ITrade newTradeImplementation) public governance {
+    /// @custom:main
+    function setDutchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
             address(newTradeImplementation) != address(0),
             "invalid dutchTradeImplementation address"

@@ -57,7 +57,7 @@ import {
   defaultFixture,
 } from './fixtures'
 import { whileImpersonating } from './utils/impersonation'
-import { withinQuad } from './utils/matchers'
+import { withinTolerance } from './utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
@@ -66,6 +66,8 @@ import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
+
+const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -258,35 +260,43 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
       const [rTokenTotal, rsrTotal] = await distributor.totals()
-      expect(rsrTotal).equal(bn(60))
-      expect(rTokenTotal).equal(bn(40))
+      expect(rsrTotal).equal(bn(6000))
+      expect(rTokenTotal).equal(bn(4000))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
       const [rTokenTotal, rsrTotal] = await distributor.totals()
-      expect(rsrTotal).equal(bn(60))
-      expect(rTokenTotal).equal(bn(40))
+      expect(rsrTotal).equal(bn(6000))
+      expect(rTokenTotal).equal(bn(4000))
 
       // Attempt to update with another account
       await expect(
-        distributor
-          .connect(other)
-          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        distributor.connect(other).setDistributions(
+          [STRSR_DEST, FURNACE_DEST],
+          [
+            { rTokenDist: bn(0), rsrDist: bn(10000) },
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+          ]
+        )
       ).to.be.revertedWith('governance only')
 
       // Update with owner - Set f = 1
       await expect(
-        distributor
-          .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        distributor.connect(owner).setDistributions(
+          [STRSR_DEST, FURNACE_DEST],
+          [
+            { rTokenDist: bn(0), rsrDist: bn(10000) },
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+          ]
+        )
       )
         .to.emit(distributor, 'DistributionSet')
         .withArgs(FURNACE_DEST, bn(0), bn(0))
 
       // Check updated status
       const [newRTokenTotal, newRsrTotal] = await distributor.totals()
-      expect(newRsrTotal).equal(bn(60))
+      expect(newRsrTotal).equal(bn(10000))
       expect(newRTokenTotal).equal(bn(0))
     })
 
@@ -295,14 +305,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await expect(
         distributor
           .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(10000) })
       ).to.be.revertedWith('Furnace must get 0% of RSR')
 
       // Cannot set RToken > 0 for StRSR
       await expect(
         distributor
           .connect(owner)
-          .setDistribution(STRSR_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
       ).to.be.revertedWith('StRSR must get 0% of RToken')
 
       // Cannot set RSR distribution too high
@@ -319,15 +329,25 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
       ).to.be.revertedWith('RToken distribution too high')
 
-      // Cannot set both distributions = 0
-      await distributor
-        .connect(owner)
-        .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      // Cannot set both distributions below MAX_DISTRIBUTION
       await expect(
-        distributor
-          .connect(owner)
-          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-      ).to.be.revertedWith('no distribution defined')
+        distributor.connect(owner).setDistributions(
+          [FURNACE_DEST, STRSR_DEST],
+          [
+            { rTokenDist: bn(1), rsrDist: bn(0) },
+            { rTokenDist: bn(0), rsrDist: bn(1) },
+          ]
+        )
+      ).to.be.reverted
+      await expect(
+        distributor.connect(owner).setDistributions(
+          [FURNACE_DEST, STRSR_DEST],
+          [
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+          ]
+        )
+      ).to.be.reverted
 
       // Cannot set zero addr beneficiary
       await expect(
@@ -351,6 +371,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       ).to.be.revertedWith('destination can not be furnace or strsr directly')
     })
 
+    itP1('Should not allow to set Dao fee explicitly', async () => {
+      // Cannot set DAO fee explicitly
+      await main.connect(owner).setDAOFeeRegistry(other.address)
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(other.address, { rTokenDist: bn(10000), rsrDist: bn(0) })
+      ).to.be.revertedWith('destination cannot be daoFeeRegistry')
+    })
+
     it('Should validate number of destinations', async () => {
       // Cannot set more than Max (100)
       const maxDestinations = 100
@@ -359,14 +389,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const usr: Wallet = await ethers.Wallet.createRandom()
         await distributor
           .connect(owner)
-          .setDistribution(usr.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+          .setDistribution(usr.address, { rTokenDist: bn(4000), rsrDist: bn(6000) })
       }
 
       // Attempt to add an additional destination will revert
       await expect(
         distributor
           .connect(owner)
-          .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+          .setDistribution(other.address, { rTokenDist: bn(4000), rsrDist: bn(6000) })
       ).to.be.revertedWith('Too many destinations')
     })
   })
@@ -449,7 +479,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
         await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION]))
           .to.emit(rTokenTrader, 'TradeStarted')
-          .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
+          .withArgs(
+            anyValue,
+            token0.address,
+            rToken.address,
+            issueAmount,
+            withinTolerance(minBuyAmt)
+          )
       })
 
       it('Should forward revenue to traders', async () => {
@@ -465,8 +501,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           'Transfer'
         )
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
-        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(
+          rewardAmt.mul(6000).div(10000)
+        )
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(
+          rewardAmt.mul(4000).div(10000)
+        )
       })
 
       it('Should not forward revenue if basket not ready', async () => {
@@ -512,8 +552,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           'Transfer'
         )
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
-        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(
+          rewardAmt.mul(6000).div(10000)
+        )
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(
+          rewardAmt.mul(4000).div(10000)
+        )
       })
 
       it('Should not forward revenue if paused', async () => {
@@ -620,7 +664,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
         await rsrTrader.distributeTokenToBuy()
         const expectedAmount = stRSRBal.add(issueAmount)
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 10000)
       })
 
       it('Should distribute tokenToBuy - manageTokens()', async () => {
@@ -629,7 +673,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
         await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
         const expectedAmount = stRSRBal.add(issueAmount)
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 10000)
       })
 
       it('Should not distribute tokenToBuy if frozen or trading paused', async () => {
@@ -660,7 +704,120 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Can distribute now
         await rsrTrader.distributeTokenToBuy()
         const expectedAmount = stRSRBal.add(issueAmount)
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 10000)
+      })
+
+      it('Should distribute tokenToBuy before updating distribution', async () => {
+        // Check initial status
+        const [rTokenTotal, rsrTotal] = await distributor.totals()
+        expect(rsrTotal).equal(bn(6000))
+        expect(rTokenTotal).equal(bn(4000))
+
+        // Set some balance of token-to-buy in traders
+        const issueAmount = bn('100e18')
+
+        // RSR Trader
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // RToken Trader
+        const rTokenBal = await rToken.balanceOf(furnace.address)
+        await rToken.connect(addr1).issueTo(rTokenTrader.address, issueAmount)
+
+        // Update distributions with owner - Set f = 1
+        await distributor.connect(owner).setDistributions(
+          [STRSR_DEST, FURNACE_DEST],
+          [
+            { rTokenDist: bn(0), rsrDist: bn(10000) },
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+          ]
+        )
+
+        // Check tokens were transferred from Traders
+        const expectedAmountRSR = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmountRSR, 10000)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.be.closeTo(bn(0), 10000)
+
+        const expectedAmountRToken = rTokenBal.add(issueAmount)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expectedAmountRToken, 10000)
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.be.closeTo(bn(0), 10000)
+
+        // Check updated distributions
+        const [newRTokenTotal, newRsrTotal] = await distributor.totals()
+        expect(newRsrTotal).equal(bn(10000))
+        expect(newRTokenTotal).equal(bn(0))
+      })
+
+      it('Should avoid zero transfers when distributing tokenToBuy', async () => {
+        // Distribute with no balance
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith('nothing to distribute')
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(bn(0))
+
+        // Small amount which ends in zero distribution due to rounding
+        await rsr.connect(owner).mint(rsrTrader.address, bn(1))
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith('nothing to distribute')
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(bn(0))
+      })
+
+      it('Should account rewards when distributing tokenToBuy', async () => {
+        // 1. StRSR.payoutRewards()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await advanceTime(Number(ONE_PERIOD))
+        await expect(rsrTrader.distributeTokenToBuy()).to.emit(stRSR, 'RewardsPaid')
+        const expectedAmountStRSR = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmountStRSR, 10000)
+
+        // 2. Furnace.melt()
+        // Transfer RTokens to Furnace (to trigger melting later)
+        const hndAmt: BigNumber = bn('10e18')
+        await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+        await advanceTime(Number(ONE_PERIOD))
+        await furnace.melt()
+
+        // Transfer and distribute tokens in Trader (will melt)
+        await advanceTime(Number(ONE_PERIOD))
+        await rToken.connect(addr1).transfer(rTokenTrader.address, hndAmt)
+        await expect(rTokenTrader.distributeTokenToBuy()).to.emit(rToken, 'Melted')
+        const expectedAmountFurnace = hndAmt.mul(2)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          expectedAmountFurnace,
+          expectedAmountFurnace.div(1000)
+        ) // within 0.1%
+      })
+
+      it('Should update distribution even if distributeTokenToBuy() reverts', async () => {
+        // Check initial status
+        const [rTokenTotal, rsrTotal] = await distributor.totals()
+        expect(rsrTotal).equal(bn(6000))
+        expect(rTokenTotal).equal(bn(4000))
+
+        // Set some balance of token-to-buy in RSR trader
+        const issueAmount = bn('100e18')
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Pause the system, makes distributeTokenToBuy() revert
+        await main.connect(owner).pauseTrading()
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.reverted
+
+        // Update distributions with owner - Set f = 1
+        await distributor.connect(owner).setDistributions(
+          [STRSR_DEST, FURNACE_DEST],
+          [
+            { rTokenDist: bn(0), rsrDist: bn(10000) },
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+          ]
+        )
+
+        // Check no tokens were transferred
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stRSRBal)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(issueAmount)
+
+        // Check updated distributions
+        const [newRTokenTotal, newRsrTotal] = await distributor.totals()
+        expect(newRsrTotal).equal(bn(10000))
+        expect(newRTokenTotal).equal(bn(0))
       })
 
       it('Should distribute tokenToBuy before updating distribution', async () => {
@@ -790,7 +947,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
         ).to.be.revertedWith('rsrTotal > 0')
-        await distributor.setDistribution(STRSR_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+        await distributor.setDistributions(
+          [FURNACE_DEST, STRSR_DEST],
+          [
+            { rTokenDist: bn(10000), rsrDist: bn(0) },
+            { rTokenDist: bn('0'), rsrDist: bn('0') },
+          ]
+        )
+
+        // Mint RSR
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
 
         // Mint RSR
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
@@ -846,7 +1012,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
         ).to.be.revertedWith('rTokenTotal > 0')
-        await distributor.setDistribution(FURNACE_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+        await distributor.setDistributions(
+          [FURNACE_DEST, STRSR_DEST],
+          [
+            { rTokenDist: bn(0), rsrDist: bn(0) },
+            { rTokenDist: bn(0), rsrDist: bn(10000) },
+          ]
+        )
 
         // Should fail for unregistered token
         await assetRegistry.connect(owner).unregister(collateral1.address)
@@ -964,7 +1136,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountCOMP.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
@@ -993,7 +1165,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1004,7 +1176,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               compToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -1092,12 +1264,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
           minBuyAmt,
-          minBuyAmt.div(bn('1e15'))
+          minBuyAmt.div(bn('1e13'))
         )
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e15'))
+          minBuyAmtRToken.div(bn('1e13'))
         )
       })
 
@@ -1191,9 +1363,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should handle properly an asset with low maxTradeVolume', async () => {
         // Set f = 1
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+          distributor.connect(owner).setDistributions(
+            [STRSR_DEST, FURNACE_DEST],
+            [
+              { rTokenDist: bn(0), rsrDist: bn(10000) },
+              { rTokenDist: bn(0), rsrDist: bn(0) },
+            ]
+          )
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
@@ -1202,10 +1378,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10000) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(1))
+          .withArgs(STRSR_DEST, bn(0), bn(10000))
 
         // Set AAVE tokens as reward
         rewardAmountAAVE = bn('1000e18')
@@ -1344,7 +1520,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
@@ -1375,7 +1551,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1386,7 +1562,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -1459,12 +1635,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
           minBuyAmt,
-          minBuyAmt.div(bn('1e15'))
+          minBuyAmt.div(bn('1e13'))
         )
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e15'))
+          minBuyAmtRToken.div(bn('1e13'))
         )
       })
 
@@ -1490,9 +1666,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Set f = 1
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+          distributor.connect(owner).setDistributions(
+            [STRSR_DEST, FURNACE_DEST],
+            [
+              { rTokenDist: bn(0), rsrDist: bn(10000) },
+              { rTokenDist: bn(0), rsrDist: bn(0) },
+            ]
+          )
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
@@ -1501,10 +1681,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10000) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(1))
+          .withArgs(STRSR_DEST, bn(0), bn(10000))
 
         // Set AAVE tokens as reward
         rewardAmountAAVE = fp('1.9')
@@ -1539,7 +1719,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1607,7 +1787,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rsr.address,
               remainderSellAmt,
-              withinQuad(remainderMinBuyAmt),
+              withinTolerance(remainderMinBuyAmt),
             ],
             emitted: true,
           },
@@ -1663,7 +1843,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         //  Check balances sent to corresponding destinations
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(remainderMinBuyAmt))
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt.add(remainderMinBuyAmt),
+          10000
+        )
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
@@ -1692,10 +1875,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(1), bn(0))
+          .withArgs(FURNACE_DEST, bn(10000), bn(0))
 
         await expect(
           distributor
@@ -1741,7 +1924,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rToken.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmt,
+              withinTolerance(minBuyAmt),
+            ],
             emitted: true,
           },
           {
@@ -1797,7 +1986,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rToken.address,
               sellAmtRemainder,
-              withinQuad(minBuyAmtRemainder),
+              withinTolerance(minBuyAmtRemainder),
             ],
             emitted: true,
           },
@@ -1888,19 +2077,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Set f = 0.8 (0.2 for Rtoken)
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
+          distributor.connect(owner).setDistributions(
+            [STRSR_DEST, FURNACE_DEST],
+            [
+              { rTokenDist: bn(0), rsrDist: bn(8000) },
+              { rTokenDist: bn(2000), rsrDist: bn(0) },
+            ]
+          )
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(4))
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(1), bn(0))
+          .withArgs(FURNACE_DEST, bn(2000), bn(0))
 
         // Set AAVE tokens as reward
         // Based on current f -> 1.6e18 to RSR and 0.4e18 to Rtoken
@@ -1941,7 +2127,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1952,7 +2138,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -2026,7 +2212,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rsr.address,
               sellAmtRemainder,
-              withinQuad(minBuyAmtRemainder),
+              withinTolerance(minBuyAmtRemainder),
             ],
             emitted: true,
           },
@@ -2039,9 +2225,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check destinations at this stage
         // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 15)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 10000)
         // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken, 10000)
 
         // Run final auction until all funds are converted
         // Advance time till auction ended
@@ -2078,11 +2264,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
           minBuyAmt.add(minBuyAmtRemainder),
-          15
+          10000
         )
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e2')) // melting
+          minBuyAmtRToken.div(bn('1e2'))
         )
       })
 
@@ -2091,9 +2277,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Set f = 1
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+          distributor.connect(owner).setDistributions(
+            [STRSR_DEST, FURNACE_DEST],
+            [
+              { rTokenDist: bn(0), rsrDist: bn(10000) },
+              { rTokenDist: bn(0), rsrDist: bn(0) },
+            ]
+          )
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
@@ -2101,10 +2291,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10000) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(1))
+          .withArgs(STRSR_DEST, bn(0), bn(10000))
+
+        // Transfer some RSR to RevenueTraders
+        await rsr.connect(addr1).transfer(rTokenTrader.address, distAmount)
+        await rsr.connect(addr1).transfer(rsrTrader.address, distAmount)
 
         // Transfer some RSR to RevenueTraders
         await rsr.connect(addr1).transfer(rTokenTrader.address, distAmount)
@@ -2152,10 +2346,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(1), bn(0))
+          .withArgs(FURNACE_DEST, bn(10000), bn(0))
         await expect(
           distributor
             .connect(owner)
@@ -2176,38 +2370,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
-      it('Should not start trades if no distribution defined', async () => {
-        // Check funds in Backing Manager and destinations
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        // Set f = 0, avoid dropping tokens
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(1), bn(0))
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(0))
-
-        await expect(
-          rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
-        ).to.be.revertedWith('zero distribution')
-
-        //  Check funds, nothing changed
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-      })
-
       it('Should handle no distribution defined when settling trade', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('0.8e18')
@@ -2217,7 +2379,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountCOMP.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
@@ -2246,7 +2408,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -2257,7 +2419,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               compToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -2307,10 +2469,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(1), bn(0))
+          .withArgs(FURNACE_DEST, bn(10000), bn(0))
         await expect(
           distributor
             .connect(owner)
@@ -2351,10 +2513,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(bn(0))
 
         // Furnace - RTokens transferred to destination
-        expect(await rToken.balanceOf(rTokenTrader.address)).to.equal(bn(0))
+        expect(await rToken.balanceOf(rTokenTrader.address)).to.closeTo(bn(0), 10000)
         expect(await rToken.balanceOf(furnace.address)).to.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e15'))
+          minBuyAmtRToken.div(bn('1e13'))
         )
       })
 
@@ -2367,7 +2529,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountCOMP.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
@@ -2396,7 +2558,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -2407,7 +2569,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               compToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -2515,7 +2677,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Set expected values, based on f = 0.6
-        const expectedToTrader = rewardAmountAAVE.mul(60).div(100)
+        const expectedToTrader = rewardAmountAAVE.mul(6000).div(10000)
         const expectedToFurnace = rewardAmountAAVE.sub(expectedToTrader)
 
         // Check status of traders at this point
@@ -2552,7 +2714,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
@@ -2584,7 +2746,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -2595,7 +2757,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -2681,8 +2843,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await broker.batchTradeDisabled()).to.equal(true)
 
         // Check funds at destinations
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt.sub(10), 50)
-        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt.sub(10), 5000)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 5000)
       })
 
       it('Should report violation even if paused or frozen', async () => {
@@ -2696,7 +2858,128 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+        await facadeTest.claimRewards(rToken.address)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinTolerance(minBuyAmtRToken),
+            ],
+            emitted: true,
+          },
+        ])
+
+        // Advance time till auction ended
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        // In order to force deactivation we provide an amount below minBuyAmt, this will represent for our tests an invalid behavior although in a real scenario would retrigger auction
+        // NOTE: DIFFERENT BEHAVIOR WILL BE OBSERVED ON PRODUCTION GNOSIS AUCTIONS
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt.sub(10), // Forces in our mock an invalid behavior
+        })
+        await gnosis.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken.sub(10), // Forces in our mock an invalid behavior
+        })
+
+        // Freeze protocol
+        await main.connect(owner).freezeShort()
+
+        // Close auctions - Will end trades and also report violation
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: broker,
+            name: 'BatchTradeDisabledSet',
+            args: [false, true],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeSettled',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeSettled',
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              minBuyAmtRToken.sub(10),
+            ],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check broker disabled (batch)
+        expect(await broker.batchTradeDisabled()).to.equal(true)
+
+        // Funds are not distributed if paused or frozen
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.be.closeTo(minBuyAmt.sub(10), 50)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(
+          minBuyAmtRToken.sub(10),
+          50
+        )
+      })
+
+      it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+        const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+        await rsr.connect(addr1).approve(router.address, constants.MaxUint256)
+        await rToken.connect(addr1).approve(router.address, constants.MaxUint256)
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
@@ -2851,7 +3134,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             {
               contract: rsrTrader,
               name: 'TradeStarted',
-              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
               emitted: true,
             },
             {
@@ -2862,7 +3145,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
                 aaveToken.address,
                 rToken.address,
                 sellAmtRToken,
-                withinQuad(minBuyAmtRToken),
+                withinTolerance(minBuyAmtRToken),
               ],
               emitted: true,
             },
@@ -2934,7 +3217,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
@@ -2968,7 +3251,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             {
               contract: rsrTrader,
               name: 'TradeStarted',
-              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
               emitted: true,
             },
             {
@@ -2979,7 +3262,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
                 aaveToken.address,
                 rToken.address,
                 sellAmtRToken,
-                withinQuad(minBuyAmtRToken),
+                withinTolerance(minBuyAmtRToken),
               ],
               emitted: true,
             },
@@ -3068,7 +3351,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await disableBatchTrade()
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
 
         // Attempt to run auctions
@@ -3133,10 +3416,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+            .setDistribution(other.address, { rTokenDist: bn(4000), rsrDist: bn(6000) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(other.address, bn(40), bn(60))
+          .withArgs(other.address, bn(4000), bn(6000))
 
         // Set AAVE tokens as reward
         rewardAmountAAVE = bn('1e18')
@@ -3146,7 +3429,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(6000).div(10000) // due to f = 6000%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
@@ -3178,7 +3461,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -3189,7 +3472,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -3264,21 +3547,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR - 50% to StRSR, 50% to other
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
           minBuyAmt.div(2),
-          minBuyAmt.div(2).div(bn('1e15'))
+          minBuyAmt.div(2).div(bn('1e13'))
         )
         expect(await rsr.balanceOf(other.address)).to.be.closeTo(
           minBuyAmt.div(2),
-          minBuyAmt.div(2).div(bn('1e15'))
+          minBuyAmt.div(2).div(bn('1e13'))
         )
 
         // Furnace - 50% to Furnace, 50% to other
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken.div(2),
-          minBuyAmtRToken.div(2).div(bn('1e15'))
+          minBuyAmtRToken.div(2).div(bn('1e13'))
         )
         expect(await rToken.balanceOf(other.address)).to.be.closeTo(
           minBuyAmtRToken.div(2),
-          minBuyAmtRToken.div(2).div(bn('1e15'))
+          minBuyAmtRToken.div(2).div(bn('1e13'))
         )
       })
 
@@ -3287,33 +3570,30 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           distributor
             .connect(owner)
-            .setDistribution(other.address, { rTokenDist: bn(0), rsrDist: bn(1) })
+            .setDistribution(other.address, { rTokenDist: bn(0), rsrDist: bn(10000) })
         )
           .to.emit(distributor, 'DistributionSet')
-          .withArgs(other.address, bn(0), bn(1))
+          .withArgs(other.address, bn(0), bn(10000))
 
         // No distribution to Furnace or StRSR
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+          distributor.connect(owner).setDistributions(
+            [other.address, STRSR_DEST, FURNACE_DEST],
+            [
+              { rTokenDist: bn(0), rsrDist: bn(10000) },
+              { rTokenDist: bn(0), rsrDist: bn(0) },
+              { rTokenDist: bn(0), rsrDist: bn(0) },
+            ]
+          )
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
-
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(0))
 
         const rsrBalInDestination = await rsr.balanceOf(other.address)
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
         await rsrTrader.distributeTokenToBuy()
         const expectedAmount = rsrBalInDestination.add(issueAmount)
-        expect(await rsr.balanceOf(other.address)).to.be.closeTo(expectedAmount, 100)
+        expect(await rsr.balanceOf(other.address)).to.be.closeTo(expectedAmount, 10000)
       })
 
       it('Should claim but not sweep rewards to BackingManager from the Revenue Traders', async () => {
@@ -3686,7 +3966,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               issueAmount,
               config.maxTradeSlippage
             )
-            expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
+            expect(actual).to.be.closeTo(expected, expected.div(bn('1e13')))
 
             const staticResult = await router
               .connect(addr1)
@@ -3777,7 +4057,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               config.maxTradeSlippage
             )
             expect(await rTokenTrader.tradesOpen()).to.equal(0)
-            expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
+            expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 10000)
             expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
           })
         })
@@ -3867,7 +4147,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Expected values
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
-        const expectedToTrader = excessQuantity.mul(60).div(100)
+        const expectedToTrader = excessQuantity.mul(6000).div(10000)
         const expectedToFurnace = excessQuantity.sub(expectedToTrader)
 
         const sellAmt: BigNumber = expectedToTrader // everything is auctioned, below max auction
@@ -3880,7 +4160,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, token2.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, token2.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
           {
@@ -3891,7 +4171,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rToken.address,
               sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -3983,11 +4263,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
           minBuyAmt,
-          minBuyAmt.div(bn('1e15'))
+          minBuyAmt.div(bn('1e13'))
         )
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken,
-          minBuyAmtRToken.div(bn('1e15'))
+          minBuyAmtRToken.div(bn('1e13'))
         )
 
         // Check no more funds in Market and Traders
@@ -4021,8 +4301,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Expected values
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
-        const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100)).sub(60)
-        const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)).sub(40) // excessQuantity.sub(expectedToTrader)
+        const expectedToTrader = divCeil(excessQuantity.mul(6000), bn(10000)).sub(6000)
+        const expectedToFurnace = divCeil(excessQuantity.mul(4000), bn(10000)).sub(4000) // excessQuantity.sub(expectedToTrader)
 
         const sellAmt: BigNumber = expectedToTrader
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1.02'), fp('1'))
@@ -4035,7 +4315,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, token2.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [
+              anyValue,
+              token2.address,
+              rsr.address,
+              withinTolerance(sellAmt),
+              withinTolerance(minBuyAmt),
+            ],
             emitted: true,
           },
           {
@@ -4045,8 +4331,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               anyValue,
               token2.address,
               rToken.address,
-              sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
+              withinTolerance(sellAmtRToken),
+              withinTolerance(minBuyAmtRToken),
             ],
             emitted: true,
           },
@@ -4055,7 +4341,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(
-          near(await facadeTest.callStatic.totalAssetValue(rToken.address), issueAmount, 100)
+          near(await facadeTest.callStatic.totalAssetValue(rToken.address), issueAmount, 10000)
         ).to.equal(true)
         expect(
           (await facadeTest.callStatic.totalAssetValue(rToken.address)).gt(issueAmount)
@@ -4086,8 +4372,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Check funds in Market and Traders
-        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 100)).to.equal(true)
-        expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 10000)).to.equal(true)
+        expect(await token2.balanceOf(gnosis.address)).to.be.closeTo(
+          sellAmt.add(sellAmtRToken),
+          10000
+        )
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(
@@ -4126,22 +4415,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
         ])
 
         //  Check Price (unchanged) and Assets value (unchanged)
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(
-          near(await facadeTest.callStatic.totalAssetValue(rToken.address), issueAmount, 100)
+          near(await facadeTest.callStatic.totalAssetValue(rToken.address), issueAmount, 10000)
         ).to.equal(true)
         expect(
           (await facadeTest.callStatic.totalAssetValue(rToken.address)).gt(issueAmount)
@@ -4150,9 +4429,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check balances sent to corresponding destinations
         // StRSR
-        expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 100)).to.equal(true)
+        expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 10000)).to.equal(true)
         // Furnace
-        expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
+        expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 10000)).to.equal(true)
       })
 
       it('Should not oversend if backingManager.forwardRevenue() is called with duplicate tokens', async () => {
@@ -4227,7 +4506,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Set expected minting, based on f = 0.6
-        const expectedToTrader = issueAmount.mul(60).div(100)
+        const expectedToTrader = issueAmount.mul(6000).div(10000)
         const expectedToFurnace = issueAmount.sub(expectedToTrader)
 
         // Set expected auction values
@@ -4247,7 +4526,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, rToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, rToken.address, rsr.address, sellAmt, withinTolerance(minBuyAmt)],
             emitted: true,
           },
         ])
@@ -4317,7 +4596,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
 
         // Check destinations after newly minted tokens
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 1000)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 100000)
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
       })
 
@@ -4350,18 +4629,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Set expected values based on f=0.6
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
-        const excessRToken: BigNumber = issueAmount.mul(60).div(100)
+        const excessRToken: BigNumber = issueAmount.mul(6000).div(10000)
         const excessCollateralValue: BigNumber = excessTotalValue.sub(excessRToken)
         const excessCollateralQty: BigNumber = excessCollateralValue.div(2) // each unit of this collateral is worth now $2
-        const expectedToTraderFromRToken = divCeil(excessRToken.mul(60), bn(100))
+        const expectedToTraderFromRToken = divCeil(excessRToken.mul(6000), bn(10000))
         const expectedToFurnaceFromRToken = excessRToken.sub(expectedToTraderFromRToken)
-        const expectedToRSRTraderFromCollateral = divCeil(excessCollateralQty.mul(60), bn(100))
+        const expectedToRSRTraderFromCollateral = divCeil(excessCollateralQty.mul(6000), bn(10000))
         const expectedToRTokenTraderFromCollateral = excessCollateralQty.sub(
           expectedToRSRTraderFromCollateral
         )
 
         //  Set expected auction values
-        const newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
+        const newTotalSupply: BigNumber = currentTotalSupply.mul(16000).div(10000)
         const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtFromRToken: BigNumber = await toMinBuyAmt(
           sellAmtFromRToken,
@@ -4397,7 +4676,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               rToken.address,
               rsr.address,
               sellAmtFromRToken,
-              withinQuad(minBuyAmtFromRToken),
+              withinTolerance(minBuyAmtFromRToken),
             ],
             emitted: true,
           },
@@ -4409,7 +4688,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              withinQuad(minBuyAmtRSRFromCollateral.mul(2)),
+              withinTolerance(minBuyAmtRSRFromCollateral.mul(2)),
             ],
             emitted: true,
           },
@@ -4421,7 +4700,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              withinQuad(minBuyAmtRTokenFromCollateral.mul(2)),
+              withinTolerance(minBuyAmtRTokenFromCollateral.mul(2)),
             ],
             emitted: true,
           },
@@ -4568,7 +4847,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const expectedRSR = minBuyAmtFromRToken.add(minBuyAmtRSRFromCollateral)
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
           expectedRSR,
-          expectedRSR.div(bn('1e15'))
+          expectedRSR.div(bn('1e13'))
         )
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
@@ -4579,7 +4858,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Set distribution for RToken only (f=0)
         await distributor
           .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
 
         await distributor
           .connect(owner)
@@ -4637,7 +4916,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rToken,
             name: 'Transfer',
-            args: [ZERO_ADDRESS, backingManager.address, withinQuad(excessRevenue)],
+            args: [ZERO_ADDRESS, backingManager.address, withinTolerance(excessRevenue)],
             emitted: true,
           },
           {
@@ -4744,8 +5023,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           'Transfer'
         )
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
-        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(
+          rewardAmt.mul(6000).div(10000)
+        )
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(
+          rewardAmt.mul(4000).div(10000)
+        )
       })
     })
   })
@@ -4825,11 +5108,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       // Set f = 0.8 (0.2 for Rtoken)
       await distributor
         .connect(owner)
-        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
-
+        .setDistribution(FURNACE_DEST, { rTokenDist: bn(10000), rsrDist: bn(0) })
       await distributor
         .connect(owner)
-        .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
 
       // Set COMP tokens as reward
       rewardAmountCOMP = bn('2e18')

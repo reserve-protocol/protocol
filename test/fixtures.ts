@@ -95,7 +95,7 @@ export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 // This will have to be updated on each release
-export const VERSION = '3.4.0'
+export const VERSION = '4.0.0'
 
 export type Collateral =
   | FiatCollateral
@@ -441,8 +441,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const { gnosis, easyAuction } = await gnosisFixture()
   const gnosisAddr = useEnv('FORK') ? easyAuction.address : gnosis.address
   const dist: IRevenueShare = {
-    rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60), // 3/5 RSR
+    rTokenDist: bn(4000), // 2/5 RToken
+    rsrDist: bn(6000), // 3/5 RSR
   }
 
   // Setup Config

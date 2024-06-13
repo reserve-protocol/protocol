@@ -1,8 +1,8 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { networkConfig } from '../../../../common/configuration'
-import { bn } from '../../../../common/numbers'
+import { arbitrumL2Chains, networkConfig } from '../../../../common/configuration'
+import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus, ONE_ADDRESS } from '../../../../common/constants'
 import {
@@ -12,8 +12,13 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CurveStableCollateral } from '../../../../typechain'
-import { revenueHiding } from '../../utils'
+import {
+  ConvexStakingWrapper,
+  CurveStableCollateral,
+  L2ConvexStableCollateral,
+  IConvexRewardPool,
+} from '../../../../typechain'
+import { combinedError, revenueHiding } from '../../utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -28,6 +33,14 @@ import {
   crvUSD_ORACLE_ERROR,
   crvUSD_ORACLE_TIMEOUT,
   crvUSD_USD_FEED,
+  ARB_crvUSD_USDT,
+  ARB_Convex_crvUSD_USDT,
+  ARB_USDT_ORACLE_ERROR,
+  ARB_USDT_ORACLE_TIMEOUT,
+  ARB_USDT_USD_FEED,
+  ARB_crvUSD_ORACLE_ERROR,
+  ARB_crvUSD_ORACLE_TIMEOUT,
+  ARB_crvUSD_USD_FEED,
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // Convex Stable Plugin: crvUSD-USDT
@@ -58,42 +71,84 @@ async function main() {
 
   /********  Deploy Convex Stable Pool for crvUSD-USDT  **************************/
 
-  const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+  let collateral: CurveStableCollateral | L2ConvexStableCollateral
+  let crvUsdUSDTPool: ConvexStakingWrapper | IConvexRewardPool // no wrapper needed for L2s
 
-  const crvUsdUSDTPool = await ConvexStakingWrapperFactory.deploy()
-  await crvUsdUSDTPool.deployed()
-  await (await crvUsdUSDTPool.initialize(crvUSD_USDT_POOL_ID)).wait()
+  if (!arbitrumL2Chains.includes(hre.network.name)) {
+    const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
+      'CurveStableCollateral'
+    )
+    const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-  console.log(
-    `Deployed wrapper for Convex Stable crvUSD-USDT pool on ${hre.network.name} (${chainId}): ${crvUsdUSDTPool.address} `
-  )
+    crvUsdUSDTPool = <ConvexStakingWrapper>await ConvexStakingWrapperFactory.deploy()
+    await crvUsdUSDTPool.deployed()
+    await (await crvUsdUSDTPool.initialize(crvUSD_USDT_POOL_ID)).wait()
 
-  const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
-    deployer
-  ).deploy(
-    {
-      erc20: crvUsdUSDTPool.address,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
-      oracleError: bn('1'), // unused but cannot be zero
-      oracleTimeout: USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
-      maxTradeVolume: MAX_TRADE_VOL,
-      defaultThreshold: DEFAULT_THRESHOLD,
-      delayUntilDefault: DELAY_UNTIL_DEFAULT,
-    },
-    revenueHiding.toString(),
-    {
-      nTokens: 2,
-      curvePool: crvUSD_USDT,
-      poolType: CurvePoolType.Plain,
-      feeds: [[USDT_USD_FEED], [crvUSD_USD_FEED]],
-      oracleTimeouts: [[USDT_ORACLE_TIMEOUT], [crvUSD_ORACLE_TIMEOUT]],
-      oracleErrors: [[USDT_ORACLE_ERROR], [crvUSD_ORACLE_ERROR]],
-      lpToken: crvUSD_USDT,
-    }
-  )
+    console.log(
+      `Deployed wrapper for Convex Stable crvUSD-USDT pool on ${hre.network.name} (${chainId}): ${crvUsdUSDTPool.address} `
+    )
+
+    collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(deployer).deploy(
+      {
+        erc20: crvUsdUSDTPool.address,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
+        oracleError: bn('1'), // unused but cannot be zero
+        oracleTimeout: USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
+        maxTradeVolume: MAX_TRADE_VOL,
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      revenueHiding.toString(),
+      {
+        nTokens: 2,
+        curvePool: crvUSD_USDT,
+        poolType: CurvePoolType.Plain,
+        feeds: [[USDT_USD_FEED], [crvUSD_USD_FEED]],
+        oracleTimeouts: [[USDT_ORACLE_TIMEOUT], [crvUSD_ORACLE_TIMEOUT]],
+        oracleErrors: [[USDT_ORACLE_ERROR], [crvUSD_ORACLE_ERROR]],
+        lpToken: crvUSD_USDT,
+      }
+    )
+  } else if (chainId == '42161' || chainId == '421614') {
+    const L2ConvexStableCollateralFactory = await hre.ethers.getContractFactory(
+      'L2ConvexStableCollateral'
+    )
+    crvUsdUSDTPool = <IConvexRewardPool>(
+      await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDT)
+    )
+    collateral = <L2ConvexStableCollateral>await L2ConvexStableCollateralFactory.connect(
+      deployer
+    ).deploy(
+      {
+        erc20: crvUsdUSDTPool.address,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
+        oracleError: bn('1'), // unused but cannot be zero
+        oracleTimeout: ARB_USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
+        maxTradeVolume: MAX_TRADE_VOL,
+        defaultThreshold: combinedError(ARB_crvUSD_ORACLE_ERROR, ARB_USDT_ORACLE_ERROR)
+          .add(fp('0.01'))
+          .toString(),
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      revenueHiding.toString(),
+      {
+        nTokens: 2,
+        curvePool: ARB_crvUSD_USDT,
+        poolType: CurvePoolType.Plain,
+        feeds: [[ARB_crvUSD_USD_FEED], [ARB_USDT_USD_FEED]],
+        oracleTimeouts: [[ARB_crvUSD_ORACLE_TIMEOUT], [ARB_USDT_ORACLE_TIMEOUT]],
+        oracleErrors: [[ARB_crvUSD_ORACLE_ERROR], [ARB_USDT_ORACLE_ERROR]],
+        lpToken: ARB_crvUSD_USDT,
+      }
+    )
+  } else {
+    throw new Error(`Unsupported chainId: ${chainId}`)
+  }
+
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
