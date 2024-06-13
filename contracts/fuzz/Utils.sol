@@ -14,7 +14,7 @@ function defaultParams() pure returns (DeploymentParams memory params) {
     });
 
     params = DeploymentParams({
-        dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
+        dist: RevenueShare({ rTokenDist: 4000, rsrDist: 6000 }),
         minTradeVolume: 1e22,
         rTokenMaxTradeVolume: 1e24,
         shortFreeze: 345600, // 4 days
