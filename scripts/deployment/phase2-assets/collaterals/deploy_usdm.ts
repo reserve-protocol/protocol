@@ -78,8 +78,16 @@ async function main() {
   console.log(
     `Deployed USDM (wUSDM) Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
-  await (await collateral.refresh()).wait()
-  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+  // await (await collateral.refresh()).wait()
+  // expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+  console.log(
+    '🚨 The wUSDM collateral requires chronicle to whitelist the collateral plugin after deployment 🚨'
+  )
+
+  console.log(
+    '🚨 After that, we need to return to this plugin and refresh() it and confirm it is SOUND 🚨'
+  )
 
   assetCollDeployments.collateral.wUSDM = collateral.address
   assetCollDeployments.erc20s.wUSDM = networkConfig[chainId].tokens.wUSDM
