@@ -58,8 +58,13 @@ abstract contract ComponentP1 is
         _;
     }
 
+    modifier onlyMain() {
+        require(_msgSender() == address(main), "main only");
+        _;
+    }
+
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal view override governance {}
+    function _authorizeUpgrade(address newImplementation) internal view override onlyMain {}
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

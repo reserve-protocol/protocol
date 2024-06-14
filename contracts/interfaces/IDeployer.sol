@@ -111,6 +111,8 @@ interface IDeployer is IVersioned {
     /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
     /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
     function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
+
+    function implementations() external view returns (Implementations memory);
 }
 
 interface TestIDeployer is IDeployer {
@@ -123,4 +125,6 @@ interface TestIDeployer is IDeployer {
     function gnosis() external view returns (IGnosis);
 
     function rsrAsset() external view returns (IAsset);
+
+    function implementations() external view returns (Implementations memory);
 }

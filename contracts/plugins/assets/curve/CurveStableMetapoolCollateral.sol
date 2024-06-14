@@ -107,9 +107,9 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
 
-        // {tok}
+        // {tok} -- FLOOR
         uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
-        // We can always assume that the total supply is non-zero
+        // We can always assume that the total supply is sufficiently non-zero
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);
@@ -169,21 +169,22 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         // {UoA}
         (uint192 underlyingAumLow, uint192 underlyingAumHigh) = totalBalancesValue();
 
-        // {tokUnderlying}
+        // {tokUnderlying} -- FLOOR
         uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        // We can always assume that the underlying supply is sufficiently non-zero
 
         // {UoA/tokUnderlying} = {UoA} / {tokUnderlying}
         uint192 underlyingLow = underlyingAumLow.div(underlyingSupply, FLOOR);
         uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
 
-        // {tokUnderlying}
+        // {tokUnderlying} -- FLOOR
         uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()));
 
         // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
         aumLow = underlyingLow.mul(balUnderlying, FLOOR);
         aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
 
-        // {pairedTok}
+        // {pairedTok} -- FLOOR
         uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
 
         // Add-in contribution from pairedTok

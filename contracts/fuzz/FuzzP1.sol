@@ -402,6 +402,9 @@ contract DistributorP1Fuzz is DistributorP1 {
         bool noInvalidDistProp = distribution[FURNACE].rsrDist == 0 &&
             distribution[ST_RSR].rTokenDist == 0;
 
+        // distribution above min value
+        bool aboveMinValueProp = revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION;
+
         // Valid share values for destinations
         bool validShareAmtsProp = true;
         bool destinationsProp = true;
@@ -411,7 +414,7 @@ contract DistributorP1Fuzz is DistributorP1 {
             if (share.rTokenDist > 10000 || share.rsrDist > 10000) validShareAmtsProp = false;
             if (share.rTokenDist == 0 && share.rsrDist == 0) destinationsProp = false;
         }
-        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp && destinationsProp;
+        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp && destinationsProp && aboveMinValueProp;
     }
 }
 

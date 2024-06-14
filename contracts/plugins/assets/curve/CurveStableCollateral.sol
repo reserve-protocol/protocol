@@ -10,6 +10,10 @@ import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
 import "../curve/PoolTokens.sol";
 
+// Note: Needs to be changed if we ever use this contract on something other than mainnet
+IERC20 constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+IERC20 constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
 /**
  * @title CurveStableCollateral
  *  This plugin contract is fully general to any number of (fiat) tokens in a Curve stable pool,
@@ -87,8 +91,8 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // {tok}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-        // We can always assume that the total supply is non-zero
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()), FLOOR);
+        // We can always assume that the total supply is sufficiently non-zero
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);

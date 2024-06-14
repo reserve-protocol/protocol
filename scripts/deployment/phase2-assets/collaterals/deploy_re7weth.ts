@@ -65,7 +65,7 @@ async function main() {
         defaultThreshold: '0', // WETH
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
-      fp('1e-6') // small admin fee uncertainty
+      fp('1e-3') // can have large drawdowns
     )
   )
   await collateral.deployed()

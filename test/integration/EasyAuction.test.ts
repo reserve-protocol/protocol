@@ -33,7 +33,7 @@ import { setOraclePrice } from '../utils/oracles'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectRTokenPrice } from '../utils/oracles'
-import { withinQuad } from '../utils/matchers'
+import { withinTolerance } from '../utils/matchers'
 import { cartesianProduct } from '../utils/cases'
 import {
   EasyAuction,
@@ -154,7 +154,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Create auction
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION))
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(anyValue, rsr.address, token0.address, anyValue, withinQuad(buyAmt))
+        .withArgs(anyValue, rsr.address, token0.address, anyValue, withinTolerance(buyAmt))
 
       const t = await getTrade(backingManager, rsr.address)
       sellAmt = await t.initBal()
@@ -840,7 +840,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     // ==== Generate the tests ====
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18'), bn('21'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('1'), bn('1595439874635'), bn('987321984732198435645846513')]

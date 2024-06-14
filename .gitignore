@@ -38,6 +38,9 @@ contracts/facade/FacadeAct.sol
 scripts/test.ts
 scripts/playground.ts
 
+# Serialized proposals
+tasks/validation/proposals/proposal-*.json
+
 # tenderly deployment/verification artifacts
 deployments/
 backtests/

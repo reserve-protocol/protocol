@@ -18,6 +18,8 @@ import "../OracleLib.sol";
  *      - The RToken _must_ be the same RToken using this plugin as collateral!
  *      - The RToken SHOULD have an RSR overcollateralization layer. DO NOT USE WITHOUT RSR!
  *      - The LP token should be worth ~2x the reference token. Do not use with 1x lpTokens.
+ *      - Lastly: Do NOT deploy an RToken with this collateral! It can only be swapped
+ *                in at a later date once the RToken has nonzero issuance.
  *
  * tok = ConvexStakingWrapper or CurveGaugeWrapper
  * ref = coins(0) in the pool
@@ -30,6 +32,9 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
 
     IRToken internal immutable rToken; // token1
 
+    // does not become nonzero until after first refresh()
+    uint192 internal poolVirtualPrice; // {lpToken@t=0/lpToken} max virtual price sub revenue hiding
+
     /// @param config.erc20 must be of type ConvexStakingWrapper or CurveGaugeWrapper
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
@@ -38,9 +43,6 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         PTConfiguration memory ptConfig
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token1));
-
-        // {ref/tok} LP token's virtual price
-        exposedReferencePrice = _safeWrap(curvePool.get_virtual_price()).mul(revenueShowing);
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -83,24 +85,41 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
     function refresh() public virtual override {
         CollateralStatus oldStatus = status();
 
-        try this.underlyingRefPerTok() returns (uint192) {
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
             // Instead of ensuring the underlyingRefPerTok is up-only, solely check
             // that the pool's virtual price is up-only. Otherwise this collateral
-            // would create default cascades.
+            // would create default cascades when basketsNeeded()/totalSupply() falls.
 
-            // {ref/tok}
+            // === Check for virtualPrice hard default ===
+
+            // {lpToken@t=0/lpToken}
             uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
 
-            // {ref/tok} = {ref/tok} * {1}
-            uint192 hiddenReferencePrice = virtualPrice.mul(revenueShowing);
+            // {lpToken@t=0/lpToken}
+            uint192 hiddenVirtualPrice = virtualPrice.mul(revenueShowing);
 
             // uint192(<) is equivalent to Fix.lt
-            if (virtualPrice < exposedReferencePrice) {
-                exposedReferencePrice = virtualPrice;
+            if (virtualPrice < poolVirtualPrice) {
+                poolVirtualPrice = virtualPrice;
                 markStatus(CollateralStatus.DISABLED);
+            } else if (hiddenVirtualPrice > poolVirtualPrice) {
+                poolVirtualPrice = hiddenVirtualPrice;
+            }
+
+            // === Update exposedReferencePrice, ignoring default ===
+
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
+
+            // uint192(<) is equivalent to Fix.lt
+            if (underlyingRefPerTok_ < exposedReferencePrice) {
+                exposedReferencePrice = underlyingRefPerTok_;
+                // markStatus(CollateralStatus.DISABLED); // don't DISABLE
             } else if (hiddenReferencePrice > exposedReferencePrice) {
                 exposedReferencePrice = hiddenReferencePrice;
             }
+
+            // === Check for soft default ===
 
             // Check for soft default + save prices
             try this.tryPrice() returns (uint192 low, uint192 high, uint192) {

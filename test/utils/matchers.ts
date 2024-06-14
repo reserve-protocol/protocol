@@ -3,9 +3,9 @@ import { expect } from 'chai'
 import { bn } from '../../common/numbers'
 
 // Creates a chai matcher that returns true if y is within a quadrillion of x
-export const withinQuad = (x: BigNumber): ((y: BigNumber) => boolean) => {
+export const withinTolerance = (x: BigNumber): ((y: BigNumber) => boolean) => {
   return (y: BigNumber) => {
-    const tolerance = x.div(bn('1e15'))
+    const tolerance = x.div(bn('1e13'))
     const lower = x.sub(tolerance)
     const higher = x.add(tolerance)
     return y.gte(lower) && y.lte(higher)

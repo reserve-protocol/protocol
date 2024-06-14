@@ -69,7 +69,9 @@ contract ReadFacet {
             uint192 mid = (low + high) / 2;
 
             // {UoA} = {tok} * {UoA/Tok}
-            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals())).mul(mid);
+            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals()), FLOOR).mul(
+                mid
+            );
         }
     }
 
@@ -195,7 +197,7 @@ contract ReadFacet {
             uint192 avg = (low + high) / 2; // {UoA/tok}
 
             // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
-            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(avg);
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals, FLOOR).mul(avg);
             uoaSum += uoaAmts[i];
         }
 
@@ -265,7 +267,7 @@ contract ReadFacet {
         uint256 right = stRSR.draftQueueLen(draftEra, account);
         uint192 draftRate = stRSR.draftRate();
 
-        unstakings = new IReadFacet.Pending[](right - left);
+        unstakings = new Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
             (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(draftEra, account, i + left);
 
@@ -346,7 +348,7 @@ contract ReadFacet {
                 IAsset asset = reg.toAsset(IERC20(basketERC20s[i]));
 
                 // {tok}
-                uint192 needed = shiftl_toFix(quantities[i], -int8(asset.erc20Decimals()));
+                uint192 needed = shiftl_toFix(quantities[i], -int8(asset.erc20Decimals()), CEIL);
 
                 // {UoA/tok}
                 (uint192 low, uint192 high) = asset.price();
