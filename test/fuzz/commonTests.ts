@@ -443,11 +443,12 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       const strsrID = addrIDs.get(addr(2)) as number
       expect(await main.someAddr(furanceID)).to.equal(addr(1))
       expect(await main.someAddr(strsrID)).to.equal(addr(2))
+      // addr(2) == strsr, set to 0 Rtoken + 1 RSR
+      await scenario.setDistribution(strsrID, 0, 10000)
+
       // addr(1) == furnace, set to 0 Rtoken + 0 RSR
       await scenario.setDistribution(furanceID, 0, 0)
-      // addr(2) == strsr, set to 0 Rtoken + 1 RSR
-      await scenario.setDistribution(strsrID, 0, 1)
-
+      
       // ==== Mint 1 exa of C0 to the backing manager
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol(collaterals[0]))
       await c0.mint(comp.backingManager.address, exa)
@@ -567,9 +568,9 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
       // RSR Trader - When RSR is the token to manage simply distribute
       // Setup: 100% distribution to RSR;
+      await scenario.setDistribution(strsrID, 0, 10000)
       await scenario.setDistribution(furanceID, 0, 0)
-      await scenario.setDistribution(strsrID, 0, 1)
-
+     
       // ==== Mint 1 exa of RSR to the RSR Trader
       await comp.rsr.mint(comp.rsrTrader.address, exa)
 
@@ -598,7 +599,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
       // RToken Trader - When RToken is the token to manage simply distribute
       // Setup: 100% distribution to RToken;
-      await scenario.setDistribution(furanceID, 1, 0)
+      await scenario.setDistribution(furanceID, 10000, 0)
       await scenario.setDistribution(strsrID, 0, 0)
 
       // ==== Send 1 exa of RToken to the RToken Trader
@@ -697,6 +698,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     it('can returnTokens to BackingManager', async () => {
       await warmup()
+      const furanceID = addrIDs.get(addr(1)) as number
       const strsrID = addrIDs.get(addr(2)) as number
 
       // ==== Mint 1 exa of collateral to the RSR Trader
@@ -717,6 +719,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await expect(scenario.returnTokens(2)).to.be.revertedWith('rsrTotal > 0')
 
       // RSR Trader - Set 0 distribution
+      await scenario.setDistribution(furanceID, 10000, 0)
       await scenario.setDistribution(strsrID, 0, 0)
 
       await scenario.returnTokens(2)
