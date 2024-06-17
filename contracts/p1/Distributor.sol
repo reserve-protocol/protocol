@@ -74,8 +74,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// @custom:governance
     // checks: invariants hold in post-state
     // effects:
-    //   destinations' = dests
-    //   distribution' = shares
+    //   destinations' = destinations.add(dests[i]) for i < dests.length
+    //   distribution' = distribution.set(dests[i], shares[i]) for i < dests.length
     function setDistributions(address[] calldata dests, RevenueShare[] calldata shares)
         external
         governance
