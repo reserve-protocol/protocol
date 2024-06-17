@@ -16,12 +16,17 @@ contract DAOFeeRegistry is Ownable {
     error DAOFeeRegistry__FeeRecipientAlreadySet();
     error DAOFeeRegistry__InvalidFeeRecipient();
     error DAOFeeRegistry__InvalidFeeNumerator();
+    error DAOFeeRegistry__InvalidOwner();
 
     event FeeRecipientSet(address indexed feeRecipient);
     event DefaultFeeNumeratorSet(uint256 defaultFeeNumerator);
     event RTokenFeeNumeratorSet(address indexed rToken, uint256 feeNumerator, bool isActive);
 
     constructor(address owner_) Ownable() {
+        if (owner_ == address(0)) {
+            revert DAOFeeRegistry__InvalidOwner();
+        }
+
         _transferOwnership(owner_); // Ownership to DAO
         feeRecipient = owner_; // DAO as initial fee recipient
     }
