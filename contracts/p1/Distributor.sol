@@ -174,11 +174,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
         if (address(daoFeeRegistry) != address(0)) {
-            // DAO Fee
-            if (isRSR) {
+            if (totalShares > paidOutShares) {
                 (address recipient, , ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
 
-                if (recipient != address(0) && tokensPerShare * (totalShares - paidOutShares) > 0) {
+                if (recipient != address(0)) {
                     IERC20Upgradeable(address(erc20)).safeTransferFrom(
                         caller,
                         recipient,
