@@ -47,7 +47,7 @@ contract GnosisTrade is ITrade, Versioned {
     uint256 public initBal; // {qSellTok}, this trade's balance of `sell` when init() was called
     uint192 public sellAmount; // {sellTok}, quantity of whole tokens being sold, != initBal
     uint48 public endTime; // timestamp after which this trade's auction can be settled
-    uint192 public worstCasePrice; // {qBuyTok/qSellTok}, the worst price we expect to get at Auction
+    uint192 public worstCasePrice; // {qBuyTok/qSellTok}, the worst price we expect to get
     // We expect Gnosis Auction either to meet or beat worstCasePrice, or to return the `sell`
     // tokens. If we actually *get* a worse clearing that worstCasePrice, we consider it an error in
     // our trading scheme and call broker.reportViolation()
