@@ -223,7 +223,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       const lowSellPrice = fp('1').sub(fp('1').mul(ORACLE_ERROR).div(fp('1')))
       const highBuyPrice = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1')))
       const worstCasePrice = divCeil(unslippedPrice.mul(lowSellPrice), highBuyPrice).sub(1)
-      expect(await trade.worstCasePrice()).to.equal(worstCasePrice)
+      expect(await trade.worstCasePrice()).to.equal(worstCasePrice) // both tokens have 18 decimals
     })
   })
 
