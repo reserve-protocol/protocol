@@ -56,7 +56,7 @@ import {
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from './utils/time'
-import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
+import { ITradeRequest, disableBatchTrade, disableDutchTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
 
@@ -1100,6 +1100,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Check balances again - funds sent to origin
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
+      })
+
+      it('Should downsize trades above uint96 - sell side', async () => {
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: MAX_UINT96.add(1),
+          minBuyAmount: amount,
+        }
+
+        // Should open trade JUST on MAX_UINT96 approval, not MAX_UINT96 + 1
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.mint(backingManager.address, MAX_UINT96)
+          await token0.connect(bmSigner).approve(broker.address, MAX_UINT96)
+          await broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          // should not revert
+        })
+      })
+
+      it('Should downsize trades above uint96 - buy side', async () => {
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: amount,
+          minBuyAmount: MAX_UINT96.add(1),
+        }
+
+        // Should open trade JUST on amount - 1 approval, not amount
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.mint(backingManager.address, amount.sub(1))
+          await token0.connect(bmSigner).approve(broker.address, amount.sub(1))
+          await broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          // should not revert
+        })
       })
 
       // There is no test here for the reportViolation case; that is in Revenues.test.ts
