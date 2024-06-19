@@ -314,7 +314,6 @@ describe(`Large Decimals Basket - P${IMPLEMENTATION}`, () => {
         await token.setRewards(backingManager.address, rewardAmount)
 
         // Collect revenue - Called via poke
-        // Expected values based on Prices between COMP and RSR - Need about 1000 RSR for 5 usd of COMP
         const sellAmt: BigNumber = rewardAmount // all will be sold
         const minBuyAmt = toMinBuyAmt(
           sellAmt.div(pow10(decimals - 18)), // scale to 18 decimals (to obtain RSR amount)
@@ -514,7 +513,7 @@ describe(`Large Decimals Basket - P${IMPLEMENTATION}`, () => {
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
 
-        // Run auctions - Will detect excess (all will be mintedt to RToken so no RToken auction)
+        // Run auctions - Will detect excess (all will be minted in RToken, so no RToken auction)
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
@@ -555,10 +554,11 @@ describe(`Large Decimals Basket - P${IMPLEMENTATION}`, () => {
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
 
-        // expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        //   origAssetValue,
-        //   point5Pct(origAssetValue)
-        // )
+        // Value of backing doubled
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          origAssetValue.mul(2),
+          point5Pct(origAssetValue.mul(2))
+        )
 
         // Supply now doubled
         expect(await rToken.totalSupply()).to.be.closeTo(
@@ -623,12 +623,12 @@ describe(`Large Decimals Basket - P${IMPLEMENTATION}`, () => {
           await backingManager.maxTradeSlippage(),
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
-        // expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        //   origAssetValue,
-        //   point5Pct(origAssetValue)
-        // )
 
-        // Supply doubled
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          origAssetValue.mul(2),
+          point5Pct(origAssetValue.mul(2))
+        )
+
         expect(await rToken.totalSupply()).to.be.closeTo(
           currentTotalSupply.mul(2),
           point5Pct(currentTotalSupply.mul(2))
