@@ -98,7 +98,9 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
     )
 
     const versionRegistryFactory = await ethers.getContractFactory('VersionRegistry')
-    versionRegistry = await versionRegistryFactory.deploy(await owner.getAddress())
+    const mockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+    const mockRoleRegistry = await mockRoleRegistryFactory.deploy()
+    versionRegistry = await versionRegistryFactory.deploy(mockRoleRegistry.address)
 
     await versionRegistry.registerVersion(deployer.address)
 
