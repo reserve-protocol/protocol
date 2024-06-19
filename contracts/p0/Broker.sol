@@ -235,7 +235,7 @@ contract BrokerP0 is ComponentP0, IBroker {
         );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         require(
-            pricedInBlock(req.sell) && pricedInBlock(req.buy),
+            pricedAtTimestamp(req.sell) && pricedAtTimestamp(req.buy),
             "dutch auctions require live prices"
         );
 
@@ -252,8 +252,8 @@ contract BrokerP0 is ComponentP0, IBroker {
         return trade;
     }
 
-    /// @return true iff the price was last priced in this block, or it's the RTokenAsset
-    function pricedInBlock(IAsset asset) private view returns (bool) {
+    /// @return true iff the asset has been priced at this timestamp, or it's the RTokenAsset
+    function pricedAtTimestamp(IAsset asset) private view returns (bool) {
         return
             asset.lastSave() == block.timestamp || address(asset.erc20()) == address(main.rToken());
     }

@@ -3184,8 +3184,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
       })
 
-      // TODO
-      context.skip('DutchTrade', () => {
+      context('DutchTrade', () => {
         const auctionLength = 1800 // 30 minutes
         beforeEach(async () => {
           await broker.connect(owner).setDutchAuctionLength(auctionLength)

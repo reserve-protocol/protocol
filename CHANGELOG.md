@@ -37,7 +37,9 @@ No functional change. FLOOR rounding added explicitly to `shiftl_toFix`
 
 ### Trading
 
-Small bugfix to `GnosisTrade`. Should prevent donated tokens from causing the trade to revert.
+- `GnosisTrade`
+  - Change units of `worstCasePrice()` from {buyTok/sellTok} to {qBuyTok/qSellTok}
+  - Small fix to prevent donated tokens from being able to cause the trade to revert
 
 ### Facades
 

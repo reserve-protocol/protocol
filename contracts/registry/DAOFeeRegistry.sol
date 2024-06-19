@@ -46,6 +46,7 @@ contract DAOFeeRegistry is Ownable {
         emit DefaultFeeNumeratorSet(defaultFeeNumerator);
     }
 
+    /// @dev A fee below 1% not recommended due to poor precision in the Distributor
     function setRTokenFeeNumerator(address rToken, uint256 feeNumerator_) external onlyOwner {
         if (feeNumerator_ > MAX_FEE_NUMERATOR) revert DAOFeeRegistry__InvalidFeeNumerator();
 

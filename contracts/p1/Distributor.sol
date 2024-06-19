@@ -214,6 +214,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
             .daoFeeRegistry()
             .getFeeDetails(address(rToken));
 
+            // Small DAO fees <1% not recommended; ~10% precision due to rounding at 0.1% fee
             if (feeRecipient != address(0) && feeNumerator != 0) {
                 revTotals.rsrTotal += uint24(
                     (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /
