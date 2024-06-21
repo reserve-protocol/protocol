@@ -20,9 +20,28 @@ A challenge that anyone building on top of the protocol will face is that underl
 - Arbitrum: https://arbiscan.io/address/0x387A0C36681A22F728ab54426356F4CAa6bB48a9
 
 ```solidity
-function issue(address rToken, uint256 amount) external returns (uint256);
+function issue(address rToken, uint256 amount)
+  external
+  returns (
+    address[] memory tokens,
+    uint256[] memory deposits,
+    uint192[] memory depositsUoA
+  );
 
-function redeem(address rToken, uint256 amount) external returns (uint256);
+function redeem(address rToken, uint256 amount)
+  external
+  returns (
+    address[] memory tokens,
+    uint256[] memory withdrawals,
+    uint256[] memory available
+  );
+
+function redeemCustom(
+  IRToken rToken,
+  uint256 amount,
+  uint48[] memory basketNonces,
+  uint192[] memory portions
+) external returns (address[] memory tokens, uint256[] memory withdrawals);
 
 ```
 
