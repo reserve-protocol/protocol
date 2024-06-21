@@ -105,6 +105,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         );
 
         _upgradeProxy(address(this), address(implementation.main));
+        require(keccak256(abi.encodePacked(this.version())) == versionHash, "upgrade mismatch");
     }
 
     function upgradeRTokenTo(
@@ -157,6 +158,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         (bool success, ) = proxy.call(
             abi.encodeWithSelector(UUPSUpgradeable.upgradeTo.selector, implementation)
         );
+
         require(success, "upgrade failed");
     }
 
