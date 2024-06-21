@@ -16,7 +16,7 @@ MEV searchers can arb an RToken's issuance/redemption price against the broader 
 A challenge that anyone building on top of the protocol will face is that underlying rates move between the time the tx is constructed and when it is executed on-chain. To get the tightest possible quote, you can execute a static call against the Facade address for your chain using the below interface:
 
 - Mainnet: https://etherscan.io/address/0x2C7ca56342177343A2954C250702Fd464f4d0613
-- Base: https://basescan.org/address/0x387A0C36681A22F728ab54426356F4CAa6bB48a9
+- Base: https://basescan.org/address/0xEb2071e9B542555E90E6e4E1F83fa17423583991
 - Arbitrum: https://arbiscan.io/address/0x387A0C36681A22F728ab54426356F4CAa6bB48a9
 
 ```solidity
