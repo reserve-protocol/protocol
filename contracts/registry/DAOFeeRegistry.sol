@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { RoleRegistry } from "./RoleRegistry.sol";
 
-uint256 constant MAX_FEE_NUMERATOR = 15_00; // max 15% DAO fee
+uint256 constant MAX_FEE_NUMERATOR = 15_00; // Max DAO Fee: 15%
 uint256 constant FEE_DENOMINATOR = 100_00;
 
-contract DAOFeeRegistry is Ownable {
+contract DAOFeeRegistry {
+    RoleRegistry public roleRegistry;
+
     address private feeRecipient;
     uint256 private defaultFeeNumerator; // 0%
 
@@ -16,31 +18,45 @@ contract DAOFeeRegistry is Ownable {
     error DAOFeeRegistry__FeeRecipientAlreadySet();
     error DAOFeeRegistry__InvalidFeeRecipient();
     error DAOFeeRegistry__InvalidFeeNumerator();
-    error DAOFeeRegistry__InvalidOwner();
+    error DAOFeeRegistry__InvalidRoleRegistry();
+    error DAOFeeRegistry__InvalidCaller();
 
     event FeeRecipientSet(address indexed feeRecipient);
     event DefaultFeeNumeratorSet(uint256 defaultFeeNumerator);
     event RTokenFeeNumeratorSet(address indexed rToken, uint256 feeNumerator, bool isActive);
 
-    constructor(address owner_) Ownable() {
-        if (owner_ == address(0)) {
-            revert DAOFeeRegistry__InvalidOwner();
+    modifier onlyOwner() {
+        if (!roleRegistry.isOwner(msg.sender)) {
+            revert DAOFeeRegistry__InvalidCaller();
+        }
+        _;
+    }
+
+    constructor(RoleRegistry _roleRegistry, address _feeRecipient) {
+        if (address(_roleRegistry) == address(0)) {
+            revert DAOFeeRegistry__InvalidRoleRegistry();
         }
 
-        _transferOwnership(owner_); // Ownership to DAO
-        feeRecipient = owner_; // DAO as initial fee recipient
+        roleRegistry = _roleRegistry;
+        feeRecipient = _feeRecipient;
     }
 
     function setFeeRecipient(address feeRecipient_) external onlyOwner {
-        if (feeRecipient_ == address(0)) revert DAOFeeRegistry__InvalidFeeRecipient();
-        if (feeRecipient_ == feeRecipient) revert DAOFeeRegistry__FeeRecipientAlreadySet();
+        if (feeRecipient_ == address(0)) {
+            revert DAOFeeRegistry__InvalidFeeRecipient();
+        }
+        if (feeRecipient_ == feeRecipient) {
+            revert DAOFeeRegistry__FeeRecipientAlreadySet();
+        }
 
         feeRecipient = feeRecipient_;
         emit FeeRecipientSet(feeRecipient_);
     }
 
     function setDefaultFeeNumerator(uint256 feeNumerator_) external onlyOwner {
-        if (feeNumerator_ > MAX_FEE_NUMERATOR) revert DAOFeeRegistry__InvalidFeeNumerator();
+        if (feeNumerator_ > MAX_FEE_NUMERATOR) {
+            revert DAOFeeRegistry__InvalidFeeNumerator();
+        }
 
         defaultFeeNumerator = feeNumerator_;
         emit DefaultFeeNumeratorSet(defaultFeeNumerator);
@@ -48,7 +64,9 @@ contract DAOFeeRegistry is Ownable {
 
     /// @dev A fee below 1% not recommended due to poor precision in the Distributor
     function setRTokenFeeNumerator(address rToken, uint256 feeNumerator_) external onlyOwner {
-        if (feeNumerator_ > MAX_FEE_NUMERATOR) revert DAOFeeRegistry__InvalidFeeNumerator();
+        if (feeNumerator_ > MAX_FEE_NUMERATOR) {
+            revert DAOFeeRegistry__InvalidFeeNumerator();
+        }
 
         rTokenFeeNumerator[rToken] = feeNumerator_;
         rTokenFeeSet[rToken] = true;
