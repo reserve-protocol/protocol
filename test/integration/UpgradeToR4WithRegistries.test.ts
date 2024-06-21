@@ -54,7 +54,10 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
     assetPluginRegistry = await AssetPluginRegistryFactory.deploy(versionRegistry.address)
 
     const DAOFeeRegistryFactory = await ethers.getContractFactory('DAOFeeRegistry')
-    daoFeeRegistry = await DAOFeeRegistryFactory.deploy(await owner.getAddress())
+    daoFeeRegistry = await DAOFeeRegistryFactory.deploy(
+      mockRoleRegistry.address,
+      await owner.getAddress()
+    )
 
     // Setup Common Dependencies
     const TradingLibFactory = await ethers.getContractFactory('RecollateralizationLibP1')

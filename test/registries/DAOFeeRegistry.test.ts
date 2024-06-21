@@ -35,37 +35,24 @@ describeP1('DAO Fee Registry', () => {
     // Deploy fixture
     ;({ distributor, main, rToken, rsr, rsrTrader } = await loadFixture(defaultFixture))
 
+    const mockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+    const mockRoleRegistry = await mockRoleRegistryFactory.deploy()
+
     const DAOFeeRegistryFactory = await ethers.getContractFactory('DAOFeeRegistry')
-    feeRegistry = await DAOFeeRegistryFactory.connect(owner).deploy(await owner.getAddress())
+    feeRegistry = await DAOFeeRegistryFactory.connect(owner).deploy(
+      mockRoleRegistry.address,
+      await owner.getAddress()
+    )
+
     await main.connect(owner).setDAOFeeRegistry(feeRegistry.address)
   })
 
   describe('Deployment', () => {
-    it('should set the owner correctly', async () => {
-      expect(await feeRegistry.owner()).to.eq(await owner.getAddress())
-    })
     it('fee should begin zero and assigned to owner', async () => {
       const feeDetails = await feeRegistry.getFeeDetails(rToken.address)
       expect(feeDetails.recipient).to.equal(owner.address)
       expect(feeDetails.feeNumerator).to.equal(0)
       expect(feeDetails.feeDenominator).to.equal(bn('1e4'))
-    })
-  })
-
-  describe('Ownership', () => {
-    it('Should be able to change owner', async () => {
-      expect(await feeRegistry.owner()).to.eq(await owner.getAddress())
-      await feeRegistry.connect(owner).transferOwnership(other.address)
-      expect(await feeRegistry.owner()).to.eq(await other.getAddress())
-      await expect(feeRegistry.connect(owner).setFeeRecipient(owner.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-      await expect(feeRegistry.connect(owner).setDefaultFeeNumerator(bn('100'))).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-      await expect(
-        feeRegistry.connect(owner).setRTokenFeeNumerator(rToken.address, bn('100'))
-      ).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
 

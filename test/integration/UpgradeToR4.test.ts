@@ -109,7 +109,10 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
       (await AssetPluginRegistryFactory.deploy()) as unknown as AssetPluginRegistry
 
     const DAOFeeRegistryFactory = await ethers.getContractFactory('DAOFeeRegistry')
-    daoFeeRegistry = await DAOFeeRegistryFactory.deploy(await owner.getAddress())
+    daoFeeRegistry = await DAOFeeRegistryFactory.deploy(
+      mockRoleRegistry.address,
+      await owner.getAddress()
+    )
   })
 
   describe('The Upgrade', () => {
