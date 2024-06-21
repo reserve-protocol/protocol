@@ -252,11 +252,15 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
+        // Call to quantity() restricts gas that is passed along to 63 / 64 of gasleft().
+        // Therefore gasleft() must be greater than 64 * GAS_FOR_BH_QTY / 63
+        // GAS_FOR_DISABLE_BASKET is a buffer which can be considerably lower without
+        // security implications.
         require(
-            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            gas > (64 * GAS_FOR_BH_QTY) / 63 + GAS_FOR_DISABLE_BASKET,
             "not enough gas to unregister safely"
         );
-        return gas - GAS_FOR_DISABLE_BASKET;
+        return GAS_FOR_BH_QTY;
     }
 
     /**
