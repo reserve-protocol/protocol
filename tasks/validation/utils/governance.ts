@@ -291,8 +291,6 @@ export const proposeUpgrade = async (
 
     console.log(`Proposal Transaction:\n`, call.data)
 
-    await validatePropState(await governor.state(proposalId), ProposalState.Active)
-
     const r = await governor.propose(
       proposal.targets,
       proposal.values,
@@ -302,6 +300,7 @@ export const proposeUpgrade = async (
     const resp = await r.wait()
     proposalId = bn(resp.events![0].args!.proposalId)
 
+    await validatePropState(await governor.state(proposalId), ProposalState.Pending)
     console.log('\nSuccessfully proposed!')
   } else {
     console.log('\nAlready proposed!')
