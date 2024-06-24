@@ -1016,7 +1016,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
         expect(await trade.initBal()).to.equal(issueAmount)
-        expect(await trade.worstCasePrice()).to.be.gte(fp('0.775')) // both tokens have 18 decimals
+        expect(await trade.worstCasePrice()).to.be.gte(fp('0.775').mul(bn('1e9'))) // D27 precision
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {

@@ -265,7 +265,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       const t = await getTrade(rsrTrader, cDAI.address)
       const sellAmt = await t.initBal()
       const minBuyAmt = await toMinBuyAmt(sellAmt, fp('2').div(50), fp('1'))
-      const expectedPrice = minBuyAmt.mul(fp('1')).div(sellAmt).mul(bn('1e10')) // shift 10 decimals for cDAI which has 8
+      const expectedPrice = minBuyAmt.mul(fp('1')).div(sellAmt).mul(bn('1e10')).mul(bn('1e9')) // shift 10 decimals for cDAI; D27 precision
       // price should be within 1 part in a 1 trillion of our discounted rate
       expect(await t.worstCasePrice()).to.be.closeTo(expectedPrice, expectedPrice.div(bn('1e9')))
     })

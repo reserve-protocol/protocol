@@ -47,7 +47,7 @@ contract GnosisTrade is ITrade, Versioned {
     uint256 public initBal; // {qSellTok}, this trade's balance of `sell` when init() was called
     uint192 public sellAmount; // {sellTok}, quantity of whole tokens being sold, != initBal
     uint48 public endTime; // timestamp after which this trade's auction can be settled
-    uint192 public worstCasePrice; // {qBuyTok/qSellTok}, the worst price we expect to get
+    uint192 public worstCasePrice; // D27{qBuyTok/qSellTok}, the worst price we expect to get
     // We expect Gnosis Auction either to meet or beat worstCasePrice, or to return the `sell`
     // tokens. If we actually *get* a worse clearing that worstCasePrice, we consider it an error in
     // our trading scheme and call broker.reportViolation()
@@ -103,8 +103,9 @@ contract GnosisTrade is ITrade, Versioned {
         gnosis = gnosis_;
         endTime = uint48(block.timestamp) + batchAuctionLength;
 
-        // {qBuyTok/qSellTok}
-        worstCasePrice = divuu(req.minBuyAmount, req.sellAmount); // FLOOR
+        // D27{qBuyTok/qSellTok}
+        worstCasePrice = shiftl_toFix(req.minBuyAmount, 9).divu(req.sellAmount, FLOOR);
+        // cannot overflow; cannot round to 0 unless minBuyAmount is itself 0
 
         // Downsize our sell amount to adjust for fee
         // {qSellTok} = {qSellTok} * {1} / {1}
@@ -210,8 +211,8 @@ contract GnosisTrade is ITrade, Versioned {
             uint256 adjustedSoldAmt = Math.max(soldAmt, 1);
             uint256 adjustedBuyAmt = boughtAmt + 1;
 
-            // {buyTok/sellTok}
-            uint192 clearingPrice = divuu(adjustedBuyAmt, adjustedSoldAmt); // FLOOR
+            // D27{buyTok/sellTok}
+            uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, 9).divu(adjustedSoldAmt, FLOOR);
             if (clearingPrice.lt(worstCasePrice)) broker.reportViolation();
         }
     }
