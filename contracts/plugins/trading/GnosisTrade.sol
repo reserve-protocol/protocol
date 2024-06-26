@@ -14,7 +14,9 @@ import "../../mixins/Versioned.sol";
 // Modifications to this contract's state must only ever be made when status=PENDING!
 
 /// Trade contract against the Gnosis EasyAuction mechanism
-/// Only supports sell/buy tokens with up to 21 decimals
+/// Limitations on decimals due to Gnosis Auction limitations:
+///   - 27 decimal tokens are not supported in practice: max auction size is ~8e1 whole tokens
+///   - 21 decimal tokens are supported, with caveats: max auction size is ~8e7 whole tokens
 contract GnosisTrade is ITrade, Versioned {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;

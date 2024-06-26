@@ -252,7 +252,12 @@ There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20W
 
 ### Token decimals should be <= 21
 
-The protocol currently supports collateral tokens with up to 21 decimals.
+The protocol currently supports collateral tokens with up to 21 decimals. There are some caveats to know about:
+
+- For a token with 21 decimals, batch auctions can only process up to ~8e7 whole tokens in a single auction. Dollar-pegged tokens thus fit nicely within this constraint, but 21 decimal tokens that are worth <$0.1 per whole token may not. Therefore, the protocol should not be used with **low-value 21-decimal tokens**.
+- For a token with 18 decimals, batch auctions can only process up to ~8e10 whole tokens in a single auction.
+
+Dutch auctions do not have this constraint. As long as they remain enabled they can process a larger number of tokens.
 
 ### `refresh()` should never revert
 
