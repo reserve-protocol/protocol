@@ -170,4 +170,7 @@ contract DeployerP0 is IDeployer, Versioned {
         rTokenAsset = new RTokenAsset(rToken, maxTradeVolume);
         emit RTokenAssetCreated(rToken, rTokenAsset);
     }
+
+    /// @dev Just to make solc happy.
+    function implementations() external view returns (Implementations memory) {}
 }

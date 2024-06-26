@@ -6,7 +6,7 @@ import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { withinQuad } from '../utils/matchers'
+import { withinTolerance } from '../utils/matchers'
 import { toSellAmt, toMinBuyAmt } from '../utils/trades'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
@@ -232,8 +232,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           anyValue,
           one.rsr.address,
           staticATokenERC20.address,
-          withinQuad(sellAmt),
-          withinQuad(buyAmt)
+          withinTolerance(sellAmt),
+          withinTolerance(buyAmt)
         )
 
       // Verify outer RToken isn't panicking
@@ -358,15 +358,15 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await one.assetRegistry.refresh()
       await two.assetRegistry.refresh()
 
-      const rTokSellAmt = issueAmt.div(2).mul(2).div(5).sub(40)
-      const rsrSellAmt = issueAmt.div(2).mul(3).div(5).sub(60)
+      const rTokSellAmt = issueAmt.div(2).mul(2).div(5).sub(4000)
+      const rsrSellAmt = issueAmt.div(2).mul(3).div(5).sub(6000)
       const rsrMinBuyAmt = toMinBuyAmt(
         rsrSellAmt,
         fp('1'),
         fp('1'),
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage()
-      ).add(1)
+      )
       expect(await staticATokenERC20.balanceOf(one.backingManager.address)).to.equal(issueAmt)
 
       // Note the inner RToken mints internally since it has excess backing
@@ -386,13 +386,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         {
           contract: one.rsrTrader,
           name: 'TradeStarted',
-          args: [
-            anyValue,
-            one.rToken.address,
-            one.rsr.address,
-            rsrSellAmt,
-            rsrMinBuyAmt, //rsrSellAmt.mul(99).div(100).add(31),
-          ],
+          args: [anyValue, one.rToken.address, one.rsr.address, rsrSellAmt, rsrMinBuyAmt],
           emitted: true,
         },
       ])

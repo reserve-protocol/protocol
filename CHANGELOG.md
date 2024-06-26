@@ -1,5 +1,53 @@
 # Changelog
 
+# 4.0.0
+
+This release prepares the core protocol for veRSR through the introduction of 3 registries (`DAOFeeRegistry`, `AssetPluginRegistry`, and `VersionRegistry`) and through restricting component upgrades to be handled by `Main`, where upgrade constraints can be enforced.
+
+The release also expands collateral decimal support from 18 to 27.
+
+## Upgrade Steps
+
+TODO
+
+Make sure distributor table sums to >10000.
+
+## Core Protocol Contracts
+
+- `AssetRegistry`
+  - Prevent registering assets that are not in the `AssetPluginRegistry`
+  - Add `validateCurrentAssets() view`
+- `Broker`
+  - Make setters only callable by `Main`
+- `Distributor`
+  - Add `setDistributions()` function to parallel `setDistribution()`
+  - Take DAO fee out account in `distribute()` and `totals()`
+  - Add new revenue share table invariant: must sum to >=10000 (for precision reasons)
+- `Main`
+  - Add `versionRegistry()`/`assetPluginRegistry()`/`daoFeeRegistry()` getters
+  - Add `setVersionRegistry()`/`setAssetPluginRegistry()`/`setDaoFeeRegistry()` setters
+  - Add `upgradeMainTo()` + `upgradeRTokenTo()` functions to handle upgrade of Main + Components
+  - Make Main the only caller that can upgrade Main
+
+## Plugins
+
+### Assets
+
+No functional change. FLOOR rounding added explicitly to `shiftl_toFix`
+
+### Trading
+
+- `GnosisTrade`
+  - Change units of `worstCasePrice()` from {buyTok/sellTok} to {qBuyTok/qSellTok}
+  - Small fix to prevent donated tokens from being able to cause the trade to revert
+
+### Facades
+
+- `ActFacet`
+  - Expand to handle 4.0 version numbers
+- `ReadFacet`
+  - Make `shiftl_toFix` rounding in L349 CEIL
+
 # 3.4.0
 
 This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods. This changes the interface of the governance voting token StRSR, making this a complicated and nuanced upgrade to get right.

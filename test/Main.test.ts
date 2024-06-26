@@ -250,8 +250,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Configuration
       const [rTokenTotal, rsrTotal] = await distributor.totals()
-      expect(rTokenTotal).to.equal(bn(40))
-      expect(rsrTotal).to.equal(bn(60))
+      expect(rTokenTotal).to.equal(bn(4000))
+      expect(rsrTotal).to.equal(bn(6000))
       expect(await main.shortFreeze()).to.equal(config.shortFreeze)
       expect(await main.longFreeze()).to.equal(config.longFreeze)
 
@@ -469,7 +469,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
-      ).to.be.revertedWith('no distribution defined')
+      ).to.be.revertedWith('totals too low')
 
       // Create a new instance of Main
       const MainFactory: ContractFactory = await ethers.getContractFactory(`MainP${IMPLEMENTATION}`)
@@ -1165,6 +1165,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         assetRegistry.unregister(collateral0.address, { gasLimit: bn('1e6') })
       ).to.be.revertedWith('not enough gas to unregister safely')
+    })
+
+    it('Should validate current assets if no Plugin Registry', async () => {
+      await expect(assetRegistry.validateCurrentAssets()).to.not.be.reverted
     })
 
     it('Should be able to disableBasket during deregistration with basket size of 128', async () => {

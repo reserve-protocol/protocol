@@ -250,6 +250,15 @@ To use a rebasing token as collateral backing, the rebasing ERC20 needs to be re
 
 There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20Wrapper.sol](../contracts/plugins/assets/erc20/RewardableERC20Wrapper.sol). You may add additional logic by extending `_afterDeposit()` or `_beforeWithdraw()`.
 
+### Token decimals should be <= 21
+
+The protocol currently supports collateral tokens with up to 21 decimals. There are some caveats to know about:
+
+- For a token with 21 decimals, batch auctions can only process up to ~8e7 whole tokens in a single auction. Dollar-pegged tokens thus fit nicely within this constraint, but 21 decimal tokens that are worth <$0.1 per whole token may not. Therefore, the protocol should not be used with **low-value 21-decimal tokens**.
+- For a token with 18 decimals, batch auctions can only process up to ~8e10 whole tokens in a single auction.
+
+Dutch auctions do not have this constraint. As long as they remain enabled they can process a larger number of tokens.
+
 ### `refresh()` should never revert
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.

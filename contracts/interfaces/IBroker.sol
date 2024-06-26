@@ -69,6 +69,12 @@ interface IBroker is IComponent {
     function dutchTradeDisabled(IERC20Metadata erc20) external view returns (bool);
 }
 
+interface IExtendedBroker is IBroker {
+    function setBatchTradeImplementation(ITrade newTradeImplementation) external;
+
+    function setDutchTradeImplementation(ITrade newTradeImplementation) external;
+}
+
 interface TestIBroker is IBroker {
     function gnosis() external view returns (IGnosis);
 

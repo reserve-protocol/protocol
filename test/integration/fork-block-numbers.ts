@@ -8,6 +8,7 @@ const forkBlockNumber = {
   'facade-monitor': 18742016, // Ethereum
   'old-curve-plugins': 16915576, // Ethereum
   'new-curve-plugins': 19626711, // Ethereum
+
   // TODO add all the block numbers we fork from to benefit from caching
   default: 19742528, // Ethereum
 }

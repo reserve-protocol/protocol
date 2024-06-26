@@ -30,7 +30,7 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
     function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rate = StaticATokenV3LM(address(erc20)).rate(); // {ray ref/tok}
 
-        return shiftl_toFix(rate, -27); // {ray -> wad}
+        return shiftl_toFix(rate, -27, FLOOR); // {ray -> wad}
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

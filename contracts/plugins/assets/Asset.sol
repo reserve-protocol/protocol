@@ -176,7 +176,7 @@ contract Asset is IAsset, VersionedAsset {
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view virtual returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
+        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals), FLOOR);
     }
 
     /// @return If the asset is an instance of ICollateral or not
