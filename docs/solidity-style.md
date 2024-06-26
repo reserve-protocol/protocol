@@ -135,6 +135,14 @@ That is, we expect timestamps to be any uint48 value.
 
 This should work without change for around 9M years, which is more than enough.
 
+### Collateral decimals
+
+`{decimals}`: [6, 21]
+
+The protocol only supports collateral tokens up to 21 decimals, and for these cases only supports balances up to `~8e28`. Exceeding this could end up overflowing restrictions in GnosisTrade / EasyAuction, and end up in rounding issues accross the protocol.
+
+21 decimal tokens must also be sufficiently valued, where that is defined as a whole token worth >$0.1.
+
 ## Function annotations
 
 All core functions that can be called from outside our system are classified into one of the following 3 categories:
