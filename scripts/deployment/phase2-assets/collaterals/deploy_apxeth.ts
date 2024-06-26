@@ -67,7 +67,7 @@ async function main() {
       oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(), //  Higher than other plugins!
-      delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
+      delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 72h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
     networkConfig[chainId].chainlinkFeeds.apxETH, // targetPerTokChainlinkFeed

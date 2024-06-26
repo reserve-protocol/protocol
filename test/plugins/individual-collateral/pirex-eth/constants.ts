@@ -18,10 +18,10 @@ export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ETH_ORACLE_TIMEOUT = bn(3600) // 1 hour in seconds
 export const ETH_ORACLE_ERROR = fp('0.005')
 export const APXETH_ORACLE_ERROR = fp('0.01') // 1%
-export const APXETH_ORACLE_TIMEOUT = bn(86400) // 24 hs
+export const APXETH_ORACLE_TIMEOUT = bn(86400) // 24h
 
 export const DEFAULT_THRESHOLD = fp('0.05') // 5%
-export const DELAY_UNTIL_DEFAULT = bn(86400)
+export const DELAY_UNTIL_DEFAULT = bn(259200) // 72h
 export const MAX_TRADE_VOL = bn(1000)
 
 export const FORK_BLOCK = 19868380

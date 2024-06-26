@@ -37,7 +37,7 @@ async function main() {
   const oracleError = combinedError(ETH_ORACLE_ERROR, APXETH_ORACLE_ERROR) // 0.5% & 1%
   await verifyContract(
     chainId,
-    deployments.collateral.rETH,
+    deployments.collateral.apxETH,
     [
       {
         priceTimeout: priceTimeout.toString(),
@@ -48,7 +48,7 @@ async function main() {
         oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: DEFAULT_THRESHOLD.toString(),
-        delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
+        delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 72h
       },
       fp('1e-4'), // revenueHiding = 0.01%
       networkConfig[chainId].chainlinkFeeds.apxETH, // targetPerTokChainlinkFeed
