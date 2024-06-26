@@ -13,7 +13,6 @@ import {
   DELAY_UNTIL_DEFAULT,
   APXETH_ORACLE_ERROR,
   APXETH_ORACLE_TIMEOUT,
-  DEFAULT_THRESHOLD,
 } from '../../../test/plugins/individual-collateral/pirex-eth/constants'
 import { priceTimeout, verifyContract, combinedError } from '../../deployment/utils'
 
@@ -47,7 +46,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: DEFAULT_THRESHOLD.toString(),
+        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~3.5%
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 72h
       },
       fp('1e-4'), // revenueHiding = 0.01%
