@@ -250,6 +250,10 @@ To use a rebasing token as collateral backing, the rebasing ERC20 needs to be re
 
 There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20Wrapper.sol](../contracts/plugins/assets/erc20/RewardableERC20Wrapper.sol). You may add additional logic by extending `_afterDeposit()` or `_beforeWithdraw()`.
 
+### Token decimals should be <= 21
+
+The protocol currently supports collateral tokens with up to 21 decimals.
+
 ### `refresh()` should never revert
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
