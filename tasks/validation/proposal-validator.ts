@@ -21,7 +21,6 @@ import {
 } from './utils/governance'
 import { advanceTime, getLatestBlockNumber } from '#/utils/time'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { resetFork } from '#/utils/chain'
 import fs from 'fs'
 import { BigNumber } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -30,7 +29,7 @@ import { RTokenP1 } from '@typechain/RTokenP1'
 import { StRSRP1Votes } from '@typechain/StRSRP1Votes'
 import { IMain } from '@typechain/IMain'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
-import { proposal_3_4_0_step_1, proposal_3_4_0_step_2 } from './proposals/3_4_0'
+import { proposal_3_4_0_step_2 } from './proposals/3_4_0'
 import { validateSubgraphURL, Network } from '#/utils/fork'
 
 interface Params {
@@ -362,19 +361,31 @@ const runCheck_mint = async (
   console.log('Successfully minted RTokens')
 }
 
-task('print-proposal')
+task('save-proposal-pt-2')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('gov', 'the address of the OWNER of the RToken being upgraded')
   .addParam('time', 'the address of the timelock')
   .setAction(async (params, hre) => {
-    const proposal = await proposal_3_4_0_step_2(hre, params.rtoken, params.gov, params.time)
+    const chainId = await getChainId(hre)
 
-    console.log(`\nGenerating and proposing proposal...`)
-    const [tester] = await hre.ethers.getSigners()
+    // make sure config exists
+    if (!networkConfig[chainId]) {
+      throw new Error(`Missing network configuration for ${hre.network.name}`)
+    }
 
-    await hre.run('give-rsr', { address: tester.address })
-    await stakeAndDelegateRsr(hre, params.rtoken, tester.address)
+    const spellAddr =
+      chainId == '1'
+        ? '0xb1df3a104d73ff86f9aaab60b491a5c44b090391'
+        : '0x1744c9933feb8e76563fce63d5c95a4e7f967c2a'
+    const proposal = await proposal_3_4_0_step_2(
+      hre,
+      params.rtoken,
+      params.gov,
+      params.time,
+      spellAddr
+    )
 
+    console.log(`\nGenerating and hashing proposal...`)
     const governor = await hre.ethers.getContractAt('Governance', params.gov)
 
     const call = await governor.populateTransaction.propose(
@@ -386,21 +397,23 @@ task('print-proposal')
 
     console.log(`Proposal Transaction:\n`, call.data)
 
-    const r = await governor.propose(
+    const proposalId = await governor.hashProposal(
       proposal.targets,
       proposal.values,
       proposal.calldatas,
-      proposal.description
+      hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(proposal.description))
     )
-    const resp = await r.wait()
 
-    console.log('\nSuccessfully proposed!')
-    console.log(`Proposal ID: ${resp.events![0].args!.proposalId}`)
-
-    proposal.proposalId = resp.events![0].args!.proposalId.toString()
+    console.log(`Proposal ID: ${proposalId}`)
+    proposal.proposalId = proposalId.toString()
+    proposal.governor = params.gov
+    proposal.timelock = params.time
+    proposal.rtoken = params.rtoken
 
     fs.writeFileSync(
       `./tasks/validation/proposals/proposal-${proposal.proposalId}.json`,
       JSON.stringify(proposal, null, 2)
     )
+
+    console.log("Saved to proposals folder. Don't forget to run `proposal-validator`!")
   })

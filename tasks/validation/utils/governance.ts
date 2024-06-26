@@ -35,15 +35,14 @@ export const moveProposalToActive = async (
     const version = await rToken.version()
     if (version == '3.0.0' || version == '3.0.1') await advanceBlocks(hre, votingDelay.add(2))
     else await advanceTime(hre, votingDelay.add(2).toNumber())
-  } else {
-    if (propState == ProposalState.Active) {
-      console.log(`Proposal is already ${ProposalState[ProposalState.Active]}... skipping step.`)
-    } else {
-      throw Error(`Proposal should be ${ProposalState[ProposalState.Pending]} at this step.`)
-    }
+  } else if (propState == ProposalState.Active) {
+    console.log(`Proposal is already ${ProposalState[ProposalState.Active]}... skipping step.`)
   }
 
-  await validatePropState(await governor.state(proposalId), ProposalState.Active)
+  const state = await governor.state(proposalId)
+  if (![ProposalState.Active, ProposalState.Succeeded, ProposalState.Queued].includes(state)) {
+    throw new Error(`Proposal is in unexpected state ${ProposalState[propState]}`)
+  }
 }
 
 export const voteProposal = async (
@@ -96,7 +95,10 @@ export const voteProposal = async (
     }
   }
 
-  await validatePropState(await governor.state(proposalId), ProposalState.Active)
+  const state = await governor.state(proposalId)
+  if (![ProposalState.Active, ProposalState.Succeeded, ProposalState.Queued].includes(state)) {
+    throw new Error(`Proposal is in unexpected state ${ProposalState[propState]}`)
+  }
 }
 
 export const passProposal = async (
@@ -115,7 +117,10 @@ export const passProposal = async (
     await advanceBlocks(hre, votingPeriod.add(1))
   }
 
-  await validatePropState(await governor.state(proposalId), ProposalState.Succeeded)
+  const state = await governor.state(proposalId)
+  if (![ProposalState.Succeeded, ProposalState.Queued].includes(state)) {
+    throw new Error(`Proposal is in unexpected state ${ProposalState[propState]}`)
+  }
 }
 
 export const executeProposal = async (
@@ -263,35 +268,48 @@ export const proposeUpgrade = async (
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
   const amount = (await stRSR.getStakeRSR()).div(100) // 1% increase in staked RSR
-
-  // Stake and delegate
-  await hre.run('give-rsr', { address: tester.address, amount: amount.toString() })
-  await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
-
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
 
-  const call = await governor.populateTransaction.propose(
+  let proposalId = await governor.hashProposal(
     proposal.targets,
     proposal.values,
     proposal.calldatas,
-    proposal.description
+    await hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(proposal.description))
   )
 
-  console.log(`Proposal Transaction:\n`, call.data)
+  // Only propose if not already proposed
+  if ((await governor.proposalSnapshot(proposalId)).eq(0)) {
+    await hre.run('give-rsr', { address: tester.address, amount: amount.toString() })
+    await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
-  const r = await governor.propose(
-    proposal.targets,
-    proposal.values,
-    proposal.calldatas,
-    proposal.description
-  )
-  const resp = await r.wait()
+    const call = await governor.populateTransaction.propose(
+      proposal.targets,
+      proposal.values,
+      proposal.calldatas,
+      proposal.description
+    )
 
-  console.log('\nSuccessfully proposed!')
-  console.log(`Proposal ID: ${resp.events![0].args!.proposalId}`)
+    console.log(`Proposal Transaction:\n`, call.data)
+
+    const r = await governor.propose(
+      proposal.targets,
+      proposal.values,
+      proposal.calldatas,
+      proposal.description
+    )
+    const resp = await r.wait()
+    proposalId = bn(resp.events![0].args!.proposalId)
+
+    await validatePropState(await governor.state(proposalId), ProposalState.Pending)
+    console.log('\nSuccessfully proposed!')
+  } else {
+    console.log('\nAlready proposed!')
+  }
+
+  console.log(`Proposal ID: ${proposalId}`)
 
   return {
     ...proposal,
-    proposalId: resp.events![0].args!.proposalId as string,
+    proposalId: proposalId.toString(),
   }
 }
