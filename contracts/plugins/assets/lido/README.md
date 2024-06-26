@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plugin allows `wstETH` holders use their tokens as collateral in the Reverse Protocol.
+This plugin allows `wstETH` holders use their tokens as collateral in the Reserve Protocol.
 
 As described in the [Lido Site](https://docs.lido.fi/guides/steth-integration-guide#wsteth) , `wstETH` is a LSD (Liquid staking derivatives) which enables users to sell or transfer stacked ETH even before withdrawal being enabled.
 
