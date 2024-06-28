@@ -105,6 +105,10 @@ export interface ITokens {
   steakPYUSD?: string
   Re7WETH?: string
 
+  // Ethena
+  USDe?: string
+  sUSDe?: string
+
   // Mountain
   USDM?: string
   wUSDM?: string
@@ -245,6 +249,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
+      USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
+      sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -271,6 +277,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
       frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
+      USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
