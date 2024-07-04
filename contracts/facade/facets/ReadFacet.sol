@@ -13,6 +13,10 @@ import "../../p1/RToken.sol";
 import "../../p1/StRSRVotes.sol";
 import "./MaxIssuableFacet.sol";
 
+interface IBasketHandler3_4_0 {
+    function quantity(IERC20 erc20) external view returns (uint192);
+}
+
 /**
  * @title ReadFacet
  * @notice
@@ -233,11 +237,19 @@ contract ReadFacet {
             balances[i] += erc20s[i].balanceOf(address(main.rTokenTrader()));
             balances[i] += erc20s[i].balanceOf(address(main.rsrTrader()));
 
-            // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            uint192 balNeededFix = main.basketHandler().quantity(erc20s[i], FLOOR).safeMul(
-                basketsNeeded,
-                RoundingMode.FLOOR // FLOOR to match redemption
-            );
+            uint192 balNeededFix;
+            bytes1 majorVersion = bytes(main.basketHandler().version())[0];
+            if (majorVersion == bytes1("3")) {
+                balNeededFix = IBasketHandler3_4_0(address(main.basketHandler()))
+                .quantity(erc20s[i])
+                .safeMul(basketsNeeded, RoundingMode.FLOOR);
+            } else {
+                // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
+                balNeededFix = main.basketHandler().quantity(erc20s[i], FLOOR).safeMul(
+                    basketsNeeded,
+                    RoundingMode.FLOOR // FLOOR to match redemption
+                );
+            }
 
             balancesNeededByBackingManager[i] = balNeededFix.shiftl_toUint(
                 int8(IERC20Metadata(address(erc20s[i])).decimals()),
