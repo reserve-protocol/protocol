@@ -59,9 +59,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
         IBasketHandler basketHandler = main.basketHandler();
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
-            if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
+            if (quantity.gt(0)) basketHandler.disableBasket(true); // not an interaction
         } catch {
-            basketHandler.disableBasket();
+            basketHandler.disableBasket(false);
         }
 
         swapped = _registerIgnoringCollisions(asset);
@@ -75,9 +75,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
         IBasketHandler basketHandler = main.basketHandler();
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
-            if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
+            if (quantity.gt(0)) basketHandler.disableBasket(true); // not an interaction
         } catch {
-            basketHandler.disableBasket();
+            basketHandler.disableBasket(false);
         }
 
         _erc20s.remove(address(asset.erc20()));

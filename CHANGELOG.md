@@ -16,7 +16,10 @@ Make sure distributor table sums to >10000.
 
 - `AssetRegistry`
   - Prevent registering assets that are not in the `AssetPluginRegistry`
+  - Improve handling of unregistering malicious assets
   - Add `validateCurrentAssets() view`
+- `BasketHandler`
+  - `disableBasket()` => `disableBasket(bool)` to ensure malicious asset plugins can be disabled without interaction
 - `Broker`
   - Make setters only callable by `Main`
 - `Distributor`

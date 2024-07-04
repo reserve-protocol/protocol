@@ -91,9 +91,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
 
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
-            if (quantity != 0) basketHandler.disableBasket(); // not an interaction
+            if (quantity != 0) basketHandler.disableBasket(true); // not an interaction
         } catch {
-            basketHandler.disableBasket();
+            basketHandler.disableBasket(false);
         }
 
         swapped = _registerIgnoringCollisions(asset);
@@ -110,9 +110,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         require(assets[asset.erc20()] == asset, "asset not found");
 
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
-            if (quantity != 0) basketHandler.disableBasket(); // not an interaction
+            if (quantity != 0) basketHandler.disableBasket(true); // not an interaction
         } catch {
-            basketHandler.disableBasket();
+            basketHandler.disableBasket(false);
         }
 
         _erc20s.remove(address(asset.erc20()));

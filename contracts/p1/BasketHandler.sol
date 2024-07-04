@@ -124,10 +124,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Disable the basket in order to schedule a basket refresh
+    /// @param _trackStatus Whether to track the basket status after disabling
     /// @custom:protected
     // checks: caller is assetRegistry
     // effects: disabled' = true
-    function disableBasket() external {
+    function disableBasket(bool _trackStatus) external {
         require(_msgSender() == address(assetRegistry), "asset registry only");
 
         uint256 len = basket.erc20s.length;
@@ -136,7 +137,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
 
-        trackStatus();
+        if (_trackStatus) trackStatus();
     }
 
     /// Switch the basket, only callable directly by governance or after a default

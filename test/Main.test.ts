@@ -3046,7 +3046,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to disable basket if not AssetRegistry', async () => {
-      await expect(basketHandler.connect(owner).disableBasket()).to.be.revertedWith(
+      await expect(basketHandler.connect(owner).disableBasket(true)).to.be.revertedWith(
+        'asset registry only'
+      )
+      await expect(basketHandler.connect(owner).disableBasket(false)).to.be.revertedWith(
         'asset registry only'
       )
     })

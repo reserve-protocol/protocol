@@ -89,8 +89,9 @@ interface IBasketHandler is IComponent {
     ) external;
 
     /// Default the basket in order to schedule a basket refresh
+    /// @param _trackStatus Whether to track the basket status after disabling
     /// @custom:protected
-    function disableBasket() external;
+    function disableBasket(bool _trackStatus) external;
 
     /// Governance-controlled setter to cause a basket switch explicitly
     /// @custom:governance

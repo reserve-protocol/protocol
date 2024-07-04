@@ -184,7 +184,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @custom:protected
     // checks: caller is assetRegistry
     // effects: disabled' = true
-    function disableBasket() external {
+    function disableBasket(bool _trackStatus) external {
         require(_msgSender() == address(main.assetRegistry()), "asset registry only");
 
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);
@@ -194,7 +194,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
 
-        trackStatus();
+        if (_trackStatus) trackStatus();
     }
 
     /// Switch the basket, only callable directly by governance or after a default
