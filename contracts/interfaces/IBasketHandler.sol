@@ -115,7 +115,7 @@ interface IBasketHandler is IComponent {
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantity(IERC20 erc20) external view returns (uint192);
+    function quantity(IERC20 erc20, RoundingMode rounding) external view returns (uint192);
 
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
@@ -124,7 +124,11 @@ interface IBasketHandler is IComponent {
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantityUnsafe(IERC20 erc20, IAsset asset) external view returns (uint192);
+    function quantityUnsafe(
+        IERC20 erc20,
+        IAsset asset,
+        RoundingMode rounding
+    ) external view returns (uint192);
 
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket

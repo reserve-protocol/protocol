@@ -343,9 +343,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Returns 0 if erc20 is not registered or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantity(IERC20 erc20) public view returns (uint192) {
+    function quantity(IERC20 erc20, RoundingMode rounding) public view returns (uint192) {
         try assetRegistry.toColl(erc20) returns (ICollateral coll) {
-            return _quantity(erc20, coll);
+            return _quantity(erc20, coll, rounding);
         } catch {
             return FIX_ZERO;
         }
@@ -358,9 +358,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Returns 0 if erc20 is not registered or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
+    function quantityUnsafe(
+        IERC20 erc20,
+        IAsset asset,
+        RoundingMode rounding
+    ) public view returns (uint192) {
         if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)));
+        return _quantity(erc20, ICollateral(address(asset)), rounding);
     }
 
     /// @param erc20 The token contract
@@ -369,12 +373,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function _quantity(IERC20 erc20, ICollateral coll) internal view returns (uint192) {
+    function _quantity(
+        IERC20 erc20,
+        ICollateral coll,
+        RoundingMode rounding
+    ) internal view returns (uint192) {
         uint192 refPerTok = coll.refPerTok();
         if (refPerTok == 0) return FIX_MAX;
 
         // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(refPerTok, CEIL);
+        return basket.refAmts[erc20].div(refPerTok, rounding);
     }
 
     /// Should not revert
@@ -405,7 +413,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         uint256 len = basket.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
-            uint192 qty = quantity(basket.erc20s[i]);
+            // known limitation: using FLOOR rounding for _both_ directions
+            // should be neglible error given asset price uncertainties
+            uint192 qty = quantity(basket.erc20s[i], RoundingMode.FLOOR);
             if (qty == 0) continue;
 
             (uint192 lowP, uint192 highP) = useLotPrice
@@ -449,7 +459,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = _quantity(basket.erc20s[i], coll)
+            quantities[i] = _quantity(basket.erc20s[i], coll, rounding)
             .safeMul(amount, rounding)
             .shiftl_toUint(int8(IERC20Metadata(address(basket.erc20s[i])).decimals()), rounding);
         }

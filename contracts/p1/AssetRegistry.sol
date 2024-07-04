@@ -90,7 +90,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
 
-        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20(), CEIL) returns (
+            uint192 quantity
+        ) {
             if (quantity != 0) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
@@ -109,7 +111,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
 
-        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20(), CEIL) returns (
+            uint192 quantity
+        ) {
             if (quantity != 0) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();

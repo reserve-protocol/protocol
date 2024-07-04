@@ -58,7 +58,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         assert(assets[asset.erc20()] != IAsset(address(0)));
 
         IBasketHandler basketHandler = main.basketHandler();
-        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20(), CEIL) returns (
+            uint192 quantity
+        ) {
             if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
@@ -74,7 +76,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         require(assets[asset.erc20()] == asset, "asset not found");
 
         IBasketHandler basketHandler = main.basketHandler();
-        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20(), CEIL) returns (
+            uint192 quantity
+        ) {
             if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();

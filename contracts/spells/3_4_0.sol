@@ -8,6 +8,10 @@ import "@openzeppelin/contracts/governance/TimelockController.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 
+interface IBasketHandler3_4_0 {
+    function quantity(IERC20 erc20) external view returns (uint192);
+}
+
 // interface avoids needing to know about P1 contracts
 interface ICachedComponent {
     function cacheComponents() external;
@@ -515,7 +519,8 @@ contract Upgrade3_4_0 {
 
             if (
                 rotations[erc20] != IAsset(address(0)) ||
-                (assets[erc20] == IAsset(address(0)) && basketHandler.quantity(erc20) == 0)
+                (assets[erc20] == IAsset(address(0)) &&
+                    IBasketHandler3_4_0(address(basketHandler)).quantity(erc20) == 0)
             ) {
                 assetRegistry.unregister(reg.assets[i]);
             }

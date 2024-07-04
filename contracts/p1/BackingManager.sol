@@ -237,7 +237,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
             // {tok} = {BU} * {tok/BU}
-            uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
+            uint192 req = needed.mul(basketHandler.quantity(erc20s[i], CEIL), CEIL);
             uint192 bal = asset.bal(address(this));
 
             if (bal.gt(req)) {
@@ -286,7 +286,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         ctx.maxTradeSlippage = maxTradeSlippage;
         ctx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i], CEIL);
         }
         ctx.bals = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {

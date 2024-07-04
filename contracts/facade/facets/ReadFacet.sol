@@ -234,7 +234,7 @@ contract ReadFacet {
             balances[i] += erc20s[i].balanceOf(address(main.rsrTrader()));
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            uint192 balNeededFix = main.basketHandler().quantity(erc20s[i]).safeMul(
+            uint192 balNeededFix = main.basketHandler().quantity(erc20s[i], FLOOR).safeMul(
                 basketsNeeded,
                 RoundingMode.FLOOR // FLOOR to match redemption
             );

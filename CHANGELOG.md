@@ -17,6 +17,9 @@ Make sure distributor table sums to >10000.
 - `AssetRegistry`
   - Prevent registering assets that are not in the `AssetPluginRegistry`
   - Add `validateCurrentAssets() view`
+- `BasketHandler`
+  - `quantity(erc20)` => `quantity(erc20, RoundingMode)`
+  - `quantityUnsafe(erc20)` => `quantityUnsafe(erc20, RoundingMode)`
 - `Broker`
   - Make setters only callable by `Main`
 - `Distributor`

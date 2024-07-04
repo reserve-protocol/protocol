@@ -304,7 +304,7 @@ library TradingLibP0 {
             // Skip over dust-balance assets not in the basket
             // Intentionally include value of IFFY/DISABLED collateral
             if (
-                ctx.bh.quantity(erc20s[i]) == 0 &&
+                ctx.bh.quantity(erc20s[i], FLOOR) == 0 &&
                 !isEnoughToSell(asset, bal, low, ctx.minTradeVolume)
             ) continue;
 
@@ -315,7 +315,7 @@ library TradingLibP0 {
             // if in surplus relative to ctx.basketsHeld.top: add-in surplus baskets
             {
                 // {tok} = {tok/BU} * {BU}
-                uint192 anchor = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld.top, CEIL);
+                uint192 anchor = ctx.bh.quantity(erc20s[i], CEIL).mul(ctx.basketsHeld.top, CEIL);
 
                 if (anchor > bal) {
                     // deficit: deduct optimistic estimate of baskets missing
@@ -335,7 +335,10 @@ library TradingLibP0 {
             // add-in surplus baskets relative to ctx.basketsHeld.bottom
             {
                 // {tok} = {tok/BU} * {BU}
-                uint192 anchor = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld.bottom, FLOOR);
+                uint192 anchor = ctx.bh.quantity(erc20s[i], CEIL).mul(
+                    ctx.basketsHeld.bottom,
+                    FLOOR
+                );
 
                 // (1) Sell tokens at low price
                 // {UoA} = {UoA/tok} * {tok}
@@ -442,7 +445,7 @@ library TradingLibP0 {
 
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
             // {tok} = {BU} * {tok/BU}
-            uint192 needed = range.top.mul(ctx.bh.quantity(erc20s[i]), CEIL); // {tok}
+            uint192 needed = range.top.mul(ctx.bh.quantity(erc20s[i], CEIL), CEIL); // {tok}
             if (bal.gt(needed)) {
                 (uint192 low, uint192 high) = asset.price(); // {UoA/sellTok}
                 if (high == 0) continue; // Skip worthless assets
@@ -475,7 +478,7 @@ library TradingLibP0 {
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
-                needed = range.bottom.mul(ctx.bh.quantity(erc20s[i]), CEIL); // {buyTok};
+                needed = range.bottom.mul(ctx.bh.quantity(erc20s[i], CEIL), CEIL); // {buyTok};
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
                     (uint192 low, uint192 high) = asset.price(); // {UoA/buyTok}
