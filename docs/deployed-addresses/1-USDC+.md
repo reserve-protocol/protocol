@@ -18,7 +18,7 @@
 ## Governance Addresses
 | Contract | Address |
 | --- | --- |
-| Governor Alexios | [0xc837C557071D604bCb1058c8c4891ddBe8FDD630](https://etherscan.io/address/0xc837C557071D604bCb1058c8c4891ddBe8FDD630) |
+| Governor | [0xc837C557071D604bCb1058c8c4891ddBe8FDD630](https://etherscan.io/address/0xc837C557071D604bCb1058c8c4891ddBe8FDD630) |
 | Timelock | [0x6C957417cB6DF6e821eec8555DEE8b116C291999](https://etherscan.io/address/0x6C957417cB6DF6e821eec8555DEE8b116C291999) |
 
         
