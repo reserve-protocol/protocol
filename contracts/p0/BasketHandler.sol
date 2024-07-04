@@ -384,7 +384,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return _quantity(erc20, coll);
+            return _quantity(erc20, coll, CEIL);
         } catch {
             return FIX_ZERO;
         }
@@ -399,7 +399,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
         if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)));
+        return _quantity(erc20, ICollateral(address(asset)), CEIL);
     }
 
     /// @param erc20 The token contract
@@ -408,12 +408,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function _quantity(IERC20 erc20, ICollateral coll) internal view returns (uint192) {
+    function _quantity(
+        IERC20 erc20,
+        ICollateral coll,
+        RoundingMode rounding
+    ) internal view returns (uint192) {
         uint192 refPerTok = coll.refPerTok();
         if (refPerTok == 0) return FIX_MAX;
 
         // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(refPerTok, CEIL);
+        return basket.refAmts[erc20].div(refPerTok, rounding);
     }
 
     /// Should not revert
@@ -477,17 +481,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
+        IAssetRegistry assetRegistry = main.assetRegistry();
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
 
         for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             erc20s[i] = address(basket.erc20s[i]);
+            ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = quantity(basket.erc20s[i]).safeMul(amount, rounding).shiftl_toUint(
-                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
-                rounding
-            );
+            quantities[i] = _quantity(basket.erc20s[i], coll, rounding)
+            .safeMul(amount, rounding)
+            .shiftl_toUint(int8(IERC20Metadata(address(basket.erc20s[i])).decimals()), rounding);
         }
     }
 
