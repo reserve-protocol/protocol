@@ -52,6 +52,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
+    /// Consider calling `BackingManager.forwardRevenue()` before to ensure fair past distribution
     /// @custom:governance
     // checks: invariants hold in post-state
     // effects:
@@ -71,6 +72,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     /// Set RevenueShares for destinations. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
+    /// Consider calling `BackingManager.forwardRevenue()` before to ensure fair past distribution
     /// @custom:governance
     // checks: invariants hold in post-state
     // effects:
