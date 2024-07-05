@@ -221,7 +221,7 @@ ${collaterals}
       }
 
       const govComponents = [
-        { name: 'Governor', address: params.gov },
+        { name: 'Governor Alexios', address: params.gov },
         { name: 'Timelock', address: timelock },
       ]
 

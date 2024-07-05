@@ -7,7 +7,7 @@
 npx hardhat get-addys --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --gov 0xf4A9288D5dEb0EaE987e5926795094BF6f4662F8 --network mainnet
 
 # ETH+
-npx hardhat get-addys --rtoken 0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8 --gov 0x868Fe81C276d730A1995Dc84b642E795dFb8F753 --network mainnet
+npx hardhat get-addys --rtoken 0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8 --gov 0x239cDcBE174B4728c870A24F77540dAB3dC5F981 --network mainnet
 
 # hyUSD
 npx hardhat get-addys --rtoken 0xaCdf0DBA4B9839b96221a8487e9ca660a48212be --gov  0x3F26EF1460D21A99425569Ef3148Ca6059a7eEAe --network mainnet
@@ -15,8 +15,6 @@ npx hardhat get-addys --rtoken 0xaCdf0DBA4B9839b96221a8487e9ca660a48212be --gov 
 # USDC+
 npx hardhat get-addys --rtoken 0xFc0B1EEf20e4c68B3DCF36c4537Cfa7Ce46CA70b --gov 0xc837C557071D604bCb1058c8c4891ddBe8FDD630 --network mainnet
 
-# USD3
-npx hardhat get-addys --rtoken 0x0d86883FAf4FfD7aEb116390af37746F45b6f378 --gov 0x441808e20E625e0094b01B40F84af89436229279 --network mainnet
 
 # *** Base L2 ***
 
