@@ -136,7 +136,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
 
-        trackStatus();
+        trackStatus(); // does NOT interact with collateral plugins or tokens
     }
 
     /// Switch the basket, only callable directly by governance or after a default
@@ -163,6 +163,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Track basket status and collateralization changes
     // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
+    /// @dev Does NOT interact with collateral plugins or tokens when basket is disabled
     /// @custom:refresher
     function trackStatus() public {
         // Historical context: This is not the ideal naming for this function but it allowed
