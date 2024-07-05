@@ -69,9 +69,7 @@ contract ReadFacet {
             uint192 mid = (low + high) / 2;
 
             // {UoA} = {tok} * {UoA/Tok}
-            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals()), FLOOR).mul(
-                mid
-            );
+            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals()), CEIL).mul(mid);
         }
     }
 
