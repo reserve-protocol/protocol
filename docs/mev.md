@@ -11,7 +11,47 @@ Like any protocol, the Reserve Protocol causes some amount of MEV. While the ful
 
 ### 1. Issuance/Redemption
 
-MEV searchers can arb an RToken's issuance/redemption price against the broader market, whether that be AMM pools or CEX prices. This is a fairly standard MEV opportunity and it works the way an MEV searcher would expect. All that one needs to be able to do to participate is execute `issue()` or `redeem()` on the `RToken.sol` contract. The issuance requires approvals in advance, while the `redeem()` does not. You can find more documentation elsewhere in the repo about the properties of our `issue()`/`redeem()`/`redeemCustom()` functions. In short, they are atomic and work the way a searcher would expect, with the caveat that `redeem()` will revert during rebalancing (`redeemCustom()` does not).
+MEV searchers can arb an RToken's issuance/redemption price against the broader market, whether that be AMM pools or CEX prices. This is a fairly standard MEV opportunity and it works the way an MEV searcher would expect. All that one needs to be able to do to participate is execute `issue()` or `redeem()` on the `RToken.sol` contract. The issuance requires approvals in advance, while the `redeem()` does not. The challenge is in knowing the precise quantities of tokens that will be required in advance.
+
+A challenge that anyone building on top of the protocol will face is that underlying rates move between the time the tx is constructed and when it is executed on-chain. To get the tightest possible quote, you can execute a static call against the Facade address for your chain using the below interface:
+
+- Mainnet: https://etherscan.io/address/0x2C7ca56342177343A2954C250702Fd464f4d0613
+- Base: https://basescan.org/address/0xEb2071e9B542555E90E6e4E1F83fa17423583991
+- Arbitrum: https://arbiscan.io/address/0x387A0C36681A22F728ab54426356F4CAa6bB48a9
+
+```solidity
+function issue(address rToken, uint256 amount)
+  external
+  returns (
+    address[] memory tokens,
+    uint256[] memory deposits,
+    uint192[] memory depositsUoA
+  );
+
+function redeem(address rToken, uint256 amount)
+  external
+  returns (
+    address[] memory tokens,
+    uint256[] memory withdrawals,
+    uint256[] memory available
+  );
+
+function redeemCustom(
+  IRToken rToken,
+  uint256 amount,
+  uint48[] memory basketNonces,
+  uint192[] memory portions
+) external returns (address[] memory tokens, uint256[] memory withdrawals);
+
+```
+
+For issuance, the rates will move in favor of the issuer such that fewer collateral are required than first initially quoted.
+
+For redemption, the rates will move against the redeemer such that they receive less collateral than first initially quoted.
+
+These calls do not need to be made from an account with any prerequisite token balances or approvals. It will simulate refreshing all the underlying collateral in the current block and return a quote.
+
+We do not suggest executing these functions live on-chain, though it is possible. The gas cost is quite high.
 
 ### 2. Auctions
 

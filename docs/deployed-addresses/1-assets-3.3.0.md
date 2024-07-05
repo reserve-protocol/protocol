@@ -1,0 +1,23 @@
+# Assets (Mainnet 3.3.0)
+## Assets
+| Contract | Address |
+| --- | --- |
+| COMP | [0x29dc6F79750020d77c6391629101BDC0F0D16ECB](https://etherscan.io/address/0x29dc6F79750020d77c6391629101BDC0F0D16ECB) |
+| CRV | [0x9257a1307a72603B7916d0c97fCABC6351C3482E](https://etherscan.io/address/0x9257a1307a72603B7916d0c97fCABC6351C3482E) |
+| CVX | [0x4dA79d89482737381E90d2A7005b21cd11eAeE5C](https://etherscan.io/address/0x4dA79d89482737381E90d2A7005b21cd11eAeE5C) |
+
+## Collaterals
+| Contract | Address |
+| --- | --- |
+| aUSDC | [0x6E14943224d6E4F7607943512ba17DbBA9524B8e](https://etherscan.io/address/0x6E14943224d6E4F7607943512ba17DbBA9524B8e) |
+| aUSDT | [0x8AD3055286f4E59B399616Bd6BEfE24F64573928](https://etherscan.io/address/0x8AD3055286f4E59B399616Bd6BEfE24F64573928) |
+| wstETH | [0x3519918E2918b59f3b29bed16dC77174DEC6707b](https://etherscan.io/address/0x3519918E2918b59f3b29bed16dC77174DEC6707b) |
+| rETH | [0xEdd8d4Cc0d0358a12f232fd72821d25d4EbE7704](https://etherscan.io/address/0xEdd8d4Cc0d0358a12f232fd72821d25d4EbE7704) |
+| cUSDCv3 | [0xf0Fb23485057Fd88C80B9CEc8b433FdA47e0a07A](https://etherscan.io/address/0xf0Fb23485057Fd88C80B9CEc8b433FdA47e0a07A) |
+| cvxeUSDFRAXBP | [0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac](https://etherscan.io/address/0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac) |
+| sDAI | [0x29EDbbbE7415cb8637e0F62D5d19dcB3A5bC3229](https://etherscan.io/address/0x29EDbbbE7415cb8637e0F62D5d19dcB3A5bC3229) |
+| saEthUSDC | [0x05beee046A5C28844804E679aD5587046dBffbc0](https://etherscan.io/address/0x05beee046A5C28844804E679aD5587046dBffbc0) |
+| cUSDT | [0x1269BFa56EcaE9D6d5003810D4a35bf8479376b8](https://etherscan.io/address/0x1269BFa56EcaE9D6d5003810D4a35bf8479376b8) |
+| saEthPyUSD | [0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7](https://etherscan.io/address/0xe176A5ebFB873D5b3cf1909d0EdaE4FE095F5bc7) |
+| cvxPayPool | [0x426Ad39C7ccF2f3872aBB16c0291Eb40c0F44D23](https://etherscan.io/address/0x426Ad39C7ccF2f3872aBB16c0291Eb40c0F44D23) |
+        
