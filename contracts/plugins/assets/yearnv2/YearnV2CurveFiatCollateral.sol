@@ -64,7 +64,7 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // {LP token}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()), FLOOR);
         // We can always assume that the total supply is non-zero
 
         // {UoA/LP token} = {UoA} / {LP token}

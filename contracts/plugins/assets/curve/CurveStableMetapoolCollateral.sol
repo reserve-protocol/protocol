@@ -108,7 +108,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
 
         // {tok} -- FLOOR
-        uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
+        uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()), FLOOR);
         // We can always assume that the total supply is sufficiently non-zero
 
         // {UoA/tok} = {UoA} / {tok}
@@ -170,7 +170,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         (uint192 underlyingAumLow, uint192 underlyingAumHigh) = totalBalancesValue();
 
         // {tokUnderlying} -- FLOOR
-        uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()), FLOOR);
         // We can always assume that the underlying supply is sufficiently non-zero
 
         // {UoA/tokUnderlying} = {UoA} / {tokUnderlying}
@@ -178,14 +178,14 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
 
         // {tokUnderlying} -- FLOOR
-        uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()));
+        uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()), FLOOR);
 
         // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
         aumLow = underlyingLow.mul(balUnderlying, FLOOR);
         aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
 
         // {pairedTok} -- FLOOR
-        uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
+        uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()), FLOOR);
 
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
