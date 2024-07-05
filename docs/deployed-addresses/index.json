@@ -16,31 +16,11 @@
       "assets-3.3.0",
       "assets-3.4.0"
     ],
-    "rtokens": [
-      "eUSD",
-      "ETH+",
-      "hyUSD",
-      "USDC+",
-      "USD3"
-    ]
+    "rtokens": ["eUSD", "ETH+", "hyUSD", "USDC+", "USD3"]
   },
   "base": {
-    "components": [
-      "components-3.0.0",
-      "components-3.0.1",
-      "components-3.3.0",
-      "components-3.4.0"
-    ],
-    "assets": [
-      "assets-3.0.0",
-      "assets-3.0.1",
-      "assets-3.3.0",
-      "assets-3.4.0"
-    ],
-    "rtokens": [
-      "hyUSD",
-      "Vaya",
-      "bsdETH"
-    ]
+    "components": ["components-3.0.0", "components-3.0.1", "components-3.3.0", "components-3.4.0"],
+    "assets": ["assets-3.0.0", "assets-3.0.1", "assets-3.3.0", "assets-3.4.0"],
+    "rtokens": ["hyUSD", "Vaya", "bsdETH"]
   }
 }
