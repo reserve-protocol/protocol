@@ -18,7 +18,7 @@
 ## Governance Addresses
 | Contract | Address |
 | --- | --- |
-| Governor Alexios | [0x21fBa52dA03e1F964fa521532f8B8951fC212055](https://basescan.org/address/0x21fBa52dA03e1F964fa521532f8B8951fC212055) |
+| Governor | [0x21fBa52dA03e1F964fa521532f8B8951fC212055](https://basescan.org/address/0x21fBa52dA03e1F964fa521532f8B8951fC212055) |
 | Timelock | [0xe664d294824C2A8C952A10c4034e1105d2907F46](https://basescan.org/address/0xe664d294824C2A8C952A10c4034e1105d2907F46) |
 
         
