@@ -13,7 +13,6 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   DELAY_UNTIL_DEFAULT,
-  DEFAULT_THRESHOLD,
 } from '../../../test/plugins/individual-collateral/ethena/constants'
 
 let deployments: IAssetCollDeployments
@@ -45,7 +44,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD.toString(),
+        defaultThreshold: fp('0.01').add(ORACLE_ERROR).toString(),
         delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       },
       fp('1e-6').toString(),
