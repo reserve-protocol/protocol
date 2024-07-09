@@ -1723,7 +1723,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 13K wETH @ 1200 = 15,600,000 USD of value, in RSR ~= 156,000 RSR (@100 usd)
     // We exceed maxTradeVolume so we need two auctions - Will first sell 10M in value
     // Sells about 101K RSR, for 8167 WETH minimum
-    ;[high] = await rsrAsset.price()
+    ;[, high] = await rsrAsset.price()
     const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(high)
     const buyAmtBidRSR1 = toMinBuyAmt(
       sellAmtRSR1,
