@@ -59,9 +59,11 @@ library TradeLib {
         );
 
         // Cap sell amount using the high price
-        // Under price decay trade.prices.sellHigh can become up to 3x the savedHighPrice
+        // Under price decay trade.prices.sellHigh can become up to 3x the savedHighPrice before
+        // becoming FIX_MAX after the full price timeout
         uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh); // {sellTok}
-        uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
+        uint192 s = trade.sellAmount;
+        if (maxSell > 1 && s > maxSell) s = maxSell; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
