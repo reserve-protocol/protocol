@@ -4,7 +4,7 @@
 
 This release prepares the core protocol for veRSR through the introduction of 3 registries (`DAOFeeRegistry`, `AssetPluginRegistry`, and `VersionRegistry`) and through restricting component upgrades to be handled by `Main`, where upgrade constraints can be enforced.
 
-The release also expands collateral decimal support from 18 to 27.
+The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
 
 ## Upgrade Steps
 
@@ -33,7 +33,9 @@ Make sure distributor table sums to >10000.
 
 ### Assets
 
-No functional change. FLOOR rounding added explicitly to `shiftl_toFix`
+No functional change. FLOOR rounding added explicitly to `shiftl_toFix`.
+
+Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
 
 ### Trading
 
