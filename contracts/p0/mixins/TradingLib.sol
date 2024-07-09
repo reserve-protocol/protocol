@@ -59,8 +59,9 @@ library TradingLibP0 {
             minTradeVolume
         );
 
-        // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellLow); // {sellTok}
+        // Cap sell amount using the high price
+        // Under price decay trade.prices.sellHigh can become up to 3x the lastSavedPrice
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
