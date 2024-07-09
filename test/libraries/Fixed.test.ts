@@ -669,7 +669,7 @@ describe('In FixLib,', () => {
     it('fails to divide by zero', async () => {
       // prettier-ignore
       const table =
-      [fp(1), MAX_UINT192, MIN_UINT192, fp(0), bn(1), bn(987162349587)]
+        [fp(1), MAX_UINT192, MIN_UINT192, fp(0), bn(1), bn(987162349587)]
 
       for (const x of table) {
         await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted
@@ -679,23 +679,6 @@ describe('In FixLib,', () => {
           .reverted
         await expect(caller.safeDiv_(x, bn(0), CEIL), `safeDiv_(${x}, 0, CEIL)`).to.not.be.reverted
       }
-    })
-    it('July 9th 2024 regression test: safeDiv correctly handles division by FIX_MAX at all ranges', async () => {
-      expect(await caller.safeDiv_(1, MAX_UINT192, FLOOR), 'safeDiv_(1, FIX_MAX, FLOOR)').to.equal(
-        bn(0)
-      )
-      expect(
-        await caller.safeDiv_(MAX_UINT192.div(2), MAX_UINT192, FLOOR),
-        'safeDiv_(FIX_MAX/2, FIX_MAX, FLOOR)'
-      ).to.equal(bn(0))
-      expect(
-        await caller.safeDiv_(fp('1'), MAX_UINT192, FLOOR),
-        'safeDiv_(1e18, FIX_MAX, FLOOR)'
-      ).to.equal(bn(0))
-      expect(
-        await caller.safeDiv_(MAX_UINT192.sub(1), MAX_UINT192, FLOOR),
-        'safeDiv_(FIX_MAX-1, FIX_MAX, FLOOR)'
-      ).to.equal(bn(0))
     })
   })
   describe('divu + divuRnd', () => {

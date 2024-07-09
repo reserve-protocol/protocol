@@ -546,7 +546,7 @@ library FixLib {
         uint192 b,
         RoundingMode rounding
     ) internal pure returns (uint192) {
-        if (a == 0 || b == FIX_MAX) return 0;
+        if (a == 0) return 0;
         if (b == 0) return FIX_MAX;
 
         uint256 raw = _divrnd(FIX_ONE_256 * a, uint256(b), rounding);
