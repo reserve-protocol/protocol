@@ -21,8 +21,8 @@ Here are some basic questions to answer before beginning to write a new collater
    - {UoA/target}:
 1. **For each of these prices, what are the critical trust assumptions? Can any of these be manipulated within the course of a transaction?**
    - eg. chainlink feeds require trusting the chainlink protocol and the individual oracles for that price feed
-   - eg. the frxETH/ETH exchange rate requires trusting the FRAX multisig to correctly push timely updates
    - eg. yearn vaults can have their `pricePerShare` increased via direct vault donations
+   - eg. is pricing manipuable or subject to MEV? oracle sources _must_ be manipulation resistant such as Chainlink or AMM EMA
 1. **Are there any protocol-specific metrics that should be monitored to signal a default in the underlying collateral?**
 1. **If this plugin requires unique unit & price abstractions, what do they look like?**
 1. **What amount of revenue should this plugin hide? (a minimum of `1e-6`% is recommended, but some collateral may require higher thresholds, and, in rare cases, `0` can be used)**

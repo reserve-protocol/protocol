@@ -225,6 +225,10 @@ When implementing Revenue Hiding, the `price` function should NOT hide revenue; 
 
 ## Important Properties for Collateral Plugins
 
+### Oracles must not be plausibly manipulable
+
+It must not be possible to manipulate the oracles a collateral relies on, cheaply. In particular (though not limited to): it should not be possible to manipulate price within the block.
+
 ### Reuse of Collateral Plugins
 
 Collateral plugins should be safe to reuse by many different Reserve Protocol instances. So:
@@ -254,10 +258,10 @@ There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20W
 
 The protocol currently supports collateral tokens with up to 21 decimals. There are some caveats to know about:
 
-- For a token with 21 decimals, batch auctions can only process up to ~8e7 whole tokens in a single auction. Dollar-pegged tokens thus fit nicely within this constraint, but 21 decimal tokens that are worth <$0.1 per whole token may not. Therefore, the protocol should not be used with **low-value 21-decimal tokens**.
-- For a token with 18 decimals, batch auctions can only process up to ~8e10 whole tokens in a single auction.
+- Tokens with 21 decimals must be worth at least `$1` at-peg
+- Tokens with 18 decimals must be worth at least `$0.001` at-peg
 
-Dutch auctions do not have this constraint. As long as they remain enabled they can process a larger number of tokens.
+These constraints only apply to pricing when the collateral is SOUND; when the collateral status is IFFY or DISABLED the price is allowed to fall below these thresholds.
 
 ### `refresh()` should never revert
 

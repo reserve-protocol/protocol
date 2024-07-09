@@ -48,6 +48,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return {target/ref} Unused. Always 0

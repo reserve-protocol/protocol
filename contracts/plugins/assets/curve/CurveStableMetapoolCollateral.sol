@@ -68,6 +68,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
@@ -126,6 +127,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token
     /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
     function tryPairedPrice() public view virtual returns (uint192 lowPaired, uint192 highPaired) {
