@@ -67,7 +67,7 @@ library TradingLibP0 {
             // {sellTok}
             uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh);
             if (maxSell > 1 && s > maxSell) s = maxSell;
-            // if the high price is so high that the most we can sell is 1, we can't sell anything
+            // if the high price is so high that the most we can sell is 1, sell all of it
         }
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]

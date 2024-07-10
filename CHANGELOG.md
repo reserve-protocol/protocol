@@ -31,7 +31,7 @@ Make sure distributor table sums to >10000.
   - Add `upgradeMainTo()` + `upgradeRTokenTo()` functions to handle upgrade of Main + Components
   - Make Main the only caller that can upgrade Main
 - `RevenueTrader`
-  - Change sizing trades using the low price to the high price
+  - Switch from sizing trades using the low price to the high price
 
 ## Plugins
 
