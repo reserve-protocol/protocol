@@ -17,6 +17,8 @@ Make sure distributor table sums to >10000.
 - `AssetRegistry`
   - Prevent registering assets that are not in the `AssetPluginRegistry`
   - Add `validateCurrentAssets() view`
+- `BackingManager`
+  - Switch from sizing trades using the low price to the high price
 - `Broker`
   - Make setters only callable by `Main`
 - `Distributor`
@@ -28,6 +30,8 @@ Make sure distributor table sums to >10000.
   - Add `setVersionRegistry()`/`setAssetPluginRegistry()`/`setDaoFeeRegistry()` setters
   - Add `upgradeMainTo()` + `upgradeRTokenTo()` functions to handle upgrade of Main + Components
   - Make Main the only caller that can upgrade Main
+- `RevenueTrader`
+  - Switch from sizing trades using the low price to the high price
 
 ## Plugins
 

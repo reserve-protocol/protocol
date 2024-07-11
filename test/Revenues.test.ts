@@ -1217,7 +1217,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
-      it('Should only be able to start a dust auction BATCH_AUCTION (and not DUTCH_AUCTION) if oracle has failed', async () => {
+      it('Should be able to force through a dust BATCH auction but not DUTCH, if oracle has failed', async () => {
         const minTrade = bn('1e18')
 
         await rsrTrader.connect(owner).setMinTradeVolume(minTrade)
@@ -1240,6 +1240,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           rsrTrader,
           'TradeStarted'
         )
+
+        expect(await token0.balanceOf(rsrTrader.address)).to.equal(0) // should sell entire balance
       })
 
       it('Should not launch an auction for 1 qTok', async () => {
@@ -1603,7 +1605,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values based on Prices between AAVE and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to oracle error
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Run auctions
@@ -1788,7 +1790,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to high price setting trade size
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
@@ -1989,7 +1991,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to high price setting trade size
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
