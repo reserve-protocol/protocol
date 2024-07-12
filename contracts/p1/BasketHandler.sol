@@ -340,13 +340,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// @param erc20 The token contract to check for quantity for
-    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    /// @return {tok/BU} The redemption token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try assetRegistry.toColl(erc20) returns (ICollateral coll) {
-            return _quantity(erc20, coll, CEIL);
+            return _quantity(erc20, coll, FLOOR);
         } catch {
             return FIX_ZERO;
         }
@@ -361,7 +361,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
         if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)), CEIL);
+        return _quantity(erc20, ICollateral(address(asset)), FLOOR);
     }
 
     /// @param erc20 The token contract
@@ -388,7 +388,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-            if (pegPrice != 0 && (rounding == CEIL && pegPrice < targetPerRef)) {
+            if (pegPrice != 0 && pegPrice < targetPerRef) {
                 // {tok} = {tok} * {target/ref} / {target/ref}
                 q = q.safeMulDiv(targetPerRef, pegPrice, CEIL);
             }
@@ -423,21 +423,25 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         uint256 len = basket.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
-            uint192 qty = quantity(basket.erc20s[i]); // CEIL rounding
-            if (qty == 0) continue;
+            try assetRegistry.toColl(basket.erc20s[i]) returns (ICollateral coll) {
+                uint192 lowQ = _quantity(basket.erc20s[i], coll, FLOOR); // redemption quantity
+                uint192 highQ = _quantity(basket.erc20s[i], coll, CEIL); // issuance quantity
 
-            (uint192 lowP, uint192 highP) = useLotPrice
-                ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
-                : assetRegistry.toAsset(basket.erc20s[i]).price();
+                (uint192 lowP, uint192 highP) = useLotPrice
+                    ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
+                    : assetRegistry.toAsset(basket.erc20s[i]).price();
 
-            low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
+                low256 += lowQ.safeMul(lowP, RoundingMode.FLOOR);
 
-            if (high256 < FIX_MAX) {
-                if (highP == FIX_MAX) {
-                    high256 = FIX_MAX;
-                } else {
-                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                if (high256 < FIX_MAX) {
+                    if (highP == FIX_MAX) {
+                        high256 = FIX_MAX;
+                    } else {
+                        high256 += highQ.safeMul(highP, RoundingMode.CEIL);
+                    }
                 }
+            } catch {
+                continue;
             }
         }
 

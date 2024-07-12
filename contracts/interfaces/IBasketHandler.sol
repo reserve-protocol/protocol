@@ -111,7 +111,7 @@ interface IBasketHandler is IComponent {
     function isReady() external view returns (bool);
 
     /// @param erc20 The ERC20 token contract for the asset
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// @return {tok/BU} The redemption quantity of token in the reference basket
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
@@ -120,7 +120,7 @@ interface IBasketHandler is IComponent {
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// @return {tok/BU} The redemption quantity of token in the reference basket
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
