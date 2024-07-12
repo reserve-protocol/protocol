@@ -178,7 +178,7 @@ contract ReadFacet {
         // solhint-disable-next-line no-empty-blocks
         try rToken.main().furnace().melt() {} catch {} // <3.1.0 RTokens may revert while frozen
 
-        (erc20s, deposits) = basketHandler.quote(FIX_ONE, CEIL);
+        (erc20s, deposits) = basketHandler.quote(FIX_ONE, FLOOR);
 
         // Calculate uoaAmts
         uint192 uoaSum;
