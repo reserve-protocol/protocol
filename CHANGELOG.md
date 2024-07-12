@@ -14,6 +14,8 @@ TODO
 
 Make sure distributor table sums to >10000.
 
+Upgrade ALL collateral plugins
+
 ## Core Protocol Contracts
 
 - `AssetRegistry`
