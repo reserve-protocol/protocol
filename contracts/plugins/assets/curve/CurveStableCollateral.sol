@@ -95,8 +95,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         high = aumHigh.div(supply, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
-        // {target/ref} = ({target/tok} + {target/tok}) / {ref/tok}
-        pegPrice = low.plus(high).divu(2, FLOOR).div(underlyingRefPerTok(), FLOOR);
+        pegPrice = 0; // can't deduce from MEV-manipulable pricing unfortunately
     }
 
     /// Should not revert

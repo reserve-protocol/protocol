@@ -70,7 +70,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
 
         // Get reference token price
         (uint192 refLow, uint192 refHigh) = this.tokenPrice(0); // reference token
-        pegPrice = (refLow + refHigh) / 2;
+        pegPrice = refLow.plus(refHigh).divu(2, FLOOR);
 
         // Multiply by the underlyingRefPerTok()
         uint192 rate = underlyingRefPerTok();
