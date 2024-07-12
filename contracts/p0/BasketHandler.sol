@@ -501,7 +501,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
                 if (pegPrice != 0 && (rounding == CEIL && pegPrice < targetPerRef)) {
                     // {tok} = {tok} * {target/ref} / {target/ref}
-                    amt = amt.mulDiv(targetPerRef, pegPrice, rounding);
+                    amt = amt.mulDiv(targetPerRef, pegPrice, CEIL);
                 }
             }
             // else: only use defi rates
