@@ -130,6 +130,9 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
+
+    /// @return {target/ref} The peg price of the token during the last update
+    function savedPegPrice() external view returns (uint192);
 }
 
 // Used only in Testing. Strictly speaking a Collateral does not need to adhere to this interface

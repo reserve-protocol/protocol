@@ -489,10 +489,28 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             erc20s[i] = address(basket.erc20s[i]);
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
-            // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = _quantity(basket.erc20s[i], coll, rounding)
-            .safeMul(amount, rounding)
-            .shiftl_toUint(int8(IERC20Metadata(address(basket.erc20s[i])).decimals()), rounding);
+            // {tok} = {tok/BU} * {BU}
+            uint192 amt = _quantity(basket.erc20s[i], coll, rounding).safeMul(amount, rounding);
+
+            // Prevent toxic issuance by charging more when collateral is under peg
+            if (rounding == CEIL && coll.lastSave() == block.timestamp) {
+                // on arbitrum the timestamp check doesn't give us exactly what we want
+                // but it's close and better than wasting more gas on calling tryPrice()
+
+                uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
+                uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
+                if ((rounding == CEIL && pegPrice < targetPerRef)) {
+                    // {tok} = {tok} * {target/ref} / {target/ref}
+                    amt = amt.mulDiv(targetPerRef, pegPrice, rounding);
+                }
+            }
+            // else: only use defi rates
+
+            // {qTok} = {tok} * {qTok/tok}
+            quantities[i] = amt.shiftl_toUint(
+                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
+                rounding
+            );
         }
     }
 

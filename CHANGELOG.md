@@ -6,6 +6,8 @@ This release prepares the core protocol for veRSR through the introduction of 3 
 
 The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
 
+Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg. This has the side-effect of also creating a new revenue source.
+
 ## Upgrade Steps
 
 TODO
@@ -15,10 +17,14 @@ Make sure distributor table sums to >10000.
 ## Core Protocol Contracts
 
 - `AssetRegistry`
+
   - Prevent registering assets that are not in the `AssetPluginRegistry`
   - Add `validateCurrentAssets() view`
+
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
+- `BasketHandler`
+  - Increase `quote()` quantities during issuance when collateral is under peg
 - `Broker`
   - Make setters only callable by `Main`
 - `Distributor`

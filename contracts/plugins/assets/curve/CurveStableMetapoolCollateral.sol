@@ -122,7 +122,9 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         high = aumHigh.div(supply, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
-        return (low, high, 0);
+        // TODO
+        // pegPrice =
+        pegPrice;
     }
 
     /// Can revert, used by `_anyDepeggedOutsidePool()`
