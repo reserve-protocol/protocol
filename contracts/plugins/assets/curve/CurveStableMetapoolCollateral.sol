@@ -100,6 +100,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         //   1. A moving average metric (unavailable in the cases we care about)
         //   2. Mapping oracle prices to expected pool balances using precise knowledge about
         //      the shape of the trading curve. (maybe we can do this in the future)
+        // TODO update this approach to be MEV-resistant
 
         // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();

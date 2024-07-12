@@ -81,6 +81,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         //   1. A moving average metric (unavailable in the cases we care about)
         //   2. Mapping oracle prices to expected pool balances using precise knowledge about
         //      the shape of the trading curve. (maybe we can do this in the future)
+        // TODO update this approach to be MEV-resistant
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
