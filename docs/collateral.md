@@ -47,13 +47,6 @@ interface IAsset is IRewardable {
   /// @return high {UoA/tok} The upper end of the price estimate
   function price() external view returns (uint192 low, uint192 high);
 
-  /// Should not revert
-  /// lotLow should be nonzero when the asset might be worth selling
-  /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-  /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-  /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-  function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
-
   /// @return {tok} The balance of the ERC20 in whole tokens
   function bal(address account) external view returns (uint192);
 
@@ -386,12 +379,6 @@ Under no price data, the low estimate shoulddecay downwards and high estimate up
 Should return `(0, FIX_MAX)` if pricing data is _completely_ unavailable or stale.
 
 Should be gas-efficient.
-
-### lotPrice() `{UoA/tok}`
-
-Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility.
-
-Recommend implement `lotPrice()` by calling `price()`. If you are inheriting from any of our existing collateral plugins, this is already done for you. See [Asset.sol](../contracts/plugins/Asset.sol) for the implementation.
 
 ### refPerTok() `{ref/tok}`
 

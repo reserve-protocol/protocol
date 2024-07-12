@@ -240,7 +240,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             require(lastStatus == CollateralStatus.SOUND, "unsound basket");
 
             // Normalize targetAmts based on UoA value of reference basket
-            (uint192 low, uint192 high) = _price(false);
+            (uint192 low, uint192 high) = price();
             assert(low != 0 && high != FIX_MAX); // implied by SOUND status
             targetAmts = BasketLibP1.normalizeByPrice(
                 assetRegistry,
@@ -364,9 +364,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), FLOOR);
     }
 
+    /// @dev If rounding is CEIL the quantity will include a de-peg premium
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
-    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket.
+    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
@@ -395,29 +396,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
+    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
     /// Should not revert
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price() external view returns (uint192 low, uint192 high) {
-        return _price(false);
-    }
-
-    /// Should not revert
-    /// lowLow should be nonzero when the asset might be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-    /// @return lotLow {UoA/BU} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
-    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        return _price(true);
-    }
-
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @param useLotPrice Whether to use lotPrice() or price()
-    /// @return low {UoA/BU} The lower end of the price estimate
-    /// @return high {UoA/BU} The upper end of the price estimate
-    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
+    function price() public view returns (uint192 low, uint192 high) {
         uint256 low256;
         uint256 high256;
 
@@ -426,10 +410,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             try assetRegistry.toColl(basket.erc20s[i]) returns (ICollateral coll) {
                 uint192 lowQ = _quantity(basket.erc20s[i], coll, FLOOR); // redemption quantity
                 uint192 highQ = _quantity(basket.erc20s[i], coll, CEIL); // issuance quantity
-
-                (uint192 lowP, uint192 highP) = useLotPrice
-                    ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
-                    : assetRegistry.toAsset(basket.erc20s[i]).price();
+                (uint192 lowP, uint192 highP) = assetRegistry.toAsset(basket.erc20s[i]).price();
 
                 low256 += lowQ.safeMul(lowP, RoundingMode.FLOOR);
 

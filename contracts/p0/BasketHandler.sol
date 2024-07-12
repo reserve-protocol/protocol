@@ -402,6 +402,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), FLOOR);
     }
 
+    /// @dev If rounding is CEIL the quantity will include a de-peg premium
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
     /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket.
@@ -433,28 +434,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
+    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
     /// Should not revert
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price() external view returns (uint192 low, uint192 high) {
-        return _price(false);
-    }
-
-    /// Should not revert
-    /// lowLow should be nonzero when the asset might be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-    /// @return lotLow {UoA/BU} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
-    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        return _price(true);
-    }
-
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/BU} The lower end of the lot price estimate
-    /// @return high {UoA/BU} The upper end of the lot price estimate
-    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
+    function price() public view returns (uint192 low, uint192 high) {
         IAssetRegistry reg = main.assetRegistry();
 
         uint256 low256;
@@ -465,9 +450,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 uint192 lowQ = _quantity(basket.erc20s[i], coll, FLOOR); // redemption quantity
                 uint192 highQ = _quantity(basket.erc20s[i], coll, CEIL); // issuance quantity
 
-                (uint192 lowP, uint192 highP) = useLotPrice
-                    ? reg.toAsset(basket.erc20s[i]).lotPrice()
-                    : reg.toAsset(basket.erc20s[i]).price();
+                (uint192 lowP, uint192 highP) = reg.toAsset(basket.erc20s[i]).price();
 
                 low256 += lowQ.safeMul(lowP, RoundingMode.FLOOR);
 
@@ -870,7 +853,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
 
         // Compute current basket price
-        (uint192 low, uint192 high) = _price(false); // {UoA/BU}
+        (uint192 low, uint192 high) = price(); // {UoA/BU}
         assert(low > 0 && high < FIX_MAX); // implied by SOUND status
         uint192 p = low.plus(high).divu(2, FLOOR); // {UoA/BU}
 

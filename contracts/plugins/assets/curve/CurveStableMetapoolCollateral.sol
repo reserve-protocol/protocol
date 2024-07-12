@@ -123,6 +123,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         assert(low <= high); // not obviously true just by inspection
 
         pegPrice = 0; // can't deduce from MEV-manipulable pricing unfortunately
+        // not protected from toxic issuance
     }
 
     /// Can revert, used by `_anyDepeggedOutsidePool()`
