@@ -17,10 +17,8 @@ Make sure distributor table sums to >10000.
 ## Core Protocol Contracts
 
 - `AssetRegistry`
-
   - Prevent registering assets that are not in the `AssetPluginRegistry`
   - Add `validateCurrentAssets() view`
-
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`

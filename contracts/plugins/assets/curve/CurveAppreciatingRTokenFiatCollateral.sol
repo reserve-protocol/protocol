@@ -79,7 +79,7 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
-                    savedPegPrice = pegPrice;
+                    savedPegPrice = pegPrice; // TODO return to
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced
