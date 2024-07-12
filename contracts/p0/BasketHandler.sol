@@ -404,7 +404,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
-    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
@@ -412,12 +412,25 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         IERC20 erc20,
         ICollateral coll,
         RoundingMode rounding
-    ) internal view returns (uint192) {
+    ) internal view returns (uint192 q) {
         uint192 refPerTok = coll.refPerTok();
         if (refPerTok == 0) return FIX_MAX;
 
         // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(refPerTok, rounding);
+        q = basket.refAmts[erc20].div(refPerTok, rounding);
+
+        // Prevent toxic issuance by charging more when collateral is under peg
+        if (rounding == CEIL && coll.lastSave() == block.timestamp) {
+            // on arbitrum the timestamp check doesn't give us exactly what we want
+            // but it's close and better than wasting more gas on calling tryPrice()
+
+            uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
+            uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
+            if (pegPrice != 0 && (rounding == CEIL && pegPrice < targetPerRef)) {
+                // {tok} = {tok} * {target/ref} / {target/ref}
+                q = q.safeMulDiv(targetPerRef, pegPrice, CEIL);
+            }
+        }
     }
 
     /// Should not revert
@@ -489,28 +502,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             erc20s[i] = address(basket.erc20s[i]);
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
-            // {tok} = {tok/BU} * {BU}
-            uint192 amt = _quantity(basket.erc20s[i], coll, rounding).safeMul(amount, rounding);
-
-            // Prevent toxic issuance by charging more when collateral is under peg
-            if (rounding == CEIL && coll.lastSave() == block.timestamp) {
-                // on arbitrum the timestamp check doesn't give us exactly what we want
-                // but it's close and better than wasting more gas on calling tryPrice()
-
-                uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
-                uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-                if (pegPrice != 0 && (rounding == CEIL && pegPrice < targetPerRef)) {
-                    // {tok} = {tok} * {target/ref} / {target/ref}
-                    amt = amt.safeMulDiv(targetPerRef, pegPrice, CEIL);
-                }
-            }
-            // else: only use defi rates
-
-            // {qTok} = {tok} * {qTok/tok}
-            quantities[i] = amt.shiftl_toUint(
-                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
-                rounding
-            );
+            // {qTok} = {tok/BU} * {BU} * {qTok/tok}
+            quantities[i] = _quantity(basket.erc20s[i], coll, rounding)
+            .safeMul(amount, rounding)
+            .shiftl_toUint(int8(IERC20Metadata(address(basket.erc20s[i])).decimals()), rounding);
         }
     }
 
