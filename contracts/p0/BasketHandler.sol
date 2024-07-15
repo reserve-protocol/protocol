@@ -447,8 +447,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
-                uint192 lowQ = _quantity(basket.erc20s[i], coll, false, FLOOR); // redemption quantity
-                uint192 highQ = _quantity(basket.erc20s[i], coll, true, CEIL); // issuance quantity
+                uint192 lowQ = _quantity(basket.erc20s[i], coll, false, FLOOR); // redemption
+                uint192 highQ = _quantity(basket.erc20s[i], coll, true, CEIL); // issuance
 
                 (uint192 lowP, uint192 highP) = reg.toAsset(basket.erc20s[i]).price();
 
