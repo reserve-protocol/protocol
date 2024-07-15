@@ -42,7 +42,7 @@ interface IAsset is IRewardable {
   function refresh() external;
 
   /// Should not revert
-  /// low should be nonzero when the asset might be worth selling
+  /// low should be nonzero if the asset could be worth selling
   /// @return low {UoA/tok} The lower end of the price estimate
   /// @return high {UoA/tok} The upper end of the price estimate
   function price() external view returns (uint192 low, uint192 high);
@@ -90,7 +90,7 @@ interface ICollateral is IAsset {
 
   /// @dev refresh()
   /// Refresh exchange rates and update default status.
-  /// VERY IMPORTANT: In any valid implementation, status() MUST become DISABLED in refresh() if
+  /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
   /// refPerTok() has ever decreased since last call.
 
   /// @return The canonical name of this collateral's target unit.
@@ -106,6 +106,9 @@ interface ICollateral is IAsset {
 
   /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
   function targetPerRef() external view returns (uint192);
+
+  /// @return {target/ref} The peg price of the token during the last update
+  function savedPegPrice() external view returns (uint192);
 }
 
 ```

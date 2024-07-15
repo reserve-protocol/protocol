@@ -339,9 +339,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             (block.timestamp >= lastStatusTimestamp + warmupPeriod);
     }
 
-    /// Returns basket quantity rounded up, wihout any issuance premium
+    /// Basket quantity rounded up, without any issuance premium
     /// @param erc20 The token contract to check for quantity for
-    /// @return {tok/BU} The redemption token-quantity of an ERC20 token in the basket.
+    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
@@ -353,7 +353,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Returns basket quantity rounded up, wihout any issuance premium
+    /// Basket quantity rounded up, without any issuance premium
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
