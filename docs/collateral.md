@@ -385,7 +385,7 @@ Under no price data, the low estimate shoulddecay downwards and high estimate up
 
 Should return `(0, FIX_MAX)` if pricing data is _completely_ unavailable or stale.
 
-Should NOT return `(>0, FIX_MAX)`: if the high price FIX_MAX then the low price must be 0.
+Should NOT return `(>0, FIX_MAX)`: if the high price is FIX_MAX then the low price must be 0.
 
 Should be gas-efficient.
 
