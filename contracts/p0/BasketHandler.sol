@@ -377,6 +377,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             (block.timestamp >= lastStatusTimestamp + warmupPeriod);
     }
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// @param erc20 The token contract to check for quantity for
     /// @return {tok/BU} The redemption token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered or not in the basket
@@ -384,12 +385,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return _quantity(erc20, coll, FLOOR);
+            return _quantity(erc20, coll, false, CEIL);
         } catch {
             return FIX_ZERO;
         }
     }
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
@@ -399,19 +401,20 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
         if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)), FLOOR);
+        return _quantity(erc20, ICollateral(address(asset)), false, CEIL);
     }
 
-    /// @dev If rounding is CEIL the quantity will include a de-peg premium
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
-    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket.
+    /// @param applyIssuancePremium Whether to apply an issuance premium to the quantity
+    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function _quantity(
         IERC20 erc20,
         ICollateral coll,
+        bool applyIssuancePremium,
         RoundingMode rounding
     ) internal view returns (uint192 q) {
         uint192 refPerTok = coll.refPerTok();
@@ -421,15 +424,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         q = basket.refAmts[erc20].div(refPerTok, rounding);
 
         // Prevent toxic issuance by charging more when collateral is under peg
-        if (rounding == CEIL && coll.lastSave() == block.timestamp) {
-            // on arbitrum the timestamp check doesn't give us exactly what we want
-            // but it's close and better than wasting more gas on calling tryPrice()
-
+        if (applyIssuancePremium && coll.lastSave() == block.timestamp) {
             uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
             if (pegPrice != 0 && pegPrice < targetPerRef) {
                 // {tok} = {tok} * {target/ref} / {target/ref}
-                q = q.safeMulDiv(targetPerRef, pegPrice, CEIL);
+                q = q.safeMulDiv(targetPerRef, pegPrice, rounding);
             }
         }
     }
@@ -447,8 +447,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
-                uint192 lowQ = _quantity(basket.erc20s[i], coll, FLOOR); // redemption quantity
-                uint192 highQ = _quantity(basket.erc20s[i], coll, CEIL); // issuance quantity
+                uint192 lowQ = _quantity(basket.erc20s[i], coll, false, FLOOR); // redemption quantity
+                uint192 highQ = _quantity(basket.erc20s[i], coll, true, CEIL); // issuance quantity
 
                 (uint192 lowP, uint192 highP) = reg.toAsset(basket.erc20s[i]).price();
 
@@ -472,6 +472,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
+    /// @param rounding RoundingMode.FLOOR or RoundingMode.CEIL for Redemption vs Issuance
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
@@ -481,6 +482,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
+        require(rounding != ROUND, "FLOOR or CEIL");
         IAssetRegistry assetRegistry = main.assetRegistry();
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
@@ -490,7 +492,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
             // {qTok} = {tok/BU} * {BU} * {qTok/tok}
-            quantities[i] = _quantity(basket.erc20s[i], coll, rounding)
+            quantities[i] = _quantity(basket.erc20s[i], coll, rounding == CEIL, rounding)
             .safeMul(amount, rounding)
             .shiftl_toUint(int8(IERC20Metadata(address(basket.erc20s[i])).decimals()), rounding);
         }
@@ -594,14 +596,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return BasketRange(FIX_ZERO, FIX_MAX);
 
-            uint192 refPerTok = coll.refPerTok();
-            // If refPerTok is 0, then we have zero of coll's reference unit.
-            // We know that basket.refAmts[basket.erc20s[i]] > 0, so we have no baskets.
-            if (refPerTok == 0) return BasketRange(FIX_ZERO, FIX_MAX);
-
-            // {tok/BU} = {ref/BU} / {ref/tok}.  0-division averted by condition above.
-            uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
-            // q > 0 because q = (n).div(_, CEIL) and n > 0
+            // {tok/BU}
+            uint192 q = _quantity(basket.erc20s[i], coll, false, CEIL);
+            if (q == FIX_MAX) return BasketRange(FIX_ZERO, FIX_MAX);
 
             // {BU} = {tok} / {tok/BU}
             uint192 inBUs = coll.bal(account).div(q);

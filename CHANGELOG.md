@@ -24,7 +24,7 @@ Upgrade ALL collateral plugins
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
-  - Increase `quote()` quantities during issuance when collateral is under peg
+  - Increase `quote()` quantities during issuance to include an issuance premium for de-pegged tokens
   - Remove `lotPrice()`
 - `Broker`
   - Make setters only callable by `Main`

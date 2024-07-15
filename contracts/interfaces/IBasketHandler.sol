@@ -110,6 +110,7 @@ interface IBasketHandler is IComponent {
     /// @return If the basket is ready to issue and trade
     function isReady() external view returns (bool);
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// @param erc20 The ERC20 token contract for the asset
     /// @return {tok/BU} The redemption quantity of token in the reference basket
     /// Returns 0 if erc20 is not registered or not in the basket
@@ -117,6 +118,7 @@ interface IBasketHandler is IComponent {
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20

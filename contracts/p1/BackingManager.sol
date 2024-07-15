@@ -287,6 +287,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         ctx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            // quantities round up, without any issuance premium
         }
         ctx.bals = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
