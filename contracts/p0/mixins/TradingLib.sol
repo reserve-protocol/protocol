@@ -66,8 +66,8 @@ library TradingLibP0 {
         if (trade.prices.sellHigh != FIX_MAX) {
             // {sellTok}
             uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh);
-            if (maxSell > 1 && s > maxSell) s = maxSell;
-            // if the high price is so high that the most we can sell is 1, sell all of it
+            require(maxSell > 1, "trade size error");
+            if (s > maxSell) s = maxSell;
         }
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
