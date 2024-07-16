@@ -1849,11 +1849,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const newBH = await newBasketHandler()
         await newBH.init(main.address, config.warmupPeriod, false)
         await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
-          'invalid target amount; must be nonzero'
+          'invalid target amount'
         )
         await expect(
           newBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
-        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should be able to set exactly same basket', async () => {
@@ -2115,10 +2115,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // not possible on non-fresh basketHandler
         await expect(
           indexBH.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-        ).to.be.revertedWith('invalid target amount; too large')
+        ).to.be.revertedWith('invalid target amount')
         await expect(
           indexBH.connect(owner).forceSetPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-        ).to.be.revertedWith('invalid target amount; too large')
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should not allow to set prime Basket with an empty basket', async () => {
@@ -2133,10 +2133,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       it('Should not allow to set prime Basket with a zero amount', async () => {
         await expect(
           indexBH.connect(owner).setPrimeBasket([token0.address], [0])
-        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        ).to.be.revertedWith('invalid target amount')
         await expect(
           indexBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
-        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should be able to set exactly same basket', async () => {
