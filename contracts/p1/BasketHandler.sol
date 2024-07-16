@@ -224,8 +224,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bool normalize
     ) internal {
         requireGovernanceOnly();
-        require(erc20s.length != 0, "empty basket");
-        require(erc20s.length == targetAmts.length, "len mismatch");
+        require(erc20s.length != 0 && erc20s.length == targetAmts.length, "invalid lengths");
         requireValidCollArray(erc20s);
 
         if (!reweightable && config.erc20s.length != 0) {
@@ -368,6 +367,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), false, CEIL);
     }
 
+    /// @dev The maximum issuance premium that can be applied is 50%
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
     /// @param applyIssuancePremium Whether to apply an issuance premium to the quantity
@@ -393,17 +393,24 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // but it's close and better than wasting more gas on calling tryPrice()
 
             uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
+            if (pegPrice == 0) return q;
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-            if (pegPrice != 0 && pegPrice < targetPerRef) {
+            if (pegPrice >= targetPerRef) return q;
+
+            // at this point: pegPrice > 0 && pegPrice < targetPerRef
+            if (pegPrice * 3 > targetPerRef * 2) {
                 // {tok} = {tok} * {target/ref} / {target/ref}
                 q = q.safeMulDiv(targetPerRef, pegPrice, rounding);
+            } else {
+                // largest issuance premium possible is 50%
+                q = q + q.divu(2, CEIL);
             }
         }
     }
 
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
+    /// Returns the price of a BU
     /// Should not revert
-    /// Takes issuance premium into account for CEIL rounding
+    /// Not symmetric! Takes issuance premium into account for CEIL rounding
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
@@ -416,7 +423,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             try assetRegistry.toColl(basket.erc20s[i]) returns (ICollateral coll) {
                 uint192 lowQ = _quantity(basket.erc20s[i], coll, false, FLOOR); // redemption
                 uint192 highQ = _quantity(basket.erc20s[i], coll, true, CEIL); // issuance
-                // high price includes any issuance premium
+                // highQ includes the issuance premium
 
                 (uint192 lowP, uint192 highP) = assetRegistry.toAsset(basket.erc20s[i]).price();
 
@@ -452,7 +459,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        require(rounding != ROUND, "FLOOR or CEIL");
         uint256 length = basket.erc20s.length;
         erc20s = new address[](length);
         quantities = new uint256[](length);
@@ -561,6 +567,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     ///          .top The number of partial basket units: e.g max(coll.map((c) => c.balAsBUs())
     ///          .bottom The number of whole basket units held by the account
     /// @dev Returns (FIX_ZERO, FIX_MAX) for an empty or DISABLED basket
+    /// @dev Even if a collateral is de-pegged, the upper price
     // Returns:
     //    (0, 0), if (basket.erc20s is empty) or (disabled is true) or (status() is DISABLED)
     //    min(e.balanceOf(account) / quantity(e) for e in basket.erc20s if quantity(e) > 0),

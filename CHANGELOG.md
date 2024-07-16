@@ -24,7 +24,7 @@ Upgrade ALL collateral plugins
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
-  - Increase `quote()` quantities during issuance to include an issuance premium for de-pegged tokens
+  - Increase `quote()` quantities during issuance to include an issuance premium for de-pegged tokens, up to 50%
   - Remove `lotPrice()`
 - `Broker`
   - Make setters only callable by `Main`
@@ -47,6 +47,7 @@ Upgrade ALL collateral plugins
 - Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
 - FLOOR rounding added explicitly to `shiftl_toFix`
 - Remove lotPrice()
+- Set a minimum default threshold of 70%
 
 ### Trading
 

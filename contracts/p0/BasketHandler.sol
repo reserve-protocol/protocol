@@ -282,8 +282,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory targetAmts,
         bool normalize
     ) internal {
-        require(erc20s.length > 0, "empty basket");
-        require(erc20s.length == targetAmts.length, "len mismatch");
+        require(erc20s.length > 0, "invalid lengths");
+        require(erc20s.length == targetAmts.length, "invalid lengths");
         requireValidCollArray(erc20s);
 
         if (!reweightable && config.erc20s.length > 0) {
@@ -406,6 +406,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), false, CEIL);
     }
 
+    /// @dev The maximum issuance premium that can be applied is 50%
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
     /// @param applyIssuancePremium Whether to apply an issuance premium to the quantity
@@ -426,17 +427,24 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         q = basket.refAmts[erc20].div(refPerTok, rounding);
 
         // Prevent toxic issuance by charging more when collateral is under peg
-        if (applyIssuancePremium && coll.lastSave() == block.timestamp) {
+        if (!skipIssuancePremium && applyIssuancePremium && coll.lastSave() == block.timestamp) {
             uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
+            if (pegPrice == 0) return q;
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-            if (pegPrice != 0 && pegPrice < targetPerRef) {
+            if (pegPrice >= targetPerRef) return q;
+
+            // at this point: pegPrice > 0 && pegPrice < targetPerRef
+            if (pegPrice * 3 > targetPerRef * 2) {
                 // {tok} = {tok} * {target/ref} / {target/ref}
                 q = q.safeMulDiv(targetPerRef, pegPrice, rounding);
+            } else {
+                // largest issuance premium possible is 50%
+                q = q + q.divu(2, CEIL);
             }
         }
     }
 
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
+    /// Returns the price of a BU
     /// Should not revert
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
@@ -484,7 +492,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        require(rounding != ROUND, "FLOOR or CEIL");
         IAssetRegistry assetRegistry = main.assetRegistry();
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
