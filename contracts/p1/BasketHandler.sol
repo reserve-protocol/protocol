@@ -89,6 +89,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     uint48 public lastCollateralized; // {basketNonce} most recent full collateralization
 
     // ===
+    // Added in 4.0.0
+
+    bool public skipIssuancePremium;
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -386,7 +389,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         q = basket.refAmts[erc20].div(refPerTok, rounding);
 
         // Prevent toxic issuance by charging more when collateral is under peg
-        if (applyIssuancePremium && coll.lastSave() == block.timestamp) {
+        if (!skipIssuancePremium && applyIssuancePremium && coll.lastSave() == block.timestamp) {
             // on arbitrum the timestamp check doesn't give us exactly what we want
             // but it's close and better than wasting more gas on calling tryPrice()
 
@@ -590,6 +593,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
+    }
+
+    /// @custom:governance
+    function setSkipIssuancePremium(bool val) public {
+        requireGovernanceOnly();
+        emit SkipIssuancePremiumSet(skipIssuancePremium, val);
+        skipIssuancePremium = val;
     }
 
     // === Private ===

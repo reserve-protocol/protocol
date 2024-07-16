@@ -153,6 +153,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Whether the total weights of the target basket can be changed
     bool public reweightable; // immutable after init
 
+    bool public skipIssuancePremium;
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -614,6 +616,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
+    }
+
+    /// @custom:governance
+    function setSkipIssuancePremium(bool val) public governance {
+        emit SkipIssuancePremiumSet(skipIssuancePremium, val);
+        skipIssuancePremium = val;
     }
 
     /* _switchBasket computes basket' from three inputs:

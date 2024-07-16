@@ -43,6 +43,11 @@ interface IBasketHandler is IComponent {
     /// @param newVal The new warmup period
     event WarmupPeriodSet(uint48 oldVal, uint48 newVal);
 
+    /// Emitted when the issuance premium logic is changed
+    /// @param oldVal The old value of issuancePremiumDisabled
+    /// @param newVal The new value of issuancePremiumDisabled
+    event SkipIssuancePremiumSet(bool oldVal, bool newVal);
+
     /// Emitted when the status of a basket has changed
     /// @param oldStatus The previous basket status
     /// @param newStatus The new basket status
