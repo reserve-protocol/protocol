@@ -14,8 +14,6 @@ TODO
 
 Make sure distributor table sums to >10000.
 
-All collateral plugins _must_ be upgraded to use 4.0.0. It is the responsibility of the upgrade spell (todo) to ensure that upgrades to 4.0.0 revert if any of the registered collateral at end of execution are <4.0.0.
-
 ## Core Protocol Contracts
 
 - `AssetRegistry`

@@ -373,13 +373,19 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // on arbitrum the timestamp check doesn't give us exactly what we want
         // but it's close and better than wasting more gas on calling tryPrice()
 
-        uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
-        if (pegPrice == 0) return FIX_ONE;
-        uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-        if (pegPrice >= targetPerRef) return FIX_ONE;
+        // Use try-catch for safety since `savedPegPrice()` was only added in 4.0.0 to ICollateral
+        try coll.savedPegPrice() returns (uint192 pegPrice) {
+            if (pegPrice == 0) return FIX_ONE;
+            uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
+            if (pegPrice >= targetPerRef) return FIX_ONE;
 
-        // {tok} = {target/ref} / {target/ref}
-        return targetPerRef.safeDiv(pegPrice, CEIL);
+            // {tok} = {target/ref} / {target/ref}
+            return targetPerRef.safeDiv(pegPrice, CEIL);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return FIX_ONE;
+        }
     }
 
     /// @param erc20 The token contract

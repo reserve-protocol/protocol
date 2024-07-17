@@ -409,13 +409,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @return {1} The multiplier to charge on issuance quantities for a collateral
     function issuancePremium(ICollateral coll) public view returns (uint192) {
         if (skipIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
-        uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
-        if (pegPrice == 0) return FIX_ONE;
-        uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-        if (pegPrice >= targetPerRef) return FIX_ONE;
 
-        // {tok} = {target/ref} / {target/ref}
-        return targetPerRef.safeDiv(pegPrice, CEIL);
+        try coll.savedPegPrice() returns (uint192 pegPrice) {
+            if (pegPrice == 0) return FIX_ONE;
+            uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
+            if (pegPrice >= targetPerRef) return FIX_ONE;
+
+            // {tok} = {target/ref} / {target/ref}
+            return targetPerRef.safeDiv(pegPrice, CEIL);
+        } catch (bytes memory errData) {
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return FIX_ONE;
+        }
     }
 
     /// @param erc20 The token contract
