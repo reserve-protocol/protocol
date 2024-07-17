@@ -397,58 +397,6 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('delayUntilDefault too long')
     })
 
-    it('Should not allow low defaultThreshold', async () => {
-      await expect(
-        FiatCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await tokenCollateral.chainlinkFeed(),
-          oracleError: ORACLE_ERROR,
-          erc20: token.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: fp('0.31'),
-          delayUntilDefault: bn(1),
-        })
-      ).to.be.revertedWith('defaultThreshold too high')
-
-      // ATokenFiatCollateral
-      await expect(
-        ATokenFiatCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
-            oracleError: ORACLE_ERROR,
-            erc20: aToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: fp('0.31'),
-            delayUntilDefault: bn(1),
-          },
-          REVENUE_HIDING
-        )
-      ).to.be.revertedWith('defaultThreshold too high')
-
-      // CTokenFiatCollateral
-      await expect(
-        CTokenFiatCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
-            oracleError: ORACLE_ERROR,
-            erc20: cToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: fp('0.31'),
-            delayUntilDefault: bn(1),
-          },
-          REVENUE_HIDING
-        )
-      ).to.be.revertedWith('defaultThreshold too high')
-    })
-
     it('Should not allow missing referenceERC20Decimals', async () => {
       // CTokenFiatCollateral with decimals = 0 in underlying
       const token0decimals: BadERC20 = await (

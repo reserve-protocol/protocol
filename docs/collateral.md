@@ -365,8 +365,6 @@ A Collateral plugin may become `DISABLED` for other reasons as well. For instanc
 
 As long as it observes such a price irregularity, the Collateral's `status()` should return `IFFY`. It is up to the collateral how long the `IFFY` period lasts before the collateral becomes `DISABLED`, but it is critical that this period is finite and relatively short; this duration should probably be an argument in the plugin's constructor.
 
-The maximum tolerated de-peg deviation is 30%. A collateral MUST NOT be SOUND if the peg is more than 30% below the `targetPerRef()`.
-
 Lastly, once a collateral becomes `DISABLED`, it must remain `DISABLED`.
 
 ### price() `{UoA/tok}`

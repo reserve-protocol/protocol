@@ -406,7 +406,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), false, CEIL);
     }
 
-    /// @dev The maximum issuance premium that can be applied is 50%
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
     /// @param applyIssuancePremium Whether to apply an issuance premium to the quantity
@@ -433,14 +432,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
             if (pegPrice >= targetPerRef) return q;
 
-            // at this point: pegPrice > 0 && pegPrice < targetPerRef
-            if (pegPrice * 3 > targetPerRef * 2) {
-                // {tok} = {tok} * {target/ref} / {target/ref}
-                q = q.safeMulDiv(targetPerRef, pegPrice, rounding);
-            } else {
-                // largest issuance premium possible is 50%
-                q = q + q.divu(2, CEIL);
-            }
+            // {tok} = {tok} * {target/ref} / {target/ref}
+            q = q.safeMulDiv(targetPerRef, pegPrice, rounding);
         }
     }
 

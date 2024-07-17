@@ -76,7 +76,6 @@ contract FiatCollateral is ICollateral, Asset {
             require(config.delayUntilDefault != 0, "delayUntilDefault zero");
         }
         require(config.delayUntilDefault <= 1209600, "delayUntilDefault too long");
-        require(config.defaultThreshold <= 3e17, "defaultThreshold too high"); // 30%
 
         // Note: This contract is designed to allow setting defaultThreshold = 0 to disable
         // default checks. You can apply the check below to child contracts when required

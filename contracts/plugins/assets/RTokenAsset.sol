@@ -57,9 +57,10 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
-        // Get the BU price /w issuance premium. This means in UoA terms that the
-        // high price of a BU stays just above peg, even in the midst of a default.
+        // Get the BU price /w issuance premium
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
+        // highBUPrice will not change during a default because quantities increase to compensate
+
         require(lowBUPrice != 0 && highBUPrice != FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
@@ -69,8 +70,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
         if (supply == 0) return (lowBUPrice, highBUPrice);
 
-        // The RToken's price is not symmetric like other assets!
-        // range.bottom is lower because of the slippage from the shortfall
+        // The RToken's basket range is not symmetric!
+        // range.bottom is additionally lower because of the slippage from the shortfall
         BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
