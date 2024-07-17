@@ -193,5 +193,5 @@ interface TestIBasketHandler is IBasketHandler {
 
     function skipIssuancePremium() external view returns (bool);
 
-    function setSkipIssuancePremium(bool val) external;
+    function setIssuancePremiumEnabled(bool val) external;
 }
