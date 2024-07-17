@@ -963,6 +963,27 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid warmupPeriod')
     })
 
+    it('Should allow to update skipIssuancePremium if OWNER', async () => {
+      const newValue = true
+
+      // Check existing value
+      expect(await basketHandler.skipIssuancePremium()).to.equal(false)
+
+      // If not owner cannot update
+      await expect(basketHandler.connect(other).setSkipIssuancePremium(newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await basketHandler.skipIssuancePremium()).to.equal(false)
+
+      // Update with owner
+      await expect(basketHandler.connect(owner).setSkipIssuancePremium(newValue))
+        .to.emit(basketHandler, 'SkipIssuancePremiumSet')
+        .withArgs(false, newValue)
+
+      // Check value was updated
+      expect(await basketHandler.skipIssuancePremium()).to.equal(newValue)
+    })
+
     it('Should allow to update tradingDelay if OWNER and perform validations', async () => {
       const newValue: BigNumber = bn('360')
 

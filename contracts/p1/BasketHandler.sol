@@ -408,9 +408,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Returns the price of a BU
+    /// Returns the price of a BU, including any issuance premium in the high price
     /// Should not revert
-    /// Not symmetric! Takes issuance premium into account for CEIL rounding
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)

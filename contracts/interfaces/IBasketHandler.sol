@@ -190,4 +190,8 @@ interface TestIBasketHandler is IBasketHandler {
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;
+
+    function skipIssuancePremium() external view returns (bool);
+
+    function setSkipIssuancePremium(bool val) external;
 }

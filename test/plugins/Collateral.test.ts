@@ -407,10 +407,10 @@ describe('Collateral contracts', () => {
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: fp('0.69'),
+          defaultThreshold: fp('0.31'),
           delayUntilDefault: bn(1),
         })
-      ).to.be.revertedWith('defaultThreshold too low')
+      ).to.be.revertedWith('defaultThreshold too high')
 
       // ATokenFiatCollateral
       await expect(
@@ -423,12 +423,12 @@ describe('Collateral contracts', () => {
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: fp('0.69'),
+            defaultThreshold: fp('0.31'),
             delayUntilDefault: bn(1),
           },
           REVENUE_HIDING
         )
-      ).to.be.revertedWith('defaultThreshold too low')
+      ).to.be.revertedWith('defaultThreshold too high')
 
       // CTokenFiatCollateral
       await expect(
@@ -441,12 +441,12 @@ describe('Collateral contracts', () => {
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: fp('0.69'),
+            defaultThreshold: fp('0.31'),
             delayUntilDefault: bn(1),
           },
           REVENUE_HIDING
         )
-      ).to.be.revertedWith('defaultThreshold too low')
+      ).to.be.revertedWith('defaultThreshold too high')
     })
 
     it('Should not allow missing referenceERC20Decimals', async () => {
