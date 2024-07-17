@@ -3165,7 +3165,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check BU price -- 1/4 of the basket has lost half its value
-      await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
+      const avgPrice = fp('0.875')
+      let [lowPrice, highPrice] = await basketHandler.price()
+      const delta = avgPrice.mul(ORACLE_ERROR).div(fp('1'))
+      const expectedLow = avgPrice.sub(delta)
+      const expectedHigh = avgPrice.add(delta).add(fp('0.063125'))
+      // high price isn't _quite_ up at peg because the price decrease was >30% so we have max issuance premium
+
+      const tolerance = avgPrice.div(bn('1e15'))
+      expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
+      expect(lowPrice).to.be.gte(expectedLow)
+      expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
+      expect(highPrice).to.be.lte(expectedHigh)
 
       // Set collateral1 price to [0, FIX_MAX]
       await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
@@ -3174,7 +3185,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check BU price -- 1/4 of the basket has lost all its value
       const asset = await ethers.getContractAt('Asset', basketHandler.address)
-      const [lowPrice, highPrice] = await asset.price()
+      ;[lowPrice, highPrice] = await asset.price()
       expect(lowPrice).to.be.closeTo(fp('0.75'), fp('0.75').div(100)) // within 1%
       expect(highPrice).to.equal(MAX_UINT192)
 
