@@ -602,11 +602,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         warmupPeriod = val;
     }
 
+    /// @dev Warning: Parameter gets supplied inverted from the variable it sets
     /// @custom:governance
-    function setSkipIssuancePremium(bool val) public {
+    function setIssuancePremiumEnabled(bool val) public {
         requireGovernanceOnly();
-        emit SkipIssuancePremiumSet(skipIssuancePremium, val);
-        skipIssuancePremium = val;
+        emit SkipIssuancePremiumSet(skipIssuancePremium, !val);
+        skipIssuancePremium = !val;
     }
 
     // === Private ===

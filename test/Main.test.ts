@@ -970,13 +970,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.skipIssuancePremium()).to.equal(false)
 
       // If not owner cannot update
-      await expect(basketHandler.connect(other).setSkipIssuancePremium(newValue)).to.be.reverted
+      await expect(basketHandler.connect(other).setIssuancePremiumEnabled(!newValue)).to.be.reverted
 
       // Check value did not change
       expect(await basketHandler.skipIssuancePremium()).to.equal(false)
 
       // Update with owner
-      await expect(basketHandler.connect(owner).setSkipIssuancePremium(newValue))
+      await expect(basketHandler.connect(owner).setIssuancePremiumEnabled(!newValue))
         .to.emit(basketHandler, 'SkipIssuancePremiumSet')
         .withArgs(false, newValue)
 
