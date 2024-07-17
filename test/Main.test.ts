@@ -3167,10 +3167,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check BU price -- 1/4 of the basket has lost half its value
       const avgPrice = fp('0.875')
       let [lowPrice, highPrice] = await basketHandler.price()
-      const delta = avgPrice.mul(ORACLE_ERROR).div(fp('1'))
-      const expectedLow = avgPrice.sub(delta)
-      const expectedHigh = avgPrice.add(delta).add(fp('0.063125'))
-      // high price isn't _quite_ up at peg because the price decrease was >30% so we have max issuance premium
+      const expectedLow = avgPrice.sub(avgPrice.mul(ORACLE_ERROR).div(fp('1')))
+      const expectedHigh = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1'))) // at-peg!
 
       const tolerance = avgPrice.div(bn('1e15'))
       expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
