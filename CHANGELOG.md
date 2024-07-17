@@ -23,6 +23,7 @@ Make sure distributor table sums to >10000.
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
   - Increase `quote(, CEIL)` quantities during issuance to include an issuance premium for de-pegged tokens
+  - Add `issuancePremium() view returns (uint192)`
   - Add `setIssuancePremiumEnabled(bool)`, callable by governance
   - Remove `lotPrice()`
 - `Broker`
