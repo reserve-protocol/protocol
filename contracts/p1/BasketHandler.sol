@@ -559,7 +559,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     ///          .top The number of partial basket units: e.g max(coll.map((c) => c.balAsBUs())
     ///          .bottom The number of whole basket units held by the account
     /// @dev Returns (FIX_ZERO, FIX_MAX) for an empty or DISABLED basket
-    /// @dev Even if a collateral is de-pegged, the upper price
     // Returns:
     //    (0, 0), if (basket.erc20s is empty) or (disabled is true) or (status() is DISABLED)
     //    min(e.balanceOf(account) / quantity(e) for e in basket.erc20s if quantity(e) > 0),

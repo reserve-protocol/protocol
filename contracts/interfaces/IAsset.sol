@@ -107,7 +107,7 @@ interface ICollateral is IAsset {
 
     /// @dev refresh()
     /// Refresh exchange rates and update default status.
-    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+    /// VERY IMPORTANT: In any valid implementation, status() MUST become DISABLED in refresh() if
     /// refPerTok() has ever decreased since last call.
 
     /// @return The canonical name of this collateral's target unit.
