@@ -24,8 +24,8 @@ Upgrade ALL collateral plugins
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
-  - Increase `quote()` quantities during issuance to include an issuance premium for de-pegged tokens
-  - Add `setSkipIssunancePremium()`, callable by governance
+  - Increase `quote(, CEIL)` quantities during issuance to include an issuance premium for de-pegged tokens
+  - Add `setIssuancePremiumEnabled(bool)`, callable by governance
   - Remove `lotPrice()`
 - `Broker`
   - Make setters only callable by `Main`
