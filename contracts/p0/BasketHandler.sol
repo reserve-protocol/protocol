@@ -409,10 +409,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @return {1} The multiplier to charge on issuance quantities for a collateral
     function issuancePremium(ICollateral coll) public view returns (uint192) {
         if (skipIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
-
-        // on arbitrum the timestamp check doesn't give us exactly what we want
-        // but it's close and better than wasting more gas on calling tryPrice()
-
         uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
         if (pegPrice == 0) return FIX_ONE;
         uint192 targetPerRef = coll.targetPerRef(); // {target/ref}

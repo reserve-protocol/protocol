@@ -414,6 +414,14 @@ The target name is just a bytes32 serialization of the target unit string. Here 
 
 For a collateral plugin that uses a novel target unit, get the targetName with `ethers.utils.formatBytes32String(unitName)`.
 
+### savedPegPrice() `{target/ref}`
+
+A return value of 0 indicates _no_ issuance premium should be applied to this collateral during de-peg. Collateral that return 0 are more dangerous to be used inside RTokens as a result.
+
+Should never revert.
+
+Should be gas-efficient.
+
 ## Practical Advice from Previous Work
 
 In most cases [Fiat Collateral](../contracts/plugins/assets/FiatCollateral.sol) or [AppreciatingFiatCollateral.sol](../contracts/plugins/assets/AppreciatingFiatCollateral.sol) can be extended, pretty easily, to support a new collateral type. This allows the collateral developer to limit their attention to the overriding of three functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`.
