@@ -2391,7 +2391,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         await expect(
           indexBH.quoteCustomRedemption(basketNonces, portions, amount)
-        ).to.be.revertedWith('bad portions len')
+        ).to.be.revertedWith('invalid lengths')
       })
 
       it('Should correctly quote the current basket, same as quote()', async () => {
@@ -2978,7 +2978,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
-      ).to.not.be.revertedWith('erc20s too large')
+      ).to.not.be.revertedWith('too large')
 
       // Should fail at 65
       erc20s.push(ONE_ADDRESS)
@@ -2986,21 +2986,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
-      ).to.be.revertedWith('erc20s too large')
+      ).to.be.revertedWith('too large')
 
       // Should succeed at 64
       await expect(
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(64), [])
-      ).to.not.be.revertedWith('max too large')
+      ).to.not.be.revertedWith('too large')
 
       // Should fail at 65
       await expect(
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(65), [])
-      ).to.be.revertedWith('max too large')
+      ).to.be.revertedWith('too large')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {

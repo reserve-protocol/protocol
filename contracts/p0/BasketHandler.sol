@@ -335,8 +335,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 max,
         IERC20[] calldata erc20s
     ) external governance {
-        require(max <= MAX_BACKUP_ERC20S, "max too large");
-        require(erc20s.length <= MAX_BACKUP_ERC20S, "erc20s too large");
+        require(max <= MAX_BACKUP_ERC20S, "too large");
+        require(erc20s.length <= MAX_BACKUP_ERC20S, "too large");
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -526,7 +526,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        require(basketNonces.length == portions.length, "bad portions len");
+        require(basketNonces.length == portions.length, "invalid lengths");
 
         IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
         ICollateral[] memory collsAll = new ICollateral[](erc20sAll.length);
