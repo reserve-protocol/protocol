@@ -48,6 +48,10 @@ Make sure distributor table sums to >10000.
 - Remove lotPrice()
 - Set a minimum default threshold of 70%
 
+#### Collateral
+
+Add `savedPegPrice` to `ICollateral` interface
+
 ### Trading
 
 - `GnosisTrade`
