@@ -367,6 +367,22 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), false, CEIL);
     }
 
+    /// @return {1} The multiplier to charge on issuance quantities for a collateral
+    function issuancePremium(ICollateral coll) public view returns (uint192) {
+        if (skipIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
+
+        // on arbitrum the timestamp check doesn't give us exactly what we want
+        // but it's close and better than wasting more gas on calling tryPrice()
+
+        uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
+        if (pegPrice == 0) return FIX_ONE;
+        uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
+        if (pegPrice >= targetPerRef) return FIX_ONE;
+
+        // {tok} = {target/ref} / {target/ref}
+        return targetPerRef.safeDiv(pegPrice, CEIL);
+    }
+
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
     /// @param applyIssuancePremium Whether to apply an issuance premium to the quantity
@@ -387,17 +403,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         q = basket.refAmts[erc20].div(refPerTok, rounding);
 
         // Prevent toxic issuance by charging more when collateral is under peg
-        if (!skipIssuancePremium && applyIssuancePremium && coll.lastSave() == block.timestamp) {
-            // on arbitrum the timestamp check doesn't give us exactly what we want
-            // but it's close and better than wasting more gas on calling tryPrice()
+        if (applyIssuancePremium) {
+            uint192 premium = issuancePremium(coll); // {1} CEIL
 
-            uint192 pegPrice = coll.savedPegPrice(); // {target/ref}
-            if (pegPrice == 0) return q;
-            uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
-            if (pegPrice >= targetPerRef) return q;
-
-            // {tok} = {tok} * {target/ref} / {target/ref}
-            q = q.safeMulDiv(targetPerRef, pegPrice, rounding);
+            // {tok/BU} = {tok/BU} * {1}
+            if (premium > FIX_ONE) q = q.safeMul(premium, rounding);
         }
     }
 
