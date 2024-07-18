@@ -37,6 +37,52 @@ interface IRETHRouter {
         returns (uint256[2] memory portions, uint256 amountOut);
 }
 
+interface IAsset {
+    // solhint-disable-previous-line no-empty-blocks
+}
+
+interface IVault {
+    enum SwapKind {
+        GIVEN_IN,
+        GIVEN_OUT
+    }
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address payable recipient;
+        bool toInternalBalance;
+    }
+    struct SingleSwap {
+        bytes32 poolId;
+        SwapKind kind;
+        IAsset assetIn;
+        IAsset assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+    struct BatchSwapStep {
+        bytes32 poolId;
+        uint256 assetInIndex;
+        uint256 assetOutIndex;
+        uint256 amount;
+        bytes userData;
+    }
+
+    function swap(
+        SingleSwap memory singleSwap,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable returns (uint256);
+
+    function queryBatchSwap(
+        SwapKind kind,
+        BatchSwapStep[] memory swaps,
+        IAsset[] memory assets,
+        FundManagement memory funds
+    ) external returns (int256[] memory assetDeltas);
+}
+
 interface IWSTETH is IERC20 {
     function unwrap(uint256 _wstETHAmount) external returns (uint256);
 
@@ -60,6 +106,8 @@ interface ICurveETHstETHStableSwap {
 
 interface IRETH is IERC20 {
     function burn(uint256 rethAmt) external;
+
+    function getTotalCollateral() external view returns (uint256);
 
     function getEthValue(uint256 rethAmt) external view returns (uint256);
 }
@@ -94,13 +142,17 @@ interface IUniswapV2Like {
         uint256 amountIn,
         // is ignored, can be empty
         address[] calldata path
-    ) external view returns (uint256[] memory amounts);
+    ) external returns (uint256[] memory amounts);
 }
 
 /** Small utility contract to swap ETH+ for ETH by redeeming ETH+ and swapping.
  */
 contract EthPlusIntoEth is IUniswapV2Like {
     using SafeERC20 for IERC20;
+
+    IVault private constant BALANCER_VAULT = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+    bytes32 private constant BALANCER_POOL_ID =
+        0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
 
     IRToken private constant ETH_PLUS = IRToken(0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8);
 
@@ -121,7 +173,28 @@ contract EthPlusIntoEth is IUniswapV2Like {
     ICurveStableSwap private constant CURVE_FRXETH_WETH =
         ICurveStableSwap(0x9c3B46C0Ceb5B9e304FCd6D88Fc50f7DD24B31Bc);
 
-    function getETHPlusRedemptionQuantities(uint256 amt) external returns (uint256[] memory) {
+    function makeBalancerFunds() internal view returns (IVault.FundManagement memory) {
+        IVault.FundManagement memory fundManagement;
+        fundManagement.sender = address(this);
+        fundManagement.recipient = payable(address(this));
+        fundManagement.fromInternalBalance = false;
+        fundManagement.toInternalBalance = false;
+        return fundManagement;
+    }
+
+    function balancerSwap(uint256 _amount) private {
+        IVault.SingleSwap memory swap;
+        swap.poolId = BALANCER_POOL_ID;
+        swap.kind = IVault.SwapKind.GIVEN_IN;
+        swap.assetIn = IAsset(address(RETH));
+        swap.assetOut = IAsset(address(WETH));
+        swap.amount = _amount;
+        IVault.FundManagement memory funds = makeBalancerFunds();
+        IERC20(RETH).safeApprove(address(BALANCER_VAULT), _amount);
+        BALANCER_VAULT.swap(swap, funds, 0, block.timestamp);
+    }
+
+    function getETHPlusRedemptionQuantities(uint256 amt) external view returns (uint256[] memory) {
         IBasketHandler handler = ETH_PLUS.main().basketHandler();
         uint256 supply = ETH_PLUS.totalSupply();
         (, uint256[] memory quantities) = handler.quote(
@@ -131,9 +204,49 @@ contract EthPlusIntoEth is IUniswapV2Like {
         return quantities;
     }
 
+    function calculateRETHPortions(uint256 amountIn)
+        internal
+        view
+        returns (uint256 toBurn, uint256 toTrade)
+    {
+        uint256 collateralAvailable = RETH.getTotalCollateral();
+
+        if (amountIn > collateralAvailable) {
+            toBurn = collateralAvailable;
+            toTrade = amountIn - collateralAvailable;
+        } else {
+            toBurn = amountIn;
+            toTrade = 0;
+        }
+        return (toBurn, toTrade);
+    }
+
+    function getBalancerQuote(uint256 _amount) internal returns (uint256) {
+        IAsset[] memory assets = new IAsset[](2);
+        assets[0] = IAsset(address(RETH));
+        assets[1] = IAsset(address(WETH));
+
+        IVault.BatchSwapStep[] memory balancerSwapStep = new IVault.BatchSwapStep[](1);
+        balancerSwapStep[0].poolId = BALANCER_POOL_ID;
+        balancerSwapStep[0].amount = _amount;
+        balancerSwapStep[0].assetInIndex = 0;
+        balancerSwapStep[0].assetOutIndex = 1;
+        balancerSwapStep[0].userData = new bytes(0);
+
+        IVault.FundManagement memory funds;
+
+        int256[] memory out = BALANCER_VAULT.queryBatchSwap(
+            IVault.SwapKind.GIVEN_IN,
+            balancerSwapStep,
+            assets,
+            funds
+        );
+
+        return uint256(-out[1]);
+    }
+
     function getAmountsOut(uint256 amountIn, address[] calldata)
         external
-        view
         override
         returns (uint256[] memory amounts)
     {
@@ -141,14 +254,23 @@ contract EthPlusIntoEth is IUniswapV2Like {
         amounts = new uint256[](2);
         amounts[0] = amountIn;
 
-        IBasketHandler handler = ETH_PLUS.main().basketHandler();
         (, bytes memory data) = address(this).staticcall(
             abi.encodeWithSignature("getETHPlusRedemptionQuantities(uint256)", amountIn)
         );
         uint256[] memory quantities = abi.decode(data, (uint256[]));
 
         {
-            amounts[1] += RETH.getEthValue(quantities[2]);
+            (uint256 toBurn, uint256 toTrade) = calculateRETHPortions(quantities[2]);
+
+            if (toBurn > 0) {
+                uint256 burnQuote = RETH.getEthValue(toBurn);
+                amounts[1] += burnQuote;
+            }
+
+            if (toTrade > 0) {
+                uint256 balQuote = getBalancerQuote(toTrade);
+                amounts[1] += balQuote;
+            }
         }
 
         {
@@ -163,6 +285,16 @@ contract EthPlusIntoEth is IUniswapV2Like {
         }
 
         return amounts;
+    }
+
+    function safeTransferETH(address to, uint256 amount) internal {
+        /// @solidity memory-safe-assembly
+        assembly {
+            if iszero(call(gas(), to, amount, codesize(), 0x00, codesize(), 0x00)) {
+                mstore(0x00, 0xb12d13eb) // `ETHTransferFailed()`.
+                revert(0x1c, 0x04)
+            }
+        }
     }
 
     function swapExactTokensForETH(
@@ -182,7 +314,18 @@ contract EthPlusIntoEth is IUniswapV2Like {
         ETH_PLUS.redeem(ETH_PLUS.balanceOf(address(this)));
 
         // reth -> eth
-        RETH.burn(RETH.balanceOf(address(this)));
+        {
+            (uint256 toBurn, uint256 toTrade) = calculateRETHPortions(
+                RETH.balanceOf(address(this))
+            );
+
+            if (toBurn > 0) {
+                RETH.burn(toBurn);
+            }
+            if (toTrade > 0) {
+                balancerSwap(toTrade);
+            }
+        }
 
         // wsteth -> eth
         {
@@ -201,20 +344,17 @@ contract EthPlusIntoEth is IUniswapV2Like {
 
             // frxeth -> weth
             CURVE_FRXETH_WETH.exchange(1, 0, frxethBalance, 0, address(this));
-
-            // weth -> eth
-            WETH.withdraw(WETH.balanceOf(address(this)));
         }
+
+        // weth -> eth
+        WETH.withdraw(WETH.balanceOf(address(this)));
         amounts = new uint256[](2);
         amounts[0] = amountIn;
         amounts[1] = address(this).balance;
 
-        // solhint-disable-next-line custom-errors
         require(address(this).balance >= amountOutMin, "INSUFFICIENT_OUTPUT_AMOUNT");
-        (bool success, ) = to.call{ value: address(this).balance }("");
 
-        // solhint-disable-next-line custom-errors
-        require(success, "ETH_TRANSFER_FAILED");
+        safeTransferETH(to, amounts[1]);
     }
 
     receive() external payable {}
