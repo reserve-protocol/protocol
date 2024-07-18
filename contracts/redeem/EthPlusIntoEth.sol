@@ -251,6 +251,9 @@ contract EthPlusIntoEth is IUniswapV2Like, UUPSUpgradeable, OwnableUpgradeable {
         return uint256(-out[1]);
     }
 
+    /// @dev Returns the amounts of ETH a given amount of RETH can be redeemed into
+    /// The function is meant be called from off-chain for getting the current quote, or to
+    /// calculate the minAmount to use for the swapExactTokensForETH function
     function getAmountsOut(uint256 amountIn, address[] calldata)
         external
         override
@@ -303,6 +306,7 @@ contract EthPlusIntoEth is IUniswapV2Like, UUPSUpgradeable, OwnableUpgradeable {
         }
     }
 
+    /// @dev Swaps RETH for ETH, RETH must be approved before calling this function
     function swapExactTokensForETH(
         uint256 amountIn,
         uint256 amountOutMin,
