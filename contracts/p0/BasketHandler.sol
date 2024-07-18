@@ -406,9 +406,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return _quantity(erc20, ICollateral(address(asset)), false, CEIL);
     }
 
+    /// @param coll A collateral that has had refresh() called on it this timestamp
     /// @return {1} The multiplier to charge on issuance quantities for a collateral
     function issuancePremium(ICollateral coll) public view returns (uint192) {
-        if (skipIssuancePremium) return FIX_ONE;
+        if (skipIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
 
         try coll.savedPegPrice() returns (uint192 pegPrice) {
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
@@ -442,7 +443,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         q = basket.refAmts[erc20].div(refPerTok, rounding);
 
         // Prevent toxic issuance by charging more when collateral is under peg
-        if (applyIssuancePremium && coll.lastSave() == block.timestamp) {
+        if (applyIssuancePremium) {
             uint192 premium = issuancePremium(coll); // {1} CEIL
 
             // {tok/BU} = {tok/BU} * {1}
