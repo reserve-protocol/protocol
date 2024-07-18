@@ -206,7 +206,7 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
 
   it('from 4.0.0 to 4.0.0 at-peg', async () => {
     // this test case compares the state after the 4.0.0 upgrade to the state when frxETH is at peg
-    // issuance costs fall by 0.042 bps, which is not noticeable
+    // issuance costs fall by 0.0004%, which is not noticeable
 
     await sfraxEmaOracle.setPrice(fp('1'))
 
@@ -227,8 +227,9 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
   })
 
   it('from 4.0.0 at-peg to 2% below peg', async () => {
-    // this test case compares the state from at-peg to the state after a 2% de-peg of frxETH, within the default threshold
-    // issuance costs do not change since the premium compensates
+    // this test case compares the state from at-peg to the state after a 2% de-peg of frxETH
+    // which is well within the default threshold.
+    // issuance costs do not change since the premium compensates completely
 
     await sfraxEmaOracle.setPrice(fp('1'))
 
@@ -259,7 +260,7 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
 
   it('from 4.0.0 at-peg to 50% below peg', async () => {
     // this test case compares the state from at-peg to the state after a 50% de-peg of frxETH
-    // issuance costs do not change in USD terms, but sfrxETH increases quantities 100% to compensate
+    // issuance costs do not change since the premium compensates completely
 
     await sfraxEmaOracle.setPrice(fp('1'))
 
