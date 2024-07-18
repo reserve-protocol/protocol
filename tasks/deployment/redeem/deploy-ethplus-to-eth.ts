@@ -1,6 +1,9 @@
 import { task } from 'hardhat/config'
 
-task('deploy-redeem-ethplus', 'Deploys the EthPlusIntoEth contract, it offers an easy to use UniswapV2 like interface for external parties to integrate against').setAction(async (_, hre) => {
+task(
+  'deploy-redeem-ethplus',
+  'Deploys the EthPlusIntoEth contract. It offers a UniswapV2-like interface to exit ETH+ that is fully decentralised'
+).setAction(async (_, hre) => {
   const [deployer] = await hre.ethers.getSigners()
 
   console.log(
@@ -23,10 +26,9 @@ task('deploy-redeem-ethplus', 'Deploys the EthPlusIntoEth contract, it offers an
   await hre.run('verify:verify', {
     address: ethPlusIntoEth.address,
     constructorArguments: [],
-    contract: "contracts/redeem/EthPlusIntoEth.sol:EthPlusIntoEth",
+    contract: 'contracts/redeem/EthPlusIntoEth.sol:EthPlusIntoEth',
   })
   console.timeEnd('Verifying EthPlusIntoEth Implementation')
 
   console.log('verified')
-
 })
