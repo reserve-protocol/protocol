@@ -474,18 +474,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(collateral0.address, bn('7e7'))
         await collateral0.refresh()
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        const rtokenPrice = await basketHandler.price()
-        const realRtokenPrice = rtokenPrice.low.add(rtokenPrice.high).div(2)
-        const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
         await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION]))
           .to.emit(rTokenTrader, 'TradeStarted')
-          .withArgs(
-            anyValue,
-            token0.address,
-            rToken.address,
-            issueAmount,
-            withinTolerance(minBuyAmt)
-          )
+          .withArgs(anyValue, token0.address, rToken.address, issueAmount, anyValue)
       })
 
       it('Should forward revenue to traders', async () => {
@@ -1016,7 +1007,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
         expect(await trade.initBal()).to.equal(issueAmount)
-        expect(await trade.worstCasePrice()).to.be.gte(fp('0.775').mul(bn('1e9'))) // D27 precision
+        expect(await trade.worstCasePrice()).to.be.gte(fp('0.485').mul(bn('1e9'))) // D27 precision
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {

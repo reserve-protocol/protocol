@@ -374,19 +374,29 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         {
           contract: one.rToken,
           name: 'Transfer',
-          args: [ZERO_ADDRESS, one.backingManager.address, issueAmt.div(2).sub(75)],
+          args: [
+            ZERO_ADDRESS,
+            one.backingManager.address,
+            withinTolerance(issueAmt.div(2).sub(75)),
+          ],
           emitted: true,
         },
         {
           contract: one.rToken,
           name: 'Transfer',
-          args: [one.rTokenTrader.address, one.furnace.address, rTokSellAmt],
+          args: [one.rTokenTrader.address, one.furnace.address, withinTolerance(rTokSellAmt)],
           emitted: true,
         },
         {
           contract: one.rsrTrader,
           name: 'TradeStarted',
-          args: [anyValue, one.rToken.address, one.rsr.address, rsrSellAmt, rsrMinBuyAmt],
+          args: [
+            anyValue,
+            one.rToken.address,
+            one.rsr.address,
+            withinTolerance(rsrSellAmt),
+            withinTolerance(rsrMinBuyAmt),
+          ],
           emitted: true,
         },
       ])

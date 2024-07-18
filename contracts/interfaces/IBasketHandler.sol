@@ -43,6 +43,11 @@ interface IBasketHandler is IComponent {
     /// @param newVal The new warmup period
     event WarmupPeriodSet(uint48 oldVal, uint48 newVal);
 
+    /// Emitted when the issuance premium logic is changed
+    /// @param oldVal The old value of skipIssuancePremium
+    /// @param newVal The new value of skipIssuancePremium
+    event SkipIssuancePremiumSet(bool oldVal, bool newVal);
+
     /// Emitted when the status of a basket has changed
     /// @param oldStatus The previous basket status
     /// @param newStatus The new basket status
@@ -110,17 +115,19 @@ interface IBasketHandler is IComponent {
     /// @return If the basket is ready to issue and trade
     function isReady() external view returns (bool);
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// @param erc20 The ERC20 token contract for the asset
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// @return {tok/BU} The redemption quantity of token in the reference basket, rounded up
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// @return {tok/BU} The redemption quantity of token in the reference basket, rounded up
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
@@ -156,13 +163,6 @@ interface IBasketHandler is IComponent {
     /// @return high {UoA/BU} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
 
-    /// Should not revert
-    /// lotLow should be nonzero if a BU could be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
-
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
 
@@ -190,4 +190,8 @@ interface TestIBasketHandler is IBasketHandler {
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;
+
+    function skipIssuancePremium() external view returns (bool);
+
+    function setIssuancePremiumEnabled(bool val) external;
 }

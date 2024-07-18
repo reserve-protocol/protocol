@@ -58,6 +58,8 @@ contract FiatCollateral is ICollateral, Asset {
 
     uint192 public immutable pegTop; // {target/ref} The top of the peg
 
+    uint192 public savedPegPrice; // {target/ref} The peg price of the token during the last update
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
@@ -136,6 +138,7 @@ contract FiatCollateral is ICollateral, Asset {
             if (high != FIX_MAX) {
                 savedLowPrice = low;
                 savedHighPrice = high;
+                savedPegPrice = pegPrice;
                 lastSave = uint48(block.timestamp);
             } else {
                 // must be unpriced

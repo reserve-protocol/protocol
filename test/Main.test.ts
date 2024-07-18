@@ -963,6 +963,27 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid warmupPeriod')
     })
 
+    it('Should allow to update skipIssuancePremium if OWNER', async () => {
+      const newValue = true
+
+      // Check existing value
+      expect(await basketHandler.skipIssuancePremium()).to.equal(false)
+
+      // If not owner cannot update
+      await expect(basketHandler.connect(other).setIssuancePremiumEnabled(!newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await basketHandler.skipIssuancePremium()).to.equal(false)
+
+      // Update with owner
+      await expect(basketHandler.connect(owner).setIssuancePremiumEnabled(!newValue))
+        .to.emit(basketHandler, 'SkipIssuancePremiumSet')
+        .withArgs(false, newValue)
+
+      // Check value was updated
+      expect(await basketHandler.skipIssuancePremium()).to.equal(newValue)
+    })
+
     it('Should allow to update tradingDelay if OWNER and perform validations', async () => {
       const newValue: BigNumber = bn('360')
 
@@ -1762,10 +1783,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       it('Should not allow to set prime Basket with invalid length', async () => {
         await expect(
           basketHandler.connect(owner).setPrimeBasket([token0.address], [])
-        ).to.be.revertedWith('len mismatch')
+        ).to.be.revertedWith('invalid lengths')
         await expect(
           basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [])
-        ).to.be.revertedWith('len mismatch')
+        ).to.be.revertedWith('invalid lengths')
       })
 
       it('Should not allow to set prime Basket with non-collateral tokens', async () => {
@@ -1830,10 +1851,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       it('Should not allow to set prime Basket with an empty basket', async () => {
         await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
-          'empty basket'
+          'invalid lengths'
         )
         await expect(basketHandler.connect(owner).forceSetPrimeBasket([], [])).to.be.revertedWith(
-          'empty basket'
+          'invalid lengths'
         )
       })
 
@@ -1849,11 +1870,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const newBH = await newBasketHandler()
         await newBH.init(main.address, config.warmupPeriod, false)
         await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
-          'invalid target amount; must be nonzero'
+          'invalid target amount'
         )
         await expect(
           newBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
-        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should be able to set exactly same basket', async () => {
@@ -2065,10 +2086,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       it('Should not allow to set prime Basket with invalid length', async () => {
         await expect(
           indexBH.connect(owner).setPrimeBasket([token0.address], [])
-        ).to.be.revertedWith('len mismatch')
+        ).to.be.revertedWith('invalid lengths')
         await expect(
           indexBH.connect(owner).forceSetPrimeBasket([token0.address], [])
-        ).to.be.revertedWith('len mismatch')
+        ).to.be.revertedWith('invalid lengths')
       })
 
       it('Should not allow to set prime Basket with non-collateral tokens', async () => {
@@ -2115,28 +2136,28 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // not possible on non-fresh basketHandler
         await expect(
           indexBH.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-        ).to.be.revertedWith('invalid target amount; too large')
+        ).to.be.revertedWith('invalid target amount')
         await expect(
           indexBH.connect(owner).forceSetPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-        ).to.be.revertedWith('invalid target amount; too large')
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should not allow to set prime Basket with an empty basket', async () => {
         await expect(indexBH.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
-          'empty basket'
+          'invalid lengths'
         )
         await expect(indexBH.connect(owner).forceSetPrimeBasket([], [])).to.be.revertedWith(
-          'empty basket'
+          'invalid lengths'
         )
       })
 
       it('Should not allow to set prime Basket with a zero amount', async () => {
         await expect(
           indexBH.connect(owner).setPrimeBasket([token0.address], [0])
-        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        ).to.be.revertedWith('invalid target amount')
         await expect(
           indexBH.connect(owner).forceSetPrimeBasket([token0.address], [0])
-        ).to.be.revertedWith('invalid target amount; must be nonzero')
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should be able to set exactly same basket', async () => {
@@ -2370,7 +2391,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         await expect(
           indexBH.quoteCustomRedemption(basketNonces, portions, amount)
-        ).to.be.revertedWith('bad portions len')
+        ).to.be.revertedWith('invalid lengths')
       })
 
       it('Should correctly quote the current basket, same as quote()', async () => {
@@ -2957,7 +2978,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
-      ).to.not.be.revertedWith('erc20s too large')
+      ).to.not.be.revertedWith('too large')
 
       // Should fail at 65
       erc20s.push(ONE_ADDRESS)
@@ -2965,21 +2986,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), erc20s)
-      ).to.be.revertedWith('erc20s too large')
+      ).to.be.revertedWith('too large')
 
       // Should succeed at 64
       await expect(
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(64), [])
-      ).to.not.be.revertedWith('max too large')
+      ).to.not.be.revertedWith('too large')
 
       // Should fail at 65
       await expect(
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(65), [])
-      ).to.be.revertedWith('max too large')
+      ).to.be.revertedWith('too large')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {
@@ -3144,7 +3165,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check BU price -- 1/4 of the basket has lost half its value
-      await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
+      const avgPrice = fp('0.875')
+      let [lowPrice, highPrice] = await basketHandler.price()
+      const expectedLow = avgPrice.sub(avgPrice.mul(ORACLE_ERROR).div(fp('1')))
+      const expectedHigh = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1'))) // at-peg!
+
+      const tolerance = avgPrice.div(bn('1e15'))
+      expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
+      expect(lowPrice).to.be.gte(expectedLow)
+      expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
+      expect(highPrice).to.be.lte(expectedHigh)
 
       // Set collateral1 price to [0, FIX_MAX]
       await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
@@ -3153,7 +3183,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check BU price -- 1/4 of the basket has lost all its value
       const asset = await ethers.getContractAt('Asset', basketHandler.address)
-      const [lowPrice, highPrice] = await asset.price()
+      ;[lowPrice, highPrice] = await asset.price()
       expect(lowPrice).to.be.closeTo(fp('0.75'), fp('0.75').div(100)) // within 1%
       expect(highPrice).to.equal(MAX_UINT192)
 
@@ -3536,15 +3566,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check BU price
       await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR, true)
-    })
-
-    it('lotPrice (deprecated) is equal to price()', async () => {
-      const lotPrice = await basketHandler.lotPrice()
-      const price = await basketHandler.price()
-      expect(price.length).to.equal(2)
-      expect(lotPrice.length).to.equal(price.length)
-      expect(lotPrice[0]).to.equal(price[0])
-      expect(lotPrice[1]).to.equal(price[1])
     })
 
     it('Should not put backup tokens with different targetName in the basket', async () => {

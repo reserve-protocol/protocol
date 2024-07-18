@@ -6,6 +6,8 @@ This release prepares the core protocol for veRSR through the introduction of 3 
 
 The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
 
+Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg. This has the side-effect of also creating a new revenue source.
+
 ## Upgrade Steps
 
 TODO
@@ -19,6 +21,11 @@ Make sure distributor table sums to >10000.
   - Add `validateCurrentAssets() view`
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
+- `BasketHandler`
+  - Increase `quote(, CEIL)` quantities during issuance to include an issuance premium for de-pegged tokens
+  - Add `issuancePremium() view returns (uint192)`
+  - Add `setIssuancePremiumEnabled(bool)`, callable by governance
+  - Remove `lotPrice()`
 - `Broker`
   - Make setters only callable by `Main`
 - `Distributor`
@@ -37,9 +44,14 @@ Make sure distributor table sums to >10000.
 
 ### Assets
 
-No functional change. FLOOR rounding added explicitly to `shiftl_toFix`.
+- Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
+- FLOOR rounding added explicitly to `shiftl_toFix`
+- Remove lotPrice()
+- Set a minimum default threshold of 70%
 
-Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
+#### Collateral
+
+Add `savedPegPrice` to `ICollateral` interface
 
 ### Trading
 
