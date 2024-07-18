@@ -28,11 +28,15 @@ const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 const ARBITRUM_SEPOLIA_RPC_URL = useEnv('ARBITRUM_SEPOLIA_RPC_URL')
 const ARBITRUM_RPC_URL = useEnv('ARBITRUM_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') || 'test test test test test test test test test test test junk'
+const PRIVATE_KEY = useEnv('PRIVATE_KEY')
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
 
+const accounts = PRIVATE_KEY != null ? [PRIVATE_KEY] : {
+  mnemonic: MNEMONIC,
+}
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
   networks: {
@@ -40,9 +44,9 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
-            blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
-          }
+          url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
+          blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
+        }
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
@@ -60,54 +64,40 @@ const config: HardhatUserConfig = {
     goerli: {
       chainId: 5,
       url: GOERLI_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
     },
     'base-goerli': {
       chainId: 84531,
       url: BASE_GOERLI_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
     },
     base: {
       chainId: 8453,
       url: BASE_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
     },
     mainnet: {
       chainId: 1,
       url: MAINNET_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
       // gasPrice: 30_000_000_000,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     arbitrum: {
       chainId: 42161,
       url: ARBITRUM_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     'arbitrum-sepolia': {
       chainId: 421614,
       url: ARBITRUM_SEPOLIA_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
     },
     tenderly: {
       chainId: 3,
       url: TENDERLY_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts,
       // gasPrice: 10_000_000_000,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },

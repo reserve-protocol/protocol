@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
-
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IBasketHandler } from "../../interfaces/IBasketHandler.sol";
-import { IRToken } from "../../interfaces/IRToken.sol";
-import { RoundingMode, FixLib } from "../../libraries/Fixed.sol";
+import { IBasketHandler } from "../interfaces/IBasketHandler.sol";
+import { IRToken } from "../interfaces/IRToken.sol";
+import { RoundingMode, FixLib } from "../libraries/Fixed.sol";
 
 interface IWETH is IERC20 {
     function withdraw(uint256 wad) external;
@@ -147,7 +148,7 @@ interface IUniswapV2Like {
 
 /** Small utility contract to swap ETH+ for ETH by redeeming ETH+ and swapping.
  */
-contract EthPlusIntoEth is IUniswapV2Like {
+contract EthPlusIntoEth is IUniswapV2Like, UUPSUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     IVault private constant BALANCER_VAULT = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
@@ -172,6 +173,11 @@ contract EthPlusIntoEth is IUniswapV2Like {
         ICurveETHstETHStableSwap(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
     ICurveStableSwap private constant CURVE_FRXETH_WETH =
         ICurveStableSwap(0x9c3B46C0Ceb5B9e304FCd6D88Fc50f7DD24B31Bc);
+
+    function initialize() public initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+    }
 
     function makeBalancerFunds() internal view returns (IVault.FundManagement memory) {
         IVault.FundManagement memory fundManagement;
@@ -358,4 +364,15 @@ contract EthPlusIntoEth is IUniswapV2Like {
     }
 
     receive() external payable {}
+
+    // === Upgradeability ===
+    // solhint-disable-next-line no-empty-blocks
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[49] private __gap;
 }

@@ -3,7 +3,6 @@ import { EthPlusIntoEth } from '@typechain/EthPlusIntoEth'
 import { IERC20 } from '@typechain/IERC20'
 import { formatEther, parseEther } from 'ethers/lib/utils'
 import hardhat, { ethers } from 'hardhat'
-import { whileImpersonating } from '../utils/impersonation'
 import { forkRpcs, Network } from '#/utils/fork'
 import { useEnv } from '#/utils/env'
 import { expect } from 'chai'
@@ -29,7 +28,12 @@ const loader = async () => {
   })
   const signer = await ethers.getSigner(ETH_PLUS_WHALE)
   await setBalance(ETH_PLUS_WHALE, parseEther('10000.0'))
-  const ethPlusToETH = await (await ethers.deployContract('EthPlusIntoEth', signer)).deployed()
+  const ethPlusToETHFactory = await ethers.getContractFactory('EthPlusIntoEth')
+  const ethPlusToETH = (
+    await hardhat.upgrades.deployProxy(ethPlusToETHFactory, [], {
+      kind: 'uups',
+    })
+  ).connect(signer)
 
   const reth = await ethers.getContractAt(
     'IERC20Metadata',
