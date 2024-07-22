@@ -48,9 +48,7 @@ Make sure distributor table sums to >10000.
 ### Assets
 
 - Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
-- FLOOR rounding added explicitly to `shiftl_toFix`
-- Remove lotPrice()
-- Set a minimum default threshold of 70%
+- FLOOR rounding added explicitly to `shiftl_toFix` everywhere
 
 #### Collateral
 
