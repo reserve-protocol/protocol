@@ -303,7 +303,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
+            assetRegistry.toColl(erc20s[i]); // reverts if not collateral
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
