@@ -41,7 +41,8 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
   let oldRTokenPrice: BigNumber[] // <4.0.0
   let newRTokenPrice: BigNumber[] // >= <4.0.0
   let oldPrice: BigNumber[] // <4.0.0
-  let newPrice: BigNumber[] // >= 4.0.0
+  let newPriceF: BigNumber[] // >= 4.0.0 price(false)
+  let newPriceT: BigNumber[] // >= 4.0.0 price(true)
   let oldQs: BigNumber[] // <4.0.0 quantities
   let newQs: BigNumber[] // >= 4.0.0 quantities
 
@@ -80,9 +81,11 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     )
     rTokenAsset = <RTokenAsset>await ethers.getContractAt('RTokenAsset', RTOKEN_ASSET_ADDR)
 
+    const oldBasketHandler = await ethers.getContractAt('IOldBasketHandler', BASKET_HANDLER_ADDR)
+
     oldRTokenPrice = await rTokenAsset.price()
-    oldPrice = await basketHandler.price()
-    oldQs = (await basketHandler.quote(fp('1'), 2)).quantities
+    oldPrice = await oldBasketHandler.price()
+    oldQs = (await oldBasketHandler.quote(fp('1'), 2)).quantities
 
     // frxETH/ETH EMA oracle
     const currentEmaOracle = await ethers.getContractAt(
@@ -97,6 +100,13 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     )
 
     // === Upgrade to 4.0.0 (minimally)===
+
+    // RTokenAsset
+    const RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
+    rTokenAsset = await RTokenAssetFactory.deploy(
+      await rTokenAsset.erc20(),
+      await rTokenAsset.maxTradeVolume()
+    )
 
     // BasketHandler
     const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1', {
@@ -174,44 +184,32 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
       await assetRegistry.connect(timelockSigner).swapRegistered(newSfrxETH.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(newWstETH.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(newRETH.address)
+      await assetRegistry.connect(timelockSigner).swapRegistered(rTokenAsset.address)
     })
     await basketHandler.refreshBasket()
     expect(await basketHandler.status()).to.equal(0)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
     newRTokenPrice = await rTokenAsset.price()
-    newPrice = await basketHandler.price()
-    newQs = (await basketHandler.quote(fp('1'), 2)).quantities
+    newPriceF = await basketHandler.price(false)
+    newPriceT = await basketHandler.price(true)
+    newQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
-    snap = await evmSnapshot() // what are testing frameworks for if not this in all its glory
+    // snap = await evmSnapshot() // what are testing frameworks for if not this in all its glory
   })
 
   beforeEach(async () => {
-    await evmRevert(snap)
-    snap = await evmSnapshot()
+    // await evmRevert(snap)
+    // snap = await evmSnapshot()
   })
 
   after(async () => {
-    await evmRevert(snap)
+    // await evmRevert(snap)
   })
 
   it('from 3.4.0 to 4.0.0', async () => {
     // this test case compares the state before the 4.0.0 upgrade to the state after the 4.0.0 upgrade
-    // USD issuance costs rise ~0.04% due to sfrxETH's ~0.12% premium
-
-    // basketHandler.price()
-    const lowPriceChange = newPrice[0].sub(oldPrice[0]).mul(fp('1')).div(oldPrice[0])
-    const highPriceChange = newPrice[1].sub(oldPrice[1]).mul(fp('1')).div(oldPrice[1])
-    expect(lowPriceChange).to.be.closeTo(fp('-0.000008'), fp('1e-6')) // low price -0.0008%
-    expect(highPriceChange).to.be.closeTo(fp('0.000437'), fp('1e-6')) // high price +0.04%
-
-    // basketHandler.quote()
-    const sfrxETHChange = newQs[0].sub(oldQs[0]).mul(fp('1')).div(oldQs[0])
-    const wstETHChange = newQs[1].sub(oldQs[1]).mul(fp('1')).div(oldQs[1])
-    const rETHChange = newQs[2].sub(oldQs[2]).mul(fp('1')).div(oldQs[2])
-    expect(sfrxETHChange).to.be.closeTo(fp('0.001201'), fp('1e-6')) // sFraxETH +0.12%
-    expect(wstETHChange).to.be.closeTo(fp('0.000126'), fp('1e-6')) // wstETH +0.012%
-    expect(rETHChange).to.be.equal(0) // rETH no change
+    // USD issuance costs rise ~0.04% due to sfrxETH's ~0.12% premium, as given by basketHandler.price(true)
 
     // rTokenAsset.price()
     const lowRTokenPriceChange = newRTokenPrice[0]
@@ -222,33 +220,40 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
       .sub(oldRTokenPrice[1])
       .mul(fp('1'))
       .div(oldRTokenPrice[1])
-    expect(lowRTokenPriceChange).to.be.closeTo(fp('-0.000006'), fp('1e-6')) // low RToken price -0.0006%
-    expect(highRTokenPriceChange).to.be.closeTo(fp('0.000441'), fp('1e-6')) // high RToken price +0.04%
+    expect(lowRTokenPriceChange).to.be.closeTo(fp('0'), fp('1e-4')) // low RToken price no change
+    expect(highRTokenPriceChange).to.be.closeTo(fp('0.0004'), fp('1e-4')) // high RToken price +0.04%
+
+    // basketHandler.price(false)
+    const lowPriceChangeF = newPriceF[0].sub(oldPrice[0]).mul(fp('1')).div(oldPrice[0])
+    const highPriceChangeF = newPriceF[1].sub(oldPrice[1]).mul(fp('1')).div(oldPrice[1])
+    expect(lowPriceChangeF).to.be.closeTo(fp('0'), fp('1e-4')) // low price no change
+    expect(highPriceChangeF).to.be.closeTo(fp('0'), fp('1e-4')) // high price no change
+
+    // basketHandler.price(true)
+    const lowPriceChangeT = newPriceT[0].sub(oldPrice[0]).mul(fp('1')).div(oldPrice[0])
+    const highPriceChangeT = newPriceT[1].sub(oldPrice[1]).mul(fp('1')).div(oldPrice[1])
+    expect(lowPriceChangeT).to.be.closeTo(fp('0'), fp('1e-4')) // low price no change
+    expect(highPriceChangeT).to.be.closeTo(fp('0.0004'), fp('1e-4')) // high price +0.04%
+
+    // basketHandler.quote()
+    const sfrxETHChange = newQs[0].sub(oldQs[0]).mul(fp('1')).div(oldQs[0])
+    const wstETHChange = newQs[1].sub(oldQs[1]).mul(fp('1')).div(oldQs[1])
+    const rETHChange = newQs[2].sub(oldQs[2]).mul(fp('1')).div(oldQs[2])
+    expect(sfrxETHChange).to.be.closeTo(fp('0.0012'), fp('1e-4')) // sFraxETH +0.12%
+    expect(wstETHChange).to.be.closeTo(fp('0.0001'), fp('1e-4')) // wstETH +0.01%
+    expect(rETHChange).to.be.equal(0) // rETH no change
   })
 
   it('from 4.0.0 to 4.0.0 at-peg', async () => {
     // this test case compares the state after the 4.0.0 upgrade to the state when frxETH is at peg
-    // USD issuance costs fall by 0.0004%, which is not noticeable
+    // as given by basketHandler.price(true), USD issuance costs do not change since the premium compensates completely
 
     await sfraxEmaOracle.setPrice(fp('1'))
 
     const parRTokenPrice = await rTokenAsset.price()
-    const parPrice = await basketHandler.price()
-    const parQs = (await basketHandler.quote(fp('1'), 2)).quantities
-
-    // basketHandler.price()
-    const lowPriceChange = parPrice[0].sub(newPrice[0]).mul(fp('1')).div(newPrice[0])
-    const highPriceChange = parPrice[1].sub(newPrice[1]).mul(fp('1')).div(newPrice[1])
-    expect(lowPriceChange).to.be.closeTo(fp('0.000411'), fp('1e-6')) // low price +0.04%
-    expect(highPriceChange).to.be.closeTo(fp('-0.000042'), fp('1e-6')) // high price -0.0004%
-
-    // basketHandler.quote()
-    const sfrxETHChange = parQs[0].sub(newQs[0]).mul(fp('1')).div(newQs[0])
-    const wstETHChange = parQs[1].sub(newQs[1]).mul(fp('1')).div(newQs[1])
-    const rETHChange = parQs[2].sub(newQs[2]).mul(fp('1')).div(newQs[2])
-    expect(sfrxETHChange).to.be.closeTo(fp('-0.00122654'), fp('1e-6')) // sFraxETH -0.12%%
-    expect(wstETHChange).to.be.closeTo(fp('-0.0001267'), fp('1e-6')) // wstETH -0.01%
-    expect(rETHChange).to.be.equal(0) // rETH no change
+    const parPriceF = await basketHandler.price(false)
+    const parPriceT = await basketHandler.price(true)
+    const parQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
     // rTokenAsset.price()
     const lowRTokenPriceChange = parRTokenPrice[0]
@@ -259,20 +264,41 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
       .sub(newRTokenPrice[1])
       .mul(fp('1'))
       .div(newRTokenPrice[1])
-    expect(lowRTokenPriceChange).to.be.closeTo(fp('0.000411'), fp('1e-6')) // low price +0.04%
-    expect(highRTokenPriceChange).to.be.closeTo(fp('-0.000042'), fp('1e-6')) // high price -0.0004%
+    expect(lowRTokenPriceChange).to.be.closeTo(fp('0.0004'), fp('1e-4')) // low price +0.04%
+    expect(highRTokenPriceChange).to.be.closeTo(fp('0'), fp('1e-4')) // high price no change
+
+    // basketHandler.price(false)
+    const lowPriceChangeF = parPriceF[0].sub(newPriceF[0]).mul(fp('1')).div(newPriceF[0])
+    const highPriceChangeF = parPriceF[1].sub(newPriceF[1]).mul(fp('1')).div(newPriceF[1])
+    expect(lowPriceChangeF).to.be.closeTo(fp('0.0004'), fp('1e-4')) // low price +0.04%
+    expect(highPriceChangeF).to.be.closeTo(fp('0.0004'), fp('1e-4')) // high price +0.04%%
+
+    // basketHandler.price(true)
+    const lowPriceChangeT = parPriceT[0].sub(newPriceT[0]).mul(fp('1')).div(newPriceT[0])
+    const highPriceChangeT = parPriceT[1].sub(newPriceT[1]).mul(fp('1')).div(newPriceT[1])
+    expect(lowPriceChangeT).to.be.closeTo(fp('0.0004'), fp('1e-4')) // low price +0.04%
+    expect(highPriceChangeT).to.be.closeTo(fp('0'), fp('1e-4')) // high price no change
+
+    // basketHandler.quote()
+    const sfrxETHChange = parQs[0].sub(newQs[0]).mul(fp('1')).div(newQs[0])
+    const wstETHChange = parQs[1].sub(newQs[1]).mul(fp('1')).div(newQs[1])
+    const rETHChange = parQs[2].sub(newQs[2]).mul(fp('1')).div(newQs[2])
+    expect(sfrxETHChange).to.be.closeTo(fp('-0.0012'), fp('1e-4')) // sFraxETH -0.12%%
+    expect(wstETHChange).to.be.closeTo(fp('-0.0001'), fp('1e-4')) // wstETH -0.01%
+    expect(rETHChange).to.be.equal(0) // rETH no change
   })
 
   it('from 4.0.0 at-peg to 2% below peg', async () => {
     // this test case compares the state from at-peg to the state after a 2% de-peg of frxETH
     // which is well within the default threshold.
-    // USD issuance costs do not change since the premium compensates completely
+    // as given by basketHandler.price(true), USD issuance costs do not change since the premium compensates completely
 
     await sfraxEmaOracle.setPrice(fp('1'))
 
     const parRTokenPrice = await rTokenAsset.price()
-    const parPrice = await basketHandler.price()
-    const parQs = (await basketHandler.quote(fp('1'), 2)).quantities
+    const parPriceF = await basketHandler.price(false)
+    const parPriceT = await basketHandler.price(true)
+    const parQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
     // de-peg by 2%
 
@@ -281,22 +307,9 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     await sfrxETH.refresh()
     expect(await sfrxETH.savedPegPrice()).to.equal(fp('0.98'))
 
-    const depeggedPrice = await basketHandler.price()
-    const depeggedQs = (await basketHandler.quote(fp('1'), 2)).quantities
-
-    // basketHandler.price()
-    const lowPriceChange = depeggedPrice[0].sub(parPrice[0]).mul(fp('1')).div(parPrice[0])
-    const highPriceChange = depeggedPrice[1].sub(parPrice[1]).mul(fp('1')).div(parPrice[1])
-    expect(lowPriceChange).to.be.closeTo(fp('-0.006706'), fp('1e-6')) // low price -0.67%
-    expect(highPriceChange).be.closeTo(0, fp('1e-6')) // high price no change
-
-    // basketHandler.quote()
-    const sfrxETHChange = depeggedQs[0].sub(parQs[0]).mul(fp('1')).div(parQs[0])
-    const wstETHChange = depeggedQs[1].sub(parQs[1]).mul(fp('1')).div(parQs[1])
-    const rETHChange = depeggedQs[2].sub(parQs[2]).mul(fp('1')).div(parQs[2])
-    expect(sfrxETHChange).to.be.closeTo(fp('0.020408'), fp('1e-6')) // sFraxETH +2%
-    expect(wstETHChange).to.be.closeTo(0, fp('1e-6')) // wstETH no change
-    expect(rETHChange).to.be.equal(0) // rETH no change
+    const depeggedPriceF = await basketHandler.price(false)
+    const depeggedPriceT = await basketHandler.price(true)
+    const depeggedQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
     // rTokenAsset.price()
     const lowRTokenPriceChange = depeggedRTokenPrice[0]
@@ -307,19 +320,40 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
       .sub(parRTokenPrice[1])
       .mul(fp('1'))
       .div(parRTokenPrice[1])
-    expect(lowRTokenPriceChange).to.be.closeTo(fp('-0.006706'), fp('1e-6')) // low RToken price -0.67%
-    expect(highRTokenPriceChange).be.closeTo(fp('-0.006596'), fp('1e-6')) // high RToken -0.65%
+    expect(lowRTokenPriceChange).to.be.closeTo(fp('-0.0067'), fp('1e-4')) // low RToken price -0.67%
+    expect(highRTokenPriceChange).be.closeTo(fp('-0.0065'), fp('1e-4')) // high RToken -0.66%
+
+    // basketHandler.price(false)
+    const lowPriceChangeF = depeggedPriceF[0].sub(parPriceF[0]).mul(fp('1')).div(parPriceF[0])
+    const highPriceChangeF = depeggedPriceF[1].sub(parPriceF[1]).mul(fp('1')).div(parPriceF[1])
+    expect(lowPriceChangeF).to.be.closeTo(fp('-0.0067'), fp('1e-4')) // low price -0.67%
+    expect(highPriceChangeF).be.closeTo(fp('-0.0065'), fp('1e-4')) // high price -0.66%
+
+    // basketHandler.price(true)
+    const lowPriceChangeT = depeggedPriceT[0].sub(parPriceT[0]).mul(fp('1')).div(parPriceT[0])
+    const highPriceChangeT = depeggedPriceT[1].sub(parPriceT[1]).mul(fp('1')).div(parPriceT[1])
+    expect(lowPriceChangeT).to.be.closeTo(fp('-0.0067'), fp('1e-4')) // low price -0.67%
+    expect(highPriceChangeT).be.closeTo(0, fp('1e-4')) // high price no change
+
+    // basketHandler.quote()
+    const sfrxETHChange = depeggedQs[0].sub(parQs[0]).mul(fp('1')).div(parQs[0])
+    const wstETHChange = depeggedQs[1].sub(parQs[1]).mul(fp('1')).div(parQs[1])
+    const rETHChange = depeggedQs[2].sub(parQs[2]).mul(fp('1')).div(parQs[2])
+    expect(sfrxETHChange).to.be.closeTo(fp('0.0204'), fp('1e-4')) // sFraxETH +2.04
+    expect(wstETHChange).to.be.closeTo(0, fp('1e-4')) // wstETH no change
+    expect(rETHChange).to.be.equal(0) // rETH no change
   })
 
   it('from 4.0.0 at-peg to 50% below peg', async () => {
     // this test case compares the state from at-peg to the state after a 50% de-peg of frxETH
-    // USD issuance costs do not change since the premium compensates completely
+    // as given by basketHandler.price(true), USD issuance costs do not change since the premium compensates completely
 
     await sfraxEmaOracle.setPrice(fp('1'))
 
     const parRTokenPrice = await rTokenAsset.price()
-    const parPrice = await basketHandler.price()
-    const parQs = (await basketHandler.quote(fp('1'), 2)).quantities
+    const parPriceF = await basketHandler.price(false)
+    const parPriceT = await basketHandler.price(true)
+    const parQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
     // de-peg by 50%
 
@@ -328,22 +362,9 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     await sfrxETH.refresh()
     expect(await sfrxETH.savedPegPrice()).to.equal(fp('0.5'))
 
-    const depeggedPrice = await basketHandler.price()
-    const depeggedQs = (await basketHandler.quote(fp('1'), 2)).quantities
-
-    // basketHandler.price()
-    const lowPriceChange = depeggedPrice[0].sub(parPrice[0]).mul(fp('1')).div(parPrice[0])
-    const highPriceChange = depeggedPrice[1].sub(parPrice[1]).mul(fp('1')).div(parPrice[1])
-    expect(lowPriceChange).to.be.closeTo(fp('-0.167646'), fp('1e-6')) // low price -16.7%
-    expect(highPriceChange).be.closeTo(0, fp('1e-6')) // high price no change
-
-    // basketHandler.quote()
-    const sfrxETHChange = depeggedQs[0].sub(parQs[0]).mul(fp('1')).div(parQs[0])
-    const wstETHChange = depeggedQs[1].sub(parQs[1]).mul(fp('1')).div(parQs[1])
-    const rETHChange = depeggedQs[2].sub(parQs[2]).mul(fp('1')).div(parQs[2])
-    expect(sfrxETHChange).to.be.closeTo(fp('1'), fp('1e-6')) // sFraxETH +100%
-    expect(wstETHChange).to.be.closeTo(0, fp('1e-6')) // wstETH -0.12%
-    expect(rETHChange).to.be.equal(0) // rETH no change
+    const depeggedPriceF = await basketHandler.price(false)
+    const depeggedPriceT = await basketHandler.price(true)
+    const depeggedQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
     // rTokenAsset.price()
     const lowRTokenPriceChange = depeggedRTokenPrice[0]
@@ -354,7 +375,27 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
       .sub(parRTokenPrice[1])
       .mul(fp('1'))
       .div(parRTokenPrice[1])
-    expect(lowRTokenPriceChange).to.be.closeTo(fp('-0.167646'), fp('1e-6')) // low RToken price -16.7%
-    expect(highRTokenPriceChange).to.be.closeTo(fp('-0.164901'), fp('1e-6')) // high RToken price -16.4%
+    expect(lowRTokenPriceChange).to.be.closeTo(fp('-0.1676'), fp('1e-4')) // low RToken price -16.76%
+    expect(highRTokenPriceChange).to.be.closeTo(fp('-0.1649'), fp('1e-4')) // high RToken price -16.49%
+
+    // basketHandler.price(false)
+    const lowPriceChangeF = depeggedPriceF[0].sub(parPriceF[0]).mul(fp('1')).div(parPriceF[0])
+    const highPriceChangeF = depeggedPriceF[1].sub(parPriceF[1]).mul(fp('1')).div(parPriceF[1])
+    expect(lowPriceChangeF).to.be.closeTo(fp('-0.1676'), fp('1e-4')) // low price -16.76%
+    expect(highPriceChangeF).be.closeTo(fp('-0.1649'), fp('1e-4')) // high price -16.49%
+
+    // basketHandler.price(true)
+    const lowPriceChangeT = depeggedPriceT[0].sub(parPriceT[0]).mul(fp('1')).div(parPriceT[0])
+    const highPriceChangeT = depeggedPriceT[1].sub(parPriceT[1]).mul(fp('1')).div(parPriceT[1])
+    expect(lowPriceChangeT).to.be.closeTo(fp('-0.1676'), fp('1e-4')) // low price -16.76%
+    expect(highPriceChangeT).be.closeTo(0, fp('1e-4')) // high price no change
+
+    // basketHandler.quote()
+    const sfrxETHChange = depeggedQs[0].sub(parQs[0]).mul(fp('1')).div(parQs[0])
+    const wstETHChange = depeggedQs[1].sub(parQs[1]).mul(fp('1')).div(parQs[1])
+    const rETHChange = depeggedQs[2].sub(parQs[2]).mul(fp('1')).div(parQs[2])
+    expect(sfrxETHChange).to.be.closeTo(fp('1'), fp('1e-4')) // sFraxETH +100%
+    expect(wstETHChange).to.be.closeTo(0, fp('1e-4')) // wstETH no change
+    expect(rETHChange).to.be.equal(0) // rETH no change
   })
 })

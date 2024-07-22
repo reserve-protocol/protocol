@@ -1253,7 +1253,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await basketHandler.setPrimeBasket(erc20s, targetAmts)
       await basketHandler.refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      const [quoteERC20s, tokAmts] = await basketHandler.quote(fp('1'), 0)
+      const [quoteERC20s, tokAmts] = await basketHandler.quote(fp('1'), false, 0)
       expect(quoteERC20s.length).to.equal(128)
       expect(tokAmts.length).to.equal(128)
 
@@ -2237,7 +2237,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // Set initial basket
         await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
         await indexBH.connect(owner).refreshBasket()
-        let [erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        let [erc20s, tokAmts] = await indexBH.quote(fp('1'), false, 0)
         expect(erc20s.length).to.equal(1)
         expect(tokAmts[0]).to.equal(fp('1'))
 
@@ -2246,7 +2246,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           .connect(owner)
           .setPrimeBasket([token0.address, eurToken.address], [fp('1'), fp('0.25')])
         await indexBH.connect(owner).refreshBasket()
-        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), false, 0)
         expect(erc20s.length).to.equal(2)
         expect(erc20s[0]).to.equal(token0.address)
         expect(erc20s[1]).to.equal(eurToken.address)
@@ -2256,7 +2256,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // Remove USD from the basket entirely, changing price to $1 in EURO
         await indexBH.connect(owner).setPrimeBasket([eurToken.address], [fp('1000')])
         await indexBH.connect(owner).refreshBasket()
-        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), false, 0)
         expect(erc20s.length).to.equal(1)
         expect(erc20s[0]).to.equal(eurToken.address)
         expect(tokAmts[0]).to.equal(fp('1')) // still $1!
@@ -2264,14 +2264,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // No change by simply resizing the basket
         await indexBH.connect(owner).setPrimeBasket([eurToken.address], [fp('0.000001')])
         await indexBH.connect(owner).refreshBasket()
-        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), false, 0)
         expect(erc20s.length).to.equal(1)
         expect(erc20s[0]).to.equal(eurToken.address)
         expect(tokAmts[0]).to.equal(fp('1')) // still $1!
 
         // Not refreshing the basket in between should still allow a consecutive setPrimeBasket
         await indexBH.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), false, 0)
         expect(erc20s.length).to.equal(1)
         expect(erc20s[0]).to.equal(eurToken.address) // not token0 yet
         expect(tokAmts[0]).to.equal(fp('1'))
@@ -2281,7 +2281,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await indexBH.connect(owner).refreshBasket()
 
         // $0.50 USD / $0.50 EURO by the end
-        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), 0)
+        ;[erc20s, tokAmts] = await indexBH.quote(fp('1'), false, 0)
         expect(erc20s.length).to.equal(2)
         expect(erc20s[0]).to.equal(token0.address)
         expect(erc20s[1]).to.equal(eurToken.address)
@@ -2401,7 +2401,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1]
         const portions = [fp('1')]
         const amount = fp('10000')
-        const baseline = await indexBH.quote(amount, RoundingMode.FLOOR)
+        const baseline = await indexBH.quote(amount, false, RoundingMode.FLOOR)
         const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
         expectEqualArrays(quote.erc20s, baseline.erc20s)
         expectEqualArrays(quote.quantities, baseline.quantities)
@@ -2553,7 +2553,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('0.1'),
         ]
         const amount = fp('10000')
-        const baseline = await indexBH.quote(amount, RoundingMode.FLOOR)
+        const baseline = await indexBH.quote(amount, false, RoundingMode.FLOOR)
         const quote = await indexBH.quoteCustomRedemption(basketNonces, portions, amount)
         expectEqualArrays(quote.erc20s, baseline.erc20s)
         expectEqualArrays(quote.quantities, baseline.quantities)
@@ -3143,7 +3143,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // expect(toks.length).to.equal(0)
     })
 
-    it('Should include value of defaulted collateral when checking basket price', async () => {
+    it('Should include value of defaulted collateral when checking basket price -- /w premium', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
@@ -3166,7 +3166,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check BU price -- 1/4 of the basket has lost half its value
       const avgPrice = fp('0.875')
-      let [lowPrice, highPrice] = await basketHandler.price()
+      let [lowPrice, highPrice] = await basketHandler.price(true)
       const expectedLow = avgPrice.sub(avgPrice.mul(ORACLE_ERROR).div(fp('1')))
       const expectedHigh = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1'))) // at-peg!
 
@@ -3182,8 +3182,59 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await assetRegistry.refresh()
 
       // Check BU price -- 1/4 of the basket has lost all its value
-      const asset = await ethers.getContractAt('Asset', basketHandler.address)
-      ;[lowPrice, highPrice] = await asset.price()
+      ;[lowPrice, highPrice] = await basketHandler.price(true)
+      expect(lowPrice).to.be.closeTo(fp('0.75'), fp('0.75').div(100)) // within 1%
+      expect(highPrice).to.equal(MAX_UINT192)
+
+      // Set basket config
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
+            token0.address,
+            token2.address,
+            token3.address,
+          ])
+      ).to.emit(basketHandler, 'BackupConfigSet')
+
+      // After basket refresh, price should increase
+      await basketHandler.refreshBasket()
+
+      // Check BU price
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
+    })
+
+    it('Should include value of defaulted collateral when checking basket price -- w/o premium', async () => {
+      // Check status and price
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
+
+      // Default one of the collaterals
+      // Set Token1 to default - 50% price reduction
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+
+      // Mark default as probable
+      await collateral1.refresh()
+
+      // Advance time post delayUntilDefault
+      await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+      // Mark default as confirmed
+      await collateral1.refresh()
+
+      // Check status and price again
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Check BU price -- 1/4 of the basket has lost half its value
+      await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
+
+      // Set collateral1 price to [0, FIX_MAX]
+      await advanceTime(DECAY_DELAY.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(collateral0.address, bn('1e8'))
+      await assetRegistry.refresh()
+
+      // Check BU price -- 1/4 of the basket has lost all its value
+      const [lowPrice, highPrice] = await basketHandler.price(true)
       expect(lowPrice).to.be.closeTo(fp('0.75'), fp('0.75').div(100)) // within 1%
       expect(highPrice).to.equal(MAX_UINT192)
 
@@ -3238,7 +3289,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await setOraclePrice(collateral1.address, bn('1e8'))
 
       // Check status and price again
-      const p = await basketHandler.price()
+      const p = await basketHandler.price(false)
       expect(p[0]).to.be.closeTo(fp('1').div(4), fp('1').div(4).div(100)) // within 1%
       expect(p[0]).to.be.lt(fp('1').div(4))
       expect(p[1]).to.equal(MAX_UINT192)
@@ -3305,7 +3356,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
       await setOraclePrice(collateral2.address, newPrice.sub(newPrice.div(100))) // oracle error
 
-      const [lowPrice, highPrice] = await indexBH.price()
+      const [lowPrice, highPrice] = await indexBH.price(false)
       expect(lowPrice).to.equal(MAX_UINT192)
       expect(highPrice).to.equal(MAX_UINT192)
     })
@@ -3318,7 +3369,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
       await setOraclePrice(collateral0.address, newPrice.sub(newPrice.div(100))) // oracle error
 
-      const [lowPrice, highPrice] = await indexBH.price()
+      const [lowPrice, highPrice] = await indexBH.price(false)
       expect(lowPrice).to.equal(MAX_UINT192)
       expect(highPrice).to.equal(MAX_UINT192)
     })
@@ -3632,7 +3683,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
       await basketHandler.connect(owner).refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      const [tokens] = await basketHandler.quote(fp('1'), 0)
+      const [tokens] = await basketHandler.quote(fp('1'), false, 0)
       expect(tokens.length).to.equal(3)
       expect(tokens[0]).to.not.equal(collateral1.address)
       expect(tokens[1]).to.not.equal(collateral1.address)
