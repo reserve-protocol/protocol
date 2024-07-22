@@ -22,12 +22,15 @@ Make sure distributor table sums to >10000.
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
-  - Increase `quote(, CEIL)` quantities during issuance to include an issuance premium for de-pegged tokens
+  - Breaking change: `quote(uint192 amount, RoundingMode rounding)` -> `quote(uint192 amount, bool applyIssuancePremium, RoundingMode rounding)`
+  - Breaking change: `price()` -> `price(bool applyIssuancePremium)`
   - Add `issuancePremium() view returns (uint192)`
-  - Add `setIssuancePremiumEnabled(bool)`, callable by governance
+  - Add `setIssuancePremiumEnabled(bool)`, callable by governance. Begins enabled by default for upgraded RTokens.
   - Remove `lotPrice()`
 - `Broker`
   - Make setters only callable by `Main`
+- `Deployer`
+  - Add `skipIssuancePremium` parameter to `IDeployer.DeploymentParams`
 - `Distributor`
   - Add `setDistributions()` function to parallel `setDistribution()`
   - Take DAO fee out account in `distribute()` and `totals()`
