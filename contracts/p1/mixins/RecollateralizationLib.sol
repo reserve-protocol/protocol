@@ -113,7 +113,7 @@ library RecollateralizationLibP1 {
         // tradesOpen will be 0 when called by prepareRecollateralizationTrade()
         // tradesOpen can be > 0 when called by RTokenAsset.basketRange()
 
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(false); // {UoA/BU}
         require(buPriceLow != 0 && buPriceHigh != FIX_MAX, "BUs unpriced");
 
         uint192 basketsNeeded = ctx.rToken.basketsNeeded(); // {BU}

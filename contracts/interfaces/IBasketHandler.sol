@@ -62,7 +62,8 @@ interface IBasketHandler is IComponent {
     function init(
         IMain main_,
         uint48 warmupPeriod_,
-        bool reweightable_
+        bool reweightable_,
+        bool skipIssuancePremium_
     ) external;
 
     /// Set the prime basket
@@ -134,12 +135,14 @@ interface IBasketHandler is IComponent {
     function quantityUnsafe(IERC20 erc20, IAsset asset) external view returns (uint192);
 
     /// @param amount {BU}
+    /// @param applyIssuancePremium Whether to apply the issuance premium
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(uint192 amount, RoundingMode rounding)
-        external
-        view
-        returns (address[] memory erc20s, uint256[] memory quantities);
+    function quote(
+        uint192 amount,
+        bool applyIssuancePremium,
+        RoundingMode rounding
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
     /// @param basketNonces An array of basket nonces to do redemption from
@@ -159,9 +162,10 @@ interface IBasketHandler is IComponent {
 
     /// Should not revert
     /// low should be nonzero when BUs are worth selling
+    /// @param applyIssuancePremium Whether to apply the issuance premium to the high price
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
-    function price() external view returns (uint192 low, uint192 high);
+    function price(bool applyIssuancePremium) external view returns (uint192 low, uint192 high);
 
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);

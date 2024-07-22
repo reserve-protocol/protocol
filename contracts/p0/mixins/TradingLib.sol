@@ -278,7 +278,7 @@ library TradingLibP0 {
         view
         returns (BasketRange memory range)
     {
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(false); // {UoA/BU}
 
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {

@@ -5,15 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IBasketHandler.sol";
 import "../../interfaces/IRToken.sol";
 import "../../libraries/Fixed.sol";
+import "./BaseFacet.sol";
 
 /**
  * @title MaxIssuableFacet
  * @notice
- *   Two-function facet for Facade
+ *   Two-function facet for Facade, compatible with ^4.0.0/^3.0.0/^2.1.0 RTokens
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract MaxIssuableFacet {
+contract MaxIssuableFacet is BaseFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
@@ -21,7 +22,7 @@ contract MaxIssuableFacet {
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256) {
-        (address[] memory erc20s, ) = rToken.main().basketHandler().quote(FIX_ONE, FLOOR);
+        (address[] memory erc20s, ) = _quote(rToken.main().basketHandler(), FIX_ONE, FLOOR);
         uint256[] memory balances = new uint256[](erc20s.length);
         for (uint256 i = 0; i < erc20s.length; ++i) {
             balances[i] = IERC20(erc20s[i]).balanceOf(account);
@@ -46,7 +47,7 @@ contract MaxIssuableFacet {
 
         // Get basket ERC20s
         IBasketHandler bh = main.basketHandler();
-        (address[] memory erc20s, uint256[] memory quantities) = bh.quote(FIX_ONE, CEIL);
+        (address[] memory erc20s, uint256[] memory quantities) = _quote(bh, FIX_ONE, CEIL);
 
         // Compute how many baskets we can mint with the collateral amounts
         uint192 baskets = type(uint192).max;
