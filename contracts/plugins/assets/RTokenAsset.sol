@@ -54,6 +54,12 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     ///   less RSR overcollateralization in % terms than the average (weighted) oracleError.
     ///   This arises from the use of oracleErrors inside of `basketRange()` and inside
     ///   `basketHandler.price()`. When `range.bottom == range.top` then there is no compounding.
+    /// @dev This method should not be relied upon to provide precise bounds for secondary market
+    ///   prices. It is a "reasonable" estimate of the range the RToken is expected to trade in
+    ///   given what the protocol knows about its internal state, but strictly speaking RTokens
+    ///   can trade outside this range for periods of time (ie increased demand during IFFY state)
+    ///   It is therefore NOT recommended to rely on this pricing method to price RTokens
+    ///   in lending markets or anywhere where secondary market price is the central concern.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
