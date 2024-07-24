@@ -6,15 +6,20 @@ This release prepares the core protocol for veRSR through the introduction of 3 
 
 The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
 
-Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg. This has the side-effect of also creating a new revenue source.
+Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg.
 
 ## Upgrade Steps
 
-TODO
+Upgrade to 4.0.0 is expected to occur by spell. This section is still TODO, but some important notes for now:
 
-Make sure distributor table sums to >10000.
+- Distributor table must sum to >=10000
+- Opt RTokens into the issuance premium by default
+- Upgrade all collateral plugins and RTokenAsset
+- ...
 
 ## Core Protocol Contracts
+
+All components: make Main the only component that can call `upgradeTo()`
 
 - `AssetRegistry`
   - Prevent registering assets that are not in the `AssetPluginRegistry`
@@ -22,18 +27,19 @@ Make sure distributor table sums to >10000.
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
-  - Breaking change: `quote(uint192 amount, RoundingMode rounding)` -> `quote(uint192 amount, bool applyIssuancePremium, RoundingMode rounding)`
-  - Breaking change: `price()` -> `price(bool applyIssuancePremium)`
   - Add `issuancePremium() view returns (uint192)`
   - Add `setIssuancePremiumEnabled(bool)`, callable by governance. Begins enabled by default for upgraded RTokens.
+  - Add `quote(uint192 amount, bool applyIssuancePremium, RoundingMode rounding)`
+  - Modify `quote(uint192 amount, RoundingMode rounding)` to include the issuance premium
+  - Add `price(bool applyIssuancePremium)`
+  - Modify `price()` to include the issuance premium
   - Remove `lotPrice()`
-- `Broker`
-  - Make setters only callable by `Main`
+  - Minor changes to require error strings
 - `Deployer`
-  - Add `skipIssuancePremium` parameter to `IDeployer.DeploymentParams`
+  - Add `enableIssuancePremium` parameter to `IDeployer.DeploymentParams`
 - `Distributor`
   - Add `setDistributions()` function to parallel `setDistribution()`
-  - Take DAO fee out account in `distribute()` and `totals()`
+  - Take DAO fee into account in `distribute()` and `totals()`
   - Add new revenue share table invariant: must sum to >=10000 (for precision reasons)
 - `Main`
   - Add `versionRegistry()`/`assetPluginRegistry()`/`daoFeeRegistry()` getters
