@@ -380,7 +380,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
             if (pegPrice >= targetPerRef) return FIX_ONE;
 
-            // {tok} = {target/ref} / {target/ref}
+            // {1} = {target/ref} / {target/ref}
             return targetPerRef.safeDiv(pegPrice, CEIL);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data

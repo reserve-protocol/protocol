@@ -417,7 +417,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
             if (pegPrice == 0 || pegPrice >= targetPerRef) return FIX_ONE;
 
-            // {tok} = {target/ref} / {target/ref}
+            // {1} = {target/ref} / {target/ref}
             return targetPerRef.safeDiv(pegPrice, CEIL);
         } catch (bytes memory errData) {
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
