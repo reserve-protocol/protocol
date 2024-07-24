@@ -444,6 +444,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return basket.refAmts[erc20].div(refPerTok, rounding);
     }
 
+    /// Returns the price of a BU (including issuance premium)
+    /// Included for backwards compatibility with <4.0.0
+    /// Should not revert
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
+    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
+    function price() external view returns (uint192 low, uint192 high) {
+        return price(true);
+    }
+
     /// Should not revert
     /// @param applyIssuancePremium Whether to apply the issuance premium to the high price
     /// @return low {UoA/BU} The lower end of the price estimate
@@ -490,6 +500,21 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
     }
 
+    /// Return the current issuance/redemption quantities for `amount` BUs
+    /// Included for backwards compatibility with <4.0.0
+    /// @param amount {BU}
+    /// @param rounding If CEIL, apply issuance premium
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
+    function quote(uint192 amount, RoundingMode rounding)
+        external
+        view
+        returns (address[] memory erc20s, uint256[] memory quantities)
+    {
+        return quote(amount, rounding == CEIL, rounding);
+    }
+
     /// @param amount {BU}
     /// @param applyIssuancePremium Whether to apply the issuance premium
     /// @return erc20s The backing collateral erc20s
@@ -499,7 +524,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192 amount,
         bool applyIssuancePremium,
         RoundingMode rounding
-    ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+    ) public view returns (address[] memory erc20s, uint256[] memory quantities) {
         IAssetRegistry assetRegistry = main.assetRegistry();
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);

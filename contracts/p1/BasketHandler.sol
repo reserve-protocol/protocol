@@ -399,7 +399,17 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         return basket.refAmts[erc20].div(refPerTok, rounding);
     }
 
-    /// Returns the price of a BU (excluding issuance premium)
+    /// Returns the price of a BU (including issuance premium)
+    /// Included for backwards compatibility with <4.0.0
+    /// Should not revert
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
+    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
+    function price() external view returns (uint192 low, uint192 high) {
+        return price(true);
+    }
+
+    /// Returns the price of a BU
     /// Should not revert
     /// @param applyIssuancePremium Whether to apply the issuance premium to the high price
     /// @return low {UoA/BU} The lower end of the price estimate
@@ -446,6 +456,21 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the current issuance/redemption quantities for `amount` BUs
+    /// Included for backwards compatibility with <4.0.0
+    /// @param rounding If CEIL, apply issuance premium
+    /// @param amount {BU}
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
+    function quote(uint192 amount, RoundingMode rounding)
+        external
+        view
+        returns (address[] memory erc20s, uint256[] memory quantities)
+    {
+        return quote(amount, rounding == CEIL, rounding);
+    }
+
+    /// Return the current issuance/redemption quantities for `amount` BUs
     /// @dev Subset of logic of quoteCustomRedemption; more gas efficient for current nonce
     /// @param amount {BU}
     /// @param applyIssuancePremium Whether to apply the issuance premium
@@ -456,7 +481,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint192 amount,
         bool applyIssuancePremium,
         RoundingMode rounding
-    ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+    ) public view returns (address[] memory erc20s, uint256[] memory quantities) {
         uint256 length = basket.erc20s.length;
         erc20s = new address[](length);
         quantities = new uint256[](length);
