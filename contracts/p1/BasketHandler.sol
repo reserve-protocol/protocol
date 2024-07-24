@@ -199,6 +199,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Set the prime basket, skipping any constant target amount checks if RToken is reweightable
+    /// Warning: Reweightable RTokens SHOULD use a spell to execute this function to avoid
+    ///          accidentally changing the UoA value of the RToken.
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
