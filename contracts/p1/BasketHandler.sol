@@ -243,7 +243,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             assetRegistry.refresh(); // will set lastStatus
             require(lastStatus == CollateralStatus.SOUND, "unsound basket");
 
-            // Normalize targetAmts based on UoA value of reference basket, incl issuance premium
+            // Normalize targetAmts based on UoA value of reference basket, excl issuance premium
             (uint192 low, uint192 high) = price(false);
             assert(low != 0 && high != FIX_MAX); // implied by SOUND status
             targetAmts = BasketLibP1.normalizeByPrice(
