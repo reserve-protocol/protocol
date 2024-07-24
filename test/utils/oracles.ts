@@ -28,11 +28,11 @@ export const expectPrice = async (
 ) => {
   let lowPrice, highPrice
   try {
-    const asset = await ethers.getContractAt('Asset', assetAddr)
-    ;[lowPrice, highPrice] = await asset.price()
-  } catch (e) {
     const bh = await ethers.getContractAt('IBasketHandler', assetAddr)
     ;[lowPrice, highPrice] = await bh.price(false) // without issuance premium
+  } catch {
+    const asset = await ethers.getContractAt('Asset', assetAddr)
+    ;[lowPrice, highPrice] = await asset.price()
   }
   const delta = avgPrice.mul(oracleError).div(fp('1'))
   const expectedLow = avgPrice.sub(delta)

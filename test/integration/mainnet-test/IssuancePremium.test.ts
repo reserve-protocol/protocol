@@ -10,11 +10,11 @@ import forkBlockNumber from '../fork-block-numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import {
   AssetRegistryP1,
-  BasketHandlerP1,
   EmaPriceOracleStableSwapMock,
   LidoStakedEthCollateral,
   RTokenAsset,
   SFraxEthCollateral,
+  TestIBasketHandler,
   RethCollateral,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
@@ -32,7 +32,7 @@ const OWNER = '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556' // ETH+ timelock
 
 describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let assetRegistry: AssetRegistryP1
-  let basketHandler: BasketHandlerP1
+  let basketHandler: TestIBasketHandler
   let rTokenAsset: RTokenAsset
   let chainId: string
 
@@ -76,8 +76,8 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     assetRegistry = <AssetRegistryP1>(
       await ethers.getContractAt('AssetRegistryP1', ASSET_REGISTRY_ADDR)
     )
-    basketHandler = <BasketHandlerP1>(
-      await ethers.getContractAt('BasketHandlerP1', BASKET_HANDLER_ADDR)
+    basketHandler = <TestIBasketHandler>(
+      await ethers.getContractAt('TestIBasketHandler', BASKET_HANDLER_ADDR)
     )
     rTokenAsset = <RTokenAsset>await ethers.getContractAt('RTokenAsset', RTOKEN_ASSET_ADDR)
 
@@ -180,11 +180,13 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
 
     // Putting it all together...
     await whileImpersonating(OWNER, async (timelockSigner) => {
-      await basketHandler.connect(timelockSigner).upgradeTo(newBasketHandlerImpl.address)
+      const bh = await ethers.getContractAt('BasketHandlerP1', BASKET_HANDLER_ADDR)
+      await bh.connect(timelockSigner).upgradeTo(newBasketHandlerImpl.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(newSfrxETH.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(newWstETH.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(newRETH.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(rTokenAsset.address)
+      await basketHandler.connect(timelockSigner).setIssuancePremiumEnabled(true)
     })
     await basketHandler.refreshBasket()
     expect(await basketHandler.status()).to.equal(0)
@@ -195,16 +197,16 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     newPriceT = await basketHandler.price(true)
     newQs = (await basketHandler.quote(fp('1'), true, 2)).quantities
 
-    // snap = await evmSnapshot() // what are testing frameworks for if not this in all its glory
+    snap = await evmSnapshot() // what are testing frameworks for if not this in all its glory
   })
 
   beforeEach(async () => {
-    // await evmRevert(snap)
-    // snap = await evmSnapshot()
+    await evmRevert(snap)
+    snap = await evmSnapshot()
   })
 
   after(async () => {
-    // await evmRevert(snap)
+    await evmRevert(snap)
   })
 
   it('from 3.4.0 to 4.0.0', async () => {

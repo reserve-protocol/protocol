@@ -435,6 +435,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                         continue;
                     }
 
+                    // Account for issuance premium in high price
                     if (applyIssuancePremium) {
                         uint192 premium = issuancePremium(coll); // {1} always CEIL
 
