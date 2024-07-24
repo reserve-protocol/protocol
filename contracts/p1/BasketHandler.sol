@@ -93,7 +93,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // ===
     // Added in 4.0.0
 
-    bool public skipIssuancePremium;
+    bool public enableIssuancePremium;
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -109,7 +109,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         IMain main_,
         uint48 warmupPeriod_,
         bool reweightable_,
-        bool skipIssuancePremium_
+        bool enableIssuancePremium_
     ) external initializer {
         __Component_init(main_);
 
@@ -121,7 +121,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         setWarmupPeriod(warmupPeriod_);
         reweightable = reweightable_; // immutable thereafter
-        skipIssuancePremium = skipIssuancePremium_;
+        enableIssuancePremium = enableIssuancePremium_;
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -363,7 +363,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return {1} The multiplier to charge on issuance quantities for a collateral
     function issuancePremium(ICollateral coll) public view returns (uint192) {
         // `coll` does not need validation
-        if (skipIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
+        if (!enableIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
 
         // Use try-catch for safety since `savedPegPrice()` was only added in 4.0.0 to ICollateral
         try coll.savedPegPrice() returns (uint192 pegPrice) {
@@ -639,8 +639,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @custom:governance
     function setIssuancePremiumEnabled(bool val) public {
         requireGovernanceOnly();
-        emit SkipIssuancePremiumSet(skipIssuancePremium, !val);
-        skipIssuancePremium = !val;
+        emit EnableIssuancePremiumSet(enableIssuancePremium, val);
+        enableIssuancePremium = val;
     }
 
     // === Private ===

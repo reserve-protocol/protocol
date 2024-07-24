@@ -196,7 +196,7 @@ contract DeployerP1 is IDeployer, Versioned {
             main,
             params.warmupPeriod,
             params.reweightable,
-            params.skipIssuancePremium
+            params.enableIssuancePremium
         );
 
         // Init Revenue Traders

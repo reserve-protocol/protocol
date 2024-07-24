@@ -384,7 +384,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           main.address,
           config.warmupPeriod,
           config.reweightable,
-          config.skipIssuancePremium
+          config.enableIssuancePremium
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
@@ -968,25 +968,25 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid warmupPeriod')
     })
 
-    it('Should allow to update skipIssuancePremium if OWNER', async () => {
+    it('Should allow to update enableIssuancePremium if OWNER', async () => {
       const newValue = true
 
       // Check existing value
-      expect(await basketHandler.skipIssuancePremium()).to.equal(false)
+      expect(await basketHandler.enableIssuancePremium()).to.equal(false)
 
       // If not owner cannot update
-      await expect(basketHandler.connect(other).setIssuancePremiumEnabled(!newValue)).to.be.reverted
+      await expect(basketHandler.connect(other).setIssuancePremiumEnabled(newValue)).to.be.reverted
 
       // Check value did not change
-      expect(await basketHandler.skipIssuancePremium()).to.equal(false)
+      expect(await basketHandler.enableIssuancePremium()).to.equal(false)
 
       // Update with owner
-      await expect(basketHandler.connect(owner).setIssuancePremiumEnabled(!newValue))
-        .to.emit(basketHandler, 'SkipIssuancePremiumSet')
+      await expect(basketHandler.connect(owner).setIssuancePremiumEnabled(newValue))
+        .to.emit(basketHandler, 'EnableIssuancePremiumSet')
         .withArgs(false, newValue)
 
       // Check value was updated
-      expect(await basketHandler.skipIssuancePremium()).to.equal(newValue)
+      expect(await basketHandler.enableIssuancePremium()).to.equal(newValue)
     })
 
     it('Should allow to update tradingDelay if OWNER and perform validations', async () => {
@@ -1751,7 +1751,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     beforeEach(async () => {
       indexBH = await newBasketHandler()
-      await indexBH.init(main.address, config.warmupPeriod, true, config.skipIssuancePremium)
+      await indexBH.init(main.address, config.warmupPeriod, true, config.enableIssuancePremium)
 
       eurToken = await (await ethers.getContractFactory('ERC20Mock')).deploy('EURO Token', 'EUR')
       const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -1873,7 +1873,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         // for non-reweightable baskets, also try setting a zero amount as the *original* basket
         const newBH = await newBasketHandler()
-        await newBH.init(main.address, config.warmupPeriod, false, config.skipIssuancePremium)
+        await newBH.init(main.address, config.warmupPeriod, false, config.enableIssuancePremium)
         await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
           'invalid target amount'
         )

@@ -153,7 +153,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Whether the total weights of the target basket can be changed
     bool public reweightable; // immutable after init
 
-    bool public skipIssuancePremium;
+    bool public enableIssuancePremium;
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -169,13 +169,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         IMain main_,
         uint48 warmupPeriod_,
         bool reweightable_,
-        bool skipIssuancePremium_
+        bool enableIssuancePremium_
     ) external initializer {
         __Component_init(main_);
 
         setWarmupPeriod(warmupPeriod_);
         reweightable = reweightable_; // immutable thereafter
-        skipIssuancePremium = skipIssuancePremium_;
+        enableIssuancePremium = enableIssuancePremium_;
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -411,7 +411,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @param coll A collateral that has had refresh() called on it this timestamp
     /// @return {1} The multiplier to charge on issuance quantities for a collateral
     function issuancePremium(ICollateral coll) public view returns (uint192) {
-        if (skipIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
+        if (!enableIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
 
         try coll.savedPegPrice() returns (uint192 pegPrice) {
             uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
@@ -673,8 +673,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @dev Warning: Parameter gets supplied inverted from the variable it sets
     /// @custom:governance
     function setIssuancePremiumEnabled(bool val) public governance {
-        emit SkipIssuancePremiumSet(skipIssuancePremium, !val);
-        skipIssuancePremium = !val;
+        emit EnableIssuancePremiumSet(enableIssuancePremium, val);
+        enableIssuancePremium = val;
     }
 
     /* _switchBasket computes basket' from three inputs:

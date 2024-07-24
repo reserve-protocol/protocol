@@ -44,9 +44,9 @@ interface IBasketHandler is IComponent {
     event WarmupPeriodSet(uint48 oldVal, uint48 newVal);
 
     /// Emitted when the issuance premium logic is changed
-    /// @param oldVal The old value of skipIssuancePremium
-    /// @param newVal The new value of skipIssuancePremium
-    event SkipIssuancePremiumSet(bool oldVal, bool newVal);
+    /// @param oldVal The old value of enableIssuancePremium
+    /// @param newVal The new value of enableIssuancePremium
+    event EnableIssuancePremiumSet(bool oldVal, bool newVal);
 
     /// Emitted when the status of a basket has changed
     /// @param oldStatus The previous basket status
@@ -63,7 +63,7 @@ interface IBasketHandler is IComponent {
         IMain main_,
         uint48 warmupPeriod_,
         bool reweightable_,
-        bool skipIssuancePremium_
+        bool enableIssuancePremium_
     ) external;
 
     /// Set the prime basket
@@ -195,7 +195,7 @@ interface TestIBasketHandler is IBasketHandler {
 
     function setWarmupPeriod(uint48 val) external;
 
-    function skipIssuancePremium() external view returns (bool);
+    function enableIssuancePremium() external view returns (bool);
 
     function setIssuancePremiumEnabled(bool val) external;
 }
