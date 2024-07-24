@@ -13,6 +13,8 @@ import "../libraries/Fixed.sol";
 import "./mixins/BasketLib.sol";
 import "./mixins/Component.sol";
 
+// solhint-disable max-states-count
+
 /**
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
@@ -188,26 +190,26 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Set the prime basket
+    /// Set the prime basket, checking target amounts are constant if RToken is not reweightable
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
     function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
-        _setPrimeBasket(erc20s, targetAmts, true);
+        _setPrimeBasket(erc20s, targetAmts, false);
     }
 
-    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
+    /// Set the prime basket, skipping any constant target amount checks if RToken is reweightable
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
     function forceSetPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
-        _setPrimeBasket(erc20s, targetAmts, false);
+        _setPrimeBasket(erc20s, targetAmts, true);
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param normalize True iff targetAmts should be normalized by UoA to the reference basket
+    /// @param disableTargetAmountCheck If true, skips the `requireConstantConfigTargets()` check
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -223,13 +225,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function _setPrimeBasket(
         IERC20[] calldata erc20s,
         uint192[] memory targetAmts,
-        bool normalize
+        bool disableTargetAmountCheck
     ) internal {
         requireGovernanceOnly();
         require(erc20s.length != 0 && erc20s.length == targetAmts.length, "invalid lengths");
         requireValidCollArray(erc20s);
 
-        if (!reweightable && config.erc20s.length != 0) {
+        if (
+            (!reweightable || (reweightable && !disableTargetAmountCheck)) &&
+            config.erc20s.length != 0
+        ) {
             // Require targets remain constant
             BasketLibP1.requireConstantConfigTargets(
                 assetRegistry,
@@ -237,20 +242,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 _targetAmts,
                 erc20s,
                 targetAmts
-            );
-        } else if (normalize && config.erc20s.length != 0) {
-            // Confirm reference basket is SOUND
-            assetRegistry.refresh(); // will set lastStatus
-            require(lastStatus == CollateralStatus.SOUND, "unsound basket");
-
-            // Normalize targetAmts based on UoA value of reference basket, excl issuance premium
-            (uint192 low, uint192 high) = price(false);
-            assert(low != 0 && high != FIX_MAX); // implied by SOUND status
-            targetAmts = BasketLibP1.normalizeByPrice(
-                assetRegistry,
-                erc20s,
-                targetAmts,
-                (low + high + 1) / 2
             );
         }
 

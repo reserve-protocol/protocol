@@ -241,7 +241,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// Set the prime basket
+    /// Set the prime basket, checking target amounts are constant if RToken is not reweightable
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
@@ -249,10 +249,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        _setPrimeBasket(erc20s, targetAmts, true);
+        _setPrimeBasket(erc20s, targetAmts, false);
     }
 
-    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
+    /// Set the prime basket, skipping any constant target amount checks if RToken is reweightable
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
@@ -260,13 +260,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        _setPrimeBasket(erc20s, targetAmts, false);
+        _setPrimeBasket(erc20s, targetAmts, true);
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param normalize True iff targetAmts should be normalized by UoA to the reference basket
+    /// @param disableTargetAmountCheck If true, skips the `requireConstantConfigTargets()` check
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -282,18 +282,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     function _setPrimeBasket(
         IERC20[] calldata erc20s,
         uint192[] memory targetAmts,
-        bool normalize
+        bool disableTargetAmountCheck
     ) internal {
         require(erc20s.length > 0, "invalid lengths");
         require(erc20s.length == targetAmts.length, "invalid lengths");
         requireValidCollArray(erc20s);
 
-        if (!reweightable && config.erc20s.length > 0) {
+        if (
+            (!reweightable || (reweightable && !disableTargetAmountCheck)) &&
+            config.erc20s.length != 0
+        ) {
             // Require targets remain constant
             requireConstantConfigTargets(erc20s, targetAmts);
-        } else if (normalize && config.erc20s.length > 0) {
-            // Normalize targetAmts based on UoA value of reference basket
-            targetAmts = normalizeByPrice(erc20s, targetAmts);
         }
 
         // Clean up previous basket config
@@ -873,46 +873,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             else _targetAmts.set(targetName, amt - targetAmts[i]);
         }
         require(_targetAmts.length() == 0, "missing target weights");
-    }
-
-    /// Normalize the target amounts to maintain constant UoA value with the current config
-    /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
-    function normalizeByPrice(IERC20[] calldata erc20s, uint192[] memory targetAmts)
-        private
-        returns (uint192[] memory newTargetAmts)
-    {
-        main.poke();
-        require(status() == CollateralStatus.SOUND, "unsound basket");
-        uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
-
-        // Compute current basket price
-        (uint192 low, uint192 high) = price(false); // {UoA/BU}
-        assert(low > 0 && high < FIX_MAX); // implied by SOUND status
-        uint192 p = low.plus(high).divu(2, FLOOR); // {UoA/BU}
-
-        // Compute would-be new price
-        uint192 newP; // {UoA/BU}
-        for (uint256 i = 0; i < len; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(erc20s[i]); // reverts if unregistered
-            require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
-
-            (low, high) = coll.price(); // {UoA/tok}
-            require(low > 0 && high < FIX_MAX, "invalid price");
-
-            // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
-            newP += targetAmts[i].mulDiv(
-                low.plus(high).divu(2, FLOOR),
-                coll.targetPerRef().mul(coll.refPerTok(), CEIL),
-                FLOOR
-            );
-        }
-
-        // Scale targetAmts by the price ratio
-        newTargetAmts = new uint192[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            // {target/BU} = {target/BU} * {UoA/BU} / {UoA/BU}
-            newTargetAmts[i] = targetAmts[i].mulDiv(p, newP, CEIL);
-        }
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,
