@@ -373,9 +373,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // {1} = {target/ref} / {target/ref}
             return targetPerRef.safeDiv(pegPrice, CEIL);
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+        } catch {
+            // if savedPegPrice() does not exist on the collateral the error bytes are 0 len
             return FIX_ONE;
         }
     }
