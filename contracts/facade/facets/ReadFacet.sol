@@ -11,17 +11,17 @@ import "../../libraries/Fixed.sol";
 import "../../p1/BasketHandler.sol";
 import "../../p1/RToken.sol";
 import "../../p1/StRSRVotes.sol";
-import "./BaseFacet.sol";
+import "./MaxIssuableFacet.sol";
 
 /**
  * @title ReadFacet
  * @notice
- *   Facet for reading out the state of RTokens in summary views.
- *   Backwards-compatible with ^3.0.0 and 2.1.0 RTokens with the exception of `redeemCustom()`.
+ *   Facet for reading out the state of a ^3.0.0 RToken in summary views.
+ *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
-contract ReadFacet is BaseFacet {
+contract ReadFacet {
     using FixLib for uint192;
 
     // === Static Calls ===
@@ -45,7 +45,7 @@ contract ReadFacet is BaseFacet {
 
         // Cache components
         IRToken rTok = rToken;
-        IBasketHandler bh = main.basketHandler();
+        BasketHandlerP1 bh = BasketHandlerP1(address(main.basketHandler()));
         IAssetRegistry reg = main.assetRegistry();
 
         // Poke Main
@@ -56,7 +56,7 @@ contract ReadFacet is BaseFacet {
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
             : _safeWrap(amount); // take advantage of RToken having 18 decimals
 
-        (tokens, deposits) = _quote(bh, baskets, CEIL);
+        (tokens, deposits) = bh.quote(baskets, CEIL);
         depositsUoA = new uint192[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -91,7 +91,7 @@ contract ReadFacet is BaseFacet {
 
         // Cache Components
         IRToken rTok = rToken;
-        IBasketHandler bh = main.basketHandler();
+        BasketHandlerP1 bh = BasketHandlerP1(address(main.basketHandler()));
 
         // Poke Main
         main.assetRegistry().refresh();
@@ -100,7 +100,7 @@ contract ReadFacet is BaseFacet {
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
-        (tokens, withdrawals) = _quote(bh, basketsRedeemed, FLOOR);
+        (tokens, withdrawals) = bh.quote(basketsRedeemed, FLOOR);
         available = new uint256[](tokens.length);
 
         // Calculate prorata amounts
@@ -173,12 +173,12 @@ contract ReadFacet is BaseFacet {
     {
         uint256[] memory deposits;
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
-        IBasketHandler basketHandler = rToken.main().basketHandler();
+        BasketHandlerP1 basketHandler = BasketHandlerP1(address(rToken.main().basketHandler()));
 
         // solhint-disable-next-line no-empty-blocks
         try rToken.main().furnace().melt() {} catch {} // <3.1.0 RTokens may revert while frozen
 
-        (erc20s, deposits) = _quote(basketHandler, FIX_ONE, FLOOR);
+        (erc20s, deposits) = basketHandler.quote(FIX_ONE, CEIL);
 
         // Calculate uoaAmts
         uint192 uoaSum;
@@ -299,7 +299,8 @@ contract ReadFacet is BaseFacet {
 
     /// @return tokens The ERC20s backing the RToken
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
-        (tokens, ) = _quote(rToken.main().basketHandler(), FIX_ONE, RoundingMode.FLOOR);
+        BasketHandlerP1 bh = BasketHandlerP1(address(rToken.main().basketHandler()));
+        (tokens, ) = bh.quote(FIX_ONE, RoundingMode.FLOOR);
     }
 
     /// Returns the backup configuration for a given targetName
@@ -335,8 +336,8 @@ contract ReadFacet is BaseFacet {
         uint192 uoaNeeded; // {UoA}
         uint192 uoaHeldInBaskets; // {UoA}
         {
-            (address[] memory basketERC20s, uint256[] memory quantities) = _quote(
-                rToken.main().basketHandler(),
+            BasketHandlerP1 bh = BasketHandlerP1(address(rToken.main().basketHandler()));
+            (address[] memory basketERC20s, uint256[] memory quantities) = bh.quote(
                 basketsNeeded,
                 FLOOR
             );
