@@ -81,11 +81,10 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     )
     rTokenAsset = <RTokenAsset>await ethers.getContractAt('RTokenAsset', RTOKEN_ASSET_ADDR)
 
-    const oldBasketHandler = await ethers.getContractAt('IOldBasketHandler', BASKET_HANDLER_ADDR)
-
+    const oldBasketHandler = await ethers.getContractAt('BasketHandlerP1', BASKET_HANDLER_ADDR)
     oldRTokenPrice = await rTokenAsset.price()
-    oldPrice = await oldBasketHandler.price()
-    oldQs = (await oldBasketHandler.quote(fp('1'), 2)).quantities
+    oldPrice = await oldBasketHandler['price()']()
+    oldQs = (await oldBasketHandler['quote(uint192,uint8)'](fp('1'), 2)).quantities
 
     // frxETH/ETH EMA oracle
     const currentEmaOracle = await ethers.getContractAt(
