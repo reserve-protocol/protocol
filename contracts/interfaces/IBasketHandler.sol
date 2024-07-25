@@ -66,7 +66,7 @@ interface IBasketHandler is IComponent {
         bool enableIssuancePremium_
     ) external;
 
-    /// Set the prime basket, checking target amounts are constant if RToken is not reweightable
+    /// Set the prime basket, checking target amounts are constant
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     ///                   required range: 1e9 values; absolute range irrelevant.
