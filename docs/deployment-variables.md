@@ -120,10 +120,16 @@ Reasonable range: 100 to 3600
 
 Dimension: `{1}`
 
-The backing buffer is a percentage value that describes how much overcollateralization to hold in the form of RToken. This buffer allows collateral tokens to be converted into RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken, and also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
+The backing buffer is a percentage value that describes how much extra collateral to hold in the BackingManager. This can be important for preventing RSR seizure during normal rebalancing as a result of trading slippage.
+
+However, too large a backing buffer (as a function of the blended collateral yield) can cause RToken and RSR staker yields to become too sensitive to supply changes; new issuance creates a hole that must be filled in before revenue handout can resume, while new redemptions cause the excess capital to be immediately realized as revenue.
+
+If the backing buffer is set too low, it's possible to get into a situation where RSR stakers begin individually unstaking before rebalancing proposals in order to avoid being slashed. The backing buffer should be high enough to prevent this outcome for expected rebalances.
+
+It is not important to consider the backing buffer for _default_ scenarios, only governance-led rebalances.
 
 Default value: `1e15` = 0.1%
-Reasonable range: 1e12 to 1e18
+Reasonable range: 1e13 to 1e17
 
 ### `maxTradeSlippage`
 
