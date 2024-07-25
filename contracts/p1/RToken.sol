@@ -135,8 +135,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             : _safeWrap(amount);
         emit Issuance(issuer, recipient, amount, amtBaskets);
 
+        // Get quote from BasketHandler including issuance premium
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
             amtBaskets,
+            true,
             CEIL
         );
 
@@ -201,7 +203,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = _scaleDown(caller, amount);
         emit Redemption(caller, recipient, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
+            baskets,
+            false,
+            FLOOR
+        );
 
         // === Interactions ===
 

@@ -39,6 +39,7 @@ struct DeploymentParams {
     // === BasketHandler ===
     uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
     bool reweightable; // whether the target amounts in the prime basket can change
+    bool enableIssuancePremium; // whether to enable the issuance premium
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket

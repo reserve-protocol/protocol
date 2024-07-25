@@ -6,24 +6,40 @@ This release prepares the core protocol for veRSR through the introduction of 3 
 
 The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
 
+Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg.
+
 ## Upgrade Steps
 
-TODO
+Upgrade to 4.0.0 is expected to occur by spell. This section is still TODO, but some important notes for steps that should be hit:
 
-Make sure distributor table sums to >10000.
+- Distributor table must sum to >=10000
+- Opt RTokens into the issuance premium by default
+- Upgrade all collateral plugins and RTokenAsset
+- ...
 
 ## Core Protocol Contracts
+
+All components: make Main the only component that can call `upgradeTo()`
 
 - `AssetRegistry`
   - Prevent registering assets that are not in the `AssetPluginRegistry`
   - Add `validateCurrentAssets() view`
 - `BackingManager`
   - Switch from sizing trades using the low price to the high price
-- `Broker`
-  - Make setters only callable by `Main`
+- `BasketHandler`
+  - Add `issuancePremium() view returns (uint192)`
+  - Add `setIssuancePremiumEnabled(bool)`, callable by governance. Begins disabled by default for upgraded RTokens
+  - Add `quote(uint192 amount, bool applyIssuancePremium, RoundingMode rounding)`
+  - Modify `quote(uint192 amount, RoundingMode rounding)` to include the issuance premium
+  - Add `price(bool applyIssuancePremium)`
+  - Modify `price()` to include the issuance premium
+  - Remove `lotPrice()`
+  - Minor changes to require error strings
+- `Deployer`
+  - Add `enableIssuancePremium` parameter to `IDeployer.DeploymentParams`
 - `Distributor`
   - Add `setDistributions()` function to parallel `setDistribution()`
-  - Take DAO fee out account in `distribute()` and `totals()`
+  - Take DAO fee into account in `distribute()` and `totals()`
   - Add new revenue share table invariant: must sum to >=10000 (for precision reasons)
 - `Main`
   - Add `versionRegistry()`/`assetPluginRegistry()`/`daoFeeRegistry()` getters
@@ -37,9 +53,12 @@ Make sure distributor table sums to >10000.
 
 ### Assets
 
-No functional change. FLOOR rounding added explicitly to `shiftl_toFix`.
+- Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
+- FLOOR rounding added explicitly to `shiftl_toFix` everywhere
 
-Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
+#### Collateral
+
+Add `savedPegPrice` to `ICollateral` interface
 
 ### Trading
 

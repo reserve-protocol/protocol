@@ -229,7 +229,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       expect(high).to.equal(mid.add(mid.mul(ORACLE_ERROR).div(fp('1'))))
 
       // BasketHandler BU price - should overprice at the high end
-      const [lowBaskets, highBaskets] = await basketHandler.price()
+      const [lowBaskets, highBaskets] = await basketHandler.price(false)
       mid = fp('2') // because DAI collateral
       const delta = mid.mul(ORACLE_ERROR).div(fp('1'))
 
@@ -241,7 +241,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       expect(highBaskets).to.be.closeTo(mid.add(delta), mid.add(delta).div(bn('1e6')))
 
       // Same goes for RToken price
-      const [lowRToken, highRToken] = await basketHandler.price()
+      const [lowRToken, highRToken] = await basketHandler.price(false)
       expect(lowRToken).to.be.gt(mid.sub(delta))
       expect(lowRToken).to.be.closeTo(mid.sub(delta), mid.sub(delta).div(bn('1e6')))
       expect(highRToken).to.be.gt(mid.add(delta)) // should be above expected

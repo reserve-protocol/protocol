@@ -283,7 +283,7 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return maxIssuableByAmounts correctly', async () => {
-      const [erc20Addrs] = await basketHandler.quote(fp('1'), 0)
+      const [erc20Addrs] = await basketHandler.quote(fp('1'), false, 0)
       const erc20s = await Promise.all(erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a)))
       const addr1Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr1.address)))
       const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))

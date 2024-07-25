@@ -45,7 +45,7 @@ contract ReadFacet {
 
         // Cache components
         IRToken rTok = rToken;
-        IBasketHandler bh = main.basketHandler();
+        BasketHandlerP1 bh = BasketHandlerP1(address(main.basketHandler()));
         IAssetRegistry reg = main.assetRegistry();
 
         // Poke Main
@@ -91,7 +91,7 @@ contract ReadFacet {
 
         // Cache Components
         IRToken rTok = rToken;
-        IBasketHandler bh = main.basketHandler();
+        BasketHandlerP1 bh = BasketHandlerP1(address(main.basketHandler()));
 
         // Poke Main
         main.assetRegistry().refresh();
@@ -173,7 +173,7 @@ contract ReadFacet {
     {
         uint256[] memory deposits;
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
-        IBasketHandler basketHandler = rToken.main().basketHandler();
+        BasketHandlerP1 basketHandler = BasketHandlerP1(address(rToken.main().basketHandler()));
 
         // solhint-disable-next-line no-empty-blocks
         try rToken.main().furnace().melt() {} catch {} // <3.1.0 RTokens may revert while frozen
@@ -299,7 +299,8 @@ contract ReadFacet {
 
     /// @return tokens The ERC20s backing the RToken
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
-        (tokens, ) = rToken.main().basketHandler().quote(FIX_ONE, RoundingMode.FLOOR);
+        BasketHandlerP1 bh = BasketHandlerP1(address(rToken.main().basketHandler()));
+        (tokens, ) = bh.quote(FIX_ONE, RoundingMode.FLOOR);
     }
 
     /// Returns the backup configuration for a given targetName
@@ -335,10 +336,11 @@ contract ReadFacet {
         uint192 uoaNeeded; // {UoA}
         uint192 uoaHeldInBaskets; // {UoA}
         {
-            (address[] memory basketERC20s, uint256[] memory quantities) = rToken
-            .main()
-            .basketHandler()
-            .quote(basketsNeeded, FLOOR);
+            BasketHandlerP1 bh = BasketHandlerP1(address(rToken.main().basketHandler()));
+            (address[] memory basketERC20s, uint256[] memory quantities) = bh.quote(
+                basketsNeeded,
+                FLOOR
+            );
 
             IAssetRegistry reg = rToken.main().assetRegistry();
             IBackingManager bm = rToken.main().backingManager();

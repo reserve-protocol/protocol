@@ -42,17 +42,10 @@ interface IAsset is IRewardable {
   function refresh() external;
 
   /// Should not revert
-  /// low should be nonzero when the asset might be worth selling
+  /// low should be nonzero if the asset could be worth selling
   /// @return low {UoA/tok} The lower end of the price estimate
   /// @return high {UoA/tok} The upper end of the price estimate
   function price() external view returns (uint192 low, uint192 high);
-
-  /// Should not revert
-  /// lotLow should be nonzero when the asset might be worth selling
-  /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-  /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-  /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-  function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
   /// @return {tok} The balance of the ERC20 in whole tokens
   function bal(address account) external view returns (uint192);
@@ -113,6 +106,9 @@ interface ICollateral is IAsset {
 
   /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
   function targetPerRef() external view returns (uint192);
+
+  /// @return {target/ref} The peg price of the token during the last update
+  function savedPegPrice() external view returns (uint192);
 }
 
 ```
@@ -389,12 +385,6 @@ Should NOT return `(>0, FIX_MAX)`: if the high price is FIX_MAX then the low pri
 
 Should be gas-efficient.
 
-### lotPrice() `{UoA/tok}`
-
-Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility.
-
-Recommend implement `lotPrice()` by calling `price()`. If you are inheriting from any of our existing collateral plugins, this is already done for you. See [Asset.sol](../contracts/plugins/Asset.sol) for the implementation.
-
 ### refPerTok() `{ref/tok}`
 
 Should never revert.
@@ -423,6 +413,14 @@ The target name is just a bytes32 serialization of the target unit string. Here 
 - BTC: `0x4254430000000000000000000000000000000000000000000000000000000000`
 
 For a collateral plugin that uses a novel target unit, get the targetName with `ethers.utils.formatBytes32String(unitName)`.
+
+### savedPegPrice() `{target/ref}`
+
+A return value of 0 indicates _no_ issuance premium should be applied to this collateral during de-peg. Collateral that return 0 are more dangerous to be used inside RTokens as a result.
+
+Should never revert.
+
+Should be gas-efficient.
 
 ## Practical Advice from Previous Work
 
