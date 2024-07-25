@@ -10,7 +10,7 @@ Finally, it adds resistance to toxic issuance by charging more when the collater
 
 ## Upgrade Steps
 
-Upgrade to 4.0.0 is expected to occur by spell. This section is still TODO, but some important notes for now:
+Upgrade to 4.0.0 is expected to occur by spell. This section is still TODO, but some important notes for steps that should be hit:
 
 - Distributor table must sum to >=10000
 - Opt RTokens into the issuance premium by default
@@ -28,7 +28,7 @@ All components: make Main the only component that can call `upgradeTo()`
   - Switch from sizing trades using the low price to the high price
 - `BasketHandler`
   - Add `issuancePremium() view returns (uint192)`
-  - Add `setIssuancePremiumEnabled(bool)`, callable by governance. Begins enabled by default for upgraded RTokens.
+  - Add `setIssuancePremiumEnabled(bool)`, callable by governance. Begins disabled by default for upgraded RTokens
   - Add `quote(uint192 amount, bool applyIssuancePremium, RoundingMode rounding)`
   - Modify `quote(uint192 amount, RoundingMode rounding)` to include the issuance premium
   - Add `price(bool applyIssuancePremium)`
