@@ -384,7 +384,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Returns the quantity of collateral token in a BU
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
-    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket
+    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
@@ -425,7 +425,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             try assetRegistry.toColl(basket.erc20s[i]) returns (ICollateral coll) {
                 uint192 qty = _quantity(basket.erc20s[i], coll, CEIL);
 
-                (uint192 lowP, uint192 highP) = assetRegistry.toAsset(basket.erc20s[i]).price();
+                (uint192 lowP, uint192 highP) = coll.price();
 
                 low256 += qty.safeMul(lowP, FLOOR);
 
@@ -435,7 +435,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                         continue;
                     }
 
-                    // Account for issuance premium in high price
                     if (applyIssuancePremium) {
                         uint192 premium = issuancePremium(coll); // {1} always CEIL
 
@@ -637,7 +636,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         warmupPeriod = val;
     }
 
-    /// @dev Warning: Parameter gets supplied inverted from the variable it sets
     /// @custom:governance
     function setIssuancePremiumEnabled(bool val) public {
         requireGovernanceOnly();

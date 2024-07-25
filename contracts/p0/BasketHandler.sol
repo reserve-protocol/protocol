@@ -672,7 +672,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         warmupPeriod = val;
     }
 
-    /// @dev Warning: Parameter gets supplied inverted from the variable it sets
     /// @custom:governance
     function setIssuancePremiumEnabled(bool val) public governance {
         emit EnableIssuancePremiumSet(enableIssuancePremium, val);
