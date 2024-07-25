@@ -424,6 +424,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) {
             try assetRegistry.toColl(basket.erc20s[i]) returns (ICollateral coll) {
                 uint192 qty = _quantity(basket.erc20s[i], coll, CEIL);
+                if (qty == 0) continue;
 
                 (uint192 lowP, uint192 highP) = coll.price();
 
