@@ -57,6 +57,7 @@ async function main() {
       'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
+      'phase2-assets/collaterals/deploy_stader_ethx_collateral.ts',
       'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_3pool_collateral.ts',
