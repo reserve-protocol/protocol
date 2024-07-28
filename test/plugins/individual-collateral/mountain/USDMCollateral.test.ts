@@ -204,7 +204,7 @@ const collateralSpecificStatusTests = () => {
     const [, alice] = await ethers.getSigners()
     const tempCtx = await makeCollateralFixtureContext(alice, {
       erc20: ARB_WUSDM,
-      revenueHiding: fp('0.01'),
+      revenueHiding: fp('0.0101'),
     })()
 
     // Set correct price to maintain peg

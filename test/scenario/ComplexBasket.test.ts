@@ -27,7 +27,7 @@ import {
   TestIStRSR,
   TestIDistributor,
 } from '../../typechain'
-import { withinQuad } from '../utils/matchers'
+import { withinTolerance } from '../utils/matchers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Collateral,
@@ -535,17 +535,18 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expect(
       distributor
         .connect(owner)
+        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10000) })
+    )
+      .to.emit(distributor, 'DistributionSet')
+      .withArgs(STRSR_DEST, bn(0), bn(10000))
+
+    await expect(
+      distributor
+        .connect(owner)
         .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
     )
       .to.emit(distributor, 'DistributionSet')
       .withArgs(FURNACE_DEST, bn(0), bn(0))
-
-    // Avoid dropping qCOMP by making there be exactly 1 distribution share.
-    await expect(
-      distributor.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
-    )
-      .to.emit(distributor, 'DistributionSet')
-      .withArgs(STRSR_DEST, bn(0), bn(1))
 
     // COMP Rewards
     await compoundMock.setRewards(backingManager.address, rewardAmount)
@@ -642,7 +643,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check balances sent to corresponding destinations
     // StRSR
-    expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+    expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 10000)
     // Furnace
     expect(await rToken.balanceOf(furnace.address)).to.equal(0)
   })
@@ -1146,7 +1147,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
     expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
       auctionbuyAmt2.add(auctionbuyAmt5),
-      bn('50')
+      bn('10000')
     )
     expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
       auctionbuyAmtRToken2.add(auctionbuyAmtRToken5),
@@ -1266,7 +1267,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
     expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
       auctionbuyAmt2.add(auctionbuyAmt5).add(auctionbuyAmt7),
-      bn('10')
+      bn('10000')
     )
     expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
       auctionbuyAmtRToken2.add(auctionbuyAmtRToken5).add(auctionbuyAmtRToken7),
@@ -1423,8 +1424,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           anyValue,
           rsr.address,
           wbtc.address,
-          withinQuad(sellAmtRSR),
-          withinQuad(buyAmtBidRSR),
+          withinTolerance(sellAmtRSR),
+          withinTolerance(buyAmtBidRSR),
         ],
         emitted: true,
       },
@@ -1481,7 +1482,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           rsr.address,
           wbtc.address,
           auctionSellAmtRSR,
-          withinQuad(auctionBuyAmtRSR),
+          withinTolerance(auctionBuyAmtRSR),
         ],
         emitted: true,
       },
@@ -1576,8 +1577,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Running auctions will trigger recollateralization - cETH partial sale for weth
     // Will sell about 841K of cETH, expect to receive 8167 wETH (minimum)
     // We would still have about 438K to sell of cETH
-    let [low] = await cETHCollateral.price()
-    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(low)
+    let [, high] = await cETHCollateral.price()
+    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(high)
     const sellAmt = toBNDecimals(sellAmtUnscaled, 8)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
     // Price for cETH = 1200 / 50 = $24 at rate 50% = $12
@@ -1593,7 +1594,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [anyValue, cETH.address, weth.address, withinQuad(sellAmt), withinQuad(minBuyAmt)],
+        args: [
+          anyValue,
+          cETH.address,
+          weth.address,
+          withinTolerance(sellAmt),
+          withinTolerance(minBuyAmt),
+        ],
         emitted: true,
       },
     ])
@@ -1656,8 +1663,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           anyValue,
           cETH.address,
           weth.address,
-          withinQuad(sellAmtRemainder),
-          withinQuad(minBuyAmtRemainder),
+          withinTolerance(sellAmtRemainder),
+          withinTolerance(minBuyAmtRemainder),
         ],
         emitted: true,
       },
@@ -1716,8 +1723,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 13K wETH @ 1200 = 15,600,000 USD of value, in RSR ~= 156,000 RSR (@100 usd)
     // We exceed maxTradeVolume so we need two auctions - Will first sell 10M in value
     // Sells about 101K RSR, for 8167 WETH minimum
-    ;[low] = await rsrAsset.price()
-    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(low)
+    ;[, high] = await rsrAsset.price()
+    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(high)
     const buyAmtBidRSR1 = toMinBuyAmt(
       sellAmtRSR1,
       rsrPrice,
@@ -1821,8 +1828,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
           anyValue,
           rsr.address,
           weth.address,
-          withinQuad(sellAmtRSR2),
-          withinQuad(buyAmtRSR2),
+          withinTolerance(sellAmtRSR2),
+          withinTolerance(buyAmtRSR2),
         ],
         emitted: true,
       },

@@ -602,6 +602,7 @@ export interface IConfig {
   withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
   reweightable: boolean
+  enableIssuancePremium: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber

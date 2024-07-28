@@ -2,7 +2,13 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
-import { getAssetCollDeploymentFilename, getDeploymentFile, getDeploymentFilename, IAssetCollDeployments, IDeployments } from '../../deployment/common'
+import {
+  getAssetCollDeploymentFilename,
+  getDeploymentFile,
+  getDeploymentFilename,
+  IAssetCollDeployments,
+  IDeployments,
+} from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
 import { fp } from '../../../common/numbers'
 

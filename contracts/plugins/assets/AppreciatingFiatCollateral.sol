@@ -45,6 +45,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @dev Override this when pricing is more complicated than just a single oracle
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
@@ -103,6 +104,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced

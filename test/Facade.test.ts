@@ -283,7 +283,7 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return maxIssuableByAmounts correctly', async () => {
-      const [erc20Addrs] = await basketHandler.quote(fp('1'), 0)
+      const [erc20Addrs] = await basketHandler.quote(fp('1'), false, 0)
       const erc20s = await Promise.all(erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a)))
       const addr1Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr1.address)))
       const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
@@ -763,7 +763,10 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       await expect(facade.callStatic.revenueOverview(rsrTrader.address)).not.to.be.reverted
-      await backingManager.connect(owner).upgradeTo(bckMgrInvalidVer.address)
+
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(bckMgrInvalidVer.address)
+      })
 
       // Reverts due to invalid version when forwarding revenue
       await expect(facade.callStatic.revenueOverview(rsrTrader.address)).to.be.revertedWith(
@@ -859,7 +862,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade BackingManager to V2
-      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV2.address)
+      })
 
       // Confirm no auction to run yet - should not revert
       let [canStart, sell, buy, sellAmount] =
@@ -905,7 +910,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       })
 
       // Upgrade BackingManager to V1
-      await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV1.address)
+      })
 
       // nextRecollateralizationAuction should return false (trade open)
       ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
@@ -932,7 +939,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(sellAmount).to.equal(sellAmt)
 
       // Invalid versions are also handled
-      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerInvalidVer.address)
+      })
 
       await expect(
         facade.callStatic.nextRecollateralizationAuction(
@@ -953,7 +962,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade BackingManager to Invalid version
-      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerInvalidVer.address)
+      })
 
       // Setup prime basket
       await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
@@ -1673,8 +1684,10 @@ describe('Facade + FacadeMonitor contracts', () => {
       await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Upgrade components to V2
-      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
-      await rTokenTrader.connect(owner).upgradeTo(revTraderV2.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV2.address)
+        await rTokenTrader.connect(signer).upgradeTo(revTraderV2.address)
+      })
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1701,8 +1714,10 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade to V1
-      await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
-      await rTokenTrader.connect(owner).upgradeTo(revTraderV1.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV1.address)
+        await rTokenTrader.connect(signer).upgradeTo(revTraderV1.address)
+      })
 
       // Advance time till auction ended
       await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
@@ -1742,7 +1757,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade RevenueTrader to invalid version - Use RSR as an example
-      await rsrTrader.connect(owner).upgradeTo(revTraderInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await rsrTrader.connect(signer).upgradeTo(revTraderInvalidVer.address)
+      })
 
       const tokenSurplus = bn('0.5e18')
       await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
@@ -1752,7 +1769,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       ).to.be.revertedWith('unrecognized version')
 
       // Also set BackingManager to invalid version
-      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerInvalidVer.address)
+      })
 
       await expect(
         facade.runRevenueAuctions(rsrTrader.address, [], [token.address], [TradeKind.DUTCH_AUCTION])

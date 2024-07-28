@@ -23,9 +23,11 @@ import {
   TradeKind,
   QUEUE_START,
   MAX_UINT48,
+  MAX_UINT96,
   MAX_UINT192,
   ONE_ADDRESS,
   PAUSER,
+  ZERO_ADDRESS,
 } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
@@ -33,7 +35,7 @@ import { setOraclePrice } from '../utils/oracles'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectRTokenPrice } from '../utils/oracles'
-import { withinQuad } from '../utils/matchers'
+import { withinTolerance } from '../utils/matchers'
 import { cartesianProduct } from '../utils/cases'
 import {
   EasyAuction,
@@ -154,7 +156,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Create auction
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION))
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(anyValue, rsr.address, token0.address, anyValue, withinQuad(buyAmt))
+        .withArgs(anyValue, rsr.address, token0.address, anyValue, withinTolerance(buyAmt))
 
       const t = await getTrade(backingManager, rsr.address)
       sellAmt = await t.initBal()
@@ -689,6 +691,78 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     })
   })
 
+  describe(`Trading limitations`, () => {
+    it('EasyAuction reverts when sum of bids > type(uint96).max', async () => {
+      const sellAmount = fp('1')
+      const endTime = (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength)
+      const minBuyAmount = MAX_UINT96.sub(1)
+
+      // Mints tokens
+      await token0.connect(owner).mint(owner.address, sellAmount)
+      await token1.connect(owner).mint(addr1.address, MAX_UINT96)
+      await token1.connect(owner).mint(addr2.address, MAX_UINT96)
+
+      // Start auction
+      await token0.connect(owner).approve(easyAuction.address, sellAmount)
+
+      // Get auction Id
+      const auctionId = await easyAuction.callStatic.initiateAuction(
+        token0.address,
+        token1.address,
+        endTime,
+        endTime,
+        sellAmount,
+        minBuyAmount,
+        1,
+        0,
+        false,
+        ZERO_ADDRESS,
+        new Uint8Array(0)
+      )
+
+      // Initiate auction
+      await easyAuction.initiateAuction(
+        token0.address,
+        token1.address,
+        endTime,
+        endTime,
+        sellAmount,
+        minBuyAmount,
+        1,
+        0,
+        false,
+        ZERO_ADDRESS,
+        new Uint8Array(0)
+      )
+
+      // Perform first bid
+      await token1.connect(addr1).approve(easyAuction.address, minBuyAmount.sub(1))
+      await easyAuction.connect(addr1).placeSellOrders(
+        auctionId,
+        [1],
+        [minBuyAmount.sub(1)], // falls short
+        [QUEUE_START],
+        ethers.constants.HashZero
+      )
+
+      // Perform second bid
+      await token1.connect(addr2).approve(easyAuction.address, minBuyAmount)
+      await easyAuction.connect(addr2).placeSellOrders(
+        auctionId,
+        [1],
+        [minBuyAmount.sub(1)], // Sum will exceed uint96.MAX
+        [QUEUE_START],
+        ethers.constants.HashZero
+      )
+
+      // Attempt to settle - should revert
+      await advanceTime(config.batchAuctionLength.add(100).toString())
+      await expect(easyAuction.settleAuction(auctionId)).to.be.revertedWith(
+        "SafeCast: value doesn't fit in 96 bits"
+      )
+    })
+  })
+
   describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
     if (!(Implementation.P1 && useEnv('EXTREME') && useEnv('FORK'))) return // prevents bunch of skipped tests
 
@@ -840,7 +914,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     // ==== Generate the tests ====
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18'), bn('21'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('1'), bn('1595439874635'), bn('987321984732198435645846513')]

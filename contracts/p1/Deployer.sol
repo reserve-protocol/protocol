@@ -35,7 +35,7 @@ contract DeployerP1 is IDeployer, Versioned {
     IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
-    Implementations public implementations;
+    Implementations private _implementations;
 
     // checks: every address in the input is nonzero
     // effects: post, all contract-state values are set
@@ -68,7 +68,11 @@ contract DeployerP1 is IDeployer, Versioned {
         rsr = rsr_;
         gnosis = gnosis_;
         rsrAsset = rsrAsset_;
-        implementations = implementations_;
+        _implementations = implementations_;
+    }
+
+    function implementations() external view override returns (Implementations memory) {
+        return _implementations;
     }
 
     /// Deploys an instance of the entire system, oriented around some mandate.
@@ -111,22 +115,22 @@ contract DeployerP1 is IDeployer, Versioned {
 
         // Main - Proxy
         MainP1 main = MainP1(
-            address(new ERC1967Proxy(address(implementations.main), new bytes(0)))
+            address(new ERC1967Proxy(address(_implementations.main), new bytes(0)))
         );
 
         // Components - Proxies
         IRToken rToken = IRToken(
-            address(new ERC1967Proxy(address(implementations.components.rToken), new bytes(0)))
+            address(new ERC1967Proxy(address(_implementations.components.rToken), new bytes(0)))
         );
         Components memory components = Components({
             stRSR: IStRSR(
-                address(new ERC1967Proxy(address(implementations.components.stRSR), new bytes(0)))
+                address(new ERC1967Proxy(address(_implementations.components.stRSR), new bytes(0)))
             ),
             rToken: rToken,
             assetRegistry: IAssetRegistry(
                 address(
                     new ERC1967Proxy(
-                        address(implementations.components.assetRegistry),
+                        address(_implementations.components.assetRegistry),
                         new bytes(0)
                     )
                 )
@@ -134,7 +138,7 @@ contract DeployerP1 is IDeployer, Versioned {
             basketHandler: IBasketHandler(
                 address(
                     new ERC1967Proxy(
-                        address(implementations.components.basketHandler),
+                        address(_implementations.components.basketHandler),
                         new bytes(0)
                     )
                 )
@@ -142,31 +146,36 @@ contract DeployerP1 is IDeployer, Versioned {
             backingManager: IBackingManager(
                 address(
                     new ERC1967Proxy(
-                        address(implementations.components.backingManager),
+                        address(_implementations.components.backingManager),
                         new bytes(0)
                     )
                 )
             ),
             distributor: IDistributor(
                 address(
-                    new ERC1967Proxy(address(implementations.components.distributor), new bytes(0))
+                    new ERC1967Proxy(address(_implementations.components.distributor), new bytes(0))
                 )
             ),
             rsrTrader: IRevenueTrader(
                 address(
-                    new ERC1967Proxy(address(implementations.components.rsrTrader), new bytes(0))
+                    new ERC1967Proxy(address(_implementations.components.rsrTrader), new bytes(0))
                 )
             ),
             rTokenTrader: IRevenueTrader(
                 address(
-                    new ERC1967Proxy(address(implementations.components.rTokenTrader), new bytes(0))
+                    new ERC1967Proxy(
+                        address(_implementations.components.rTokenTrader),
+                        new bytes(0)
+                    )
                 )
             ),
             furnace: IFurnace(
-                address(new ERC1967Proxy(address(implementations.components.furnace), new bytes(0)))
+                address(
+                    new ERC1967Proxy(address(_implementations.components.furnace), new bytes(0))
+                )
             ),
             broker: IBroker(
-                address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
+                address(new ERC1967Proxy(address(_implementations.components.broker), new bytes(0)))
             )
         });
 
@@ -183,7 +192,12 @@ contract DeployerP1 is IDeployer, Versioned {
         );
 
         // Init Basket Handler
-        components.basketHandler.init(main, params.warmupPeriod, params.reweightable);
+        components.basketHandler.init(
+            main,
+            params.warmupPeriod,
+            params.reweightable,
+            params.enableIssuancePremium
+        );
 
         // Init Revenue Traders
         components.rsrTrader.init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
@@ -203,9 +217,9 @@ contract DeployerP1 is IDeployer, Versioned {
         components.broker.init(
             main,
             gnosis,
-            implementations.trading.gnosisTrade,
+            _implementations.trading.gnosisTrade,
             params.batchAuctionLength,
-            implementations.trading.dutchTrade,
+            _implementations.trading.dutchTrade,
             params.dutchAuctionLength
         );
 

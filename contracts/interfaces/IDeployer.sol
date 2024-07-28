@@ -39,6 +39,7 @@ struct DeploymentParams {
     // === BasketHandler ===
     uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
     bool reweightable; // whether the target amounts in the prime basket can change
+    bool enableIssuancePremium; // whether to enable the issuance premium
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
@@ -111,6 +112,8 @@ interface IDeployer is IVersioned {
     /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
     /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
     function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
+
+    function implementations() external view returns (Implementations memory);
 }
 
 interface TestIDeployer is IDeployer {
@@ -124,12 +127,5 @@ interface TestIDeployer is IDeployer {
 
     function rsrAsset() external view returns (IAsset);
 
-    function implementations()
-        external
-        view
-        returns (
-            IMain,
-            Components memory,
-            TradePlugins memory
-        );
+    function implementations() external view returns (Implementations memory);
 }

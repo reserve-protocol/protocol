@@ -34,6 +34,8 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
+    uint192 public savedPegPrice; // {target/ref} The peg price of the token during the last update
+
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(
         IRToken erc20_,
