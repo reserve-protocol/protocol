@@ -4,12 +4,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ONE_ADDRESS, ZERO_ADDRESS, ZERO_BYTES } from '#/common/constants'
 import { IImplementations } from '#/common/configuration'
-import { DeployerMock, TestIDeployer, VersionRegistry } from '../../typechain'
+import { DeployerMock, RoleRegistry, TestIDeployer, VersionRegistry } from '../../typechain'
 import { Implementation, IMPLEMENTATION, defaultFixture } from '../fixtures'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 describeP1('Version Registry', () => {
+  let roleRegistry: RoleRegistry
   let versionRegistry: VersionRegistry
   let deployer: TestIDeployer
   let deployerMockV1: DeployerMock
@@ -21,8 +22,11 @@ describeP1('Version Registry', () => {
     ;[owner, other] = await ethers.getSigners()
     ;({ deployer } = await loadFixture(defaultFixture))
 
+    const RoleRegistryFactory = await ethers.getContractFactory('RoleRegistry')
+    roleRegistry = await RoleRegistryFactory.connect(owner).deploy()
+
     const versionRegistryFactory = await ethers.getContractFactory('VersionRegistry')
-    versionRegistry = await versionRegistryFactory.deploy(await owner.getAddress())
+    versionRegistry = await versionRegistryFactory.deploy(roleRegistry.address)
 
     const DeployerMockFactoryV1 = await ethers.getContractFactory('DeployerMock')
     deployerMockV1 = await DeployerMockFactoryV1.deploy()
@@ -32,8 +36,8 @@ describeP1('Version Registry', () => {
   })
 
   describe('Deployment', () => {
-    it('should set the owner to the specified address', async () => {
-      expect(await versionRegistry.owner()).to.eq(await owner.getAddress())
+    it('should set the role registry to the specified address', async () => {
+      expect(await versionRegistry.roleRegistry()).to.eq(roleRegistry.address)
     })
   })
 
@@ -48,7 +52,9 @@ describeP1('Version Registry', () => {
       expect(versionData.versionHash).not.be.eq(ZERO_BYTES)
       expect(versionData.deprecated).be.eq(false)
 
-      const expectedVersionHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('V1'))
+      const expectedVersionHash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await deployerMockV1.version())
+      )
       expect(versionData.versionHash).to.eq(expectedVersionHash)
       expect(await versionRegistry.deployments(expectedVersionHash)).to.not.equal(ZERO_ADDRESS)
       expect(await versionRegistry.deployments(expectedVersionHash)).to.equal(
@@ -60,7 +66,7 @@ describeP1('Version Registry', () => {
       // If not owner, should be rejected
       await expect(
         versionRegistry.connect(other).registerVersion(deployer.address)
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWithCustomError(versionRegistry, 'VersionRegistry__InvalidCaller')
 
       // Same version, different deployer, should be rejected.
       const DeployerMockFactory = await ethers.getContractFactory('DeployerMock')
@@ -79,7 +85,9 @@ describeP1('Version Registry', () => {
       const initialVersionData = await versionRegistry.getLatestVersion()
 
       // Register new version
-      const expectedV2Hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('V2'))
+      const expectedV2Hash = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(await deployerMockV2.version())
+      )
       await expect(versionRegistry.connect(owner).registerVersion(deployerMockV2.address))
         .to.emit(versionRegistry, 'VersionRegistered')
         .withArgs(expectedV2Hash, deployerMockV2.address)
