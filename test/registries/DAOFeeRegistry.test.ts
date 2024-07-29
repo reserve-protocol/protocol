@@ -9,6 +9,7 @@ import { whileImpersonating } from '../utils/impersonation'
 import {
   DAOFeeRegistry,
   ERC20Mock,
+  RoleRegistry,
   TestIDistributor,
   TestIRevenueTrader,
   TestIMain,
@@ -28,6 +29,7 @@ describeP1('DAO Fee Registry', () => {
   let rsrTrader: TestIRevenueTrader
 
   let feeRegistry: DAOFeeRegistry
+  let roleRegistry: RoleRegistry
 
   beforeEach(async () => {
     ;[owner, other] = await ethers.getSigners()
@@ -35,12 +37,12 @@ describeP1('DAO Fee Registry', () => {
     // Deploy fixture
     ;({ distributor, main, rToken, rsr, rsrTrader } = await loadFixture(defaultFixture))
 
-    const mockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
-    const mockRoleRegistry = await mockRoleRegistryFactory.deploy()
+    const RoleRegistryFactory = await ethers.getContractFactory('RoleRegistry')
+    roleRegistry = await RoleRegistryFactory.connect(owner).deploy()
 
     const DAOFeeRegistryFactory = await ethers.getContractFactory('DAOFeeRegistry')
     feeRegistry = await DAOFeeRegistryFactory.connect(owner).deploy(
-      mockRoleRegistry.address,
+      roleRegistry.address,
       await owner.getAddress()
     )
 
@@ -58,18 +60,18 @@ describeP1('DAO Fee Registry', () => {
 
   describe('Negative cases', () => {
     it('Should not allow calling setters by anyone other than owner', async () => {
-      await expect(feeRegistry.connect(other).setFeeRecipient(owner.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-      await expect(feeRegistry.connect(other).setDefaultFeeNumerator(bn('100'))).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      await expect(
+        feeRegistry.connect(other).setFeeRecipient(owner.address)
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidCaller')
+      await expect(
+        feeRegistry.connect(other).setDefaultFeeNumerator(bn('100'))
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidCaller')
       await expect(
         feeRegistry.connect(other).setRTokenFeeNumerator(rToken.address, bn('100'))
-      ).to.be.revertedWith('Ownable: caller is not the owner')
-      await expect(feeRegistry.connect(other).resetRTokenFee(rToken.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidCaller')
+      await expect(
+        feeRegistry.connect(other).resetRTokenFee(rToken.address)
+      ).to.be.revertedWithCustomError(feeRegistry, 'DAOFeeRegistry__InvalidCaller')
     })
 
     it('Should not allow setting fee recipient to zero address', async () => {
