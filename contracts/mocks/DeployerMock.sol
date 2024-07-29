@@ -16,6 +16,10 @@ contract DeployerMock is Versioned {
     function implementations() external view returns (Implementations memory) {
         return _implementations;
     }
+
+    function version() public pure virtual override returns (string memory) {
+        return "V1"; // make different from '4.0.0' on purpose
+    }
 }
 
 contract DeployerMockV2 is DeployerMock {
