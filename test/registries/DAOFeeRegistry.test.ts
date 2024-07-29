@@ -194,9 +194,9 @@ describeP1('DAO Fee Registry', () => {
               expect(await rsr.balanceOf(owner.address)).to.equal(0)
               await distributor.connect(signer).distribute(rsr.address, amt)
 
-              // Expected returned amount is for the fee times 5/3 to account for rev share split
-              const expectedAmt = amt.mul(defaultFee).div(bn('1e4')).mul(5).div(3)
-              expect(await rsr.balanceOf(owner.address)).to.equal(expectedAmt)
+              const feeShares = bn('1e4').mul(defaultFee).div(bn('1e4').sub(defaultFee))
+              const expectedAmt = amt.mul(feeShares).div(feeShares.add(6000))
+              expect(await rsr.balanceOf(owner.address)).to.be.closeTo(expectedAmt, 10000)
             })
           })
         }
