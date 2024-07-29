@@ -314,3 +314,17 @@ jobs:
           FORK_NETWORK: mainnet
           FORK: 1
           PROTO_IMPL: 1
+
+  registry-tests:
+    name: 'Registry Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn test:registries
+        env:
+          NODE_OPTIONS: '--max-old-space-size=32768'
