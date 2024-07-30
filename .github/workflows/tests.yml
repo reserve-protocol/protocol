@@ -21,7 +21,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn devchain &
         env:
-          MAINNET_RPC_URL: https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161
+          MAINNET_RPC_URL: https://mainnet.infura.io/v3/b6bf7d3508c941499b10025c0776eaf8
           FORK_NETWORK: mainnet
       - run: yarn deploy:run --network localhost
         env:
