@@ -22,6 +22,7 @@ import {
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
+  BackingBufferFacet,
   BackingManagerP1,
   BasketHandlerP1,
   BasketLibP1,
@@ -413,6 +414,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   readFacet: ReadFacet
   actFacet: ActFacet
   maxIssuableFacet: MaxIssuableFacet
+  backingBufferFacet: BackingBufferFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -765,6 +767,18 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     )
   )
 
+  // Save BackingBufferFacet to Facade
+  const BackingBufferFacetFactory: ContractFactory = await ethers.getContractFactory(
+    'BackingBufferFacet'
+  )
+  const backingBufferFacet = <BackingBufferFacet>await BackingBufferFacetFactory.deploy()
+  await facade.save(
+    backingBufferFacet.address,
+    Object.entries(backingBufferFacet.functions).map(([fn]) =>
+      backingBufferFacet.interface.getSighash(fn)
+    )
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -797,6 +811,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     readFacet,
     actFacet,
     maxIssuableFacet,
+    backingBufferFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,
