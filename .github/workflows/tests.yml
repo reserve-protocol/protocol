@@ -21,7 +21,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn devchain &
         env:
-          MAINNET_RPC_URL: https://mainnet.infura.io/v3/b6bf7d3508c941499b10025c0776eaf8
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
       - run: yarn deploy:run --network localhost
         env:
