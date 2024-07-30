@@ -76,7 +76,7 @@ contract ReadFacet {
     /// @return tokens The erc20s returned for the redemption
     /// @return withdrawals The balances the reedemer would receive after a full redemption
     /// @return available The amount actually available, for each token
-    /// @dev If available[i] < withdrawals[i], then RToken.red/eem() would revert
+    /// @dev If available[i] < withdrawals[i], then RToken.redeem() would revert
     /// @custom:static-call
     function redeem(IRToken rToken, uint256 amount)
         external
