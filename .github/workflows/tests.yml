@@ -3,8 +3,12 @@ name: Tests
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
   deployment-scripts:
