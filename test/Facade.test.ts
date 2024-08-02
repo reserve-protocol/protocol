@@ -266,7 +266,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
       expect(actual).to.equal(fp('10')) // 10%
 
-      // Add-in an uneven balance to get to 12.5% total appreceiation on a 0.01% backingBuffer
+      // Add-in an uneven balance to get to 12.5% total appreciation on a 0.01% backingBuffer
       await token.connect(addr1).mint(backingManager.address, issueAmount.div(4).div(10))
       ;[required, actual] = await facade.callStatic.backingBuffer(rToken.address)
       expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
