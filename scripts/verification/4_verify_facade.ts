@@ -46,6 +46,14 @@ async function main() {
     [],
     'contracts/facade/facets/MaxIssuableFacet.sol:MaxIssuableFacet'
   )
+
+  /** ******************** Verify BackingBufferFacet ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facets.backingBufferFacet,
+    [],
+    'contracts/facade/facets/BackingBufferFacet.sol:BackingBufferFacet'
+  )
 }
 
 main().catch((error) => {

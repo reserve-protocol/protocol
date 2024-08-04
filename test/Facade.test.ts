@@ -251,6 +251,28 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facade.stToken(rToken.address)).to.equal(stRSR.address)
     })
 
+    it('Should return backingBuffer', async () => {
+      let [required, actual] = await facade.callStatic.backingBuffer(rToken.address)
+      expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
+      expect(actual).to.equal(0)
+
+      // Mimic 10% even appreciation across the board on a 0.01% backingBuffer
+      const [erc20s, amounts] = await basketHandler.quote(issueAmount, 0)
+      for (let i = 0; i < erc20s.length; i++) {
+        const erc20 = await ethers.getContractAt('ERC20Mock', erc20s[i])
+        await erc20.connect(addr1).mint(backingManager.address, amounts[i].div(10))
+      }
+      ;[required, actual] = await facade.callStatic.backingBuffer(rToken.address)
+      expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
+      expect(actual).to.equal(fp('10')) // 10%
+
+      // Add-in an uneven balance to get to 12.5% total appreciation on a 0.01% backingBuffer
+      await token.connect(addr1).mint(backingManager.address, issueAmount.div(4).div(10))
+      ;[required, actual] = await facade.callStatic.backingBuffer(rToken.address)
+      expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
+      expect(actual).to.equal(fp('12.5')) // 12.5%
+    })
+
     it('Should return maxIssuable correctly', async () => {
       // Regression test
       // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
