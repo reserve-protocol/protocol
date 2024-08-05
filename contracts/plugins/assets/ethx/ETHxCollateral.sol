@@ -5,6 +5,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
+import { IStaderStakePoolsManager } from "./vendor/IStaderStakePoolsManager.sol";
 import { IETHx } from "./vendor/IETHx.sol";
 
 /**
@@ -69,6 +70,9 @@ contract ETHxCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return _safeWrap(IETHx(address(erc20)).getExchangeRate());
+        IStaderStakePoolsManager staderStakePoolsManager = IStaderStakePoolsManager(
+            IETHx(address(erc20)).staderConfig().getStakePoolManager()
+        );
+        return _safeWrap(staderStakePoolsManager.getExchangeRate());
     }
 }
