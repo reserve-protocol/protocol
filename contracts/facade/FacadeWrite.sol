@@ -104,12 +104,13 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Setup revshare beneficiaries
+        address[] memory beneficiaries = new address[](setup.beneficiaries.length);
+        RevenueShare[] memory shares = new RevenueShare[](setup.beneficiaries.length);
         for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
-            main.distributor().setDistribution(
-                setup.beneficiaries[i].beneficiary,
-                setup.beneficiaries[i].revShare
-            );
+            beneficiaries[i] = setup.beneficiaries[i].beneficiary;
+            shares[i] = setup.beneficiaries[i].revShare;
         }
+        main.distributor().setDistributions(beneficiaries, shares);
 
         // Pause until setupGovernance
         main.grantRole(PAUSER, address(this));

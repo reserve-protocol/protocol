@@ -109,7 +109,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             ? basketsNeeded.muluDivu(amount, totalSupply(), CEIL) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
-        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
+        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
+            baskets,
+            true,
+            CEIL
+        );
 
         address issuer = _msgSender();
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -150,6 +154,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             baskets,
+            false,
             FLOOR
         );
 

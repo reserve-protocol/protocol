@@ -788,7 +788,7 @@ for (const wrapperName of wrapperNames) {
     })
   }
 
-  const decimalSeeds = [6, 8, 18]
+  const decimalSeeds = [6, 8, 18, 21, 27]
   const cases = cartesianProduct(decimalSeeds, decimalSeeds)
   cases.forEach((params) => {
     const wrapperStr = wrapperName.replace('Test', '')

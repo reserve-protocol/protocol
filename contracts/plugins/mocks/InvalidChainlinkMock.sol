@@ -13,10 +13,9 @@ contract InvalidMockV3Aggregator is MockV3Aggregator {
     bool public simplyRevert;
     bool public revertWithExplicitError;
 
-    constructor(
-        uint8 _decimals,
-        int256 _initialAnswer
-    ) MockV3Aggregator(_decimals, _initialAnswer) {}
+    constructor(uint8 _decimals, int256 _initialAnswer)
+        MockV3Aggregator(_decimals, _initialAnswer)
+    {}
 
     function latestRoundData()
         external

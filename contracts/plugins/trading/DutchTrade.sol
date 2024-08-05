@@ -174,7 +174,7 @@ contract DutchTrade is ITrade, Versioned {
         buy = buy_.erc20();
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
-        sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
+        sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals()), FLOOR); // {sellTok}
 
         // Track auction end by time, to generalize to all chains
         uint48 _startTime = uint48(block.timestamp) + 1; // cannot fulfill in current block

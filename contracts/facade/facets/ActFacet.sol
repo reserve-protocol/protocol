@@ -12,7 +12,7 @@ import "../../interfaces/IBackingManager.sol";
  * @title ActFacet
  * @notice
  *   Facet to help batch compound actions that cannot be done from an EOA, solely.
- *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
+ *   Compatible with 2.1.0, ^3.0.0, and ^4.0.0 RTokens.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
@@ -214,7 +214,7 @@ contract ActFacet is Multicall {
 
     function _settleTrade(ITrading trader, IERC20 toSettle) private {
         bytes1 majorVersion = bytes(trader.version())[0];
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             // Settle auctions
             trader.settleTrade(toSettle);
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
@@ -227,7 +227,7 @@ contract ActFacet is Multicall {
     function _forwardRevenue(IBackingManager bm, IERC20[] memory toStart) private {
         bytes1 majorVersion = bytes(bm.version())[0];
         // Need to use try-catch here in order to still show revenueOverview when basket not ready
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             // solhint-disable-next-line no-empty-blocks
             try bm.forwardRevenue(toStart) {} catch {}
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
@@ -248,7 +248,7 @@ contract ActFacet is Multicall {
     ) private {
         bytes1 majorVersion = bytes(revenueTrader.version())[0];
 
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             revenueTrader.manageTokens(toStart, kinds);
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
             for (uint256 i = 0; i < toStart.length; ++i) {
@@ -264,7 +264,7 @@ contract ActFacet is Multicall {
     function _rebalance(IBackingManager bm, TradeKind kind) private {
         bytes1 majorVersion = bytes(bm.version())[0];
 
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             // solhint-disable-next-line no-empty-blocks
             try bm.rebalance(kind) {} catch {}
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
