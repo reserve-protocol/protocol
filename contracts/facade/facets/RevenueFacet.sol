@@ -6,24 +6,25 @@ import "../../interfaces/IAssetRegistry.sol";
 import "../../interfaces/IBackingManager.sol";
 import "../../interfaces/IBasketHandler.sol";
 import "../../interfaces/IRToken.sol";
-import "../../libraries/Fixed.sol";
 import "../lib/FacetLib.sol";
 
 /**
  * @title AuctionsFacet
- * @notice Single-function facet to return all revenues that can be started across RTokens
+ * @notice Single-function facet to return all revenues accumulating across RTokens
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start
 contract RevenueFacet {
-    using FixLib for uint192;
-
     struct Revenue {
         IRToken rToken;
         IERC20 erc20;
         uint256 surplus;
     }
 
+    // normally we don't let facets use storage, but this function requires it
+    // we don't yet have a full solution for sharding storage across facets
+    // so for now we'll just have to live with a janky hardcoded gap.
+    uint256[300] private __gap;
     Revenue[] _revenues; // empty at-rest
 
     /// Return revenues across multiple RTokens
@@ -63,9 +64,9 @@ contract RevenueFacet {
         rTokenRevenues = new Revenue[](_revenues.length / 2);
         rsrRevenues = new Revenue[](_revenues.length / 2);
         for (uint256 i = _revenues.length; i > 0; --i) {
-            if (i % 2 == 0) rsrRevenues[i / 2] = _revenues[i];
-            else rTokenRevenues[i / 2] = _revenues[i];
-            delete _revenues[i];
+            if (i % 2 == 0) rsrRevenues[(i - 1) / 2] = _revenues[i - 1];
+            else rTokenRevenues[(i - 1) / 2] = _revenues[i - 1];
+            _revenues.pop();
         }
         assert(_revenues.length == 0);
     }

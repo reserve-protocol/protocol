@@ -36,6 +36,7 @@ import {
   DeployerP1,
   DutchTrade,
   ReadFacet,
+  RevenueFacet,
   ActFacet,
   FacadeMonitor,
   FacadeTest,
@@ -415,6 +416,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   actFacet: ActFacet
   maxIssuableFacet: MaxIssuableFacet
   backingBufferFacet: BackingBufferFacet
+  revenueFacet: RevenueFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -779,6 +781,14 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     )
   )
 
+  // Save RevenueFacet to Facade
+  const RevenueFacetFactory: ContractFactory = await ethers.getContractFactory('RevenueFacet')
+  const revenueFacet = <RevenueFacet>await RevenueFacetFactory.deploy()
+  await facade.save(
+    revenueFacet.address,
+    Object.entries(revenueFacet.functions).map(([fn]) => revenueFacet.interface.getSighash(fn))
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -812,6 +822,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     actFacet,
     maxIssuableFacet,
     backingBufferFacet,
+    revenueFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,

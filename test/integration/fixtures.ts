@@ -45,6 +45,7 @@ import {
   MaxIssuableFacet,
   NonFiatCollateral,
   ReadFacet,
+  RevenueFacet,
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
@@ -708,6 +709,14 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     Object.entries(backingBufferFacet.functions).map(([fn]) =>
       backingBufferFacet.interface.getSighash(fn)
     )
+  )
+
+  // Save RevenueFacet to Facade
+  const RevenueFacetFactory: ContractFactory = await ethers.getContractFactory('RevenueFacet')
+  const revenueFacet = <RevenueFacet>await RevenueFacetFactory.deploy()
+  await facade.save(
+    revenueFacet.address,
+    Object.entries(revenueFacet.functions).map(([fn]) => revenueFacet.interface.getSighash(fn))
   )
 
   // Deploy FacadeTest
