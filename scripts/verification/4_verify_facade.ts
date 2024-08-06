@@ -54,6 +54,14 @@ async function main() {
     [],
     'contracts/facade/facets/BackingBufferFacet.sol:BackingBufferFacet'
   )
+
+  /** ******************** Verify RevenueFacet ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facets.revenueFacet,
+    [],
+    'contracts/facade/facets/RevenueFacet.sol:RevenueFacet'
+  )
 }
 
 main().catch((error) => {
