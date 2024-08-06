@@ -798,10 +798,14 @@ describe('Facade + FacadeMonitor contracts', () => {
         for (let i = 0; i < rTokenRevenues.length; i++) {
           if (i == 4 || i == 12) {
             expect(rsrRevenues[i].surplus).to.equal(rsrTraderAmt)
+            expect(rsrRevenues[i].value).to.equal(rsrTraderAmt)
             expect(rTokenRevenues[i].surplus).to.equal(rTokenTraderAmt)
+            expect(rTokenRevenues[i].value).to.equal(rTokenTraderAmt)
           } else {
             expect(rsrRevenues[i].surplus).to.equal(0)
+            expect(rsrRevenues[i].value).to.equal(0)
             expect(rTokenRevenues[i].surplus).to.equal(0)
+            expect(rTokenRevenues[i].value).to.equal(0)
           }
         }
       })

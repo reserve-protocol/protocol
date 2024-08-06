@@ -6,6 +6,7 @@ import "../../interfaces/IAssetRegistry.sol";
 import "../../interfaces/IBackingManager.sol";
 import "../../interfaces/IBasketHandler.sol";
 import "../../interfaces/IRToken.sol";
+import "../../libraries/Fixed.sol";
 import "../lib/FacetLib.sol";
 
 /**
@@ -15,10 +16,13 @@ import "../lib/FacetLib.sol";
  */
 // slither-disable-start
 contract RevenueFacet {
+    using FixLib for uint192;
+
     struct Revenue {
         IRToken rToken;
         IERC20 erc20;
-        uint256 surplus;
+        uint256 surplus; // {qTok}
+        uint192 value; // {UoA}
     }
 
     // normally we don't let facets use storage, but this function requires it
@@ -34,29 +38,50 @@ contract RevenueFacet {
     {
         for (uint256 i = 0; i < rTokens.length; ++i) {
             IMain main = rTokens[i].main();
-            IERC20[] memory erc20s = main.assetRegistry().erc20s();
+            Registry memory reg = main.assetRegistry().getRegistry();
 
             // Forward ALL revenue
-            FacetLib.forwardRevenue(main.backingManager(), erc20s);
+            FacetLib.forwardRevenue(main.backingManager(), reg.erc20s);
 
             IRevenueTrader rTokenTrader = main.rTokenTrader();
             IRevenueTrader rsrTrader = main.rsrTrader();
-            for (uint256 j = 0; j < erc20s.length; ++j) {
-                IERC20 erc20 = erc20s[j];
+            for (uint256 j = 0; j < reg.erc20s.length; ++j) {
+                IERC20 erc20 = reg.erc20s[j];
+
+                uint192 avg;
+                {
+                    (uint192 low, uint192 high) = reg.assets[j].price(); // {UoA/tok}
+                    if (low == 0) continue;
+                    avg = (low + high) / 2;
+                }
 
                 // RTokenTrader -- Settle first if possible so have full available balances
                 ITrade trade = rTokenTrader.trades(erc20);
                 if (address(trade) != address(0) && trade.canSettle()) {
                     FacetLib.settleTrade(rTokenTrader, erc20);
                 }
-                _revenues.push(Revenue(rTokens[i], erc20, erc20.balanceOf(address(rTokenTrader))));
+                _revenues.push(
+                    Revenue(
+                        rTokens[i],
+                        erc20,
+                        erc20.balanceOf(address(rTokenTrader)),
+                        reg.assets[j].bal(address(rTokenTrader)).mul(avg, FLOOR)
+                    )
+                );
 
                 // RSRTrader -- Settle first if possible so have full available balances
                 trade = rsrTrader.trades(erc20);
                 if (address(trade) != address(0) && trade.canSettle()) {
                     FacetLib.settleTrade(rsrTrader, erc20);
                 }
-                _revenues.push(Revenue(rTokens[i], erc20, erc20.balanceOf(address(rsrTrader))));
+                _revenues.push(
+                    Revenue(
+                        rTokens[i],
+                        erc20,
+                        erc20.balanceOf(address(rsrTrader)),
+                        reg.assets[j].bal(address(rsrTrader)).mul(avg, FLOOR)
+                    )
+                );
             }
         }
 
