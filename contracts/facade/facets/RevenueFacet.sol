@@ -19,7 +19,7 @@ contract RevenueFacet {
     using FixLib for uint192;
 
     // keccak256(abi.encode(uint256(keccak256("RevenueFacet")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 public constant REVENUE_STORAGE =
+    bytes32 private constant REVENUE_STORAGE =
         0x531d6ab467582a10938423ef5fa94c1ce844452664ec58675da73580d2c39800;
 
     /// @custom:storage-location erc7201:RevenueFacet
