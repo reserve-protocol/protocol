@@ -26,6 +26,7 @@ import {
   ReadFacet,
   RecollateralizationLibP1,
   RevertingFacetMock,
+  RevenueFacet,
   RevenueTraderCompatibleV1,
   RevenueTraderCompatibleV2,
   RevenueTraderInvalidVersion,
@@ -91,6 +92,7 @@ describe('Facade + FacadeMonitor contracts', () => {
   let facadeTest: FacadeTest
   let facadeMonitor: FacadeMonitor
   let readFacet: ReadFacet
+  let revenueFacet: RevenueFacet
 
   // Main
   let rToken: TestIRToken
@@ -132,6 +134,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       config,
       facade,
       readFacet,
+      revenueFacet,
       facadeTest,
       facadeMonitor,
       rToken,

@@ -18,6 +18,15 @@ import "../lib/FacetLib.sol";
 contract RevenueFacet {
     using FixLib for uint192;
 
+    // keccak256(abi.encode(uint256(keccak256("RevenueFacet")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 public constant REVENUE_STORAGE =
+        0x531d6ab467582a10938423ef5fa94c1ce844452664ec58675da73580d2c39800;
+
+    /// @custom:storage-location erc7201:RevenueFacet
+    struct RevenueStorage {
+        Revenue[] revenues;
+    }
+
     struct Revenue {
         IRToken rToken;
         IERC20 erc20;
@@ -25,17 +34,14 @@ contract RevenueFacet {
         uint192 value; // {UoA}
     }
 
-    // normally we don't let facets use storage, but this function requires it
-    // we don't yet have a full solution for sharding storage across facets
-    // so for now we'll just have to live with a janky hardcoded gap.
-    uint256[300] private __gap;
-    Revenue[] _revenues; // empty at-rest
+    // === External ===
 
     /// Return revenues across multiple RTokens
     function revenues(IRToken[] memory rTokens)
         external
         returns (Revenue[] memory rTokenRevenues, Revenue[] memory rsrRevenues)
     {
+        RevenueStorage storage $ = _getStorage();
         for (uint256 i = 0; i < rTokens.length; ++i) {
             IMain main = rTokens[i].main();
             Registry memory reg = main.assetRegistry().getRegistry();
@@ -60,7 +66,7 @@ contract RevenueFacet {
                 if (address(trade) != address(0) && trade.canSettle()) {
                     FacetLib.settleTrade(rTokenTrader, erc20);
                 }
-                _revenues.push(
+                $.revenues.push(
                     Revenue(
                         rTokens[i],
                         erc20,
@@ -74,7 +80,7 @@ contract RevenueFacet {
                 if (address(trade) != address(0) && trade.canSettle()) {
                     FacetLib.settleTrade(rsrTrader, erc20);
                 }
-                _revenues.push(
+                $.revenues.push(
                     Revenue(
                         rTokens[i],
                         erc20,
@@ -86,14 +92,22 @@ contract RevenueFacet {
         }
 
         // Empty storage queue in reverse order, we know evens are RSR revenues and odds are RToken
-        rTokenRevenues = new Revenue[](_revenues.length / 2);
-        rsrRevenues = new Revenue[](_revenues.length / 2);
-        for (uint256 i = _revenues.length; i > 0; --i) {
-            if (i % 2 == 0) rsrRevenues[(i - 1) / 2] = _revenues[i - 1];
-            else rTokenRevenues[(i - 1) / 2] = _revenues[i - 1];
-            _revenues.pop();
+        rTokenRevenues = new Revenue[]($.revenues.length / 2);
+        rsrRevenues = new Revenue[]($.revenues.length / 2);
+        for (uint256 i = $.revenues.length; i > 0; --i) {
+            if (i % 2 == 0) rsrRevenues[(i - 1) / 2] = $.revenues[i - 1];
+            else rTokenRevenues[(i - 1) / 2] = $.revenues[i - 1];
+            $.revenues.pop();
         }
-        assert(_revenues.length == 0);
+        assert($.revenues.length == 0);
+    }
+
+    // === Private ===
+
+    function _getStorage() private pure returns (RevenueStorage storage $) {
+        assembly {
+            $.slot := REVENUE_STORAGE
+        }
     }
 }
 // slither-disable-end
