@@ -795,21 +795,13 @@ describe('Facade + FacadeMonitor contracts', () => {
           rToken.address,
         ]) // re-use same RToken since facade does not check for uniqueness
         expect(rTokenRevenues.length).to.equal(rsrRevenues.length)
-        expect(rTokenRevenues.length).to.equal((await assetRegistry.size()).mul(2)) // two copies
 
         // Check surpluses
         for (let i = 0; i < rTokenRevenues.length; i++) {
-          if (i == 4 || i == 12) {
-            expect(rsrRevenues[i].surplus).to.equal(rsrTraderAmt)
-            expect(rsrRevenues[i].value).to.equal(rsrTraderAmt)
-            expect(rTokenRevenues[i].surplus).to.equal(rTokenTraderAmt)
-            expect(rTokenRevenues[i].value).to.equal(rTokenTraderAmt)
-          } else {
-            expect(rsrRevenues[i].surplus).to.equal(0)
-            expect(rsrRevenues[i].value).to.equal(0)
-            expect(rTokenRevenues[i].surplus).to.equal(0)
-            expect(rTokenRevenues[i].value).to.equal(0)
-          }
+          expect(rsrRevenues[i].surplus).to.equal(rsrTraderAmt)
+          expect(rsrRevenues[i].value).to.equal(rsrTraderAmt)
+          expect(rTokenRevenues[i].surplus).to.equal(rTokenTraderAmt)
+          expect(rTokenRevenues[i].value).to.equal(rTokenTraderAmt)
         }
       })
     })

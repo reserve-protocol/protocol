@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAssetRegistry.sol";
 import "../../interfaces/IBackingManager.sol";
 import "../../interfaces/IBasketHandler.sol";
@@ -24,12 +24,15 @@ contract RevenueFacet {
 
     /// @custom:storage-location erc7201:RevenueFacet
     struct RevenueStorage {
-        Revenue[] revenues;
+        Revenue[] rsrRevenues;
+        Revenue[] rTokenRevenues;
     }
 
     struct Revenue {
         IRToken rToken;
-        IERC20 erc20;
+        IERC20Metadata erc20;
+        string name;
+        string symbol;
         uint256 surplus; // {qTok}
         uint192 value; // {UoA}
     }
@@ -52,7 +55,7 @@ contract RevenueFacet {
             IRevenueTrader rTokenTrader = main.rTokenTrader();
             IRevenueTrader rsrTrader = main.rsrTrader();
             for (uint256 j = 0; j < reg.erc20s.length; ++j) {
-                IERC20 erc20 = reg.erc20s[j];
+                IERC20Metadata erc20 = IERC20Metadata(address(reg.erc20s[j]));
 
                 uint192 avg;
                 {
@@ -62,44 +65,62 @@ contract RevenueFacet {
                 }
 
                 // RTokenTrader -- Settle first if possible so have full available balances
-                ITrade trade = rTokenTrader.trades(erc20);
-                if (address(trade) != address(0) && trade.canSettle()) {
+                if (
+                    address(rTokenTrader.trades(erc20)) != address(0) &&
+                    rTokenTrader.trades(erc20).canSettle()
+                ) {
                     FacetLib.settleTrade(rTokenTrader, erc20);
                 }
-                $.revenues.push(
-                    Revenue(
-                        rTokens[i],
-                        erc20,
-                        erc20.balanceOf(address(rTokenTrader)),
-                        reg.assets[j].bal(address(rTokenTrader)).mul(avg, FLOOR)
-                    )
-                );
+                uint256 surplus = erc20.balanceOf(address(rTokenTrader));
+                if (surplus != 0) {
+                    $.rTokenRevenues.push(
+                        Revenue(
+                            rTokens[i],
+                            erc20,
+                            erc20.name(),
+                            erc20.symbol(),
+                            surplus,
+                            reg.assets[j].bal(address(rTokenTrader)).mul(avg, FLOOR)
+                        )
+                    );
+                }
 
                 // RSRTrader -- Settle first if possible so have full available balances
-                trade = rsrTrader.trades(erc20);
-                if (address(trade) != address(0) && trade.canSettle()) {
+                if (
+                    address(rsrTrader.trades(erc20)) != address(0) &&
+                    rsrTrader.trades(erc20).canSettle()
+                ) {
                     FacetLib.settleTrade(rsrTrader, erc20);
                 }
-                $.revenues.push(
-                    Revenue(
-                        rTokens[i],
-                        erc20,
-                        erc20.balanceOf(address(rsrTrader)),
-                        reg.assets[j].bal(address(rsrTrader)).mul(avg, FLOOR)
-                    )
-                );
+                surplus = erc20.balanceOf(address(rsrTrader));
+                if (surplus != 0) {
+                    $.rsrRevenues.push(
+                        Revenue(
+                            rTokens[i],
+                            erc20,
+                            erc20.name(),
+                            erc20.symbol(),
+                            surplus,
+                            reg.assets[j].bal(address(rsrTrader)).mul(avg, FLOOR)
+                        )
+                    );
+                }
             }
         }
 
-        // Empty storage queue in reverse order, we know evens are RSR revenues and odds are RToken
-        rTokenRevenues = new Revenue[]($.revenues.length / 2);
-        rsrRevenues = new Revenue[]($.revenues.length / 2);
-        for (uint256 i = $.revenues.length; i > 0; --i) {
-            if (i % 2 == 0) rsrRevenues[(i - 1) / 2] = $.revenues[i - 1];
-            else rTokenRevenues[(i - 1) / 2] = $.revenues[i - 1];
-            $.revenues.pop();
+        // Empty storage queues
+        rTokenRevenues = new Revenue[]($.rTokenRevenues.length);
+        rsrRevenues = new Revenue[]($.rsrRevenues.length);
+        for (uint256 i = $.rTokenRevenues.length; i > 0; --i) {
+            rTokenRevenues[i - 1] = $.rTokenRevenues[i - 1];
+            $.rTokenRevenues.pop();
         }
-        assert($.revenues.length == 0);
+        for (uint256 i = $.rsrRevenues.length; i > 0; --i) {
+            rsrRevenues[i - 1] = $.rsrRevenues[i - 1];
+            $.rsrRevenues.pop();
+        }
+        assert($.rTokenRevenues.length == 0);
+        assert($.rsrRevenues.length == 0);
     }
 
     // === Private ===
