@@ -10,7 +10,8 @@
     "actFacet": "0x0eac15B9Fe585432E48Cf175571D75D111861F43",
     "readFacet": "0x5Af543D6F95a98200Dd770f39A902Fe793BAeB27",
     "maxIssuableFacet": "0x63FDcB1E8Ee5C4B64A5c4ce0FB97597917920cb6",
-    "backingBufferFacet": "0x38c7e9427960E427f6c84b3A096021f47a9Afb82"
+    "backingBufferFacet": "0x38c7e9427960E427f6c84b3A096021f47a9Afb82",
+    "revenueFacet": "0x4c2FCA94163355a5B81F4D924Bce8cCbACc15406"
   },
   "facadeWriteLib": "0x186d05580E6B7195323b5dC8c3ee9179Ad086d4C",
   "basketLib": "0x182e86ad4a6139ced4f9fa4ed3f1cd9e4f7449e7",
