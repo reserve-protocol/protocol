@@ -24,84 +24,74 @@ contract RevenueFacet {
 
     /// @custom:storage-location erc7201:RevenueFacet
     struct RevenueStorage {
-        Revenue[] rsrRevenues;
-        Revenue[] rTokenRevenues;
+        Revenue[] revenues;
     }
 
     struct Revenue {
         IRToken rToken;
-        IERC20Metadata erc20;
-        uint8 decimals;
+        IRevenueTrader trader;
+        IERC20 sell;
+        IERC20 buy;
+        uint8 sellDecimals;
+        bool settleable; // if trader.settleTrade() can be called (if can: must, to unblock)
         string symbol;
-        uint256 surplus; // {qTok}
-        uint192 value; // {UoA}
+        uint192 volume; // {UoA} USD value of surplus balance
+        uint256 balance; // {qTok} surplus balance
+        uint256 minTradeAmount; // {qTok} min USD value worth trading
     }
 
     // === External ===
 
     /// Return revenues across multiple RTokens
-    function revenues(IRToken[] memory rTokens)
-        external
-        returns (Revenue[] memory rTokenRevenues, Revenue[] memory rsrRevenues)
-    {
+    function revenues(IRToken[] memory rTokens) external returns (Revenue[] memory _revenues) {
         RevenueStorage storage $ = _getStorage();
         for (uint256 i = 0; i < rTokens.length; ++i) {
-            IMain main = rTokens[i].main();
-            Registry memory reg = main.assetRegistry().getRegistry();
+            IERC20 rsr = IERC20(address(rTokens[i].main().rsr()));
+            Registry memory reg = rTokens[i].main().assetRegistry().getRegistry();
 
             // Forward ALL revenue
-            FacetLib.forwardRevenue(main.backingManager(), reg.erc20s);
+            FacetLib.forwardRevenue(rTokens[i].main().backingManager(), reg.erc20s);
 
-            IRevenueTrader rTokenTrader = main.rTokenTrader();
-            IRevenueTrader rsrTrader = main.rsrTrader();
             for (uint256 j = 0; j < reg.erc20s.length; ++j) {
                 IERC20Metadata erc20 = IERC20Metadata(address(reg.erc20s[j]));
 
-                uint192 avg;
-                {
-                    (uint192 low, uint192 high) = reg.assets[j].price(); // {UoA/tok}
-                    if (low == 0) continue;
-                    avg = (low + high) / 2;
-                }
+                (uint192 low, ) = reg.assets[j].price(); // {UoA/tok}
+                if (low == 0) continue;
 
-                // RTokenTrader -- Settle first if possible so have full available balances
-                if (
-                    address(rTokenTrader.trades(erc20)) != address(0) &&
-                    rTokenTrader.trades(erc20).canSettle()
-                ) {
-                    FacetLib.settleTrade(rTokenTrader, erc20);
-                }
-                uint256 surplus = erc20.balanceOf(address(rTokenTrader));
-                if (surplus != 0) {
-                    $.rTokenRevenues.push(
+                for (uint256 traderIndex = 0; traderIndex < 2; ++traderIndex) {
+                    IRevenueTrader trader = traderIndex == 0
+                        ? rTokens[i].main().rTokenTrader()
+                        : rTokens[i].main().rsrTrader();
+
+                    // Settle first if possible so have full available balances
+                    bool settleable = false;
+                    if (
+                        address(trader.trades(erc20)) != address(0) &&
+                        trader.trades(erc20).canSettle()
+                    ) {
+                        settleable = true;
+                        FacetLib.settleTrade(trader, erc20);
+                    }
+
+                    IERC20 wouldBuy;
+                    if (address(trader.trades(erc20)) == address(0)) {
+                        wouldBuy = traderIndex == 0 ? IERC20(address(rTokens[i])) : rsr;
+                    }
+
+                    $.revenues.push(
                         Revenue(
                             rTokens[i],
+                            trader,
                             erc20,
+                            wouldBuy,
                             erc20.decimals(),
+                            settleable,
                             erc20.symbol(),
-                            surplus,
-                            reg.assets[j].bal(address(rTokenTrader)).mul(avg, FLOOR)
-                        )
-                    );
-                }
-
-                // RSRTrader -- Settle first if possible so have full available balances
-                if (
-                    address(rsrTrader.trades(erc20)) != address(0) &&
-                    rsrTrader.trades(erc20).canSettle()
-                ) {
-                    FacetLib.settleTrade(rsrTrader, erc20);
-                }
-                surplus = erc20.balanceOf(address(rsrTrader));
-                if (surplus != 0) {
-                    $.rsrRevenues.push(
-                        Revenue(
-                            rTokens[i],
-                            erc20,
-                            erc20.decimals(),
-                            erc20.symbol(),
-                            surplus,
-                            reg.assets[j].bal(address(rsrTrader)).mul(avg, FLOOR)
+                            reg.assets[j].bal(address(trader)).mul(low, FLOOR), // volume
+                            erc20.balanceOf(address(trader)), // balance
+                            trader.minTradeVolume().safeDiv(low, FLOOR).shiftl_toUint(
+                                int8(erc20.decimals())
+                            ) // minTradeAmount
                         )
                     );
                 }
@@ -109,18 +99,12 @@ contract RevenueFacet {
         }
 
         // Empty storage queues
-        rTokenRevenues = new Revenue[]($.rTokenRevenues.length);
-        rsrRevenues = new Revenue[]($.rsrRevenues.length);
-        for (uint256 i = $.rTokenRevenues.length; i > 0; --i) {
-            rTokenRevenues[i - 1] = $.rTokenRevenues[i - 1];
-            $.rTokenRevenues.pop();
+        _revenues = new Revenue[]($.revenues.length);
+        for (uint256 i = $.revenues.length; i > 0; --i) {
+            _revenues[i - 1] = $.revenues[i - 1];
+            $.revenues.pop();
         }
-        for (uint256 i = $.rsrRevenues.length; i > 0; --i) {
-            rsrRevenues[i - 1] = $.rsrRevenues[i - 1];
-            $.rsrRevenues.pop();
-        }
-        assert($.rTokenRevenues.length == 0);
-        assert($.rsrRevenues.length == 0);
+        assert($.revenues.length == 0);
     }
 
     // === Private ===
