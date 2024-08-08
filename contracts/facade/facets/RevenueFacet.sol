@@ -31,7 +31,7 @@ contract RevenueFacet {
     struct Revenue {
         IRToken rToken;
         IERC20Metadata erc20;
-        string name;
+        uint8 decimals;
         string symbol;
         uint256 surplus; // {qTok}
         uint192 value; // {UoA}
@@ -77,7 +77,7 @@ contract RevenueFacet {
                         Revenue(
                             rTokens[i],
                             erc20,
-                            erc20.name(),
+                            erc20.decimals(),
                             erc20.symbol(),
                             surplus,
                             reg.assets[j].bal(address(rTokenTrader)).mul(avg, FLOOR)
@@ -98,7 +98,7 @@ contract RevenueFacet {
                         Revenue(
                             rTokens[i],
                             erc20,
-                            erc20.name(),
+                            erc20.decimals(),
                             erc20.symbol(),
                             surplus,
                             reg.assets[j].bal(address(rsrTrader)).mul(avg, FLOOR)
