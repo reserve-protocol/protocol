@@ -790,18 +790,34 @@ describe('Facade + FacadeMonitor contracts', () => {
         await token.connect(addr1).transfer(rsrTrader.address, rsrTraderAmt)
         await token.connect(addr1).transfer(rTokenTrader.address, rTokenTraderAmt)
 
-        const [rTokenRevenues, rsrRevenues] = await facade.callStatic.revenues([
-          rToken.address,
-          rToken.address,
-        ]) // re-use same RToken since facade does not check for uniqueness
-        expect(rTokenRevenues.length).to.equal(rsrRevenues.length)
+        const revenues = await facade.callStatic.revenues([rToken.address, rToken.address]) // re-use same RToken since facade does not check for uniqueness
+        const minTradeVolume = await backingManager.minTradeVolume() // same for revenue traders
 
         // Check surpluses
-        for (let i = 0; i < rTokenRevenues.length; i++) {
-          expect(rsrRevenues[i].surplus).to.equal(rsrTraderAmt)
-          expect(rsrRevenues[i].value).to.equal(rsrTraderAmt)
-          expect(rTokenRevenues[i].surplus).to.equal(rTokenTraderAmt)
-          expect(rTokenRevenues[i].value).to.equal(rTokenTraderAmt)
+        for (let i = 0; i < revenues.length; i++) {
+          expect(revenues[i].rToken).to.equal(rToken.address)
+          if (i == 8 || i == 24) {
+            expect(revenues[i].trader).to.equal(rTokenTrader.address)
+            expect(revenues[i].buy).to.equal(rToken.address)
+            expect(revenues[i].symbol).to.equal('DAI')
+            expect(revenues[i].sellDecimals).to.equal(18)
+            expect(revenues[i].volume).to.equal(rTokenTraderAmt.mul(99).div(100))
+            expect(revenues[i].balance).to.equal(rTokenTraderAmt)
+            expect(revenues[i].minTradeAmount).to.equal(minTradeVolume.mul(100).div(99))
+          } else if (i == 9 || i == 25) {
+            expect(revenues[i].trader).to.equal(rsrTrader.address)
+            expect(revenues[i].buy).to.equal(rsr.address)
+            expect(revenues[i].symbol).to.equal('DAI')
+            expect(revenues[i].sellDecimals).to.equal(18)
+            expect(revenues[i].volume).to.equal(rsrTraderAmt.mul(99).div(100))
+            expect(revenues[i].balance).to.equal(rsrTraderAmt)
+            expect(revenues[i].minTradeAmount).to.equal(minTradeVolume.mul(100).div(99))
+          } else {
+            expect(revenues[i].sellDecimals).to.not.equal(0)
+            expect(revenues[i].volume).to.equal(0)
+            expect(revenues[i].balance).to.equal(0)
+            expect(revenues[i].minTradeAmount).to.not.equal(0)
+          }
         }
       })
     })
