@@ -5,7 +5,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
-import { IStaderStakePoolsManager } from "./vendor/IStaderStakePoolsManager.sol";
+import { IStaderStakePoolManager } from "./vendor/IStaderStakePoolManager.sol";
 import { IETHx } from "./vendor/IETHx.sol";
 
 /**
@@ -23,6 +23,8 @@ contract ETHxCollateral is AppreciatingFiatCollateral {
     AggregatorV3Interface public immutable targetPerTokChainlinkFeed;
     uint48 public immutable targetPerTokChainlinkTimeout;
 
+    IStaderStakePoolManager public immutable staderStakePoolManager;
+
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
     /// @param _targetPerTokChainlinkFeed {target/tok} price of ETHx in ETH terms
     constructor(
@@ -37,6 +39,9 @@ contract ETHxCollateral is AppreciatingFiatCollateral {
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+        staderStakePoolManager = IStaderStakePoolManager(
+            IETHx(address(erc20)).staderConfig().getStakePoolManager()
+        );
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, _targetPerTokChainlinkTimeout));
     }
 
@@ -70,9 +75,6 @@ contract ETHxCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        IStaderStakePoolsManager staderStakePoolsManager = IStaderStakePoolsManager(
-            IETHx(address(erc20)).staderConfig().getStakePoolManager()
-        );
-        return _safeWrap(staderStakePoolsManager.getExchangeRate());
+        return _safeWrap(staderStakePoolManager.getExchangeRate());
     }
 }
