@@ -5,6 +5,7 @@ import "../facade/facets/ActFacet.sol";
 import "../facade/facets/ReadFacet.sol";
 import "../facade/facets/BackingBufferFacet.sol";
 import "../facade/facets/MaxIssuableFacet.sol";
+import "../facade/facets/RevenueFacet.sol";
 
 interface IFacade {
     event SelectorSaved(address indexed facet, bytes4 indexed selector);
@@ -21,7 +22,8 @@ abstract contract TestIFacade is
     ActFacet,
     BackingBufferFacet,
     MaxIssuableFacet,
-    ReadFacet
+    ReadFacet,
+    RevenueFacet
 {
 
 }
