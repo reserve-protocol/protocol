@@ -10,7 +10,7 @@ import "../../libraries/Fixed.sol";
 import "../lib/FacetLib.sol";
 
 /**
- * @title AuctionsFacet
+ * @title RevenueFacet
  * @notice Single-function facet to return all revenues accumulating across RTokens
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
@@ -63,7 +63,7 @@ contract RevenueFacet {
                         ? rTokens[i].main().rTokenTrader()
                         : rTokens[i].main().rsrTrader();
 
-                    // Settle first if possible so have full available balances
+                    // Settle first if possible to have full available balances
                     bool settleable = false;
                     if (
                         address(trader.trades(erc20)) != address(0) &&
