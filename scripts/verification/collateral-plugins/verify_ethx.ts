@@ -26,7 +26,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Stader ETH - ETHx  **************************/
-  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+  const oracleError = combinedError(fp('0.005'), fp('0.005')) // 0.5% & 0.5%
   await verifyContract(
     chainId,
     deployments.collateral.ETHx,
@@ -34,12 +34,12 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-        oracleError: oracleError.toString(), // 0.5% & 2%,
+        oracleError: oracleError.toString(), // 0.5% & 0.5%
         erc20: networkConfig[chainId].tokens.ETHx,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '3600', // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~3%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4'), // revenueHiding = 0.01%

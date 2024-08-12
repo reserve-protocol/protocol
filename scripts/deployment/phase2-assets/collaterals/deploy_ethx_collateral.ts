@@ -40,38 +40,25 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  const deployedOracle: string[] = []
-
-  /********  Deploy Mock Oracle (if needed)  **************************/
   let ETHxOracleAddress: string = networkConfig[chainId].chainlinkFeeds.ETHx!
-  if (chainId == 5) {
-    const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
-    const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
-    await mockOracle.deployed()
-    console.log(
-      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockOracle.address} `
-    )
-    deployedOracle.push(mockOracle.address)
-    ETHxOracleAddress = mockOracle.address
-  }
 
   /********  Deploy Stader ETH Collateral - ETHx  **************************/
   const ETHxCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'ETHxCollateral'
   )
 
-  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+  const oracleError = combinedError(fp('0.005'), fp('0.005')) // 0.5% & 0.5%
 
   const collateral = <ETHxCollateral>await ETHxCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-      oracleError: oracleError.toString(), // 0.5% & 2%
+      oracleError: oracleError.toString(), // 0.5% & 0.5%
       erc20: networkConfig[chainId].tokens.ETHx,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~3%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
