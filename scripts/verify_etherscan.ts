@@ -67,7 +67,6 @@ async function main() {
       'collateral-plugins/verify_stakedao_usdc_usdcplus.ts',
       'collateral-plugins/verify_cusdcv3.ts',
       'collateral-plugins/verify_reth.ts',
-      'collateral-plugins/verify_ethx.ts',
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
       'collateral-plugins/verify_sdai.ts',
