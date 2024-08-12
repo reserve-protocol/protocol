@@ -48,10 +48,10 @@ contract StaderOracleMock is
 
     uint256[] private sdPrices;
 
-    bytes32 public constant ETHX_ER_UF = keccak256("ETHX_ER_UF"); // ETHx Exchange Rate, Balances Update Frequency
-    bytes32 public constant SD_PRICE_UF = keccak256("SD_PRICE_UF"); // SD Price Update Frequency Key
-    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF"); // Validator Status Update Frequency Key
-    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF"); // Withdrawn Validator Update Frequency Key
+    bytes32 public constant ETHX_ER_UF = keccak256("ETHX_ER_UF");
+    bytes32 public constant SD_PRICE_UF = keccak256("SD_PRICE_UF");
+    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF");
+    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF");
     bytes32 public constant MISSED_ATTESTATION_PENALTY_UF =
         keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed Attestation Penalty Update Frequency Key
     // Ready to Deposit Validators Update Frequency Key
