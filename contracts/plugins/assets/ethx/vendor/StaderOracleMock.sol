@@ -53,7 +53,7 @@ contract StaderOracleMock is
     bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF");
     bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF");
     bytes32 public constant MISSED_ATTESTATION_PENALTY_UF =
-        keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed Attestation Penalty Update Frequency Key
+        keccak256("MISSED_ATTESTATION_PENALTY_UF");
     // Ready to Deposit Validators Update Frequency Key
     bytes32 public constant VALIDATOR_VERIFICATION_DETAIL_UF =
         keccak256("VALIDATOR_VERIFICATION_DETAIL_UF");
