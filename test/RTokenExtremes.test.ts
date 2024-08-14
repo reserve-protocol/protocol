@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
-import { bn, fp, shortString } from '../common/numbers'
+import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ERC20MockDecimals,
   FiatCollateral,
@@ -139,12 +139,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       for (let i = 0; i < N; i++) {
         const erc20: ERC20MockDecimals = erc20s[i]
         // user owner starts with enough basket assets to issue (totalSupply - toIssue)
-        const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
+        const toIssue0Scaled: BigNumber = toBNDecimals(toIssue0, Number(collateralDecimals))
+        const toMint0: BigNumber = toIssue0Scaled.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(owner.address, toMint0)
         await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
 
         // user addr1 starts with enough basket assets to issue (toIssue)
-        const toMint: BigNumber = toIssue.mul(weights[i]).add(e18.sub(1)).div(e18)
+        const toIssueScaled: BigNumber = toBNDecimals(toIssue, Number(collateralDecimals))
+        const toMint: BigNumber = toIssueScaled.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(addr1.address, toMint)
         await erc20.connect(addr1).increaseAllowance(rToken.address, toMint)
       }
@@ -219,12 +221,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_RTOKENS, MAX_RTOKENS], // toIssue
         [MIN_RTOKENS, MAX_RTOKENS], // toRedeem
         [MAX_RTOKENS], // totalSupply
-        [bn(1)], // numAssets
+        [bn(1), bn(3)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
         [MIN_WEIGHT], // weightRest
         [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
         [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
-        [bn(6), bn(27)], // collateralDecimals
+        [bn(6), bn(18), bn(27)], // collateralDecimals
       ]
       paramList = cartesianProduct(...bounds)
     }

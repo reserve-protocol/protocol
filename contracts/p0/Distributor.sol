@@ -47,10 +47,6 @@ contract DistributorP0 is ComponentP0, IDistributor {
     /// Set RevenueShares for destinations. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
     /// @custom:governance
-    // checks: invariants hold in post-state
-    // effects:
-    //   destinations' = dests
-    //   distribution' = shares
     function setDistributions(address[] calldata dests, RevenueShare[] calldata shares)
         external
         governance

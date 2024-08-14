@@ -32,13 +32,6 @@ interface IAsset is IRewardable {
     /// @return high {UoA/tok} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
 
-    /// Should not revert
-    /// lotLow should be nonzero when the asset might be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
-
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
 
@@ -114,7 +107,7 @@ interface ICollateral is IAsset {
 
     /// @dev refresh()
     /// Refresh exchange rates and update default status.
-    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+    /// VERY IMPORTANT: In any valid implementation, status() MUST become DISABLED in refresh() if
     /// refPerTok() has ever decreased since last call.
 
     /// @return The canonical name of this collateral's target unit.
@@ -130,6 +123,9 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
+
+    /// @return {target/ref} The peg price of the token during the last update
+    function savedPegPrice() external view returns (uint192);
 }
 
 // Used only in Testing. Strictly speaking a Collateral does not need to adhere to this interface

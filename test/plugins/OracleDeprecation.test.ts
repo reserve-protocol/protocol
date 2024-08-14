@@ -44,7 +44,11 @@ describe('Chainlink Oracle', () => {
     await rToken.connect(wallet).issue(amt)
   })
 
-  describe('Chainlink deprecates an asset', () => {
+  // Expected behavior on deprecation
+  //  - Chainlink: latestRoundData() reverts and aggregator == address(0)
+  //  - Redstone:  latestRoundData() does not revert, only signal is outdated price
+  //  - Chronicle: latestRoundData() does not revert, but price is set to 0
+  describe('Chainlink/Chronicle deprecates an asset', () => {
     it('Refresh should mark the asset as IFFY', async () => {
       const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
       const [, aUSDCCollateral] = fixture.bySymbol.ausdc
@@ -58,6 +62,22 @@ describe('Chainlink Oracle', () => {
       await expect(aUSDCCollateral.tryPrice()).to.be.revertedWithCustomError(
         aUSDCCollateral,
         'StalePrice'
+      )
+    })
+
+    it('Price = 0 should mark the asset as IFFY (Chronicle)', async () => {
+      const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+      const [, aUSDCCollateral] = fixture.bySymbol.ausdc
+      const chainLinkOracle = MockV3AggregatorFactory.attach(await aUSDCCollateral.chainlinkFeed())
+      await aUSDCCollateral.refresh()
+      await aUSDCCollateral.tryPrice()
+      expect(await aUSDCCollateral.status()).to.equal(0)
+      await chainLinkOracle.updateAnswer(0)
+      await aUSDCCollateral.refresh()
+      expect(await aUSDCCollateral.status()).to.equal(1)
+      await expect(aUSDCCollateral.tryPrice()).to.be.revertedWithCustomError(
+        aUSDCCollateral,
+        'InvalidPrice'
       )
     })
   })

@@ -58,7 +58,11 @@ contract UnpricedFiatCollateralMock is FiatCollateral {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);

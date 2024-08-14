@@ -222,6 +222,8 @@ const scenarioSpecificTests = () => {
     expect(await comp.rTokenTrader.main()).to.equal(main.address)
     expect(await comp.furnace.main()).to.equal(main.address)
     expect(await comp.broker.main()).to.equal(main.address)
+
+    expect(await comp.basketHandler.enableIssuancePremium()).to.equal(true)
   })
 
   it('can create stable+ collateral with reward', async () => {
@@ -360,7 +362,7 @@ const scenarioSpecificTests = () => {
 
   it('performs validations on set prime basket if non-reweightable', async () => {
     // Check current basket
-    const [tokenAddrs] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
 
     expect(tokenAddrs.length).to.equal(9)
 
@@ -409,7 +411,7 @@ const scenarioSpecificTests = () => {
     await comp.basketHandler.savePrev()
     await scenario.refreshBasket()
 
-    const [newTokenAddrs, amts] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+    const [newTokenAddrs, amts] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
     expect(newTokenAddrs.length).to.equal(3)
 

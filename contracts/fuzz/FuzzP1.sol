@@ -467,7 +467,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
             ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
             : uint192(amount); // {qRTok / qRTok}
 
-        return main.basketHandler().quote(baskets, roundingMode);
+        return main.basketHandler().quote(baskets, true, roundingMode);
     }
 
     function _msgSender() internal view virtual override returns (address) {

@@ -4,7 +4,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ZERO_ADDRESS } from '#/common/constants'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from '../fixtures'
-import { AssetPluginRegistry, TestIDeployer, VersionRegistry, DeployerMock } from '../../typechain'
+import {
+  AssetPluginRegistry,
+  RoleRegistry,
+  TestIDeployer,
+  VersionRegistry,
+  DeployerMock,
+} from '../../typechain'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -25,6 +31,7 @@ describeP1('Asset Plugin Registry', () => {
   // Registries
   let versionRegistry: VersionRegistry
   let assetPluginRegistry: AssetPluginRegistry
+  let roleRegistry: RoleRegistry
 
   beforeEach(async () => {
     ;[owner, other] = await ethers.getSigners()
@@ -32,8 +39,11 @@ describeP1('Asset Plugin Registry', () => {
     // Deploy fixture
     ;({ deployer, basket } = await loadFixture(defaultFixture))
 
+    const RoleRegistryFactory = await ethers.getContractFactory('RoleRegistry')
+    roleRegistry = await RoleRegistryFactory.connect(owner).deploy()
+
     const versionRegistryFactory = await ethers.getContractFactory('VersionRegistry')
-    versionRegistry = await versionRegistryFactory.deploy(await owner.getAddress())
+    versionRegistry = await versionRegistryFactory.deploy(roleRegistry.address)
 
     const assetPluginRegistryFactory = await ethers.getContractFactory('AssetPluginRegistry')
     assetPluginRegistry = await assetPluginRegistryFactory.deploy(versionRegistry.address)
@@ -50,7 +60,7 @@ describeP1('Asset Plugin Registry', () => {
 
   describe('Deployment', () => {
     it('should set the owner/version registry correctly', async () => {
-      expect(await assetPluginRegistry.owner()).to.eq(await owner.getAddress())
+      expect(await assetPluginRegistry.roleRegistry()).to.eq(roleRegistry.address)
       expect(await assetPluginRegistry.versionRegistry()).to.eq(versionRegistry.address)
     })
   })
@@ -130,7 +140,7 @@ describeP1('Asset Plugin Registry', () => {
       // If not owner cannot register asset
       await expect(
         assetPluginRegistry.connect(other).registerAsset(tokenAsset.address, [versionHash])
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidCaller')
 
       // Invalid registration with zero address is also rejected
       await expect(
@@ -260,7 +270,7 @@ describeP1('Asset Plugin Registry', () => {
         assetPluginRegistry
           .connect(other)
           .updateVersionsByAsset(tokenAsset.address, [versionHash], [true])
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidCaller')
 
       // Fails if any of the versions is not registered
       const versionV1Hash = ethers.utils.keccak256(
@@ -385,7 +395,7 @@ describeP1('Asset Plugin Registry', () => {
         assetPluginRegistry
           .connect(other)
           .updateAssetsByVersion(versionHash, [tokenAsset.address], [true])
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWithCustomError(assetPluginRegistry, 'AssetPluginRegistry__InvalidCaller')
 
       // Fails if any of the assets is zero address
       await expect(

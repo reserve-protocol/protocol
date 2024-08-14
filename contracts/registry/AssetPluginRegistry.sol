@@ -3,29 +3,35 @@ pragma solidity 0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { VersionRegistry } from "./VersionRegistry.sol";
+import { RoleRegistry } from "./RoleRegistry.sol";
 
 /**
  * @title Asset Plugin Registry
  * @notice A tiny contract for tracking asset plugins
  */
-contract AssetPluginRegistry is Ownable {
+contract AssetPluginRegistry {
     VersionRegistry public versionRegistry;
+    RoleRegistry public roleRegistry;
     // versionHash => asset => isValid
-    mapping(bytes32 => mapping(address => bool)) public isValidAsset;
+    mapping(bytes32 => mapping(address => bool)) private _isValidAsset;
+    mapping(address => bool) public isDeprecated;
 
     error AssetPluginRegistry__InvalidAsset();
+    error AssetPluginRegistry__InvalidCaller();
     error AssetPluginRegistry__InvalidVersion();
     error AssetPluginRegistry__LengthMismatch();
 
     event AssetPluginRegistryUpdated(bytes32 versionHash, address asset, bool validity);
 
-    constructor(address _versionRegistry) Ownable() {
+    constructor(address _versionRegistry) {
         versionRegistry = VersionRegistry(_versionRegistry);
-
-        _transferOwnership(versionRegistry.owner());
+        roleRegistry = versionRegistry.roleRegistry();
     }
 
-    function registerAsset(address _asset, bytes32[] calldata validForVersions) external onlyOwner {
+    function registerAsset(address _asset, bytes32[] calldata validForVersions) external {
+        if (!roleRegistry.isOwner(msg.sender)) {
+            revert AssetPluginRegistry__InvalidCaller();
+        }
         if (_asset == address(0)) {
             revert AssetPluginRegistry__InvalidAsset();
         }
@@ -36,7 +42,7 @@ contract AssetPluginRegistry is Ownable {
                 revert AssetPluginRegistry__InvalidVersion();
             }
 
-            isValidAsset[versionHash][_asset] = true;
+            _isValidAsset[versionHash][_asset] = true;
 
             emit AssetPluginRegistryUpdated(versionHash, _asset, true);
         }
@@ -46,7 +52,10 @@ contract AssetPluginRegistry is Ownable {
         address _asset,
         bytes32[] calldata _versionHashes,
         bool[] calldata _validities
-    ) external onlyOwner {
+    ) external {
+        if (!roleRegistry.isOwner(msg.sender)) {
+            revert AssetPluginRegistry__InvalidCaller();
+        }
         if (_versionHashes.length != _validities.length) {
             revert AssetPluginRegistry__LengthMismatch();
         }
@@ -61,7 +70,7 @@ contract AssetPluginRegistry is Ownable {
                 revert AssetPluginRegistry__InvalidVersion();
             }
 
-            isValidAsset[versionHash][_asset] = _validities[i];
+            _isValidAsset[versionHash][_asset] = _validities[i];
 
             emit AssetPluginRegistryUpdated(versionHash, _asset, _validities[i]);
         }
@@ -71,7 +80,10 @@ contract AssetPluginRegistry is Ownable {
         bytes32 _versionHash,
         address[] calldata _assets,
         bool[] calldata _validities
-    ) external onlyOwner {
+    ) external {
+        if (!roleRegistry.isOwner(msg.sender)) {
+            revert AssetPluginRegistry__InvalidCaller();
+        }
         if (_assets.length != _validities.length) {
             revert AssetPluginRegistry__LengthMismatch();
         }
@@ -86,9 +98,25 @@ contract AssetPluginRegistry is Ownable {
                 revert AssetPluginRegistry__InvalidAsset();
             }
 
-            isValidAsset[_versionHash][asset] = _validities[i];
+            _isValidAsset[_versionHash][asset] = _validities[i];
 
             emit AssetPluginRegistryUpdated(_versionHash, asset, _validities[i]);
         }
+    }
+
+    function deprecateAsset(address _asset) external {
+        if (!roleRegistry.isOwnerOrEmergencyCouncil(msg.sender)) {
+            revert AssetPluginRegistry__InvalidCaller();
+        }
+
+        isDeprecated[_asset] = true;
+    }
+
+    function isValidAsset(bytes32 _versionHash, address _asset) external view returns (bool) {
+        if (!isDeprecated[_asset]) {
+            return _isValidAsset[_versionHash][_asset];
+        }
+
+        return false;
     }
 }

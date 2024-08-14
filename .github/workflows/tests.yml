@@ -183,7 +183,7 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3,curve/cvx}/*.test.ts
+      - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3,curve/cvx,mountain}/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
@@ -314,3 +314,17 @@ jobs:
           FORK_NETWORK: mainnet
           FORK: 1
           PROTO_IMPL: 1
+
+  registry-tests:
+    name: 'Registry Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn test:registries
+        env:
+          NODE_OPTIONS: '--max-old-space-size=32768'

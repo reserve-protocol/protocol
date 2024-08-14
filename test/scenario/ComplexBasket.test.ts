@@ -1577,8 +1577,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Running auctions will trigger recollateralization - cETH partial sale for weth
     // Will sell about 841K of cETH, expect to receive 8167 wETH (minimum)
     // We would still have about 438K to sell of cETH
-    let [low] = await cETHCollateral.price()
-    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(low)
+    let [, high] = await cETHCollateral.price()
+    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(high)
     const sellAmt = toBNDecimals(sellAmtUnscaled, 8)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
     // Price for cETH = 1200 / 50 = $24 at rate 50% = $12
@@ -1723,8 +1723,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 13K wETH @ 1200 = 15,600,000 USD of value, in RSR ~= 156,000 RSR (@100 usd)
     // We exceed maxTradeVolume so we need two auctions - Will first sell 10M in value
     // Sells about 101K RSR, for 8167 WETH minimum
-    ;[low] = await rsrAsset.price()
-    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(low)
+    ;[, high] = await rsrAsset.price()
+    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(high)
     const buyAmtBidRSR1 = toMinBuyAmt(
       sellAmtRSR1,
       rsrPrice,

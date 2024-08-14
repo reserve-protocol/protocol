@@ -236,6 +236,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
+            // Use same quantity-rounding as BasketHandler.basketsHeldBy()
             // {tok} = {BU} * {tok/BU}
             uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
             uint192 bal = asset.bal(address(this));
@@ -287,6 +288,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         ctx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            // quantities round up, without any issuance premium
         }
         ctx.bals = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {

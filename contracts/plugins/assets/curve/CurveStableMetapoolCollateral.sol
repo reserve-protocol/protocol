@@ -68,6 +68,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
@@ -99,6 +100,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         //   1. A moving average metric (unavailable in the cases we care about)
         //   2. Mapping oracle prices to expected pool balances using precise knowledge about
         //      the shape of the trading curve. (maybe we can do this in the future)
+        // TODO update this approach to be MEV-resistant
 
         // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
@@ -108,7 +110,11 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
 
         // {tok} -- FLOOR
-        uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
+        uint192 supply = shiftl_toFix(
+            metapoolToken.totalSupply(),
+            -int8(metapoolToken.decimals()),
+            FLOOR
+        );
         // We can always assume that the total supply is sufficiently non-zero
 
         // {UoA/tok} = {UoA} / {tok}
@@ -116,12 +122,14 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         high = aumHigh.div(supply, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
-        return (low, high, 0);
+        pegPrice = 0; // can't deduce from MEV-manipulable pricing unfortunately
+        // no issuance premium! more dangerous to be used inside RTokens as a result
     }
 
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token
     /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
     function tryPairedPrice() public view virtual returns (uint192 lowPaired, uint192 highPaired) {
@@ -170,7 +178,11 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         (uint192 underlyingAumLow, uint192 underlyingAumHigh) = totalBalancesValue();
 
         // {tokUnderlying} -- FLOOR
-        uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        uint192 underlyingSupply = shiftl_toFix(
+            lpToken.totalSupply(),
+            -int8(lpToken.decimals()),
+            FLOOR
+        );
         // We can always assume that the underlying supply is sufficiently non-zero
 
         // {UoA/tokUnderlying} = {UoA} / {tokUnderlying}
@@ -178,14 +190,22 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
 
         // {tokUnderlying} -- FLOOR
-        uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()));
+        uint192 balUnderlying = shiftl_toFix(
+            metapoolToken.balances(1),
+            -int8(lpToken.decimals()),
+            FLOOR
+        );
 
         // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
         aumLow = underlyingLow.mul(balUnderlying, FLOOR);
         aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
 
         // {pairedTok} -- FLOOR
-        uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
+        uint192 pairedBal = shiftl_toFix(
+            metapoolToken.balances(0),
+            -int8(pairedToken.decimals()),
+            FLOOR
+        );
 
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}

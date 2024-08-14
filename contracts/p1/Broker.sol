@@ -276,7 +276,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         );
         require(dutchAuctionLength != 0, "dutch auctions not enabled");
         require(
-            priceNotDecayed(req.sell) && priceNotDecayed(req.buy),
+            pricedAtTimestamp(req.sell) && pricedAtTimestamp(req.buy),
             "dutch auctions require live prices"
         );
 
@@ -294,8 +294,8 @@ contract BrokerP1 is ComponentP1, IBroker {
         return trade;
     }
 
-    /// @return true iff the price is not decayed, or it's the RTokenAsset
-    function priceNotDecayed(IAsset asset) private view returns (bool) {
+    /// @return true iff the asset has been priced at this timestamp, or it's the RTokenAsset
+    function pricedAtTimestamp(IAsset asset) private view returns (bool) {
         return asset.lastSave() == block.timestamp || address(asset.erc20()) == address(rToken);
     }
 
