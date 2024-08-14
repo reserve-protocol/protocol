@@ -116,7 +116,6 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     it('can set prime basket and refresh', async () => {
       // Check current basket
-      //console.log(comp.basketHandler)
       const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
 
       expect(tokenAddrs.length).to.equal(9)
