@@ -70,6 +70,7 @@ export const CONFIG: IConfig = {
   issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
   scalingRedemptionRate: fp('0.05'),
   redemptionRateFloor: fp('2e7'),
+  enableIssuancePremium: true
 }
 
 export const ZERO_COMPONENTS = {

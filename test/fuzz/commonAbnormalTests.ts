@@ -116,7 +116,8 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     it('can set prime basket and refresh', async () => {
       // Check current basket
-      const [tokenAddrs] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+      //console.log(comp.basketHandler)
+      const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
 
       expect(tokenAddrs.length).to.equal(9)
 
@@ -152,7 +153,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await comp.basketHandler.savePrev()
       await scenario.refreshBasket()
 
-      const [newTokenAddrs, amts] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+      const [newTokenAddrs, amts] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
       expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
       expect(newTokenAddrs.length).to.equal(3)
 
@@ -193,7 +194,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.refreshBasket()
 
       // Check new basket
-      const [newTokenAddrs, amts] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+      const [newTokenAddrs, amts] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
       expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
       expect(newTokenAddrs.length).to.equal(9)
 

@@ -360,7 +360,7 @@ const scenarioSpecificTests = () => {
 
   it('performs validations on set prime basket if non-reweightable', async () => {
     // Check current basket
-    const [tokenAddrs] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
 
     expect(tokenAddrs.length).to.equal(9)
 
@@ -409,7 +409,7 @@ const scenarioSpecificTests = () => {
     await comp.basketHandler.savePrev()
     await scenario.refreshBasket()
 
-    const [newTokenAddrs, amts] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
+    const [newTokenAddrs, amts] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
     expect(newTokenAddrs.length).to.equal(3)
 
