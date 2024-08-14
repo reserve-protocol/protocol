@@ -625,6 +625,10 @@ contract NormalOpsScenario {
         );
     }
 
+    function setIssuancePremiumEnabled(uint256 seed) public {
+        BasketHandlerP1(address(main.basketHandler())).setIssuancePremiumEnabled((seed % 2) == 0);
+    }
+
     function resetStakes() public {
         main.stRSR().resetStakes();
     }

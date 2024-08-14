@@ -937,6 +937,10 @@ contract ChaosOpsScenario {
         main.setLongFreeze(freeze);
     }
 
+    function setIssuancePremiumEnabled(uint256 seed) public {
+        BasketHandlerP1(address(main.basketHandler())).setIssuancePremiumEnabled((seed % 2) == 0);
+    }
+
     // Grant/Revoke Roles
     function grantRole(uint8 which, uint8 userID) public {
         address user = main.someAddr(userID);

@@ -218,6 +218,8 @@ const scenarioSpecificTests = () => {
 
     // Uses reweightable basket
     expect(await comp.basketHandler.reweightable()).to.be.true
+
+    expect(await comp.basketHandler.enableIssuancePremium()).to.equal(true)
   })
 
   it('can create stable+ collateral with reward', async () => {

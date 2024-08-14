@@ -222,6 +222,8 @@ const scenarioSpecificTests = () => {
     expect(await comp.rTokenTrader.main()).to.equal(main.address)
     expect(await comp.furnace.main()).to.equal(main.address)
     expect(await comp.broker.main()).to.equal(main.address)
+
+    expect(await comp.basketHandler.enableIssuancePremium()).to.equal(true)
   })
 
   it('can create stable+ collateral with reward', async () => {

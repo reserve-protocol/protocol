@@ -192,6 +192,8 @@ const scenarioSpecificTests = () => {
     expect(await comp.broker.main()).to.equal(main.address)
 
     expect(await comp.basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+    expect(await comp.basketHandler.enableIssuancePremium()).to.equal(true)
   })
 
   it('has only initially-true properties', async () => {
