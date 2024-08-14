@@ -208,7 +208,7 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
             params.minTradeVolume
         );
 
-        basketHandler.init(this, params.warmupPeriod, params.reweightable);
+        basketHandler.init(this, params.warmupPeriod, params.reweightable, params.enableIssuancePremium);
         rsrTrader.init(this, rsr, params.maxTradeSlippage, params.minTradeVolume);
         rTokenTrader.init(
             this,

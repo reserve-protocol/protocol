@@ -902,46 +902,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(_targetAmts.length() == 0, "missing target weights");
     }
 
-    /// Normalize the target amounts to maintain constant UoA value with the current config
-    /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
-    function normalizeByPrice(IERC20[] calldata erc20s, uint192[] memory targetAmts)
-        private
-        returns (uint192[] memory newTargetAmts)
-    {
-        main.poke();
-        require(status() == CollateralStatus.SOUND, "unsound basket");
-        uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
-
-        // Compute current basket price
-        (uint192 low, uint192 high) = _price(false); // {UoA/BU}
-        assert(low > 0 && high < FIX_MAX); // implied by SOUND status
-        uint192 p = low.plus(high).divu(2, FLOOR); // {UoA/BU}
-
-        // Compute would-be new price
-        uint192 newP; // {UoA/BU}
-        for (uint256 i = 0; i < len; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(erc20s[i]); // reverts if unregistered
-            require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
-
-            (low, high) = coll.price(); // {UoA/tok}
-            require(low > 0 && high < FIX_MAX, "invalid price");
-
-            // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
-            newP += targetAmts[i].mulDiv(
-                low.plus(high).divu(2, FLOOR),
-                coll.targetPerRef().mul(coll.refPerTok(), CEIL),
-                FLOOR
-            );
-        }
-
-        // Scale targetAmts by the price ratio
-        newTargetAmts = new uint192[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            // {target/BU} = {target/BU} * {UoA/BU} / {UoA/BU}
-            newTargetAmts[i] = targetAmts[i].mulDiv(p, newP, CEIL);
-        }
-    }
-
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,
     /// and not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {

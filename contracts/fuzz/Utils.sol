@@ -30,7 +30,8 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         issuanceThrottle: tParams,
         redemptionThrottle: tParams,
         warmupPeriod: 259200,
-        reweightable: false
+        reweightable: false,
+        enableIssuancePremium: false
     });
 }
 
