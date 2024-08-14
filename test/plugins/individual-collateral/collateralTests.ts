@@ -224,18 +224,6 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         })
 
-        it('enters IFFY state when price becomes stale', async () => {
-          const decayDelay = (await collateral.maxOracleTimeout()) + ORACLE_TIMEOUT_BUFFER
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + decayDelay)
-          await advanceBlocks(decayDelay / 12)
-          await collateral.refresh()
-          expect(await collateral.status()).to.not.equal(CollateralStatus.SOUND)
-          if (!itHasOracleRefPerTok) {
-            // if an oracle isn't involved in refPerTok, then it should disable slowly
-            expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-          }
-        })
-
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)

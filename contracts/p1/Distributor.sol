@@ -52,12 +52,13 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
+    /// Consider calling `BackingManager.forwardRevenue()` before to ensure fair past distribution
     /// @custom:governance
     // checks: invariants hold in post-state
     // effects:
     //   destinations' = destinations.add(dest)
     //   distribution' = distribution.set(dest, share)
-    function setDistribution(address dest, RevenueShare memory share) external governance {
+    function setDistribution(address dest, RevenueShare calldata share) external governance {
         // solhint-disable-next-line no-empty-blocks
         try main.rsrTrader().distributeTokenToBuy() {} catch {}
         // solhint-disable-next-line no-empty-blocks
@@ -71,11 +72,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     /// Set RevenueShares for destinations. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
+    /// Consider calling `BackingManager.forwardRevenue()` before to ensure fair past distribution
     /// @custom:governance
     // checks: invariants hold in post-state
     // effects:
-    //   destinations' = dests
-    //   distribution' = shares
+    //   destinations' = destinations.add(dests[i]) for i < dests.length
+    //   distribution' = distribution.set(dests[i], shares[i]) for i < dests.length
     function setDistributions(address[] calldata dests, RevenueShare[] calldata shares)
         external
         governance
@@ -174,11 +176,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         DAOFeeRegistry daoFeeRegistry = main.daoFeeRegistry();
         if (address(daoFeeRegistry) != address(0)) {
-            // DAO Fee
-            if (isRSR) {
+            if (totalShares > paidOutShares) {
                 (address recipient, , ) = main.daoFeeRegistry().getFeeDetails(address(rToken));
 
-                if (recipient != address(0) && tokensPerShare * (totalShares - paidOutShares) > 0) {
+                if (recipient != address(0)) {
                     IERC20Upgradeable(address(erc20)).safeTransferFrom(
                         caller,
                         recipient,
@@ -215,6 +216,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
             .daoFeeRegistry()
             .getFeeDetails(address(rToken));
 
+            // Small DAO fees <1% not recommended; ~10% precision due to rounding at 0.1% fee
             if (feeRecipient != address(0) && feeNumerator != 0) {
                 revTotals.rsrTotal += uint24(
                     (feeNumerator * uint256(revTotals.rTokenTotal + revTotals.rsrTotal)) /

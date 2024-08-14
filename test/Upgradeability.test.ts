@@ -257,7 +257,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BasketHandler', async () => {
       const newBasketHandler: BasketHandlerP1 = <BasketHandlerP1>await upgrades.deployProxy(
         BasketHandlerFactory,
-        [main.address, config.warmupPeriod, config.reweightable],
+        [main.address, config.warmupPeriod, config.reweightable, config.enableIssuancePremium],
         {
           initializer: 'init',
           kind: 'uups',
@@ -903,7 +903,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
         beforeEach(async () => {
           const versionRegistryFactory = await ethers.getContractFactory('VersionRegistry')
-          versionRegistry = await versionRegistryFactory.deploy(owner.address)
+          const mockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+          const mockRoleRegistry = await mockRoleRegistryFactory.deploy()
+          versionRegistry = await versionRegistryFactory.deploy(mockRoleRegistry.address)
 
           const assetPluginRegistryFactory = await ethers.getContractFactory('AssetPluginRegistry')
           assetPluginRegistry = await assetPluginRegistryFactory.deploy(versionRegistry.address)

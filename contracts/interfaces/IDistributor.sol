@@ -46,7 +46,7 @@ interface IDistributor is IComponent {
     function setDistribution(address dest, RevenueShare calldata share) external;
 
     /// @custom:governance
-    function setDistributions(address[] calldata dest, RevenueShare[] calldata share) external;
+    function setDistributions(address[] calldata dests, RevenueShare[] calldata shares) external;
 
     /// Distribute the `erc20` token across all revenue destinations
     /// Only callable by RevenueTraders

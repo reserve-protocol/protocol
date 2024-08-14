@@ -68,10 +68,6 @@ const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
 
-const getDescribeFork = (targetNetwork = 'mainnet') => {
-  return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
-}
-
 export default function fn<X extends CurveCollateralFixtureContext>(
   fixtures: CurveCollateralTestSuiteFixtures<X>
 ) {

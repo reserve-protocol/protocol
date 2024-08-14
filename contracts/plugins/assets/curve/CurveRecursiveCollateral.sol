@@ -48,9 +48,10 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return {target/ref} Unused. Always 0
+    /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
         external
         view
@@ -59,7 +60,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         returns (
             uint192 low,
             uint192 high,
-            uint192
+            uint192 pegPrice
         )
     {
         // This pricing method is MEV-resistant, but only gives a lower-bound
@@ -69,6 +70,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
 
         // Get reference token price
         (uint192 refLow, uint192 refHigh) = this.tokenPrice(0); // reference token
+        pegPrice = refLow.plus(refHigh).divu(2, FLOOR);
 
         // Multiply by the underlyingRefPerTok()
         uint192 rate = underlyingRefPerTok();
@@ -76,7 +78,6 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
         high = refHigh.mul(rate, CEIL);
 
         assert(low <= high); // not obviously true by inspection
-        return (low, high, 0);
     }
 
     /// Should not revert
@@ -122,7 +123,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
             // === Check for soft default ===
 
             // Check for soft default + save prices
-            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                 // {UoA/tok}, {UoA/tok}, {UoA/tok}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -130,6 +131,7 @@ contract CurveRecursiveCollateral is CurveStableCollateral {
                 if (high < FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced

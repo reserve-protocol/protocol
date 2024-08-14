@@ -176,9 +176,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
         require(
-            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            gas > (64 * GAS_FOR_BH_QTY) / 63 + GAS_FOR_DISABLE_BASKET,
             "not enough gas to unregister safely"
         );
-        return gas - GAS_FOR_DISABLE_BASKET;
+        return GAS_FOR_BH_QTY;
     }
 }

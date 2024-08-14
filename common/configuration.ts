@@ -104,6 +104,10 @@ export interface ITokens {
   bbUSDT?: string
   steakPYUSD?: string
   Re7WETH?: string
+
+  // Mountain
+  USDM?: string
+  wUSDM?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -541,6 +545,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       saArbUSDCn: '', // TODO our wrapper. remove from deployment script after placing here
       aArbUSDT: '0x6ab707aca953edaefbc4fd23ba73294241490620',
       saArbUSDT: '', // TODO our wrapper. remove from deployment script after placing here
+      USDM: '0x59d9356e565ab3a36dd77763fc0d87feaf85508c',
+      wUSDM: '0x57f5e098cad7a3d1eed53991d4d66c45c9af7812',
     },
     chainlinkFeeds: {
       ARB: '0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6',
@@ -550,6 +556,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDT: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
       RSR: '0xcfF9349ec6d027f20fC9360117fef4a1Ad38B488',
       crvUSD: '0x0a32255dd4BB6177C994bAAc73E0606fDD568f66',
+      wUSDM: '0xdC6720c996Fad27256c7fd6E0a271e2A4687eF18',
     },
     GNOSIS_EASY_AUCTION: '0xcD033976a011F41D2AB6ef47984041568F818E73', // our deployment
     COMET_REWARDS: '0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae',
@@ -592,6 +599,7 @@ export interface IConfig {
   withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
   reweightable: boolean
+  enableIssuancePremium: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber

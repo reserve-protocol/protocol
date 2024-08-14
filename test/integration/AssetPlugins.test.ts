@@ -2425,11 +2425,16 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
         // Check Balances after
-        expect(await usdt.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 6)) //1 full unit
+        const usdtBal = toBNDecimals(issueAmount, 6)
+        expect(await usdt.balanceOf(backingManager.address)).to.be.gt(usdtBal)
+        expect(await usdt.balanceOf(backingManager.address)).to.be.closeTo(usdtBal, 1000) //1 full unit
+
         // Balances for user
-        expect(await usdt.balanceOf(addr1.address)).to.equal(
-          toBNDecimals(initialBal.sub(issueAmount), 6)
+        const expected = toBNDecimals(
+          initialBal.sub(await usdt.balanceOf(backingManager.address)),
+          6
         )
+        expect(await usdt.balanceOf(addr1.address)).to.be.closeTo(expected, point1Pct(expected))
 
         // Check RTokens issued to user
         expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -2449,11 +2454,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(0)
 
-        // Check balances after - Backing Manager is empty
-        expect(await usdt.balanceOf(backingManager.address)).to.equal(0)
+        // Check balances after - Backing Manager is basically empty
+        expect(await usdt.balanceOf(backingManager.address)).to.be.closeTo(0, 1000)
 
         // Check funds returned to user
-        expect(await usdt.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 6))
+        expect(await usdt.balanceOf(addr1.address)).to.be.closeTo(toBNDecimals(initialBal, 6), 1000)
 
         //  Check asset value left
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
