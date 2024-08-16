@@ -18,8 +18,9 @@ import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
-  ORACLE_ERROR,
-  ORACLE_TIMEOUT,
+  ETH_ORACLE_ERROR,
+  ETH_ORACLE_TIMEOUT,
+  ETHX_ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
@@ -57,13 +58,13 @@ export const defaultETHxCollateralOpts: ETHxCollateralOpts = {
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
-  oracleTimeout: ORACLE_TIMEOUT,
-  oracleError: ORACLE_ERROR,
+  oracleTimeout: ETH_ORACLE_TIMEOUT,
+  oracleError: ETH_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   targetPerTokChainlinkFeed: ETHx_ETH_PRICE_FEED,
-  targetPerTokChainlinkTimeout: ORACLE_TIMEOUT,
+  targetPerTokChainlinkTimeout: ETHX_ORACLE_TIMEOUT,
   revenueHiding: fp('0'),
 }
 
