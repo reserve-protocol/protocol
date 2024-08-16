@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
-import { bn, fp } from '../../../../common/numbers'
+import { fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
@@ -15,6 +15,13 @@ import {
 import { priceTimeout, combinedError } from '../../utils'
 import { ETHxCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
+import {
+  ETH_ORACLE_ERROR,
+  ETH_ORACLE_TIMEOUT,
+  ETHX_ORACLE_ERROR,
+  ETHX_ORACLE_TIMEOUT,
+  DELAY_UNTIL_DEFAULT,
+} from '../../../../test/plugins/individual-collateral/ethx/constants'
 
 async function main() {
   // ==== Read Configuration ====
@@ -40,14 +47,12 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  let ETHxOracleAddress: string = networkConfig[chainId].chainlinkFeeds.ETHx!
-
   /********  Deploy Stader ETH Collateral - ETHx  **************************/
   const ETHxCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'ETHxCollateral'
   )
 
-  const oracleError = combinedError(fp('0.005'), fp('0.005')) // 0.5% & 0.5%
+  const oracleError = combinedError(ETH_ORACLE_ERROR, ETHX_ORACLE_ERROR) // 0.5% & 0.5%
 
   const collateral = <ETHxCollateral>await ETHxCollateralFactory.connect(deployer).deploy(
     {
@@ -56,14 +61,14 @@ async function main() {
       oracleError: oracleError.toString(), // 0.5% & 0.5%
       erc20: networkConfig[chainId].tokens.ETHx,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr,
+      oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~3%
-      delayUntilDefault: bn('86400').toString(), // 24h
+      defaultThreshold: fp('0.02').add(ETHX_ORACLE_ERROR).toString(), // ~2.5%
+      delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
-    ETHxOracleAddress, // refPerTokChainlinkFeed
-    '86400' // refPerTokChainlinkTimeout
+    networkConfig[chainId].chainlinkFeeds.ETHx, // targetPerTokChainlinkFeed
+    ETHX_ORACLE_TIMEOUT.toString() // targetPerTokChainlinkTimeout - 24h
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()

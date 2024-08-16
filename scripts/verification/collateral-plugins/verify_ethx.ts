@@ -1,13 +1,20 @@
 import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
-import { fp, bn } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { priceTimeout, verifyContract, combinedError } from '../../deployment/utils'
+import {
+  ETH_ORACLE_TIMEOUT,
+  ETH_ORACLE_ERROR,
+  DELAY_UNTIL_DEFAULT,
+  ETHX_ORACLE_ERROR,
+  ETHX_ORACLE_TIMEOUT,
+} from '../../../test/plugins/individual-collateral/ethx/constants'
 
 let deployments: IAssetCollDeployments
 
@@ -26,7 +33,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Stader ETH - ETHx  **************************/
-  const oracleError = combinedError(fp('0.005'), fp('0.005')) // 0.5% & 0.5%
+  const oracleError = combinedError(ETH_ORACLE_ERROR, ETHX_ORACLE_ERROR) // 0.5% & 0.5%
   await verifyContract(
     chainId,
     deployments.collateral.ETHx,
@@ -37,16 +44,16 @@ async function main() {
         oracleError: oracleError.toString(), // 0.5% & 0.5%
         erc20: networkConfig[chainId].tokens.ETHx,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: '3600', // 1 hr,
+        oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~3%
-        delayUntilDefault: bn('86400').toString(), // 24h
+        defaultThreshold: fp('0.02').add(ETHX_ORACLE_ERROR).toString(), // ~3%
+        delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 24h
       },
       fp('1e-4'), // revenueHiding = 0.01%
-      networkConfig[chainId].chainlinkFeeds.ETHx, // refPerTokChainlinkFeed
-      '86400', // refPerTokChainlinkTimeout
+      networkConfig[chainId].chainlinkFeeds.ETHx, // targetPerTokChainlinkFeed
+      ETHX_ORACLE_TIMEOUT.toString(), // targetPerTokChainlinkTimeout
     ],
-    'contracts/plugins/assets/stader/ETHxCollateral.sol:ETHxCollateral'
+    'contracts/plugins/assets/ethx/ETHxCollateral.sol:ETHxCollateral'
   )
 }
 
