@@ -53,8 +53,8 @@ async function main() {
       'CBEthCollateral'
     )) as CBEthCollateral__factory
 
-    const CBETH_ORACLE_ERROR = fp('0.02') // 2%
-    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% & 2%
+    const CBETH_ORACLE_ERROR = fp('0.01') // 1%
+    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% & 1%
 
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
@@ -65,7 +65,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '3600', // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(CBETH_ORACLE_ERROR).toString(), // 4%
+        defaultThreshold: fp('0.02').add(CBETH_ORACLE_ERROR).toString(), // 3%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4').toString(), // revenueHiding = 0.01%
