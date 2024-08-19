@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
           cache: yarn
 
       - name: Install Foundry
@@ -45,8 +45,8 @@ jobs:
         with:
           NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
-          NETLIFY_DEPLOY_MESSAGE: "Prod deploy v${{ github.ref }}"
+          NETLIFY_DEPLOY_MESSAGE: 'Prod deploy v${{ github.ref }}'
           NETLIFY_DEPLOY_TO_PROD: true
           build_directory: tools/docgen/book
-          install_command: "echo Skipping installing the dependencies"
-          build_command: "echo Skipping building the web files"
+          install_command: 'echo Skipping installing the dependencies'
+          build_command: 'echo Skipping building the web files'
