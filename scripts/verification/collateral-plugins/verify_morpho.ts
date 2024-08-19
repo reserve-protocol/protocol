@@ -76,7 +76,8 @@ async function main() {
     'MorphoNonFiatCollateral',
     deployments.collateral.maWBTC as string
   )
-  const combinedBTCWBTCError = combinedError(fp('0.02'), fp('0.005'))
+  const wbtcOracleError = fp('0.02') // 2%
+  const combinedBTCWBTCError = combinedError(wbtcOracleError, fp('0.005'))
 
   await verifyContract(
     chainId,
@@ -88,7 +89,7 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
+        defaultThreshold: fp('0.01').add(wbtcOracleError), // 3%
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
         erc20: await maWBTC.erc20(),

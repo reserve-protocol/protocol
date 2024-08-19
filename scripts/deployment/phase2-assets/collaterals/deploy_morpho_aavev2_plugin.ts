@@ -181,7 +181,7 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
+        defaultThreshold: fp('0.01').add(wbtcOracleError), // 3%
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
         erc20: maWBTC.address,
@@ -233,7 +233,7 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
+        defaultThreshold: fp('0.01').add(ethStEthOracleError), // 1.5%
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
         erc20: maStETH.address,

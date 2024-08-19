@@ -53,7 +53,8 @@ async function main() {
       'CBEthCollateral'
     )) as CBEthCollateral__factory
 
-    const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+    const CBETH_ORACLE_ERROR = fp('0.02') // 2%
+    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% & 2%
 
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
@@ -64,7 +65,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '3600', // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+        defaultThreshold: fp('0.02').add(CBETH_ORACLE_ERROR).toString(), // 4%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4').toString(), // revenueHiding = 0.01%
@@ -80,7 +81,8 @@ async function main() {
       'CBEthCollateralL2'
     )) as CBEthCollateralL2__factory
 
-    const oracleError = combinedError(fp('0.0015'), fp('0.005')) // 0.15% & 0.5%
+    const CBETH_ORACLE_ERROR = fp('0.005') // 0.5%
+    const oracleError = combinedError(fp('0.0015'), CBETH_ORACLE_ERROR) // 0.15% & 0.5%
 
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
@@ -91,7 +93,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '1200', // 20 min
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~2.5%
+        defaultThreshold: fp('0.02').add(CBETH_ORACLE_ERROR).toString(), // 2.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4').toString(), // revenueHiding = 0.01%

@@ -535,7 +535,7 @@ async function main() {
       oracleTimeout: '86400', // 24 hr
       targetUnitOracleTimeout: '3600', // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
-      defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
+      defaultThreshold: fp('0.01').add(wbtcOracleError).toString(), // 3%
       delayUntilDefault: bn('86400').toString(), // 24h
       revenueHiding: revenueHiding.toString(),
     })
@@ -591,7 +591,7 @@ async function main() {
       oracleTimeout: '86400', // 24 hr
       targetUnitOracleTimeout: '3600', // 1 hr
       targetName: ethers.utils.formatBytes32String('BTC'),
-      defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
+      defaultThreshold: fp('0.01').add(wbtcOracleError).toString(), // 3%
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', wBTCCollateral)
