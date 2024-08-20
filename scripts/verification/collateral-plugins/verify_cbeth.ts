@@ -28,7 +28,7 @@ async function main() {
   /********  Verify Coinbase staked ETH - CBETH  **************************/
   if (!baseL2Chains.includes(hre.network.name)) {
     const CBETH_ORACLE_ERROR = fp('0.01')
-    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% & 1%
+    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% + 1%
 
     await verifyContract(
       chainId,
@@ -37,7 +37,7 @@ async function main() {
         {
           priceTimeout: priceTimeout.toString(),
           chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-          oracleError: oracleError.toString(), // 0.5% & 2%
+          oracleError: oracleError.toString(), // 0.5% + 2%
           erc20: networkConfig[chainId].tokens.cbETH!,
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '3600', // 1 hr
@@ -53,7 +53,7 @@ async function main() {
     )
   } else if (chainId == '8453' || chainId == '84531') {
     const CBETH_ORACLE_ERROR = fp('0.005')
-    const oracleError = combinedError(fp('0.0015'), CBETH_ORACLE_ERROR) // 0.15% & 0.5%
+    const oracleError = combinedError(fp('0.0015'), CBETH_ORACLE_ERROR) // 0.15% + 0.5%
     await verifyContract(
       chainId,
       deployments.collateral.cbETH,
@@ -61,7 +61,7 @@ async function main() {
         {
           priceTimeout: priceTimeout.toString(),
           chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-          oracleError: oracleError.toString(), // 0.15% & 0.5%,
+          oracleError: oracleError.toString(), // 0.15% + 0.5%,
           erc20: networkConfig[chainId].tokens.cbETH!,
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '1200', // 20 min

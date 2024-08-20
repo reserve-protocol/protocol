@@ -52,13 +52,13 @@ async function main() {
     'ETHxCollateral'
   )
 
-  const oracleError = combinedError(ETH_ORACLE_ERROR, ETHX_ORACLE_ERROR) // 0.5% & 0.5%
+  const oracleError = combinedError(ETH_ORACLE_ERROR, ETHX_ORACLE_ERROR) // 0.5% + 0.5%
 
   const collateral = <ETHxCollateral>await ETHxCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-      oracleError: oracleError.toString(), // 0.5% & 0.5%
+      oracleError: oracleError.toString(), // 0.5% + 0.5%
       erc20: networkConfig[chainId].tokens.ETHx,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
