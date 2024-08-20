@@ -61,7 +61,8 @@ async function main() {
     'RethCollateral'
   )
 
-  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+  const RETH_ORACLE_ERROR = fp('0.02')
+  const oracleError = combinedError(fp('0.005'), RETH_ORACLE_ERROR) // 0.5% & 2%
 
   const collateral = <RethCollateral>await RethCollateralFactory.connect(deployer).deploy(
     {
@@ -72,7 +73,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+      defaultThreshold: fp('0.02').add(RETH_ORACLE_ERROR).toString(), // 4%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
