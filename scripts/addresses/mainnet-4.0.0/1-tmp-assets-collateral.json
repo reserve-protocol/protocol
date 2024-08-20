@@ -1,0 +1,9 @@
+{
+  "assets": {},
+  "collateral": {
+    "ETHx": "0x73a36258E6A48D0095D1997Fec7F51e191B4Ec81"
+  },
+  "erc20s": {
+    "ETHx": "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b"
+  }
+}
