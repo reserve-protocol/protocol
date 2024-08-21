@@ -117,7 +117,7 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
 
     // SFraxEthCollateral
     const SFraxEthCollateralFactory = await hre.ethers.getContractFactory('SFraxEthCollateral')
-    let oracleError = combinedError(fp('0.005'), fp('0.0002')) // 0.5% & 0.02%
+    let oracleError = combinedError(fp('0.005'), fp('0.0002')) // 0.5% + 0.02%
     const newSfrxETH = <SFraxEthCollateral>await SFraxEthCollateralFactory.deploy(
       {
         priceTimeout: '604800',
@@ -158,7 +158,7 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
 
     // RethCollateral
     const RethCollateralFactory = await hre.ethers.getContractFactory('RethCollateral')
-    oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+    oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% + 2%
     const newRETH = <RethCollateral>await RethCollateralFactory.deploy(
       {
         priceTimeout: '604800',

@@ -27,7 +27,7 @@ async function main() {
 
   /********  Verify Rocket-Pool ETH - rETH  **************************/
   const RETH_ORACLE_ERROR = fp('0.02')
-  const oracleError = combinedError(fp('0.005'), RETH_ORACLE_ERROR) // 0.5% & 2%
+  const oracleError = combinedError(fp('0.005'), RETH_ORACLE_ERROR) // 0.5% + 2%
   await verifyContract(
     chainId,
     deployments.collateral.rETH,
@@ -35,7 +35,7 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-        oracleError: oracleError.toString(), // 0.5% & 2%,
+        oracleError: oracleError.toString(), // 0.5% + 2%,
         erc20: networkConfig[chainId].tokens.rETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '3600', // 1 hr,

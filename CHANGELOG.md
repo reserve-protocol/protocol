@@ -60,6 +60,11 @@ All components: make Main the only component that can call `upgradeTo()`
 
 Add `savedPegPrice` to `ICollateral` interface
 
+- cbETH: Fix deploy script to use right defaultThreshold
+- rETH: Fix deploy script to use right defaultThreshold
+- wstETH: Fix deploy script to use right defaultThreshold
+- sfrxETH: Fix deploy script to use right defaultThreshold
+
 ### Trading
 
 - `GnosisTrade`

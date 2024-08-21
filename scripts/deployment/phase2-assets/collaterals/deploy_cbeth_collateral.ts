@@ -54,13 +54,13 @@ async function main() {
     )) as CBEthCollateral__factory
 
     const CBETH_ORACLE_ERROR = fp('0.01') // 1%
-    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% & 1%
+    const oracleError = combinedError(fp('0.005'), CBETH_ORACLE_ERROR) // 0.5% + 1%
 
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-        oracleError: oracleError.toString(), // 0.5% & 2%,
+        oracleError: oracleError.toString(), // 0.5% + 2%,
         erc20: networkConfig[chainId].tokens.cbETH!,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '3600', // 1 hr,
@@ -82,13 +82,13 @@ async function main() {
     )) as CBEthCollateralL2__factory
 
     const CBETH_ORACLE_ERROR = fp('0.005') // 0.5%
-    const oracleError = combinedError(fp('0.0015'), CBETH_ORACLE_ERROR) // 0.15% & 0.5%
+    const oracleError = combinedError(fp('0.0015'), CBETH_ORACLE_ERROR) // 0.15% + 0.5%
 
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-        oracleError: oracleError.toString(), // 0.15% & 0.5%,
+        oracleError: oracleError.toString(), // 0.15% + 0.5%,
         erc20: networkConfig[chainId].tokens.cbETH!,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: '1200', // 20 min

@@ -27,7 +27,7 @@ async function main() {
 
   /********  Verify sFRAX  **************************/
   const SFRAXETH_ORACLE_ERROR = fp('0.0002')
-  const oracleError = combinedError(fp('0.005'), SFRAXETH_ORACLE_ERROR) // 0.5% & 0.02%
+  const oracleError = combinedError(fp('0.005'), SFRAXETH_ORACLE_ERROR) // 0.5% + 0.02%
 
   await verifyContract(
     chainId,
