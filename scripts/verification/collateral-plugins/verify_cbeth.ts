@@ -37,7 +37,7 @@ async function main() {
         {
           priceTimeout: priceTimeout.toString(),
           chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-          oracleError: oracleError.toString(), // 0.5% + 2%
+          oracleError: oracleError.toString(), // 0.5% + 1%
           erc20: networkConfig[chainId].tokens.cbETH!,
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '3600', // 1 hr

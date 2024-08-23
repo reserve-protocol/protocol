@@ -85,7 +85,7 @@ async function main() {
     [
       {
         priceTimeout: priceTimeout.toString(),
-        oracleError: combinedBTCWBTCError.toString(), // 0.25%
+        oracleError: combinedBTCWBTCError.toString(), // 2% + 0.5%
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
