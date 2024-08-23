@@ -44,7 +44,9 @@ async function main() {
   scripts.push(
     'phase1-facade/1_deploy_readFacet.ts',
     'phase1-facade/2_deploy_actFacet.ts',
-    'phase1-facade/3_deploy_maxIssuable.ts'
+    'phase1-facade/3_deploy_maxIssuable.ts',
+    'phase1-facade/4_deploy_backingBufferFacet.ts',
+    'phase1-facade/5_deploy_revenueFacet.ts'
   )
 
   // =============================================
@@ -84,6 +86,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_bbusdt.ts',
       'phase2-assets/collaterals/deploy_re7weth.ts',
       'phase2-assets/collaterals/deploy_ethx_collateral.ts',
+      'phase2-assets/collaterals/deploy_apxeth.ts',
+      'phase2-assets/collaterals/deploy_USDe.ts',
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts'
     )

@@ -106,6 +106,13 @@ export interface ITokens {
   steakPYUSD?: string
   Re7WETH?: string
 
+  pxETH?: string
+  apxETH?: string
+
+  // Ethena
+  USDe?: string
+  sUSDe?: string
+
   // Mountain
   USDM?: string
   wUSDM?: string
@@ -223,6 +230,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       ETHx: '0xA35b1B31Ce002FBF2058D22F30f95D405200A15b',
+      pxETH: '0x04C154b66CB340F3Ae24111CC767e0184Ed00Cc6',
+      apxETH: '0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
@@ -247,6 +256,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
+      USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
+      sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -274,6 +285,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
       frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
+      apxETH: '0x19219BC90F48DeE4d5cF202E09c438FAacFd8Bea', // apxETH/ETH
+      USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',

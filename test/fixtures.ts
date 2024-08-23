@@ -22,6 +22,7 @@ import {
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
+  BackingBufferFacet,
   BackingManagerP1,
   BasketHandlerP1,
   BasketLibP1,
@@ -35,6 +36,7 @@ import {
   DeployerP1,
   DutchTrade,
   ReadFacet,
+  RevenueFacet,
   ActFacet,
   FacadeMonitor,
   FacadeTest,
@@ -413,6 +415,8 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   readFacet: ReadFacet
   actFacet: ActFacet
   maxIssuableFacet: MaxIssuableFacet
+  backingBufferFacet: BackingBufferFacet
+  revenueFacet: RevenueFacet
   facadeTest: FacadeTest
   facadeMonitor: FacadeMonitor
   broker: TestIBroker
@@ -766,6 +770,26 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     )
   )
 
+  // Save BackingBufferFacet to Facade
+  const BackingBufferFacetFactory: ContractFactory = await ethers.getContractFactory(
+    'BackingBufferFacet'
+  )
+  const backingBufferFacet = <BackingBufferFacet>await BackingBufferFacetFactory.deploy()
+  await facade.save(
+    backingBufferFacet.address,
+    Object.entries(backingBufferFacet.functions).map(([fn]) =>
+      backingBufferFacet.interface.getSighash(fn)
+    )
+  )
+
+  // Save RevenueFacet to Facade
+  const RevenueFacetFactory: ContractFactory = await ethers.getContractFactory('RevenueFacet')
+  const revenueFacet = <RevenueFacet>await RevenueFacetFactory.deploy()
+  await facade.save(
+    revenueFacet.address,
+    Object.entries(revenueFacet.functions).map(([fn]) => revenueFacet.interface.getSighash(fn))
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -798,6 +822,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     readFacet,
     actFacet,
     maxIssuableFacet,
+    backingBufferFacet,
+    revenueFacet,
     facadeTest,
     facadeMonitor,
     rsrTrader,

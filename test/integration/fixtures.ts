@@ -19,6 +19,7 @@ import {
   AssetRegistryP1,
   ATokenFiatCollateral,
   ATokenMock,
+  BackingBufferFacet,
   BackingManagerP1,
   BasketHandlerP1,
   BasketLibP1,
@@ -41,8 +42,10 @@ import {
   IAssetRegistry,
   IERC20Metadata,
   MainP1,
+  MaxIssuableFacet,
   NonFiatCollateral,
   ReadFacet,
+  RevenueFacet,
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
@@ -683,6 +686,38 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   await facade.save(
     actFacet.address,
     Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
+  )
+
+  // Save MaxIssuableFacet to Facade
+  const MaxIssuableFacetFactory: ContractFactory = await ethers.getContractFactory(
+    'MaxIssuableFacet'
+  )
+  const maxIssuableFacet = <MaxIssuableFacet>await MaxIssuableFacetFactory.deploy()
+  await facade.save(
+    maxIssuableFacet.address,
+    Object.entries(maxIssuableFacet.functions).map(([fn]) =>
+      maxIssuableFacet.interface.getSighash(fn)
+    )
+  )
+
+  // Save BackingBufferFacet to Facade
+  const BackingBufferFacetFactory: ContractFactory = await ethers.getContractFactory(
+    'BackingBufferFacet'
+  )
+  const backingBufferFacet = <BackingBufferFacet>await BackingBufferFacetFactory.deploy()
+  await facade.save(
+    backingBufferFacet.address,
+    Object.entries(backingBufferFacet.functions).map(([fn]) =>
+      backingBufferFacet.interface.getSighash(fn)
+    )
+  )
+
+  // Save RevenueFacet to Facade
+  const RevenueFacetFactory: ContractFactory = await ethers.getContractFactory('RevenueFacet')
+  const revenueFacet = <RevenueFacet>await RevenueFacetFactory.deploy()
+  await facade.save(
+    revenueFacet.address,
+    Object.entries(revenueFacet.functions).map(([fn]) => revenueFacet.interface.getSighash(fn))
   )
 
   // Deploy FacadeTest

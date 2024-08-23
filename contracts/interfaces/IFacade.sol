@@ -3,7 +3,9 @@ pragma solidity 0.8.19;
 
 import "../facade/facets/ActFacet.sol";
 import "../facade/facets/ReadFacet.sol";
+import "../facade/facets/BackingBufferFacet.sol";
 import "../facade/facets/MaxIssuableFacet.sol";
+import "../facade/facets/RevenueFacet.sol";
 
 interface IFacade {
     event SelectorSaved(address indexed facet, bytes4 indexed selector);
@@ -15,6 +17,13 @@ interface IFacade {
 }
 
 // solhint-disable-next-line no-empty-blocks
-abstract contract TestIFacade is IFacade, ActFacet, MaxIssuableFacet, ReadFacet {
+abstract contract TestIFacade is
+    IFacade,
+    ActFacet,
+    BackingBufferFacet,
+    MaxIssuableFacet,
+    ReadFacet,
+    RevenueFacet
+{
 
 }

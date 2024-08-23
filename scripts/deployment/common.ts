@@ -14,6 +14,8 @@ export interface IFacets {
   readFacet: string
   // individiual function facets
   maxIssuableFacet: string
+  backingBufferFacet: string
+  revenueFacet: string
 }
 
 export interface IDeployments {
