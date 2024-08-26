@@ -135,14 +135,6 @@ interface IBasketHandler is IComponent {
     function quantityUnsafe(IERC20 erc20, IAsset asset) external view returns (uint192);
 
     /// @param amount {BU}
-    /// @return erc20s The addresses of the ERC20 tokens in the reference basket
-    /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(uint192 amount, RoundingMode rounding)
-        external
-        view
-        returns (address[] memory erc20s, uint256[] memory quantities);
-
-    /// @param amount {BU}
     /// @param applyIssuancePremium Whether to apply the issuance premium
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
