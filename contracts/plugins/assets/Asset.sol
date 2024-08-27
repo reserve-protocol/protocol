@@ -147,10 +147,10 @@ contract Asset is IAsset, VersionedAsset {
             } else {
                 // decayDelay <= delta <= decayDelay + priceTimeout
 
-                // Decay _high upwards to 3x savedHighPrice
+                // Decay _high upwards to 2x savedHighPrice
                 // {UoA/tok} = {UoA/tok} * {1}
                 _high = savedHighPrice.safeMul(
-                    FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay, priceTimeout),
+                    MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay, priceTimeout),
                     ROUND
                 ); // during overflow should not revert
 
