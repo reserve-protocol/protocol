@@ -211,7 +211,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param disableTargetAmountCheck If true, skips the `requireConstantConfigTargets()` check
+    /// @param disableTargetAmountCheck For reweightable RTokens, if true
+    ///                                 skips the `requireConstantConfigTargets()` check
     /// @custom:governance
     // checks:
     //   caller is OWNER
