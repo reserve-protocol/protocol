@@ -140,6 +140,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         main.poke();
 
         require(amount > 0, "Cannot redeem zero");
+        require(recipient != address(0), "cannot redeem to zero address");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
         require(main.basketHandler().fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
