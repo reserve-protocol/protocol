@@ -100,7 +100,7 @@ function shiftl_toFix(
     // conditions for avoiding overflow
     if (x == 0) return 0;
     if (shiftLeft <= -96) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
-    if (40 <= shiftLeft) revert UIntOutOfBounds(); // 10**56 < FIX_MAX < 10**57
+    if (40 <= shiftLeft) revert UIntOutOfBounds(); // 10**57 < FIX_MAX < 10**58
 
     shiftLeft += 18;
 
