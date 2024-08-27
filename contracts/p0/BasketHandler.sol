@@ -113,6 +113,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
     uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
+    uint192 public constant MIN_TARGET_AMT = FIX_ONE / 1e6; // {target/BU} min basket weight: 1e-6
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
     uint256 internal constant MAX_BACKUP_ERC20S = 64;
 
@@ -314,7 +315,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
-            require(0 < targetAmts[i], "invalid target amount");
+            require(MIN_TARGET_AMT <= targetAmts[i], "invalid target amount");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
 
             config.erc20s.push(erc20s[i]);

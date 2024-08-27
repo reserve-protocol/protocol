@@ -708,6 +708,7 @@ export interface IGovRoles {
 // System constants
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
+export const MIN_TARGET_AMT = BigNumber.from(10).pow(12)
 export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
 export const MAX_RATIO = BigNumber.from(10).pow(14)
 export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)
