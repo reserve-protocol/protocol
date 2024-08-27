@@ -11,7 +11,7 @@ pragma solidity ^0.8.19;
     "fixed192x18" -- a value represented by 192 bits, that makes 18 digits available to
     the right of the decimal point.
 
-    The range of values that uint192 can represent is about [-1.7e20, 1.7e20].
+    The range of values that uint192 can represent is [0, 2^192-1 / 10^18 = 6.2e39].
     Unless a function explicitly says otherwise, it will fail on overflow.
     To be clear, the following should hold:
     toFix(0) == 0
@@ -44,8 +44,8 @@ uint64 constant FIX_SCALE = 1e18;
 // FIX_SCALE Squared:
 uint128 constant FIX_SCALE_SQ = 1e36;
 
-// The largest integer that can be converted to uint192 .
-// This is a bit bigger than 3.1e39
+// The largest integer that can be converted to uint192.
+// This is a bit bigger than 6.2e39
 uint192 constant FIX_MAX_INT = type(uint192).max / FIX_SCALE;
 
 uint192 constant FIX_ZERO = 0; // The uint192 representation of zero.
