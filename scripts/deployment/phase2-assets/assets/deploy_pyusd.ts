@@ -18,7 +18,7 @@ async function main() {
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying CVX asset to network ${hre.network.name} (${chainId})
+  console.log(`Deploying pyUSD asset to network ${hre.network.name} (${chainId})
     with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {

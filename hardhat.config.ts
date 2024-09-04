@@ -28,6 +28,7 @@ const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 const ARBITRUM_SEPOLIA_RPC_URL = useEnv('ARBITRUM_SEPOLIA_RPC_URL')
 const ARBITRUM_RPC_URL = useEnv('ARBITRUM_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') || 'test test test test test test test test test test test junk'
+const DEPLOYER_PK = useEnv('DEPLOYER_PK')
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
@@ -47,6 +48,7 @@ const config: HardhatUserConfig = {
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
+      accounts: [{privateKey: DEPLOYER_PK, balance: '100000000000000000'}],
     },
     localhost: {
       // network for long-lived mainnet forks
@@ -81,9 +83,7 @@ const config: HardhatUserConfig = {
     mainnet: {
       chainId: 1,
       url: MAINNET_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts: [DEPLOYER_PK],
       // gasPrice: 30_000_000_000,
       gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
