@@ -1,6 +1,7 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
 import { EasyAuction } from '../../../typechain'
+import { ZERO_ADDRESS } from '../../../common/constants'
 
 task('deploy-mock-easyauction', 'Deploys a mock Easy Auction contract')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
@@ -27,7 +28,10 @@ task('deploy-mock-easyauction', 'Deploys a mock Easy Auction contract')
     }
 
     // Hand away owner
-    await easyAuction.renounceOwnership()
+    await (await easyAuction.renounceOwnership()).wait()
+    if ((await easyAuction.owner()) != ZERO_ADDRESS) {
+      throw new Error('EasyAuction not renounced')
+    }
 
     if (!params.noOutput) {
       console.log(`Renounced ownership`)
