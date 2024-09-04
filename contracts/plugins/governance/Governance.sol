@@ -140,8 +140,8 @@ contract Governance is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
-        super._execute(proposalId, targets, values, calldatas, descriptionHash);
         require(startedInSameEra(proposalId), "new era");
+        super._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function _cancel(
