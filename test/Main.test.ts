@@ -420,13 +420,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - Broker
       const GnosisTradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy(gnosis.address)
       const DutchTradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
       const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
       await expect(
         broker.init(
           main.address,
-          gnosis.address,
           gnosisTrade.address,
           config.batchAuctionLength,
           dutchTrade.address,
