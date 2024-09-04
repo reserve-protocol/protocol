@@ -833,12 +833,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
-      await DeployerFactory.deploy(
-        rsr.address,
-        easyAuction.address,
-        rsrAsset.address,
-        implementations
-      )
+      await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
     )
   }
 
