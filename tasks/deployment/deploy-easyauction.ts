@@ -1,9 +1,9 @@
-import { getChainId } from '../../../common/blockchain-utils'
+import { getChainId } from '../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
-import { EasyAuction } from '../../../typechain'
-import { ZERO_ADDRESS } from '../../../common/constants'
+import { EasyAuction } from '../../typechain'
+import { ZERO_ADDRESS } from '../../common/constants'
 
-task('deploy-mock-easyauction', 'Deploys a mock Easy Auction contract')
+task('deploy-easyauction', 'Deploys a mock Easy Auction contract')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
