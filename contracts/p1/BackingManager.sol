@@ -316,7 +316,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @param trade The trade address itself
     /// @custom:governance
     function forceSettleTrade(ITrade trade) public override(TradingP1, ITrading) {
-        super.forceSettleTrade(trade);
+        super.forceSettleTrade(trade); // enforces governance only
         delete tokensOut[trade.sell()];
     }
 
