@@ -94,7 +94,20 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         );
     }
 
-    // === Setters ===
+    // === Governance ===
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public virtual governance {
+        // should not call any ERC20 functions, in case bricked
+
+        IERC20Metadata sell = trade.sell();
+        delete trades[sell];
+        tradesOpen--;
+        emit TradeSettled(trade, sell, trade.buy(), 0, 0);
+    }
 
     /// @custom:governance
     function setMaxTradeSlippage(uint192 val) public governance {
