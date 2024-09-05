@@ -85,6 +85,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
         delete tokensOut[sell];
         trade = super.settleTrade(sell); // nonReentrant
+        tradeEnd[trade.KIND()] = uint48(block.timestamp);
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {

@@ -64,6 +64,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     {
         trade = super.settleTrade(sell);
         delete tokensOut[trade.sell()];
+        tradeEnd[trade.KIND()] = uint48(block.timestamp);
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
