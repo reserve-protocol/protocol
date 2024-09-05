@@ -5,6 +5,8 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
+import forkBlockNumber from './fork-block-numbers'
+import { resetFork } from '#/utils/chain'
 import {
   Collateral,
   IMPLEMENTATION,
@@ -83,6 +85,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   let token0: ERC20Mock
   let token1: ERC20Mock
   let rTokenAsset: RTokenAsset
+
+  before(async () => {
+    await resetFork(hre, forkBlockNumber.default)
+  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -945,26 +951,12 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   })
 
   describe('Regression Tests', () => {
-    const resetFork = async () => {
-      await hre.network.provider.request({
-        method: 'hardhat_reset',
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: process.env.MAINNET_RPC_URL,
-              blockNumber: 16813289,
-            },
-          },
-        ],
-      })
-    }
-
     it('Passes Test: 12/03/2023 - Batch Auctions on Trade Settlement with one less token', async () => {
       // TX: 0xb5fc3d61d46e41b79bd333583448e6d4c186ca49206f8a0e7dde05f2700e0965
       // This set the broker to false since it was one token short.
       // This test is to make sure that the broker is not disabled in this case.
 
-      await resetFork()
+      await resetFork(hre, 16813289)
 
       const backingManager = await ethers.getContractAt(
         'BackingManagerP1',
@@ -976,7 +968,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         true
       )
 
-      await resetFork()
+      await resetFork(hre, 16813289)
 
       const gnosisTradeImpl = await ethers.getContractAt(
         'GnosisTrade',

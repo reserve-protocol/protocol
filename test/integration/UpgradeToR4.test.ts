@@ -6,6 +6,8 @@ import { DeployerP1 } from '@typechain/DeployerP1'
 import { AssetPluginRegistry } from '@typechain/AssetPluginRegistry'
 import { whileImpersonating } from '#/utils/impersonation'
 import { DAOFeeRegistry } from '@typechain/DAOFeeRegistry'
+import { resetFork } from '#/utils/chain'
+import forkBlockNumber from './fork-block-numbers'
 
 interface RTokenParams {
   name: string
@@ -39,6 +41,8 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
 
   before(async () => {
     const [owner] = await ethers.getSigners()
+
+    await resetFork(hre, forkBlockNumber.default)
 
     const TradingLibFactory = await ethers.getContractFactory('RecollateralizationLibP1')
     const BasketLibFactory = await ethers.getContractFactory('BasketLibP1')
