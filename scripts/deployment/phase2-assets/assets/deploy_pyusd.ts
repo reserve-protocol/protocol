@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { arbitrumL2Chains, baseL2Chains, networkConfig } from '../../../../common/configuration'
-import { fp } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import {
   getDeploymentFile,
   getDeploymentFilename,
@@ -11,8 +11,10 @@ import {
   fileExists,
 } from '../../../deployment/common'
 import { priceTimeout } from '../../../deployment/utils'
-import { Asset } from '../../../../typechain'
+import { Asset, ICollateral } from '../../../../typechain'
 import { PYUSD_MAX_TRADE_VOLUME, PYUSD_ORACLE_ERROR, PYUSD_ORACLE_TIMEOUT } from '#/test/plugins/individual-collateral/aave-v3/constants'
+import { CollateralStatus } from '#/common/constants'
+import { expect } from 'chai'
 
 async function main() {
   // ==== Read Configuration ====
@@ -40,29 +42,36 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const deployedAssets: string[] = []
+  const deployedCollateral: string[] = []
+
+  let collateral: ICollateral
 
   /********  Deploy pyUSD asset **************************/
-  const { asset: pyUSDAsset } = await hre.run('deploy-asset', {
+  const { collateral: pyUsdCollateral } = await hre.run('deploy-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.pyUSD,
-    oracleError: PYUSD_ORACLE_ERROR.toString(), // 0.3%
+    oracleError: PYUSD_ORACLE_ERROR.toString(),
     tokenAddress: networkConfig[chainId].tokens.pyUSD,
     maxTradeVolume: PYUSD_MAX_TRADE_VOLUME.toString(), // $500k,
-    oracleTimeout: PYUSD_ORACLE_TIMEOUT.toString(), // 24 hr
+    oracleTimeout: PYUSD_ORACLE_TIMEOUT.toString(),
+    targetName: hre.ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.01').add(PYUSD_ORACLE_ERROR).toString(),
+    delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', pyUSDAsset)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', pyUsdCollateral)
+  await (await collateral.refresh()).wait()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  assetCollDeployments.assets.pyUSD = pyUSDAsset
+  assetCollDeployments.collateral.pyUSD = pyUsdCollateral
   assetCollDeployments.erc20s.pyUSD = networkConfig[chainId].tokens.pyUSD
-  deployedAssets.push(pyUSDAsset.toString())
+  deployedCollateral.push(pyUsdCollateral.toString())
 
   /**************************************************************/
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   console.log(`Deployed pyUSD asset to ${hre.network.name} (${chainId}):
-    New deployments: ${deployedAssets}
+    New deployments: ${deployedCollateral}
     Deployment file: ${assetCollDeploymentFilename}`)
 }
 
