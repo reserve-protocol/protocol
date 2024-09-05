@@ -85,7 +85,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
         delete tokensOut[sell];
         trade = super.settleTrade(sell); // nonReentrant
-        tradeEnd[trade.KIND()] = uint48(block.timestamp);
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
@@ -96,6 +95,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 //     OOG pattern tested in other contracts, cost to test here is high
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                tradeEnd[trade.KIND()] = uint48(block.timestamp);
             }
         }
     }

@@ -64,7 +64,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     {
         trade = super.settleTrade(sell);
         delete tokensOut[trade.sell()];
-        tradeEnd[trade.KIND()] = uint48(block.timestamp);
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
@@ -73,6 +72,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 // prevent MEV searchers from providing less gas on purpose by reverting if OOG
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                tradeEnd[trade.KIND()] = uint48(block.timestamp);
             }
         }
     }
