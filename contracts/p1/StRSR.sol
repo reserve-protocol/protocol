@@ -163,6 +163,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // stake rate under/over which governance can reset all stakes
     uint192 private constant MAX_SAFE_STAKE_RATE = 1e6 * FIX_ONE; // 1e6   D18{qStRSR/qRSR}
     uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6  D18{qStRSR/qRSR}
+    uint192 private constant MAX_SAFE_DRAFT_RATE = 1e6 * FIX_ONE; // 1e6   D18{qStRSR/qRSR}
+    uint192 private constant MIN_SAFE_DRAFT_RATE = uint192(1e12); // 1e-6  D18{qStRSR/qRSR}
 
     // ======================
 
@@ -490,8 +492,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function resetStakes() external {
         _requireGovernanceOnly();
         require(
-            stakeRate <= MIN_SAFE_STAKE_RATE || stakeRate >= MAX_SAFE_STAKE_RATE,
-            "rate still safe"
+            draftRate <= MIN_SAFE_DRAFT_RATE ||
+                draftRate >= MAX_SAFE_DRAFT_RATE ||
+                stakeRate <= MIN_SAFE_STAKE_RATE ||
+                stakeRate >= MAX_SAFE_STAKE_RATE,
+            "rates still safe"
         );
 
         beginEra();
