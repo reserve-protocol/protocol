@@ -12,6 +12,7 @@ import {
 } from '../../../deployment/common'
 import { priceTimeout } from '../../../deployment/utils'
 import { Asset } from '../../../../typechain'
+import { PYUSD_MAX_TRADE_VOLUME, PYUSD_ORACLE_ERROR, PYUSD_ORACLE_TIMEOUT } from '#/test/plugins/individual-collateral/aave-v3/constants'
 
 async function main() {
   // ==== Read Configuration ====
@@ -45,10 +46,10 @@ async function main() {
   const { asset: pyUSDAsset } = await hre.run('deploy-asset', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.pyUSD,
-    oracleError: fp('0.003').toString(), // 0.3%
+    oracleError: PYUSD_ORACLE_ERROR.toString(), // 0.3%
     tokenAddress: networkConfig[chainId].tokens.pyUSD,
-    maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 24 hr
+    maxTradeVolume: PYUSD_MAX_TRADE_VOLUME.toString(), // $500k,
+    oracleTimeout: PYUSD_ORACLE_TIMEOUT.toString(), // 24 hr
   })
   await (<Asset>await ethers.getContractAt('Asset', pyUSDAsset)).refresh()
 

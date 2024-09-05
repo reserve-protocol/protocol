@@ -23,7 +23,7 @@ async function main() {
 
   const asset = await hre.ethers.getContractAt('Asset', deployments.assets.pyUSD!)
 
-  /** ******************** Verify RSR Asset ****************************************/
+  /** ******************** Verify pyUSD Asset ****************************************/
   await verifyContract(
     chainId,
     deployments.assets.pyUSD,
