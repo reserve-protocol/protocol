@@ -12,7 +12,11 @@ import {
 } from '../../../deployment/common'
 import { priceTimeout } from '../../../deployment/utils'
 import { Asset, ICollateral } from '../../../../typechain'
-import { PYUSD_MAX_TRADE_VOLUME, PYUSD_ORACLE_ERROR, PYUSD_ORACLE_TIMEOUT } from '#/test/plugins/individual-collateral/aave-v3/constants'
+import {
+  PYUSD_MAX_TRADE_VOLUME,
+  PYUSD_ORACLE_ERROR,
+  PYUSD_ORACLE_TIMEOUT,
+} from '#/test/plugins/individual-collateral/aave-v3/constants'
 import { CollateralStatus } from '#/common/constants'
 import { expect } from 'chai'
 
@@ -28,10 +32,10 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-	// Only exists on Mainnet
-	if (baseL2Chains.includes(hre.network.name) || arbitrumL2Chains.includes(hre.network.name)) {
-		throw new Error(`Invalid network ${hre.network.name} - only available on Mainnet`)
-	}
+  // Only exists on Mainnet
+  if (baseL2Chains.includes(hre.network.name) || arbitrumL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - only available on Mainnet`)
+  }
 
   // Get phase1 deployment
   const phase1File = getDeploymentFilename(chainId)
