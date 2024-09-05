@@ -4,6 +4,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
+import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import {
   ProposalState,
   ZERO_ADDRESS,
@@ -1184,6 +1185,59 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       //  Check value was not updated
       expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
+    })
+
+    it('Should not be able to execute proposals started in a different era -- regression test 09/04/2024', async () => {
+      // Context: https://github.com/code-423n4/2024-07-reserve-findings/issues/17
+
+      const era = await stRSRVotes.currentEra()
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Wipeout -- change era
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSRVotes.connect(signer).seizeRSR(await rsr.balanceOf(stRSRVotes.address))
+      })
+      expect(await stRSRVotes.currentEra()).to.equal(era.add(1))
+
+      // Stake again
+      await rsr.connect(addr1).approve(stRSRVotes.address, await rsr.balanceOf(addr1.address))
+      await stRSRVotes.connect(addr1).stake(await rsr.balanceOf(addr1.address))
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, 1)
+      await advanceBlocks(1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Finished voting - Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Cannot queue proposal -- deadend
+      await expect(
+        governor
+          .connect(addr1)
+          .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+      ).to.be.revertedWith('new era')
     })
   })
 })
