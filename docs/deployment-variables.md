@@ -114,7 +114,7 @@ There is no one-size-fits-all -- each RToken should customize their backing buff
 
 > (i) how many days of yield will it take to fill the backing buffer (ii) the expected loss due to slippage if the least-liquid backing collateral is removed; and (iii) the sensitivity of RToken holders to variance in their yield.
 
-Default value: `1e15` = 0.15%
+Default value: `15e14` = 0.15%
 Reasonable range: 1e13 to 1e17
 
 ### `maxTradeSlippage`
