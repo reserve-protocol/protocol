@@ -389,7 +389,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @custom:governance
     /// Reset all stakes and advance era
     function resetStakes() external governance {
-        uint192 draftRate = divuu(stakeBeingWithdrawn(), rsrBeingWithdrawn());
+        uint256 rsrDrafts = rsrBeingWithdrawn();
+        uint192 draftRate = rsrDrafts > 0 ? divuu(stakeBeingWithdrawn(), rsrDrafts) : FIX_ONE;
         uint192 stakeRate = divuu(totalStaked, rsrBacking);
         require(
             draftRate <= MIN_SAFE_DRAFT_RATE ||
