@@ -61,15 +61,15 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         uint192 r0 = shiftl_toFix(tokenReserve(0), -int8(token0.decimals()), FLOOR);
         uint192 r1 = shiftl_toFix(tokenReserve(1), -int8(token1.decimals()), FLOOR);
         uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
-        uint192 sqrtK = (r0.sqrt()).mulDiv(r1.sqrt(), totalSupply);
+        uint192 sqrtK = r0.mul(r1).sqrt();
 
         // get token prices
         (uint192 p0_low, uint192 p0_high) = tokenPrice(0);
         (uint192 p1_low, uint192 p1_high) = tokenPrice(1);
 
         // {UoA/tok}
-        low = sqrtK.mul(2).mul(((p0_low.mul(p1_low)).sqrt()));
-        high = sqrtK.mul(2).mul(((p0_high.mul(p1_high)).sqrt()));
+        low = sqrtK.mulu(2).mulDiv(p0_low.mul(p1_low).sqrt(), totalSupply);
+        high = sqrtK.mulu(2).mulDiv(p0_high.mul(p1_high).sqrt(), totalSupply);
 
         assert(low <= high); //obviously true just by inspection
         pegPrice = FIX_ONE;
