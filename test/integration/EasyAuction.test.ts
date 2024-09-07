@@ -363,6 +363,47 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
     })
 
+    it('cannot cancel in last 10% of auction', async () => {
+      // Place 2 orders
+      const bidAmt = buyAmt.add(1)
+      await token0.connect(addr1).approve(easyAuction.address, bidAmt.mul(3))
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(
+          auctionId,
+          [sellAmt],
+          [bidAmt.mul(2)],
+          [QUEUE_START],
+          ethers.constants.HashZero
+        )
+
+      // Advance halfway
+      await advanceTime(config.batchAuctionLength.div(2).toString())
+
+      // Cancel successfully
+      const OrderHelperFactory = await ethers.getContractFactory('IterableOrderedOrderSetWrapper')
+      const orderHelper = await OrderHelperFactory.deploy()
+      const userId = await easyAuction.callStatic.getUserId(addr1.address)
+      const order = await orderHelper.encodeOrder(userId, sellAmt, bidAmt)
+      await easyAuction.connect(addr1).cancelSellOrders(auctionId, [order])
+
+      // Advance near end
+      await advanceTime(config.batchAuctionLength.div(2).sub(10).toString())
+
+      // Cannot cancel
+      const order2 = await orderHelper.encodeOrder(userId, sellAmt, bidAmt.mul(2))
+      await expect(
+        easyAuction.connect(addr1).cancelSellOrders(auctionId, [order2])
+      ).to.be.revertedWith('no longer in order placement and cancelation phase')
+
+      // End auction
+      await advanceTime(config.batchAuctionLength.div(2).toString())
+      await easyAuction.settleAuction(auctionId)
+    })
+
     it('full volume -- bid at 2x price', async () => {
       const bidAmt = buyAmt.add(1)
       sellAmt = sellAmt.div(2)
