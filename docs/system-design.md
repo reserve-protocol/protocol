@@ -36,22 +36,6 @@ Some of the core contracts in our system regularly own ERC20 tokens. In each cas
 1. During minting, the `RToken` transfers collateral tokens from the caller's address into itself and mints new RToken to the caller's address. Minting amount must be less than the current throttle limit, or the transaction will revert.
 2. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
 
-## Protocol Assumptions
-
-### Blocktime = 12s
-
-The protocol (weakly) assumes a 12-second blocktime. This section documents the places where this assumption is made and whether changes would be required if blocktime were different.
-
-#### Should-be-changed if blocktime different
-
-- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` should be updated to melt more often.
-
-#### Probably fine if blocktime different
-
-- `DutchTrade` price curve can handle 1s blocktimes as-is, as well as longer blocktimes
-- The `StRSR` contract hands out RSR rewards in periods of 12 seconds. Since the unstaking period is usually much larger than this, it is fine to deploy StRSR to another chain without changing anything, with shorter or longer blocktimes
-- `BackingManager` spaces out same-kind auctions by 12s. No change is required is blocktime is less; some change required is blocktime is longer
-
 ## Some Monetary Units
 
 Our system refers to units of financial value in a handful of different ways, and treats them as different dimensions. Some of these distinctions may seem like splitting hairs if you're just thinking about one or two example RTokens, but the differences are crucial to understanding how the protocol works in a wide variety of different settings.

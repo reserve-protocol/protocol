@@ -120,15 +120,19 @@ Reasonable range: 100 to 3600
 
 Dimension: `{1}`
 
-The backing buffer is a percentage value that describes how much extra collateral to hold in the BackingManager. This can be important for preventing RSR seizure during normal rebalancing as a result of trading slippage.
+The backing buffer is a percentage value that describes how much extra collateral to hold as backing in the BackingManager. It is important for preventing RSR seizure during normal rebalancing.
 
-However, too large a backing buffer (as a function of the blended collateral yield) can cause RToken and RSR staker yields to become too sensitive to supply changes; new issuance creates a hole that must be filled in before revenue handout can resume, while new redemptions cause the excess capital to be immediately realized as revenue.
+Too low a backing buffer can result in RSR seizure during normal rebalancing. While unpleasant, the stronger reason to avoid this is to prevent situations where RSR stakers are incentivized to unstake before rebalancing proposals in order to avoid paying their fair share. The backing buffer should be set high enough to prevent this outcome.
 
-If the backing buffer is set too low, it's possible to get into a situation where RSR stakers begin individually unstaking before rebalancing proposals in order to avoid being slashed. The backing buffer should be high enough to prevent this outcome for expected rebalances.
+On the other hand, too high a backing buffer can cause RToken and RSR staker yields to drop during large supply increases as new issuance creates additional debt burdens that must be filled in with new appreciation. In general the amount of time this takes is short, but when an RToken grows fast enough it can outpace and result in no revenue being recognized for a while.
 
-It is not important to consider the backing buffer for _default_ scenarios, only governance-led rebalances.
+Note: It is not important to consider the backing buffer for _default_ scenarios, only governance-led rebalances.
 
-Default value: `1e15` = 0.1%
+There is no one-size-fits-all -- each RToken should customize their backing buffer parametrization based on the following factors:
+
+> (i) how many days of yield will it take to fill the backing buffer (ii) the expected loss due to slippage if the least-liquid backing collateral is removed; and (iii) the sensitivity of RToken holders to variance in their yield.
+
+Default value: `15e14` = 0.15%
 Reasonable range: 1e13 to 1e17
 
 ### `maxTradeSlippage`
