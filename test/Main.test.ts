@@ -8,6 +8,7 @@ import {
   MAX_TRADING_DELAY,
   MAX_TRADE_SLIPPAGE,
   MAX_BACKING_BUFFER,
+  MIN_TARGET_AMT,
   MAX_TARGET_AMT,
   MAX_MIN_TRADE_VOLUME,
   MIN_WARMUP_PERIOD,
@@ -1039,7 +1040,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot update with value > max
       await expect(
-        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE)
+        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE.add(1))
       ).to.be.revertedWith('invalid maxTradeSlippage')
     })
 
@@ -2155,6 +2156,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           indexBH.connect(owner).forceSetPrimeBasket([stRSR.address], [fp('1')])
         ).to.be.revertedWith('invalid collateral')
+      })
+
+      it('Should not allow to bypass MIN_TARGET_AMT', async () => {
+        // not possible on non-fresh basketHandler
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token0.address], [MIN_TARGET_AMT.sub(1)])
+        ).to.be.revertedWith('invalid target amount')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([token0.address], [MIN_TARGET_AMT.sub(1)])
+        ).to.be.revertedWith('invalid target amount')
       })
 
       it('Should not allow to bypass MAX_TARGET_AMT', async () => {

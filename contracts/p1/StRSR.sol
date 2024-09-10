@@ -326,10 +326,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
-        if (rsrAmount == 0) return;
-
         // ==== Transfer RSR from the draft pool
         totalDrafts = newTotalDrafts;
+        if (rsrAmount == 0) return;
+
         draftRSR = newDraftRSR;
 
         // == Interactions ==

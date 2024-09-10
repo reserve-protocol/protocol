@@ -319,6 +319,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(endPrice[0]).to.eq(0)
       expect(endPrice[1]).to.eq(0)
     })
+
+    it('Should not allow redemption to zero address', async function () {
+      // Redeem rTokens to zero address
+      await expect(rToken.connect(addr1).redeemTo(ZERO_ADDRESS, fp('1'))).to.be.revertedWith(
+        'cannot redeem to zero address'
+      )
+    })
   })
 
   describe('Issuance', function () {

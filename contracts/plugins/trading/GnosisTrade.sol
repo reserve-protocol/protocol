@@ -47,7 +47,7 @@ contract GnosisTrade is ITrade, Versioned {
 
     // == Economic parameters
     // This trade is on behalf of origin. Only origin may call settle(), and the `buy` tokens
-    // from this trade's acution will all eventually go to origin.
+    // from this trade's auction will all eventually go to origin.
     address public origin;
     IERC20Metadata public sell; // address of token this trade is selling
     IERC20Metadata public buy; // address of token this trade is buying
@@ -56,7 +56,7 @@ contract GnosisTrade is ITrade, Versioned {
     uint48 public endTime; // timestamp after which this trade's auction can be settled
     uint192 public worstCasePrice; // D27{qBuyTok/qSellTok}, the worst price we expect to get
     // We expect Gnosis Auction either to meet or beat worstCasePrice, or to return the `sell`
-    // tokens. If we actually *get* a worse clearing that worstCasePrice, we consider it an error in
+    // tokens. If we actually *get* a worse clearing than worstCasePrice, we consider it an error in
     // our trading scheme and call broker.reportViolation()
 
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
