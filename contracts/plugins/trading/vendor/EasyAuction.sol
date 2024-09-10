@@ -3,6 +3,8 @@ pragma solidity 0.6.12;
 
 // ==== From https://etherscan.io/address/0x0b7ffc1f4ad541a4ed16b40d8c37f0929158d101#code ====
 
+// solhint-disable
+
 library AllowListVerifierHelper {
     /// @dev Value returned by a call to `isAllowed` if the check
     /// was successful. The value is defined as:

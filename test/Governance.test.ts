@@ -1239,5 +1239,74 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
           .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
       ).to.be.revertedWith('new era')
     })
+
+    it('Should be able to call resetStakes() -- regression test 09/04/2024', async () => {
+      // Context: https://github.com/code-423n4/2024-07-reserve-findings/issues/36
+
+      const era = await stRSRVotes.currentEra()
+
+      await setStorageAt(stRSR.address, 263, fp('1e-6')) // MIN_SAFE_STAKE_RATE
+
+      const encodedCall = stRSR.interface.encodeFunctionData('resetStakes')
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([stRSR.address], [0], [encodedCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      let voteWay = 1 // for
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, voteWay)
+      await advanceBlocks(1)
+
+      // Quorum should be equal to cast votes
+      const expectedQuorum = stkAmt1.mul(2).mul(QUORUM_PERCENTAGE).div(100)
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(expectedQuorum)
+
+      voteWay = 2 // abstain
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I abstain')
+      await advanceBlocks(1)
+
+      // Quorum should be equal to sum of abstain + for votes
+      expect(await governor.quorum((await getLatestBlockTimestamp()) - 1)).to.equal(expectedQuorum)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Finished voting - Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Queue proposal
+      await governor.connect(addr1).queue([stRSR.address], [0], [encodedCall], proposalDescHash)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
+
+      // Advance time required by timelock
+      await advanceTime(MIN_DELAY + 1)
+      await advanceBlocks(1)
+
+      // Execute -- regression test, should not revert
+      await governor.connect(addr1).execute([stRSR.address], [0], [encodedCall], proposalDescHash)
+
+      // Check era changed
+      expect(await stRSRVotes.currentEra()).to.equal(era.add(1))
+    })
   })
 })

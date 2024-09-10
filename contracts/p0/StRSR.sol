@@ -272,8 +272,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 i = start;
         for (; i < endId; i++) {
             total += queue[i].rsrAmount;
-            queue[i].rsrAmount = 0;
-            queue[i].stakeAmount = 0;
+            delete queue[i];
         }
 
         // Execute accumulated withdrawals

@@ -123,8 +123,6 @@ interface TestIDeployer is IDeployer {
 
     function rsr() external view returns (IERC20Metadata);
 
-    function gnosis() external view returns (IGnosis);
-
     function rsrAsset() external view returns (IAsset);
 
     function implementations() external view returns (Implementations memory);

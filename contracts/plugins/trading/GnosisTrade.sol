@@ -24,6 +24,9 @@ contract GnosisTrade is ITrade, Versioned {
     TradeKind public constant KIND = TradeKind.BATCH_AUCTION;
     uint256 public constant FEE_DENOMINATOR = 1000;
 
+    // Can only cancel order in first 90% of the auction
+    uint192 public constant CANCEL_WINDOW = 9e17; // {1} first 90% of auction
+
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
     uint96 public constant MAX_ORDERS = 5000; // bounded to avoid going beyond block gas limit
@@ -31,12 +34,14 @@ contract GnosisTrade is ITrade, Versioned {
     // raw "/" for compile-time const
     uint192 public constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
 
+    IGnosis public immutable gnosis; // Gnosis Auction contract
+
     // ==== status: This contract's state-machine state. See TradeStatus enum, above
     TradeStatus public status;
 
     // ==== The rest of contract state is all parameters that are immutable after init()
     // == Metadata
-    IGnosis public gnosis; // Gnosis Auction contract
+    IGnosis public gnosis_DEPRECATED; // made immutable in 4.0.0; left in for testing compatibility
     uint256 public auctionId; // The Gnosis Auction ID returned by gnosis.initiateAuction()
     IBroker public broker; // The Broker that cloned this contract into existence
 
@@ -63,7 +68,9 @@ contract GnosisTrade is ITrade, Versioned {
         status = end;
     }
 
-    constructor() {
+    constructor(IGnosis _gnosis) {
+        require(address(_gnosis) != address(0), "gnosis address zero");
+        gnosis = _gnosis;
         status = TradeStatus.CLOSED;
     }
 
@@ -84,7 +91,6 @@ contract GnosisTrade is ITrade, Versioned {
     function init(
         IBroker broker_,
         address origin_,
-        IGnosis gnosis_,
         uint48 batchAuctionLength,
         TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
@@ -102,7 +108,6 @@ contract GnosisTrade is ITrade, Versioned {
 
         broker = broker_;
         origin = origin_;
-        gnosis = gnosis_;
         endTime = uint48(block.timestamp) + batchAuctionLength;
 
         // D27{qBuyTok/qSellTok}
@@ -141,10 +146,15 @@ contract GnosisTrade is ITrade, Versioned {
         // amount is > 0 and < type(uint256).max.
         AllowanceLib.safeApproveFallbackToMax(address(sell), address(gnosis), req.sellAmount);
 
+        // Can only cancel within the CANCEL_WINDOW
+        uint48 cancellationEndTime = uint48(
+            block.timestamp + (batchAuctionLength * CANCEL_WINDOW) / FIX_ONE
+        );
+
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
-            endTime,
+            cancellationEndTime,
             endTime,
             _sellAmount,
             minBuyAmount,

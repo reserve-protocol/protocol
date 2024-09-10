@@ -552,6 +552,49 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         .withArgs(0, 2, addr1.address, amount.div(2), amount, anyValue)
     })
 
+    it('Should not impact future withdrawals after cancellation -- regression test 9/04/2024', async () => {
+      // Context: https://github.com/code-423n4/2024-07-reserve-findings/issues/18
+
+      // old unstakingDelay is 1 day
+      const oldUnstakingDelay = 3600 * 24
+      await stRSR.connect(owner).setUnstakingDelay(oldUnstakingDelay)
+      const amount: BigNumber = bn('100e18')
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      const draftEra = 1
+      const availableAtOfFirst = (await getLatestBlockTimestamp()) + oldUnstakingDelay + 1
+      /**
+       * Unstaking request enter a queue, and withdrawal become available 1 day later
+       */
+      await expect(stRSR.connect(addr1).unstake(amount))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, draftEra, addr1.address, amount, amount, availableAtOfFirst)
+
+      /**
+       * Cancel the unstaking to eliminate any pending withdrawals
+       */
+      await stRSR.connect(addr1).cancelUnstake(1)
+
+      // new unstakingDelay is 1 hour
+      const newUnstakingDelay = 3600
+      await stRSR.connect(owner).setUnstakingDelay(newUnstakingDelay)
+
+      await rsr.connect(addr2).approve(stRSR.address, amount)
+      await stRSR.connect(addr2).stake(amount)
+
+      const availableAtOfFirstOfUser2 = (await getLatestBlockTimestamp()) + newUnstakingDelay + 1
+      /**
+       * Unstaking request enter a queue. Withdrawal should become available 1 hour later for both users
+       */
+      await expect(stRSR.connect(addr2).unstake(amount))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, draftEra, addr2.address, amount, amount, availableAtOfFirstOfUser2)
+      await expect(stRSR.connect(addr1).unstake(amount))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(1, draftEra, addr1.address, amount, amount, availableAtOfFirstOfUser2 + 1)
+    })
+
     it('Should create Pending withdrawal when unstaking', async () => {
       const amount: BigNumber = bn('1000e18')
 

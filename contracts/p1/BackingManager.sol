@@ -309,7 +309,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         rToken.setBasketsNeeded(basketsHeldBottom);
     }
 
-    // === Governance Setters ===
+    // === Governance ===
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public override(TradingP1, ITrading) {
+        super.forceSettleTrade(trade); // enforces governance only
+        delete tokensOut[trade.sell()];
+    }
 
     /// @custom:governance
     function setTradingDelay(uint48 val) public governance {

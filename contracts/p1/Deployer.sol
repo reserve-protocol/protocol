@@ -20,6 +20,7 @@ import "../plugins/assets/Asset.sol";
 import "../plugins/assets/RTokenAsset.sol";
 import "./Main.sol";
 import "../libraries/String.sol";
+import "../plugins/trading/GnosisTrade.sol";
 
 /**
  * @title DeployerP1
@@ -31,7 +32,6 @@ contract DeployerP1 is IDeployer, Versioned {
     string public constant ENS = "reserveprotocol.eth";
 
     IERC20Metadata public immutable rsr;
-    IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
@@ -41,13 +41,11 @@ contract DeployerP1 is IDeployer, Versioned {
     // effects: post, all contract-state values are set
     constructor(
         IERC20Metadata rsr_,
-        IGnosis gnosis_,
         IAsset rsrAsset_,
         Implementations memory implementations_
     ) {
         require(
             address(rsr_) != address(0) &&
-                address(gnosis_) != address(0) &&
                 address(rsrAsset_) != address(0) &&
                 address(implementations_.main) != address(0) &&
                 address(implementations_.trading.gnosisTrade) != address(0) &&
@@ -66,7 +64,6 @@ contract DeployerP1 is IDeployer, Versioned {
         );
 
         rsr = rsr_;
-        gnosis = gnosis_;
         rsrAsset = rsrAsset_;
         _implementations = implementations_;
     }
@@ -216,7 +213,6 @@ contract DeployerP1 is IDeployer, Versioned {
 
         components.broker.init(
             main,
-            gnosis,
             _implementations.trading.gnosisTrade,
             params.batchAuctionLength,
             _implementations.trading.dutchTrade,

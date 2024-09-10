@@ -150,7 +150,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let ctx: X
       let alice: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let collateral: TestICollateral
       let chainlinkFeed: MockV3Aggregator
