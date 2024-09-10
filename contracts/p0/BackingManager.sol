@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./mixins/TradingLib.sol";
 import "./mixins/Trading.sol";
 import "../interfaces/IAsset.sol";
@@ -64,6 +65,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     {
         trade = super.settleTrade(sell);
         delete tokensOut[trade.sell()];
+
+        tradeEnd[trade.KIND()] = uint48(Math.min(tradeEnd[trade.KIND()], block.timestamp));
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {

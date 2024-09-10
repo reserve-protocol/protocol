@@ -86,6 +86,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         delete tokensOut[sell];
         trade = super.settleTrade(sell); // nonReentrant
 
+        TradeKind kind = trade.KIND();
+        if (tradeEnd[kind] > block.timestamp) tradeEnd[kind] = uint48(block.timestamp);
+
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
             // solhint-disable-next-line no-empty-blocks
