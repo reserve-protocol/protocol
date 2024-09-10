@@ -246,7 +246,16 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         assert(main.basketHandler().fullyCollateralized());
     }
 
-    // === Setters ===
+    // === Governance ===
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public override(TradingP0, ITrading) governance {
+        super.forceSettleTrade(trade);
+        delete tokensOut[trade.sell()];
+    }
 
     /// @custom:governance
     function setTradingDelay(uint48 val) public governance {
