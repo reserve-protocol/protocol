@@ -241,7 +241,11 @@ contract DistributorP1 is ComponentP1, IDistributor {
         require(dest != address(0), "dest cannot be zero");
         require(
             dest != address(furnace) && dest != address(stRSR),
-            "destination can not be furnace or strsr directly"
+            "destination cannot be furnace or strsr directly"
+        );
+        require(
+            dest != address(rsr) && dest != address(rToken),
+            "destination cannot be rsr or rToken"
         );
         require(dest != address(main.daoFeeRegistry()), "destination cannot be daoFeeRegistry");
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
