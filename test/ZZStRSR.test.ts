@@ -2226,7 +2226,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmt)
 
       // Cannot reset stakes with this rate
-      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rate still safe')
+      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rates still safe')
 
       // Seize small portion of RSR to increase stake rate - still safe
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -2240,7 +2240,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmt)
 
       // Attempt to reset stakes, still not possible
-      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rate still safe')
+      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rates still safe')
 
       // New Seizure - rate will be unsafe
       const rsrRemaining = stakeAmt.sub(seizeAmt)
@@ -2278,7 +2278,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmt)
 
       // Cannot reset stakes with this rate
-      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rate still safe')
+      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rates still safe')
 
       // Add RSR to decrease stake rate - still safe
       await rsr.connect(owner).transfer(stRSR.address, addAmt1)
@@ -2300,7 +2300,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmt)
 
       // Attempt to reset stakes, still not possible
-      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rate still safe')
+      await expect(stRSR.connect(owner).resetStakes()).to.be.revertedWith('rates still safe')
 
       // Add a large amount of funds - rate will be unsafe
       await rsr.connect(owner).mint(owner.address, addAmt2)

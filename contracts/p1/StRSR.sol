@@ -163,6 +163,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // stake rate under/over which governance can reset all stakes
     uint192 private constant MAX_SAFE_STAKE_RATE = 1e6 * FIX_ONE; // 1e6   D18{qStRSR/qRSR}
     uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6  D18{qStRSR/qRSR}
+    uint192 private constant MAX_SAFE_DRAFT_RATE = 1e6 * FIX_ONE; // 1e6   D18{qStRSR/qRSR}
+    uint192 private constant MIN_SAFE_DRAFT_RATE = uint192(1e12); // 1e-6  D18{qStRSR/qRSR}
 
     // ======================
 
@@ -478,19 +480,25 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     /// Reset all stakes and advance era
-    /// @notice This function is only callable when the stake rate is unsafe.
-    ///     The stake rate is unsafe when it is either too high or too low.
+    /// @notice This function is only callable when the stake or draft rates are unsafe.
+    ///     The stake/draft rate is unsafe when it is either too high or too low.
     ///     There is the possibility of the rate reaching the borderline of being unsafe,
     ///     where users won't stake in fear that a reset might be executed.
     ///     A user may also grief this situation by staking enough RSR to vote against any reset.
     ///     This standoff will continue until enough RSR is staked and a reset is executed.
     ///     There is currently no good and easy way to mitigate the possibility of this situation,
     ///     and the risk of it occurring is low enough that it is not worth the effort to mitigate.
+    /// @notice Governance must monitor the draftRate! After multiple seizures it is possible
+    ///     for it to drift near the unsafe bounds. Even if stakes are still safe at this point,
+    ///     resetStakes() should be called by governance anyway.
     function resetStakes() external {
         _requireGovernanceOnly();
         require(
-            stakeRate <= MIN_SAFE_STAKE_RATE || stakeRate >= MAX_SAFE_STAKE_RATE,
-            "rate still safe"
+            draftRate <= MIN_SAFE_DRAFT_RATE ||
+                draftRate >= MAX_SAFE_DRAFT_RATE ||
+                stakeRate <= MIN_SAFE_STAKE_RATE ||
+                stakeRate >= MAX_SAFE_STAKE_RATE,
+            "rates still safe"
         );
 
         beginEra();
