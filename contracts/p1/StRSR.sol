@@ -443,7 +443,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR = stakeRSRToTake;
 
         // update stakeRate, possibly beginning a new stake era
-        if (stakeRSR != 0) {
+        if (stakeRSR != 0 && totalStakes != 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
             stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
         }
@@ -458,11 +458,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR += draftRSRToTake;
 
         // update draftRate, possibly beginning a new draft era
-        if (draftRSR != 0) {
+        if (draftRSR != 0 && totalDrafts != 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
             draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
         }
-
         if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
             seizedRSR += draftRSR;
             beginDraftEra();
