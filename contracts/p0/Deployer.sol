@@ -119,8 +119,7 @@ contract DeployerP0 is IDeployer, Versioned {
 
         main.broker().init(
             main,
-            gnosis,
-            ITrade(address(new GnosisTrade())),
+            ITrade(address(new GnosisTrade(gnosis))),
             params.batchAuctionLength,
             ITrade(address(new DutchTrade())),
             params.dutchAuctionLength

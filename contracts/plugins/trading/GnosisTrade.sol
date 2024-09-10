@@ -34,12 +34,14 @@ contract GnosisTrade is ITrade, Versioned {
     // raw "/" for compile-time const
     uint192 public constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
 
+    IGnosis public immutable gnosis; // Gnosis Auction contract
+
     // ==== status: This contract's state-machine state. See TradeStatus enum, above
     TradeStatus public status;
 
     // ==== The rest of contract state is all parameters that are immutable after init()
     // == Metadata
-    IGnosis public gnosis; // Gnosis Auction contract
+    IGnosis public gnosis_DEPRECATED; // made immutable in 4.0.0; left in for testing compatibility
     uint256 public auctionId; // The Gnosis Auction ID returned by gnosis.initiateAuction()
     IBroker public broker; // The Broker that cloned this contract into existence
 
@@ -66,7 +68,9 @@ contract GnosisTrade is ITrade, Versioned {
         status = end;
     }
 
-    constructor() {
+    constructor(IGnosis _gnosis) {
+        require(address(_gnosis) != address(0), "gnosis address zero");
+        gnosis = _gnosis;
         status = TradeStatus.CLOSED;
     }
 
@@ -87,7 +91,6 @@ contract GnosisTrade is ITrade, Versioned {
     function init(
         IBroker broker_,
         address origin_,
-        IGnosis gnosis_,
         uint48 batchAuctionLength,
         TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
@@ -105,7 +108,6 @@ contract GnosisTrade is ITrade, Versioned {
 
         broker = broker_;
         origin = origin_;
-        gnosis = gnosis_;
         endTime = uint48(block.timestamp) + batchAuctionLength;
 
         // D27{qBuyTok/qSellTok}

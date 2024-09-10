@@ -151,8 +151,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
       )
     } else {
-      const slot = await getStorageAt(broker.address, 56)
-      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+      const slot = await getStorageAt(broker.address, 55)
+      await setStorageAt(broker.address, 55, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
     }
     expect(await broker.batchTradeDisabled()).to.equal(true)
   }

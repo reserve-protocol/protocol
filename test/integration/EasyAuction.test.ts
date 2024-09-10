@@ -4,6 +4,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
+import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
+import forkBlockNumber from './fork-block-numbers'
+import { resetFork } from '#/utils/chain'
 import {
   Collateral,
   IMPLEMENTATION,
@@ -16,7 +19,7 @@ import {
 } from '../fixtures'
 import { bn, fp, shortString, divCeil } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
-import { IConfig, networkConfig } from '../../common/configuration'
+import { IConfig } from '../../common/configuration'
 import {
   BN_SCALE_FACTOR,
   CollateralStatus,
@@ -32,8 +35,6 @@ import {
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
-import { getChainId } from '../../common/blockchain-utils'
-import { whileImpersonating } from '../utils/impersonation'
 import { expectRTokenPrice } from '../utils/oracles'
 import { withinTolerance } from '../utils/matchers'
 import { cartesianProduct } from '../utils/cases'
@@ -85,6 +86,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   let token1: ERC20Mock
   let rTokenAsset: RTokenAsset
 
+  before(async () => {
+    await resetFork(hre, forkBlockNumber.default)
+  })
+
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
@@ -110,6 +115,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <ERC20Mock>erc20s[collateral.indexOf(basket[1])]
     collateral0 = <FiatCollateral>collateral[0]
+
+    // Put owner in charge of EasyAuction
+    await setStorageAt(easyAuction.address, 0, owner.address)
   })
 
   context('RSR -> token0', function () {
@@ -435,13 +443,8 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     })
 
     it('full volume -- with fees', async () => {
-      const chainId = await getChainId(hre)
-      const easyAuctionOwner = networkConfig[chainId].EASY_AUCTION_OWNER || ''
-
       // Apply 0.1% fee
-      await whileImpersonating(easyAuctionOwner, async (auctionOwner) => {
-        await easyAuction.connect(auctionOwner).setFeeParameters(1, easyAuctionOwner)
-      })
+      await easyAuction.connect(owner).setFeeParameters(1, owner.address)
 
       const adjSellAmt = sellAmt.mul(1000).div(1001)
       const bidAmt = buyAmt
@@ -653,16 +656,11 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     })
 
     it('should handle fees in EasyAuction correctly', async () => {
-      const chainId = await getChainId(hre)
-      const easyAuctionOwner = networkConfig[chainId].EASY_AUCTION_OWNER || ''
-
       // No fees yet transferred to Easy auction owner
-      expect(await token0.balanceOf(easyAuctionOwner)).to.equal(0)
+      expect(await token0.balanceOf(owner.address)).to.equal(0)
 
       // Set fees in easy auction to 1%
-      await whileImpersonating(easyAuctionOwner, async (auctionOwner) => {
-        await easyAuction.connect(auctionOwner).setFeeParameters(10, easyAuctionOwner)
-      })
+      await easyAuction.connect(owner).setFeeParameters(10, owner.address)
 
       // Calculate values
       const feeDenominator = await easyAuction.FEE_DENOMINATOR()
@@ -728,7 +726,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      expect(await token0.balanceOf(easyAuctionOwner)).to.be.closeTo(feeAmt, 1) // account for rounding
+      expect(await token0.balanceOf(owner.address)).to.be.closeTo(feeAmt, 1) // account for rounding
     })
   })
 
@@ -829,7 +827,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Deployments
       const main = await MainFactory.deploy()
       const broker = await BrokerFactory.deploy()
-      const gnosisTradeImpl = await GnosisTradeFactory.deploy()
+      const gnosisTradeImpl = await GnosisTradeFactory.deploy(easyAuction.address)
       const dutchTradeImpl = await DutchTradeFactory.deploy()
       await main.init(
         {
@@ -854,7 +852,6 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await main.connect(owner).unpauseIssuance()
       await broker.init(
         main.address,
-        easyAuction.address,
         gnosisTradeImpl.address,
         config.batchAuctionLength,
         dutchTradeImpl.address,
@@ -1000,21 +997,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // This set the broker to false since it was one token short.
       // This test is to make sure that the broker is not disabled in this case.
 
-      const resetFork = async () => {
-        await hre.network.provider.request({
-          method: 'hardhat_reset',
-          params: [
-            {
-              forking: {
-                jsonRpcUrl: process.env.MAINNET_RPC_URL,
-                blockNumber: 16813289,
-              },
-            },
-          ],
-        })
-      }
-
-      await resetFork()
+      await resetFork(hre, 16813289)
 
       const backingManager = await ethers.getContractAt(
         'BackingManagerP1',
@@ -1026,14 +1009,19 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         true
       )
 
-      await resetFork()
+      await resetFork(hre, 16813289)
 
       const gnosisTradeImpl = await ethers.getContractAt(
         'GnosisTrade',
         '0xAc543Ee89A2238945f7D7Ad4d9Cf958721f9757c'
       )
-      const gnosisTradeArtifact = await hre.artifacts.readArtifact('GnosisTrade')
-      await setCode(gnosisTradeImpl.address, gnosisTradeArtifact.deployedBytecode)
+
+      const GnosisTradeFactory = await ethers.getContractFactory('GnosisTrade')
+      const gnosisTrade = await GnosisTradeFactory.deploy(
+        '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101' // OG EasyAuction
+      )
+      const bytecode = await ethers.provider.send('eth_getCode', [gnosisTrade.address])
+      await setCode(gnosisTradeImpl.address, bytecode)
 
       await backingManager.settleTrade('0x39AA39c021dfbaE8faC545936693aC917d5E7563')
       expect(await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').disabled()).to.equal(
