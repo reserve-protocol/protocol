@@ -551,6 +551,31 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await tradeWithReentrantGnosis.canSettle()).to.equal(false)
       })
 
+      it('Should not allow to force settle a trade unless governance', async () => {
+        // Initialize trade - simulate from backingManager
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: amount,
+          minBuyAmount: bn('0'),
+        }
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            broker.address,
+            backingManager.address,
+            config.batchAuctionLength,
+            tradeRequest
+          )
+        ).to.not.be.reverted
+
+        await expect(
+          backingManager.connect(addr1).forceSettleTrade(trade.address)
+        ).to.be.revertedWith('governance only')
+      })
+
       it('Should not allow deployment with zero address gnosis', async () => {
         const GnosisTradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
         await expect(GnosisTradeFactory.deploy(ZERO_ADDRESS)).to.be.revertedWith(
