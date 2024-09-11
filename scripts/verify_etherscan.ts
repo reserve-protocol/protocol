@@ -88,7 +88,8 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
-      'assets/verify_stg.ts'
+      'assets/verify_stg.ts',
+      'collateral-plugins/verify_aerodrome_usdc_eusd.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One

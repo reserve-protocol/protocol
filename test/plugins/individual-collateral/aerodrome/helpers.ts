@@ -4,6 +4,8 @@ import {
   IAeroGauge,
   AerodromeGaugeWrapper__factory,
   AerodromeGaugeWrapper,
+  TestICollateral,
+  MockV3Aggregator,
 } from '@typechain/index'
 import { ethers } from 'hardhat'
 import {
@@ -15,7 +17,9 @@ import {
   FORK_BLOCK,
 } from './constants'
 import { getResetFork } from '../helpers'
+import { pushOracleForward } from '../../../utils/oracles'
 import { whileImpersonating } from '#/test/utils/impersonation'
+import { ZERO_ADDRESS } from '#/common/constants'
 
 interface WrappedAeroFixture {
   token0: ERC20Mock
@@ -71,6 +75,29 @@ export const mintWrappedLpToken = async (
   await mintLpToken(gauge, lpToken, amount, holder, user.address)
   await lpToken.connect(user).approve(wrapper.address, ethers.constants.MaxUint256)
   await wrapper.connect(user).deposit(amount, recipient)
+}
+
+export const getFeeds = async (coll: TestICollateral): Promise<MockV3Aggregator[]> => {
+  const aeroStableColl = await ethers.getContractAt('AerodromeStableCollateral', coll.address)
+
+  const feedAddrs = (await aeroStableColl.tokenFeeds(0)).concat(await aeroStableColl.tokenFeeds(1))
+  const feeds: MockV3Aggregator[] = []
+
+  for (const feedAddr of feedAddrs) {
+    if (feedAddr != ZERO_ADDRESS) {
+      const oracle = await ethers.getContractAt('MockV3Aggregator', feedAddr)
+      feeds.push(oracle)
+    }
+  }
+
+  return feeds
+}
+
+export const pushAllFeedsForward = async (coll: TestICollateral) => {
+  const feeds = await getFeeds(coll)
+  for (const oracle of feeds) {
+    await pushOracleForward(oracle.address)
+  }
 }
 
 export const resetFork = getResetFork(FORK_BLOCK)

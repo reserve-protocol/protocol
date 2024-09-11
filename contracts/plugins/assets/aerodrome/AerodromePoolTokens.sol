@@ -180,6 +180,27 @@ contract AerodromePoolTokens {
         return pool.reserve1();
     }
 
+    function sqrtK() public view virtual returns (uint192) {
+        uint192 r0 = shiftl_toFix(tokenReserve(0), -int8(token0.decimals()), FLOOR);
+        uint192 r1 = shiftl_toFix(tokenReserve(1), -int8(token1.decimals()), FLOOR);
+        return r0.mul(r1).sqrt();
+    }
+
+    /// @param index The index of the token: 0 or 1
+    /// @return [address of chainlink feeds]
+    function tokenFeeds(uint8 index) public view virtual returns (AggregatorV3Interface[] memory) {
+        if (index >= nTokens) revert WrongIndex(nTokens - 1);
+        AggregatorV3Interface[] memory feeds = new AggregatorV3Interface[](2);
+        if (index == 0) {
+            feeds[0] = _t0feed0;
+            feeds[1] = _t0feed1;
+        } else {
+            feeds[0] = _t1feed0;
+            feeds[1] = _t1feed1;
+        }
+        return feeds;
+    }
+
     // === Internal ===
 
     function maxPoolOracleTimeout() internal view virtual returns (uint48) {

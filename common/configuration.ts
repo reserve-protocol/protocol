@@ -143,6 +143,7 @@ export interface IPools {
   crvTriCrypto?: string
   crvMIM3Pool?: string
   sdUSDCUSDCPlus?: string
+  aeroUSDCeUSD?: string
 }
 
 interface INetworkConfig {

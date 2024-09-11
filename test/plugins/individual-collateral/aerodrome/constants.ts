@@ -25,10 +25,11 @@ export const eUSD_ORACLE_TIMEOUT = bn('86400')
 export const eUSD_ORACLE_ERROR = fp('0.005')
 export const eUSD_HOLDER = '0xb5E331615FdbA7DF49e05CdEACEb14Acdd5091c3'
 
-export const FORK_BLOCK = 19074000
+export const FORK_BLOCK = 19074500
 
 // Common
 export const FIX_ONE = 1n * 10n ** 18n
+export const ORACLE_ERROR = fp('0.005')
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const DEFAULT_THRESHOLD = fp('0.02') // 2%
 export const DELAY_UNTIL_DEFAULT = bn('259200') // 72h
