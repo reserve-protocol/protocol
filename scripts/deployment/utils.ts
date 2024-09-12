@@ -11,7 +11,9 @@ import { useEnv } from '#/utils/env'
 import { networkConfig } from '../../common/configuration'
 
 import Safe from '@safe-global/protocol-kit'
+import SafeApiKit from '@safe-global/api-kit'
 import { HttpNetworkConfig } from 'hardhat/types'
+import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 export const priceTimeout = bn('604800') // 1 week
 
@@ -286,10 +288,41 @@ export const getUsdtOracleError = (network: string): BigNumber => {
   }
 }
 
-export const getDevSafe = async (chainId: string): Promise<Safe> => {
-  return await Safe.init({
-    provider: (hre.config.networks[hre.network.name] as HttpNetworkConfig).url,
-    signer: hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!).privateKey,
-    safeAddress: networkConfig[chainId].DEV_MULTISIG!,
+export const initiateMultisigTx = async (
+  chainId: string,
+  tx: MetaTransactionData
+): Promise<void> => {
+  if (hre.network.name == 'localhost' || hre.network.name == 'hardhat') {
+    console.log('Skipping multisig tx on localhost')
+    return
+  }
+
+  const provider = (hre.config.networks[hre.network.name] as HttpNetworkConfig).url
+  const signer = hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!).privateKey
+  const safeAddress = networkConfig[chainId].DEV_MULTISIG!
+
+  const safe = await Safe.init({
+    provider,
+    signer,
+    safeAddress,
   })
+  const safeApi = new SafeApiKit({
+    chainId: parseInt(chainId) as unknown as bigint,
+  })
+  const safeTx = await safe.createTransaction({ transactions: [tx] })
+  const safeTxHash = await safe.getTransactionHash(safeTx)
+  const signature = await safe.signHash(safeTxHash)
+
+  // Propose transaction to the service
+  await safeApi.proposeTransaction({
+    safeAddress: await safe.getAddress(),
+    safeTransactionData: safeTx.data,
+    safeTxHash,
+    senderAddress: tx.to,
+    senderSignature: signature.data,
+  })
+
+  const hyperlink = `https://app.safe.global/transactions/queue?safe=${hre.network.name}:${networkConfig[chainId].DEV_MULTISIG}`
+
+  console.log(`Queued tx, requires confirmation: ${hyperlink}`)
 }
