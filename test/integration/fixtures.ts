@@ -801,7 +801,9 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
     const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+    const gnosisTrade: GnosisTrade = <GnosisTrade>(
+      await GnosisTradeImplFactory.deploy(easyAuction.address)
+    )
 
     const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
     const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
@@ -838,12 +840,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
-      await DeployerFactory.deploy(
-        rsr.address,
-        easyAuction.address,
-        rsrAsset.address,
-        implementations
-      )
+      await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
     )
   }
 

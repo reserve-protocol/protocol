@@ -6,7 +6,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { TradeKind } from '../../common/constants'
-import { bn, divCeil, fp } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import {
   BadERC20,
   ERC20Mock,
@@ -64,30 +64,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
   let basketHandler: TestIBasketHandler
-
-  // Computes the minBuyAmt for a sellAmt at two prices
-  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
-  const toMinBuyAmt = (
-    sellAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    // do all muls first so we don't round unnecessarily
-    // a = loss due to max trade slippage
-    // b = loss due to selling token at the low price
-    // c = loss due to buying token at the high price
-    // mirrors the math from TradeLib ~L:57
-
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = sellAmt
-      .mul(fp('1').sub(maxTradeSlippage)) // (a)
-      .mul(lowSellPrice) // (b)
-
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
-  }
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -323,6 +299,37 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+    })
+
+    it('should be able to force settle if an ERC20 breaks mid-auction', async () => {
+      await setOraclePrice(collateral0.address, bn('1e7')) // default
+      await collateral0.refresh()
+      await advanceTime(DELAY_UNTIL_DEFAULT.toString())
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs(2, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      await token0.setCensored(backingManager.address, false)
+      await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+
+      // Censor Trade while auction open
+      const t = await getTrade(backingManager, token0.address)
+      await token0.setCensored(t.address, true)
+
+      // Advance to end of auction
+      await advanceTime(Number(config.dutchAuctionLength) + 1)
+      await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith('censored')
+
+      // Force settle
+      await backingManager.connect(owner).forceSettleTrade(t.address)
+      expect(await backingManager.tradesOpen()).to.equal(0)
+
+      // Should be able to continue
+      await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+      expect(await backingManager.tradesOpen()).to.equal(1)
     })
 
     it('should keep collateral working', async () => {

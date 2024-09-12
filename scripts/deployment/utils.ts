@@ -25,18 +25,12 @@ export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
 
 export const validatePrerequisites = async (deployments: IDeployments) => {
   // Check prerequisites properly defined
-  if (
-    !deployments.prerequisites.GNOSIS_EASY_AUCTION ||
-    !deployments.prerequisites.RSR ||
-    !deployments.prerequisites.RSR_FEED
-  ) {
+  if (!deployments.prerequisites.RSR || !deployments.prerequisites.RSR_FEED) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR))) {
     throw new Error(`RSR contract not found in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR_FEED))) {
     throw new Error(`RSR_FEED contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.GNOSIS_EASY_AUCTION))) {
-    throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
   }
 }
 
@@ -184,7 +178,6 @@ export const getEmptyDeployment = (): IDeployments => {
     prerequisites: {
       RSR: '',
       RSR_FEED: '',
-      GNOSIS_EASY_AUCTION: '',
     },
     tradingLib: '',
     basketLib: '',

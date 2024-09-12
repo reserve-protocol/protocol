@@ -103,7 +103,9 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
           stRSR: (await StRSRFactory.deploy()).address,
         },
         trading: {
-          gnosisTrade: (await GnosisTradeFactory.deploy()).address,
+          gnosisTrade: (
+            await GnosisTradeFactory.deploy('0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101')
+          ).address,
           dutchTrade: (await DutchTradeFactory.deploy()).address,
         },
       }
@@ -111,7 +113,6 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
       const DeployerFactory = await ethers.getContractFactory('DeployerP1')
       const deployerR4 = await DeployerFactory.deploy(
         '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
-        '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
         '0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA',
         implementationsR4
       )
@@ -156,7 +157,9 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
           stRSR: (await StRSRFactory.deploy()).address,
         },
         trading: {
-          gnosisTrade: (await GnosisTradeFactory.deploy()).address,
+          gnosisTrade: (
+            await GnosisTradeFactory.deploy('0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101')
+          ).address,
           dutchTrade: (await DutchTradeFactory.deploy()).address,
         },
       }
@@ -164,7 +167,6 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
       const DeployerFactory = await ethers.getContractFactory('DeployerP1V2')
       const deployerR2 = await DeployerFactory.deploy(
         '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
-        '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
         '0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA',
         implementationsR2
       )
