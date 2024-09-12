@@ -4,10 +4,7 @@ import hre, { ethers } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
-import { initiateMultisigTx } from '../utils'
 import { MaxIssuableFacet } from '../../../typechain'
-
-import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 let maxIssuableFacet: MaxIssuableFacet
 
@@ -47,26 +44,6 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId})
     MaxIssuableFacet:  ${maxIssuableFacet.address}
     Deployment file: ${deploymentFilename}`)
-
-  // ******************** Save to Facade ****************************************/
-
-  console.log('Configuring with Facade...')
-
-  // Save MaxIssuableFacet functions to Facade
-  const facade = await ethers.getContractAt('Facade', deployments.facade)
-
-  const tx: MetaTransactionData = {
-    to: facade.address,
-    value: '0',
-    data: facade.interface.encodeFunctionData('save', [
-      maxIssuableFacet.address,
-      Object.entries(maxIssuableFacet.functions).map(([fn]) =>
-        maxIssuableFacet.interface.getSighash(fn)
-      ),
-    ]),
-  }
-
-  await initiateMultisigTx(chainId, tx)
 }
 
 main().catch((error) => {

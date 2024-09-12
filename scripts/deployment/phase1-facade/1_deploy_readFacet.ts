@@ -4,10 +4,7 @@ import hre, { ethers } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
-import { initiateMultisigTx } from '../utils'
 import { ReadFacet } from '../../../typechain'
-
-import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 let readFacet: ReadFacet
 
@@ -47,24 +44,6 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId})
     ReadFacet:  ${readFacet.address}
     Deployment file: ${deploymentFilename}`)
-
-  // ******************** Save to Facade ****************************************/
-
-  console.log('Configuring with Facade via multisig...')
-
-  // Save ReadFacet functions to Facade
-  const facade = await ethers.getContractAt('Facade', deployments.facade)
-
-  const tx: MetaTransactionData = {
-    to: facade.address,
-    value: '0',
-    data: facade.interface.encodeFunctionData('save', [
-      readFacet.address,
-      Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn)),
-    ]),
-  }
-
-  await initiateMultisigTx(chainId, tx)
 }
 
 main().catch((error) => {

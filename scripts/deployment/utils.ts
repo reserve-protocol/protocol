@@ -285,24 +285,32 @@ export const initiateMultisigTx = async (
   chainId: string,
   tx: MetaTransactionData
 ): Promise<void> => {
+  return await initiateMultisigTxs(chainId, [tx])
+}
+
+// Note: may end up with conflicting nonces if used naively
+export const initiateMultisigTxs = async (
+  chainId: string,
+  txs: MetaTransactionData[]
+): Promise<void> => {
   if (hre.network.name == 'localhost' || hre.network.name == 'hardhat') {
     console.log('Skipping multisig tx on localhost')
     return
   }
 
   const provider = (hre.config.networks[hre.network.name] as HttpNetworkConfig).url
-  const signer = hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!).privateKey
+  const wallet = hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!)
   const safeAddress = networkConfig[chainId].DEV_MULTISIG!
 
   const safe = await Safe.init({
     provider,
-    signer,
+    signer: wallet.privateKey,
     safeAddress,
   })
   const safeApi = new SafeApiKit({
     chainId: parseInt(chainId) as unknown as bigint,
   })
-  const safeTx = await safe.createTransaction({ transactions: [tx] })
+  const safeTx = await safe.createTransaction({ transactions: txs })
   const safeTxHash = await safe.getTransactionHash(safeTx)
   const signature = await safe.signHash(safeTxHash)
 
@@ -311,7 +319,7 @@ export const initiateMultisigTx = async (
     safeAddress: await safe.getAddress(),
     safeTransactionData: safeTx.data,
     safeTxHash,
-    senderAddress: tx.to,
+    senderAddress: wallet.address,
     senderSignature: signature.data,
   })
 
