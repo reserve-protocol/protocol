@@ -8,6 +8,10 @@ import { IComponents, arbitrumL2Chains, baseL2Chains } from '../../common/config
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
+import { networkConfig } from '../../common/configuration'
+
+import Safe from '@safe-global/protocol-kit'
+import { HttpNetworkConfig } from 'hardhat/types'
 
 export const priceTimeout = bn('604800') // 1 week
 
@@ -182,7 +186,13 @@ export const getEmptyDeployment = (): IDeployments => {
     },
     tradingLib: '',
     basketLib: '',
-    facets: { actFacet: '', readFacet: '', maxIssuableFacet: '' },
+    facets: {
+      actFacet: '',
+      readFacet: '',
+      maxIssuableFacet: '',
+      backingBufferFacet: '',
+      revenueFacet: '',
+    },
     facade: '',
     facadeWriteLib: '',
     facadeWrite: '',
@@ -274,4 +284,12 @@ export const getUsdtOracleError = (network: string): BigNumber => {
   } else {
     return fp('0.0025') // 0.25% mainnet
   }
+}
+
+export const getDevSafe = async (chainId: string): Promise<Safe> => {
+  return await Safe.init({
+    provider: (hre.config.networks[hre.network.name] as HttpNetworkConfig).url,
+    signer: hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!).privateKey,
+    safeAddress: networkConfig[chainId].DEV_MULTISIG!,
+  })
 }

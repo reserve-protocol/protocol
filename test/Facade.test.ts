@@ -134,7 +134,6 @@ describe('Facade + FacadeMonitor contracts', () => {
       config,
       facade,
       readFacet,
-      revenueFacet,
       facadeTest,
       facadeMonitor,
       rToken,

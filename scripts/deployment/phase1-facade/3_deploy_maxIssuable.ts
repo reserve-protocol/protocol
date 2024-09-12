@@ -6,6 +6,10 @@ import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { MaxIssuableFacet } from '../../../typechain'
 
+import SafeApiKit from '@safe-global/api-kit'
+import { getDevSafe } from '../utils'
+import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
+
 let maxIssuableFacet: MaxIssuableFacet
 
 async function main() {
@@ -51,14 +55,38 @@ async function main() {
 
   // Save MaxIssuableFacet functions to Facade
   const facade = await ethers.getContractAt('Facade', deployments.facade)
-  await facade.save(
-    maxIssuableFacet.address,
-    Object.entries(maxIssuableFacet.functions).map(([fn]) =>
-      maxIssuableFacet.interface.getSighash(fn)
-    )
-  )
 
-  console.log('Finished saving to Facade')
+  const tx: MetaTransactionData = {
+    to: facade.address,
+    value: '0',
+    data: facade.interface.encodeFunctionData('save', [
+      maxIssuableFacet.address,
+      Object.entries(maxIssuableFacet.functions).map(([fn]) =>
+        maxIssuableFacet.interface.getSighash(fn)
+      ),
+    ]),
+  }
+
+  const safe = await getDevSafe(chainId)
+  const safeApi = new SafeApiKit({
+    chainId: parseInt(chainId) as unknown as bigint,
+  })
+
+  const safeTx = await safe.createTransaction({ transactions: [tx] })
+
+  const safeTxHash = await safe.getTransactionHash(safeTx)
+  const signature = await safe.signHash(safeTxHash)
+
+  // Propose transaction to the service
+  await safeApi.proposeTransaction({
+    safeAddress: await safe.getAddress(),
+    safeTransactionData: safeTx.data,
+    safeTxHash,
+    senderAddress: burner.address,
+    senderSignature: signature.data,
+  })
+
+  console.log('Queued tx in Facade, requires confirmation. ')
 }
 
 main().catch((error) => {
