@@ -577,8 +577,6 @@ library FixLib {
             uint256 pow2 = c & (0 - c);
 
             uint256 c_256 = uint256(c);
-            // Warning: Should not access c below this line
-
             c_256 /= pow2;
             lo /= pow2;
             lo += hi * ((0 - pow2) / pow2 + 1);
@@ -597,7 +595,7 @@ library FixLib {
             if (rounding == CEIL) {
                 if (mm != 0) result_256 += 1;
             } else if (rounding == ROUND) {
-                if (mm > ((c_256 - 1) / 2)) result_256 += 1;
+                if (mm > ((c - 1) / 2)) result_256 += 1; // intentional: use pre-divided c here
             }
         }
 

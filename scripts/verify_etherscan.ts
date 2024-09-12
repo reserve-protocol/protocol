@@ -77,6 +77,7 @@ async function main() {
       'collateral-plugins/verify_sfrax_eth.ts',
       'collateral-plugins/verify_steakusdc.ts',
       'collateral-plugins/verify_re7weth.ts',
+      'collateral-plugins/verify_ethx.ts',
       'collateral-plugins/verify_apxeth.ts',
       'collateral-plugins/verify_USDe.ts',
       'collateral-plugins/verify_pyusd.ts'

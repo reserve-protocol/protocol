@@ -66,6 +66,7 @@ export interface ITokens {
   stETH?: string
   wstETH?: string
   rETH?: string
+  ETHx?: string
   cUSDCv3?: string
   wcUSDCv3?: string
   cUSDbCv3?: string
@@ -229,6 +230,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
+      ETHx: '0xA35b1B31Ce002FBF2058D22F30f95D405200A15b',
       pxETH: '0x04C154b66CB340F3Ae24111CC767e0184Ed00Cc6',
       apxETH: '0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
@@ -280,6 +282,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
+      ETHx: '0xC5f8c4aB091Be1A899214c0C3636ca33DcA0C547', // ETHx/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
       frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
@@ -616,6 +619,7 @@ export interface IConfig {
   withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
   reweightable: boolean
+  enableIssuancePremium: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber

@@ -14,6 +14,8 @@ import "../../mixins/Versioned.sol";
 // Modifications to this contract's state must only ever be made when status=PENDING!
 
 /// Trade contract against the Gnosis EasyAuction mechanism
+/// Limitations on decimals due to Gnosis Auction limitations:
+/// - At 21 decimals the amount of buy tokens cannot exceed ~8e7 else the trade will not settle
 contract GnosisTrade is ITrade, Versioned {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -45,9 +47,9 @@ contract GnosisTrade is ITrade, Versioned {
     IERC20Metadata public sell; // address of token this trade is selling
     IERC20Metadata public buy; // address of token this trade is buying
     uint256 public initBal; // {qSellTok}, this trade's balance of `sell` when init() was called
-    uint192 public sellAmount; // {sellTok}, quantity of whole tokens being sold; dup with initBal
+    uint192 public sellAmount; // {sellTok}, quantity of whole tokens being sold, != initBal
     uint48 public endTime; // timestamp after which this trade's auction can be settled
-    uint192 public worstCasePrice; // {buyTok/sellTok}, the worst price we expect to get at Auction
+    uint192 public worstCasePrice; // D27{qBuyTok/qSellTok}, the worst price we expect to get
     // We expect Gnosis Auction either to meet or beat worstCasePrice, or to return the `sell`
     // tokens. If we actually *get* a worse clearing that worstCasePrice, we consider it an error in
     // our trading scheme and call broker.reportViolation()
@@ -91,10 +93,9 @@ contract GnosisTrade is ITrade, Versioned {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-        initBal = sell.balanceOf(address(this)); // {qSellTok}
-        sellAmount = shiftl_toFix(initBal, -int8(sell.decimals())); // {sellTok}
+        sellAmount = shiftl_toFix(req.sellAmount, -int8(sell.decimals()), FLOOR); // {sellTok}
 
-        require(initBal <= type(uint96).max, "initBal too large");
+        initBal = sell.balanceOf(address(this)); // {qSellTok}
         require(initBal >= req.sellAmount, "unfunded trade");
 
         assert(origin_ != address(0));
@@ -104,10 +105,9 @@ contract GnosisTrade is ITrade, Versioned {
         gnosis = gnosis_;
         endTime = uint48(block.timestamp) + batchAuctionLength;
 
-        // {buyTok/sellTok}
-        worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
-            shiftl_toFix(req.sellAmount, -int8(sell.decimals()))
-        );
+        // D27{qBuyTok/qSellTok}
+        worstCasePrice = shiftl_toFix(req.minBuyAmount, 9).divu(req.sellAmount, FLOOR);
+        // cannot overflow; cannot round to 0 unless minBuyAmount is itself 0
 
         // Downsize our sell amount to adjust for fee
         // {qSellTok} = {qSellTok} * {1} / {1}
@@ -139,7 +139,7 @@ contract GnosisTrade is ITrade, Versioned {
         //
         // Context: wcUSDCv3 has a non-standard approve() function that reverts if the approve
         // amount is > 0 and < type(uint256).max.
-        AllowanceLib.safeApproveFallbackToMax(address(sell), address(gnosis), initBal);
+        AllowanceLib.safeApproveFallbackToMax(address(sell), address(gnosis), req.sellAmount);
 
         auctionId = gnosis.initiateAuction(
             sell,
@@ -157,6 +157,7 @@ contract GnosisTrade is ITrade, Versioned {
     }
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
+    /// @dev boughtAmt can be manipulated upwards; soldAmt upwards
     /// @custom:interaction reentrancy-safe b/c state-locking
     // checks:
     //   state is OPEN
@@ -203,6 +204,7 @@ contract GnosisTrade is ITrade, Versioned {
 
         if (sellBal != 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
         if (boughtAmt != 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
+
         // Check clearing prices
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;
@@ -211,14 +213,9 @@ contract GnosisTrade is ITrade, Versioned {
             uint256 adjustedSoldAmt = Math.max(soldAmt, 1);
             uint256 adjustedBuyAmt = boughtAmt + 1;
 
-            // {buyTok/sellTok}
-            uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, -int8(buy.decimals())).div(
-                shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
-            );
-
-            if (clearingPrice.lt(worstCasePrice)) {
-                broker.reportViolation();
-            }
+            // D27{buyTok/sellTok}
+            uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, 9).divu(adjustedSoldAmt, FLOOR);
+            if (clearingPrice.lt(worstCasePrice)) broker.reportViolation();
         }
     }
 

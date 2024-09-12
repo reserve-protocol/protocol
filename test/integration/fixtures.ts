@@ -626,8 +626,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { easyAuction } = await gnosisFixture()
   const dist: IRevenueShare = {
-    rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60), // 3/5 RSR
+    rTokenDist: bn(4000), // 2/5 RToken
+    rsrDist: bn(6000), // 3/5 RSR
   }
 
   const chainId = await getChainId(hre)
@@ -647,6 +647,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     withdrawalLeak: fp('0'), // 0%; always refresh
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     reweightable: false,
+    enableIssuancePremium: true,
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     batchAuctionLength: bn('900'), // 15 minutes
     dutchAuctionLength: bn('1800'), // 30 minutes

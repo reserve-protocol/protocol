@@ -69,6 +69,7 @@ contract Asset is IAsset, VersionedAsset {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @dev The third (unused) variable is only here for compatibility with Collateral
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
@@ -176,7 +177,7 @@ contract Asset is IAsset, VersionedAsset {
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view virtual returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
+        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals), FLOOR);
     }
 
     /// @return If the asset is an instance of ICollateral or not

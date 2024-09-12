@@ -56,7 +56,7 @@ import {
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from './utils/time'
-import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
+import { ITradeRequest, disableBatchTrade, disableDutchTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
 
@@ -211,14 +211,19 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should allow to update BatchTrade Implementation if Owner and perform validations', async () => {
+      const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
+      const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
+
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
       const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setBatchTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'BatchTradeImplementationSet')
-        .withArgs(anyValue, tradeImpl.address)
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(broker.connect(upgSigner).setBatchTradeImplementation(tradeImpl.address))
+          .to.emit(broker, 'BatchTradeImplementationSet')
+          .withArgs(anyValue, tradeImpl.address)
+      })
 
       // Check existing value
       expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
@@ -226,34 +231,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // If not owner cannot update
       await expect(
         broker.connect(other).setBatchTradeImplementation(mock.address)
-      ).to.be.revertedWith('governance only')
+      ).to.be.revertedWith(errorMsg)
 
       // Check value did not change
       expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(
-        broker.connect(owner).setBatchTradeImplementation(ZERO_ADDRESS)
-      ).to.be.revertedWith('invalid batchTradeImplementation address')
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(
+          broker.connect(upgSigner).setBatchTradeImplementation(ZERO_ADDRESS)
+        ).to.be.revertedWith('invalid batchTradeImplementation address')
 
-      // Update with owner
-      await expect(broker.connect(owner).setBatchTradeImplementation(mock.address))
-        .to.emit(broker, 'BatchTradeImplementationSet')
-        .withArgs(tradeImpl.address, mock.address)
-
+        // Update with owner
+        await expect(broker.connect(upgSigner).setBatchTradeImplementation(mock.address))
+          .to.emit(broker, 'BatchTradeImplementationSet')
+          .withArgs(tradeImpl.address, mock.address)
+      })
       // Check value was updated
       expect(await broker.batchTradeImplementation()).to.equal(mock.address)
     })
 
     it('Should allow to update DutchTrade Implementation if Owner and perform validations', async () => {
+      const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
+      const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
+
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
       const tradeImpl: DutchTrade = <DutchTrade>await TradeFactory.deploy()
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setDutchTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'DutchTradeImplementationSet')
-        .withArgs(anyValue, tradeImpl.address)
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(broker.connect(upgSigner).setDutchTradeImplementation(tradeImpl.address))
+          .to.emit(broker, 'DutchTradeImplementationSet')
+          .withArgs(anyValue, tradeImpl.address)
+      })
 
       // Check existing value
       expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
@@ -261,20 +272,22 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // If not owner cannot update
       await expect(
         broker.connect(other).setDutchTradeImplementation(mock.address)
-      ).to.be.revertedWith('governance only')
+      ).to.be.revertedWith(errorMsg)
 
       // Check value did not change
       expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(
-        broker.connect(owner).setDutchTradeImplementation(ZERO_ADDRESS)
-      ).to.be.revertedWith('invalid dutchTradeImplementation address')
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(
+          broker.connect(upgSigner).setDutchTradeImplementation(ZERO_ADDRESS)
+        ).to.be.revertedWith('invalid dutchTradeImplementation address')
 
-      // Update with owner
-      await expect(broker.connect(owner).setDutchTradeImplementation(mock.address))
-        .to.emit(broker, 'DutchTradeImplementationSet')
-        .withArgs(tradeImpl.address, mock.address)
+        // Update with owner
+        await expect(broker.connect(upgSigner).setDutchTradeImplementation(mock.address))
+          .to.emit(broker, 'DutchTradeImplementationSet')
+          .withArgs(tradeImpl.address, mock.address)
+      })
 
       // Check value was updated
       expect(await broker.dutchTradeImplementation()).to.equal(mock.address)
@@ -733,7 +746,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Fund trade with large balance
         await token0.connect(owner).mint(trade.address, invalidAmount)
 
-        // Attempt to initialize
+        // Will initialize correctly
         await expect(
           trade.init(
             broker.address,
@@ -742,7 +755,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             config.batchAuctionLength,
             tradeRequest
           )
-        ).to.be.revertedWith('initBal too large')
+        ).to.not.be.reverted
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
@@ -1089,6 +1102,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
 
+      it('Should downsize trades above uint96 - sell side', async () => {
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: MAX_UINT96.add(1),
+          minBuyAmount: amount,
+        }
+
+        // Should open trade JUST on MAX_UINT96 approval, not MAX_UINT96 + 1
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.mint(backingManager.address, MAX_UINT96)
+          await token0.connect(bmSigner).approve(broker.address, MAX_UINT96)
+          await broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          // should not revert
+        })
+      })
+
+      it('Should downsize trades above uint96 - buy side', async () => {
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: amount,
+          minBuyAmount: MAX_UINT96.add(1),
+        }
+
+        // Should open trade JUST on amount - 1 approval, not amount
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.mint(backingManager.address, amount.sub(1))
+          await token0.connect(bmSigner).approve(broker.address, amount.sub(1))
+          await broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          // should not revert
+        })
+      })
+
       // There is no test here for the reportViolation case; that is in Revenues.test.ts
     })
 
@@ -1424,6 +1471,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
 
+      const MAX_BUY_TOKEN_SCALED = toBNDecimals(MAX_ERC20_SUPPLY, Number(buyTokDecimals))
+      const MAX_SELL_TOKEN_SCALED = toBNDecimals(MAX_ERC20_SUPPLY, Number(sellTokDecimals))
+
       // Max out throttles
       const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
       const redemptionThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
@@ -1432,12 +1482,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       await advanceTime(3600)
 
       // Mint coll tokens to addr1
-      await buyTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
-      await sellTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(owner).mint(addr1.address, MAX_BUY_TOKEN_SCALED)
+      await sellTok.connect(owner).mint(addr1.address, MAX_SELL_TOKEN_SCALED)
 
       // Issue RToken
-      await buyTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
-      await sellTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(addr1).approve(rToken.address, MAX_BUY_TOKEN_SCALED)
+      await sellTok.connect(addr1).approve(rToken.address, MAX_SELL_TOKEN_SCALED)
       await rToken.connect(addr1).issue(MAX_ERC20_SUPPLY.div(2))
 
       // Burn buyTok from backingManager and send extra sellTok
@@ -1446,7 +1496,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         bn(10).pow(sellTokDecimals)
       )
       await buyTok.burn(backingManager.address, burnAmount)
-      await sellTok.connect(addr1).transfer(backingManager.address, auctionSellAmt.mul(10))
+      await sellTok
+        .connect(addr1)
+        .transfer(backingManager.address, auctionSellAmt.mul(bn(10).pow(sellTokDecimals)))
 
       // Rebalance should cause backingManager to trade about auctionSellAmt, though not exactly
       await backingManager.setMaxTradeSlippage(bn('0'))
@@ -1483,7 +1535,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
         await router.connect(addr1).bid(trade.address, addr1.address)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
-        await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+        await buyTok.connect(addr1).approve(tradeAddr, MAX_BUY_TOKEN_SCALED)
         await trade.connect(addr1).bid()
       }
       await advanceBlocks(1)
@@ -1506,7 +1558,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('18'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
@@ -1514,12 +1566,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     // auction progression %: these will get rounded to blocks later
     const progression = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
 
-    // total cases is 5 * 5 * 3 * 4 = 300
+    // total cases is 2 * 4 * 4 * 3 * 4 = 384
 
     if (SLOW) {
+      decimals.push(bn('8'), bn('9'), bn('21'))
       progression.push(fp('0.176334768961354965'), fp('0.523449931646439834'))
 
-      // total cases is 5 * 5 * 3 * 6 = 450
+      // total cases is 2 * 7 * 7 * 3 * 6 = 1764
     }
 
     const paramList = cartesianProduct(bidTypes, decimals, decimals, auctionSellAmts, progression)

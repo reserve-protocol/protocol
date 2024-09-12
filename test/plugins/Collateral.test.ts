@@ -28,6 +28,7 @@ import {
   TestIBackingManager,
   TestIRToken,
   UnpricedAppreciatingFiatCollateralMock,
+  UnpricedFiatCollateralMock,
   USDCMock,
   WETH9,
 } from '../../typechain'

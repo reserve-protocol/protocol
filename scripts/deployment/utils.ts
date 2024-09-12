@@ -20,7 +20,7 @@ export const priceTimeout = bn('604800') // 1 week
 export const revenueHiding = fp('1e-6') // 1 part in a million
 
 export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
-  return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
+  return x.add(y)
 }
 
 export const validatePrerequisites = async (deployments: IDeployments) => {
