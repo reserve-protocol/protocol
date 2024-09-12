@@ -322,7 +322,11 @@ export const initiateMultisigTx = async (
     senderSignature: signature.data,
   })
 
-  const hyperlink = `https://app.safe.global/transactions/queue?safe=${hre.network.name}:${networkConfig[chainId].DEV_MULTISIG}`
+  let prefix = 'base'
+  if (hre.network.name == 'mainnet') prefix = 'eth'
+  else if (hre.network.name == 'arbitrum') prefix = 'arb'
+
+  const hyperlink = `https://app.safe.global/transactions/queue?safe=${prefix}:${networkConfig[chainId].DEV_MULTISIG}`
 
   console.log(`Queued tx, requires confirmation: ${hyperlink}`)
 }
