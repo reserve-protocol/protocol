@@ -26,6 +26,7 @@ contract AerodromePoolTokens {
     // === State (Immutable) ===
 
     IAeroPool public immutable pool;
+    AeroPoolType public immutable poolType;
 
     IERC20Metadata internal immutable token0;
     IERC20Metadata internal immutable token1;
@@ -66,6 +67,7 @@ contract AerodromePoolTokens {
         require(address(config.pool) != address(0), "pool address is zero");
 
         pool = config.pool;
+        poolType = config.poolType;
 
         // Solidity does not support immutable arrays. This is a hack to get the equivalent of
         // an immutable array so we do not have store the token feeds in the blockchain. This is
@@ -181,8 +183,15 @@ contract AerodromePoolTokens {
     }
 
     function sqrtK() public view virtual returns (uint192) {
+        // x3y+y3x >= k for sAMM pools
+        // xy >= k  for vAMM pools
         uint192 r0 = shiftl_toFix(tokenReserve(0), -int8(token0.decimals()), FLOOR);
         uint192 r1 = shiftl_toFix(tokenReserve(1), -int8(token1.decimals()), FLOOR);
+        if (poolType == AeroPoolType.Stable) {
+            uint192 _a = r0.mul(r1);
+            uint192 _b = (r0.mul(r0)).plus(r1.mul(r1));
+            return _a.mul(_b).sqrt();
+        }
         return r0.mul(r1).sqrt();
     }
 
