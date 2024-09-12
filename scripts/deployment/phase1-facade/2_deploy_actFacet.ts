@@ -4,7 +4,10 @@ import hre, { ethers } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
+import { initiateMultisigTx } from '../utils'
 import { ActFacet } from '../../../typechain'
+
+import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 let actFacet: ActFacet
 
@@ -49,14 +52,19 @@ async function main() {
 
   console.log('Configuring with Facade...')
 
-  // Save ReadFacet to Facade
+  // Save ActFacet functions to Facade
   const facade = await ethers.getContractAt('Facade', deployments.facade)
-  await facade.save(
-    actFacet.address,
-    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
-  )
 
-  console.log('Finished saving to Facade')
+  const tx: MetaTransactionData = {
+    to: facade.address,
+    value: '0',
+    data: facade.interface.encodeFunctionData('save', [
+      actFacet.address,
+      Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn)),
+    ]),
+  }
+
+  await initiateMultisigTx(chainId, tx)
 }
 
 main().catch((error) => {

@@ -4,7 +4,10 @@ import hre, { ethers } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
+import { initiateMultisigTx } from '../utils'
 import { BackingBufferFacet } from '../../../typechain'
+
+import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 let backingBufferFacet: BackingBufferFacet
 
@@ -51,14 +54,19 @@ async function main() {
 
   // Save BackingBufferFacet functions to Facade
   const facade = await ethers.getContractAt('Facade', deployments.facade)
-  await facade.save(
-    backingBufferFacet.address,
-    Object.entries(backingBufferFacet.functions).map(([fn]) =>
-      backingBufferFacet.interface.getSighash(fn)
-    )
-  )
 
-  console.log('Finished saving to Facade')
+  const tx: MetaTransactionData = {
+    to: facade.address,
+    value: '0',
+    data: facade.interface.encodeFunctionData('save', [
+      backingBufferFacet.address,
+      Object.entries(backingBufferFacet.functions).map(([fn]) =>
+        backingBufferFacet.interface.getSighash(fn)
+      ),
+    ]),
+  }
+
+  await initiateMultisigTx(chainId, tx)
 }
 
 main().catch((error) => {
