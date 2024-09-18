@@ -24,9 +24,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
     uint192 public constant MIN_EXCHANGE_RATE = 1e9; // D18{BU/rTok}
     uint192 public constant MAX_EXCHANGE_RATE = 1e27; // D18{BU/rTok}
+    uint256 public constant MIN_THROTTLE_DELTA = 25; // {%}
 
     /// The mandate describes what goals its governors should try to achieve. By succinctly
-    /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
+    /// explaining the RToken's purpose and what the RToken is intended to do, it provides common
     /// ground for the governors to decide upon priorities and how to weigh tradeoffs.
     ///
     /// Example Mandates:
@@ -79,8 +80,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         furnace = main_.furnace();
 
         mandate = mandate_;
-        setIssuanceThrottleParams(issuanceThrottleParams_);
         setRedemptionThrottleParams(redemptionThrottleParams_);
+        setIssuanceThrottleParams(issuanceThrottleParams_);
 
         issuanceThrottle.lastTimestamp = uint48(block.timestamp);
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
@@ -443,6 +444,38 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// @custom:governance
     function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public governance {
+        _setIssuanceThrottleParams(params);
+        require(
+            isRedemptionThrottleGreaterByDelta(params, redemptionThrottle.params),
+            "redemption throttle too low"
+        );
+    }
+
+    /// @custom:governance
+    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+        _setRedemptionThrottleParams(params);
+        require(
+            isRedemptionThrottleGreaterByDelta(issuanceThrottle.params, params),
+            "redemption throttle too low"
+        );
+    }
+
+    /// @custom:governance
+    function setThrottleParams(
+        ThrottleLib.Params calldata issuanceParams,
+        ThrottleLib.Params calldata redemptionParams
+    ) external governance {
+        _setIssuanceThrottleParams(issuanceParams);
+        _setRedemptionThrottleParams(redemptionParams);
+        require(
+            isRedemptionThrottleGreaterByDelta(issuanceParams, redemptionParams),
+            "redemption throttle too low"
+        );
+    }
+
+    // === Private Helpers ===
+
+    function _setIssuanceThrottleParams(ThrottleLib.Params calldata params) public governance {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
@@ -453,7 +486,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function _setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
@@ -463,7 +496,20 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.params = params;
     }
 
-    // ==== Private ====
+    /// @notice Checks if the redemption throttle is greater than the issuance throttle by the required delta
+    /// @dev Compares both amtRate and pctRate individually to ensure each meets the minimum delta requirement
+    /// @param issuance The issuance throttle parameters to compare against
+    /// @param redemption The redemption throttle parameters to check
+    /// @return bool True if redemption throttle is greater by at least MIN_THROTTLE_DELTA, false otherwise
+    function isRedemptionThrottleGreaterByDelta(
+        ThrottleLib.Params memory issuance,
+        ThrottleLib.Params memory redemption
+    ) private pure returns (bool) {
+        uint256 requiredAmtRate = issuance.amtRate + (issuance.amtRate * MIN_THROTTLE_DELTA / 100);
+        uint256 requiredPctRate = issuance.pctRate + (issuance.pctRate * MIN_THROTTLE_DELTA / 100);
+        
+        return redemption.amtRate >= requiredAmtRate && redemption.pctRate >= requiredPctRate;
+    }
 
     /// Mint an amount of RToken equivalent to amtBaskets and scale basketsNeeded up
     /// @param recipient The address to receive the RTokens
