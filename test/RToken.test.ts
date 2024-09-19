@@ -285,25 +285,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should account for accrued value when updating redemption throttle parameters', async () => {
       await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       const issuanceThrottleParams = { amtRate: fp('100'), pctRate: fp('0.1') }
-      const redemptionThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
+      const redemptionThrottleParams = { amtRate: fp('150'), pctRate: fp('0.2') }
 
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
       const params = await rToken.redemptionThrottleParams()
       expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
       expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
 
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
       await rToken.connect(addr1).issue(fp('100'))
-      expect(await rToken.redemptionAvailable()).to.equal(fp('60'))
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+      await rToken.connect(addr1).issue(fp('100'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('150'))
       await rToken.connect(addr1).redeem(fp('30'))
-      expect(await rToken.redemptionAvailable()).to.equal(fp('30'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('120'))
 
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12 * 5 * 10) // 10 minutes
 
-      redemptionThrottleParams.amtRate = fp('100')
+      redemptionThrottleParams.amtRate = fp('180')
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-      expect(await rToken.redemptionAvailable()).to.equal(fp('40'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('145')) // 120 + 25
     })
 
     it('Should return a price of 0 if the assets become unregistered', async () => {
@@ -392,13 +395,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow overflow issuance -- regression test for C4 truncation bug', async function () {
+      const issuanceThrottleAmt = MAX_THROTTLE_AMT_RATE.mul(75).div(100)
       // Max out issuance throttle
       await rToken
         .connect(owner)
-        .setIssuanceThrottleParams({ amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 })
+        .setThrottleParams(
+          { amtRate: issuanceThrottleAmt, pctRate: 0 },
+          { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+        )
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(MAX_THROTTLE_AMT_RATE.add(1))).to.be.revertedWith(
+      await expect(rToken.connect(addr1).issue(issuanceThrottleAmt.add(1))).to.be.revertedWith(
         'supply change throttled'
       )
 
@@ -407,15 +414,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Issue under limit, ensure correct number of baskets is set and we do not overflow
-      await mintCollaterals(owner, [addr1], MAX_THROTTLE_AMT_RATE, basket)
+      await mintCollaterals(owner, [addr1], issuanceThrottleAmt, basket)
       await Promise.all(
-        tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_THROTTLE_AMT_RATE))
+        tokens.map((t) => t.connect(addr1).approve(rToken.address, issuanceThrottleAmt))
       )
       // advance time
       await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
-      await rToken.connect(addr1).issue(MAX_THROTTLE_AMT_RATE)
-      expect(await rToken.totalSupply()).to.equal(MAX_THROTTLE_AMT_RATE)
-      expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
+      await rToken.connect(addr1).issue(issuanceThrottleAmt)
+      expect(await rToken.totalSupply()).to.equal(issuanceThrottleAmt)
+      expect(await rToken.basketsNeeded()).to.equal(issuanceThrottleAmt)
     })
 
     it('Should not overflow  BU exchange rate below 1e-9 on issue', async () => {
