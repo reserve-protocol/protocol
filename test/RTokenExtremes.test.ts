@@ -147,11 +147,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       }
 
       // Set up throttles
-      const issuanceThrottleParams = { amtRate: bn('1e48'), pctRate: issuancePctAmt }
+      const issuanceThrottleParams = {
+        amtRate: bn('1e48').mul(80).div(100),
+        pctRate: issuancePctAmt,
+      }
       const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
 
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      if (
+        issuanceThrottleParams.amtRate.gt(redemptionThrottleParams.amtRate) &&
+        issuancePctAmt.gt(redemptionPctAmt)
+      ) {
+        await rToken
+          .connect(owner)
+          .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+      } else {
+        await expect(
+          rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+        ).to.be.revertedWith('redemption throttle too low')
+      }
 
       // Recharge throttle
       await advanceTime(3600)
@@ -192,7 +205,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     const MAX_WEIGHT = fp(1000)
     const MIN_WEIGHT = fp('1e-6')
     const MIN_ISSUANCE_PCT = fp('1e-6')
-    const MIN_REDEMPTION_PCT = fp('1e-6')
+    const MIN_REDEMPTION_PCT = MIN_ISSUANCE_PCT.mul(125).div(100)
     const MIN_RTOKENS = fp('1e-6')
 
     let paramList
@@ -206,7 +219,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
         [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp('1e-2'), fp(1)], // redemptionThrottle.pctRate
+        [MIN_REDEMPTION_PCT, fp('1e-2').mul(125).div(100), fp(1).mul(125).div(100)], // redemptionThrottle.pctRate
       ]
 
       paramList = cartesianProduct(...bounds)
@@ -219,7 +232,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
         [MIN_WEIGHT], // weightRest
         [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
+        [MIN_REDEMPTION_PCT, fp(1).mul(125).div(100)], // redemptionThrottle.pctRate
       ]
       paramList = cartesianProduct(...bounds)
     }
