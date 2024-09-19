@@ -496,18 +496,23 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.params = params;
     }
 
-    /// @notice Checks if the redemption throttle is greater than the issuance throttle by the required delta
-    /// @dev Compares both amtRate and pctRate individually to ensure each meets the minimum delta requirement
+    /// @notice Checks if the redemption throttle is greater than the issuance throttle by the
+    /// required delta
+    /// @dev Compares both amtRate and pctRate individually to ensure each meets the minimum
+    /// delta requirement
     /// @param issuance The issuance throttle parameters to compare against
     /// @param redemption The redemption throttle parameters to check
-    /// @return bool True if redemption throttle is greater by at least MIN_THROTTLE_DELTA, false otherwise
+    /// @return bool True if redemption throttle is greater by at least MIN_THROTTLE_DELTA,
+    /// false otherwise
     function isRedemptionThrottleGreaterByDelta(
         ThrottleLib.Params memory issuance,
         ThrottleLib.Params memory redemption
     ) private pure returns (bool) {
-        uint256 requiredAmtRate = issuance.amtRate + (issuance.amtRate * MIN_THROTTLE_DELTA / 100);
-        uint256 requiredPctRate = issuance.pctRate + (issuance.pctRate * MIN_THROTTLE_DELTA / 100);
-        
+        uint256 requiredAmtRate = issuance.amtRate +
+            ((issuance.amtRate * MIN_THROTTLE_DELTA) / 100);
+        uint256 requiredPctRate = issuance.pctRate +
+            ((issuance.pctRate * MIN_THROTTLE_DELTA) / 100);
+
         return redemption.amtRate >= requiredAmtRate && redemption.pctRate >= requiredPctRate;
     }
 
