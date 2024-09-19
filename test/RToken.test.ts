@@ -185,7 +185,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to update issuance throttle if Owner and perform validations', async () => {
-      const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
+      const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.01') }
       await expect(
         rToken.connect(addr1).setIssuanceThrottleParams(issuanceThrottleParams)
       ).to.be.revertedWith('governance only')
@@ -196,7 +196,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(params[1]).to.equal(issuanceThrottleParams.pctRate)
 
       issuanceThrottleParams.amtRate = fp('2')
-      issuanceThrottleParams.pctRate = fp('1')
+      issuanceThrottleParams.pctRate = fp('0.02')
       await expect(rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams))
       params = await rToken.issuanceThrottleParams()
       expect(params[0]).to.equal(issuanceThrottleParams.amtRate)
@@ -224,7 +224,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('Should account for accrued value when updating issuance throttle parameters', async () => {
       await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
-      const issuanceThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
+      const issuanceThrottleParams = { amtRate: fp('60'), pctRate: fp('0.01') }
 
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
       const params = await rToken.issuanceThrottleParams()
@@ -243,7 +243,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to update redemption throttle if Owner and perform validations', async () => {
-      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
+      const redemptionThrottleParams = { amtRate: fp('10e6'), pctRate: fp('0.1') }
       await expect(
         rToken.connect(addr1).setRedemptionThrottleParams(redemptionThrottleParams)
       ).to.be.revertedWith('governance only')
@@ -257,7 +257,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       redemptionThrottleParams.pctRate = fp('1')
       await expect(rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams))
       params = await rToken.redemptionThrottleParams()
+      console.log(1)
       expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
+      console.log(2)
       expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
 
       // Cannot update with too small amtRate
