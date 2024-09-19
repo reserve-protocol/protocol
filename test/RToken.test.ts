@@ -539,7 +539,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check all available issuance consumed
       expect(await rToken.issuanceAvailable()).to.equal(bn(0))
       // All can be redeemed
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(issueAmount)
     })
 
     it('Should revert if single issuance exceeds maximum allowed', async function () {
@@ -943,16 +943,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('Should update issuance throttle correctly with redemptions - edge case', async function () {
       // set fixed redemption amount
+      const issuanceThrottleParams = JSON.parse(JSON.stringify(config.issuanceThrottle))
+      issuanceThrottleParams.amtRate = fp('5e5')
+      issuanceThrottleParams.pctRate = bn(0)
       const redemptionThrottleParams = JSON.parse(JSON.stringify(config.redemptionThrottle))
       redemptionThrottleParams.amtRate = fp('1e6')
       redemptionThrottleParams.pctRate = bn(0)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
 
       // Provide approvals
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
 
       // Issuance throttle is fully charged
-      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.issuanceAvailable()).to.equal(issuanceThrottleParams.amtRate)
       expect(await rToken.redemptionAvailable()).to.equal(bn(0))
 
       // Set automine to false for multiple transactions in one block
