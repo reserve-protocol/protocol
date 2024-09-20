@@ -1341,11 +1341,11 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Issue some RTokens
       await rToken.connect(addr1).issue(issueAmount.div(4))
-      advanceTime(3600)
+      await advanceTime(3600)
       await rToken.connect(addr1).issue(issueAmount.div(4))
-      advanceTime(3600)
+      await advanceTime(3600)
       await rToken.connect(addr1).issue(issueAmount.div(4))
-      advanceTime(3600)
+      await advanceTime(3600)
       await rToken.connect(addr1).issue(issueAmount.div(4))
 
       // check throttles - redemption still fully available
