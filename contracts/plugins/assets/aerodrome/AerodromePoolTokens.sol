@@ -178,8 +178,12 @@ contract AerodromePoolTokens {
     /// @return [{ref_index}]
     function tokenReserve(uint8 index) public view virtual returns (uint256) {
         if (index >= nTokens) revert WrongIndex(nTokens - 1);
-        if (index == 0) return pool.reserve0();
-        return pool.reserve1();
+        // Maybe also cache token decimals as immutable?
+        IERC20Metadata tokenInterface = getToken(index);
+        if (index == 0) {
+            return shiftl_toFix(pool.reserve0(), -int8(tokenInterface.decimals()), FLOOR);
+        }
+        return shiftl_toFix(pool.reserve1(), -int8(tokenInterface.decimals()), FLOOR);
     }
 
     /// @param index The index of the token: 0 or 1

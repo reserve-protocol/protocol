@@ -33,10 +33,10 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev No revenue hiding (refPerTok() == FIX_ONE)
     /// @dev config.erc20 should be an AerodromeStakingWrapper
-    constructor(
-        CollateralConfig memory config,
-        APTConfiguration memory aptConfig
-    ) FiatCollateral(config) AerodromePoolTokens(aptConfig) {
+    constructor(CollateralConfig memory config, APTConfiguration memory aptConfig)
+        FiatCollateral(config)
+        AerodromePoolTokens(aptConfig)
+    {
         require(config.defaultThreshold != 0, "defaultThreshold zero");
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
@@ -53,7 +53,11 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         uint256 r0 = tokenReserve(0);
         uint256 r1 = tokenReserve(1);
@@ -80,12 +84,12 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         console.log("total supply raw: %s", pool.totalSupply());
         console.log("total supply: %s", totalSupply);
 
-       // low
-       uint256 ratioLow = ((1e18) * p0_low) / p1_low;
-       uint256 sqrtPriceLow = sqrt256(
+        // low
+        uint256 ratioLow = ((1e18) * p0_low) / p1_low;
+        uint256 sqrtPriceLow = sqrt256(
             sqrt256((1e18) * ratioLow) * sqrt256(1e36 + ratioLow * ratioLow)
         );
-       low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
+        low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
 
         console.log("low: %s", low);
 
@@ -157,7 +161,7 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
     function refPerTok() public view virtual override returns (uint192) {
         // TODO: Review case of negative offset
         uint8 decimalOffset = token0.decimals() + token1.decimals() - 18;
-        return toFix(2).mulu(10 ** decimalOffset);
+        return toFix(2).mulu(10**decimalOffset);
     }
 
     // === Internal ===
