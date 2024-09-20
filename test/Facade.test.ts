@@ -1329,27 +1329,21 @@ describe('Facade + FacadeMonitor contracts', () => {
     it('should return redemption available', async () => {
       const issueAmount = bn('100000e18')
 
-      // Decrease redemption allowed amount
-      const issuanceThrottleParams = { amtRate: issueAmount.div(4), pctRate: fp('0.05') } // 25K
-      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
-      await rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redeemThrottleParams)
-
       // Check with no supply
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await rToken.redemptionAvailable()).to.equal(bn(0))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Issue some RTokens
-      await rToken.connect(addr1).issue(issueAmount.div(4))
-      await advanceTime(3600)
-      await rToken.connect(addr1).issue(issueAmount.div(4))
-      await advanceTime(3600)
-      await rToken.connect(addr1).issue(issueAmount.div(4))
-      await advanceTime(3600)
-      await rToken.connect(addr1).issue(issueAmount.div(4))
+      await rToken.connect(addr1).issue(issueAmount)
 
-      // check throttles - redemption still fully available
-      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(bn('277777777777777'))
+      // Decrease redemption allowed amount
+      const issuanceThrottleParams = { amtRate: issueAmount.div(4), pctRate: fp('0.05') } // 25K
+      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
+      await rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redeemThrottleParams)
+
+      // check throttles - issuance & redemption still fully available (because lower)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem RTokens (50% of throttle)
