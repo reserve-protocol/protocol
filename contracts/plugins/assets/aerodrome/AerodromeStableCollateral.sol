@@ -6,9 +6,11 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
 import "./AerodromePoolTokens.sol";
+
+import "hardhat/console.sol";
 
 // This plugin only works on Base
 IERC20 constant AERO = IERC20(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
@@ -19,12 +21,12 @@ IERC20 constant AERO = IERC20(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
  *  Each token in the pool can have between 1 and 2 oracles per each token.
  *
  * tok = AerodromeStakingWrapper(stablePool)
- * ref = 1e18 (fixed)
+ * ref = toFix(2)
  * tar = USD
  * UoA = USD
  *
  */
-contract AerodromeStableCollateral is AppreciatingFiatCollateral, AerodromePoolTokens {
+contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -33,9 +35,8 @@ contract AerodromeStableCollateral is AppreciatingFiatCollateral, AerodromePoolT
     /// @dev config.erc20 should be an AerodromeStakingWrapper
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding,
         APTConfiguration memory aptConfig
-    ) AppreciatingFiatCollateral(config, revenueHiding) AerodromePoolTokens(aptConfig) {
+    ) FiatCollateral(config) AerodromePoolTokens(aptConfig) {
         require(config.defaultThreshold != 0, "defaultThreshold zero");
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
@@ -52,21 +53,50 @@ contract AerodromeStableCollateral is AppreciatingFiatCollateral, AerodromePoolT
         view
         virtual
         override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
+        returns (uint192 low, uint192 high, uint192 pegPrice)
     {
+        uint256 r0 = tokenReserve(0);
+        uint256 r1 = tokenReserve(1);
+
+        console.log("reserves0: %s", r0);
+        console.log("reserves1: %s", r1);
+
+        // x3y+y3x >= k for sAMM pools
+        uint256 sqrtReserve = sqrt256(sqrt256(r0 * r1) * sqrt256(r0 * r0 + r1 * r1));
+
+        console.log("sqrtReserve: %s", sqrtReserve);
+
         // get token prices
         (uint192 p0_low, uint192 p0_high) = tokenPrice(0);
         (uint192 p1_low, uint192 p1_high) = tokenPrice(1);
 
+        console.log("p0_low: %s", p0_low);
+        console.log("p0_high: %s", p0_high);
+        console.log("p1_low: %s", p1_low);
+        console.log("p1_high: %s", p1_high);
+
         uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
 
-        // {UoA/tok}
-        low = sqrtK().mulu(2).mulDiv(p0_low.mul(p1_low).sqrt(), totalSupply);
-        high = sqrtK().mulu(2).mulDiv(p0_high.mul(p1_high).sqrt(), totalSupply);
+        console.log("total supply raw: %s", pool.totalSupply());
+        console.log("total supply: %s", totalSupply);
+
+       // low
+       uint256 ratioLow = ((1e18) * p0_low) / p1_low;
+       uint256 sqrtPriceLow = sqrt256(
+            sqrt256((1e18) * ratioLow) * sqrt256(1e36 + ratioLow * ratioLow)
+        );
+       low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
+
+        console.log("low: %s", low);
+
+        // high
+        uint256 ratioHigh = ((1e18) * p0_high) / p1_high;
+        uint256 sqrtPriceHigh = sqrt256(
+            sqrt256((1e18) * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
+        );
+        high = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply);
+
+        console.log("high: %s", high);
 
         assert(low <= high); //obviously true just by inspection
         pegPrice = FIX_ONE;
@@ -78,53 +108,35 @@ contract AerodromeStableCollateral is AppreciatingFiatCollateral, AerodromePoolT
     function refresh() public virtual override {
         CollateralStatus oldStatus = status();
 
-        // Check for hard default
-        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
-            // {ref/tok} = {ref/tok} * {1}
-            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
+        // Check for soft default + save prices
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+            // {UoA/tok}, {UoA/tok}, {UoA/tok}
+            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // uint192(<) is equivalent to Fix.lt
-            if (underlyingRefPerTok_ < exposedReferencePrice) {
-                exposedReferencePrice = underlyingRefPerTok_;
-                markStatus(CollateralStatus.DISABLED);
-            } else if (hiddenReferencePrice > exposedReferencePrice) {
-                exposedReferencePrice = hiddenReferencePrice;
+            // Save prices if priced
+            if (high != FIX_MAX) {
+                savedLowPrice = low;
+                savedHighPrice = high;
+                savedPegPrice = pegPrice;
+                lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                // untested:
+                //      validated in other plugins, cost to test here is high
+                assert(low == 0);
             }
 
-            // Check for soft default + save prices
-            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
-                // {UoA/tok}, {UoA/tok}, {UoA/tok}
-                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
-
-                // Save prices if priced
-                if (high != FIX_MAX) {
-                    savedLowPrice = low;
-                    savedHighPrice = high;
-                    savedPegPrice = pegPrice;
-                    lastSave = uint48(block.timestamp);
-                } else {
-                    // must be unpriced
-                    // untested:
-                    //      validated in other plugins, cost to test here is high
-                    assert(low == 0);
-                }
-
-                // If the price is below the default-threshold price, default eventually
-                // uint192(+/-) is the same as Fix.plus/minus
-                if (low == 0 || _anyDepeggedInPool()) {
-                    markStatus(CollateralStatus.IFFY);
-                } else {
-                    markStatus(CollateralStatus.SOUND);
-                }
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            // If the price is below the default-threshold price, default eventually
+            // uint192(+/-) is the same as Fix.plus/minus
+            if (low == 0 || _anyDepeggedInPool()) {
                 markStatus(CollateralStatus.IFFY);
+            } else {
+                markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.DISABLED);
+            markStatus(CollateralStatus.IFFY);
         }
 
         CollateralStatus newStatus = status();
@@ -142,9 +154,10 @@ contract AerodromeStableCollateral is AppreciatingFiatCollateral, AerodromePoolT
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function underlyingRefPerTok() public view virtual override returns (uint192) {
-        uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
-        return sqrtK().mulu(2).mulDiv(FIX_ONE, totalSupply);
+    function refPerTok() public view virtual override returns (uint192) {
+        // TODO: Review case of negative offset
+        uint8 decimalOffset = token0.decimals() + token1.decimals() - 18;
+        return toFix(2).mulu(10 ** decimalOffset);
     }
 
     // === Internal ===

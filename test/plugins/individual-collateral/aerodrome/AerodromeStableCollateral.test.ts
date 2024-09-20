@@ -175,7 +175,6 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
         defaultThreshold: opts.defaultThreshold,
         delayUntilDefault: opts.delayUntilDefault,
       },
-      bn(0),
       {
         pool: opts.pool,
         poolType: opts.poolType,
@@ -334,7 +333,6 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
       const [newLow, newHigh] = await coll.price()
 
       // with 18 decimals of price precision a 1e-9 tolerance seems fine for a 10% change
-      // and without this kind of tolerance the Volatile pool tests fail due to small movements
       expect(newLow).to.be.closeTo(low.mul(110).div(100), fp('1e-9'))
       expect(newHigh).to.be.closeTo(high.mul(110).div(100), fp('1e-9'))
 
@@ -375,22 +373,29 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
       expect(oldLow).to.be.lt(newLow)
       expect(oldHigh).to.be.lt(newHigh)
 
-      // Check refPerTok remains the same (because we have not refreshed)
+      // Check refPerTok remains the same
       const finalRefPerTok = await coll.refPerTok()
       expect(finalRefPerTok).to.equal(initialRefPerTok)
     })
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip('prices change as refPerTok changes', async () => {})
   }
 
   const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
-    // TODO: Improve use both feeds
     const initRefPerTok = await ctx.collateral.refPerTok()
-    const decimals = await ctx.chainlinkFeed.decimals()
-    const initData = await ctx.chainlinkFeed.latestRoundData()
-    return initData.answer
-      .mul(bn(10).pow(18 - decimals))
+    const coll = await ethers.getContractAt('AerodromeStableCollateral', ctx.collateral.address)
+
+    const feed0 =  await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(0))[0])
+    const decimals0 = await feed0.decimals()
+    const initData0 = await feed0.latestRoundData()
+
+    const feed1 =  await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(1))[0])
+    const decimals1 = await feed1.decimals()
+    const initData1 = await feed1.latestRoundData()
+
+    return initData0.answer
+      .mul(bn(10).pow(18 - decimals0))
+      .mul(initData1.answer)
+      .mul(bn(10).pow(18 - decimals1))
+      .div(fp('1'))
       .mul(initRefPerTok)
       .div(fp('1'))
   }

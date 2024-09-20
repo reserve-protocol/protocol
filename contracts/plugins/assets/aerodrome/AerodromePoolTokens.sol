@@ -182,19 +182,6 @@ contract AerodromePoolTokens {
         return pool.reserve1();
     }
 
-    function sqrtK() public view virtual returns (uint192) {
-        // x3y+y3x >= k for sAMM pools
-        // xy >= k  for vAMM pools
-        uint192 r0 = shiftl_toFix(tokenReserve(0), -int8(token0.decimals()), FLOOR);
-        uint192 r1 = shiftl_toFix(tokenReserve(1), -int8(token1.decimals()), FLOOR);
-        if (poolType == AeroPoolType.Stable) {
-            uint192 _a = r0.mul(r1);
-            uint192 _b = (r0.mul(r0)).plus(r1.mul(r1));
-            return _a.mul(_b).sqrt();
-        }
-        return r0.mul(r1).sqrt();
-    }
-
     /// @param index The index of the token: 0 or 1
     /// @return [address of chainlink feeds]
     function tokenFeeds(uint8 index) public view virtual returns (AggregatorV3Interface[] memory) {
