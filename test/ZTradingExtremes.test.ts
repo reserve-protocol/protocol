@@ -260,7 +260,6 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
           const trade = <GnosisTrade>await ethers.getContractAt('GnosisTrade', tradeAddr)
           const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
-          console.log('auctionId', auctionId)
           const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
           expect(buy == rToken.address || buy == rsr.address)
           if (buy == rToken.address) {
@@ -351,7 +350,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        await rToken.connect(addr1).issue(remaining.mod(noThrottleIssuance.amtRate))
+        const amt =
+          remaining < noThrottleIssuance.amtRate
+            ? remaining
+            : noThrottleIssuance.amtRate.mod(remaining)
+        await rToken.connect(addr1).issue(amt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
@@ -493,7 +496,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        await rToken.connect(addr1).issue(remaining.mod(noThrottleIssuance.amtRate))
+        const amt =
+          remaining < noThrottleIssuance.amtRate
+            ? remaining
+            : noThrottleIssuance.amtRate.mod(remaining)
+        await rToken.connect(addr1).issue(amt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
@@ -671,7 +678,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        await rToken.connect(addr1).issue(remaining.mod(noThrottleIssuance.amtRate))
+        const amt =
+          remaining < noThrottleIssuance.amtRate
+            ? remaining
+            : noThrottleIssuance.amtRate.mod(remaining)
+        await rToken.connect(addr1).issue(amt)
       }
 
       // === Execution ===
