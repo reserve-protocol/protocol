@@ -1425,10 +1425,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
 
       // Max out throttles
-      const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
+      const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY.mul(80).div(100), pctRate: 0 }
       const redemptionThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
       await advanceTime(3600)
 
       // Mint coll tokens to addr1
