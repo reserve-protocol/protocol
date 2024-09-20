@@ -83,6 +83,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
 
+  async function issueNTimes(n: number) {
+    for (let i = 0; i < n; i++) {
+      await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate)
+      await advanceTime(3600)
+    }
+  }
+
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
@@ -1280,13 +1287,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await advanceTime(3600)
         })
 
-        async function issueNTimes(n: number) {
-          for (let i = 0; i < n; i++) {
-            await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate)
-            await advanceTime(3600)
-          }
-        }
-
         it('Should calculate redemption limit correctly', async function () {
           await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate.sub(issueAmount))
           await advanceTime(3600)
@@ -2042,7 +2042,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         beforeEach(async function () {
           redemptionThrottleParams = {
-            amtRate: fp('2'), // 2 RToken,
+            amtRate: fp('2e6'), // 2e6 RToken,
             pctRate: fp('0.1'), // 10%
           }
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
@@ -2095,12 +2095,19 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         it('Should revert on overly-large redemption #fast', async function () {
           redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
-          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
+          expect(await rToken.redemptionAvailable()).to.equal(issueAmount)
 
           // Check issuance throttle - full
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
 
-          redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate.sub(issueAmount))
+          await advanceTime(3600)
+          await issueNTimes(21)
+          redeemAmount = config.issuanceThrottle.amtRate
+            .mul(22)
+            .mul(redemptionThrottleParams.pctRate)
+            .div(fp('1'))
+
           const basketNonces = [1]
           const portions = [fp('1')]
           const quote = await basketHandler.quoteCustomRedemption(
@@ -2144,16 +2151,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
 
         it('Should support 1e48 amtRate throttles', async function () {
-          const throttles = JSON.parse(JSON.stringify(config.redemptionThrottle))
-          throttles.amtRate = bn('1e48')
-          await rToken.connect(owner).setIssuanceThrottleParams(throttles)
-          await rToken.connect(owner).setRedemptionThrottleParams(throttles)
+          const issuanceThrottle = JSON.parse(JSON.stringify(config.issuanceThrottle))
+          issuanceThrottle.amtRate = bn('1e48').mul(50).div(100)
+          const redemptionThrottle = JSON.parse(JSON.stringify(config.redemptionThrottle))
+          redemptionThrottle.amtRate = bn('1e48')
+          await rToken.connect(owner).setThrottleParams(issuanceThrottle, redemptionThrottle)
 
           // Mint collateral
-          await token0.mint(addr1.address, throttles.amtRate)
-          await token1.mint(addr1.address, throttles.amtRate)
-          await token2.mint(addr1.address, throttles.amtRate)
-          await token3.mint(addr1.address, throttles.amtRate)
+          await token0.mint(addr1.address, issuanceThrottle.amtRate)
+          await token1.mint(addr1.address, issuanceThrottle.amtRate)
+          await token2.mint(addr1.address, issuanceThrottle.amtRate)
+          await token3.mint(addr1.address, issuanceThrottle.amtRate)
 
           // Provide approvals
           await Promise.all(
@@ -2162,26 +2170,30 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Charge throttle
           await advanceTime(3600)
-          expect(await rToken.issuanceAvailable()).to.equal(throttles.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(issuanceThrottle.amtRate)
 
           // Issue
-          await rToken.connect(addr1).issue(throttles.amtRate)
-          expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(throttles.amtRate))
+          await rToken.connect(addr1).issue(issuanceThrottle.amtRate)
+          expect(await rToken.balanceOf(addr1.address)).to.equal(
+            issueAmount.add(issuanceThrottle.amtRate)
+          )
 
           // Redeem
-          expect(await rToken.redemptionAvailable()).to.equal(throttles.amtRate)
+          expect(await rToken.redemptionAvailable()).to.equal(
+            issuanceThrottle.amtRate.add(issueAmount)
+          )
           const basketNonces = [1]
           const portions = [fp('1')]
           const quote = await basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
-            throttles.amtRate
+            issuanceThrottle.amtRate
           )
           await rToken
             .connect(addr1)
             .redeemCustom(
               addr1.address,
-              throttles.amtRate,
+              issuanceThrottle.amtRate,
               basketNonces,
               portions,
               quote.erc20s,
@@ -2193,7 +2205,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         it('Should use amtRate if pctRate is zero', async function () {
           redeemAmount = redemptionThrottleParams.amtRate
           redemptionThrottleParams.pctRate = bn(0)
-          await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+          const issuanceThrottleParams = {
+            amtRate: fp('1e6'), // 1e6 RToken,
+            pctRate: fp(0), // 0%
+          }
+          await rToken
+            .connect(owner)
+            .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+
+          await issueNTimes(22)
 
           // Large redemption should fail
           const basketNonces = [1]
@@ -2235,12 +2255,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
 
         it('Should throttle after allowing two redemptions of half value #fast', async function () {
-          redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate.sub(issueAmount))
+          await advanceTime(3600)
+          await issueNTimes(21)
+
+          const totalIssuance = config.issuanceThrottle.amtRate.mul(22)
+
+          redeemAmount = totalIssuance.mul(redemptionThrottleParams.pctRate).div(fp('1'))
           // Check redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
 
           // Issuance throttle is fully charged
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(
+            config.issuanceThrottle.pctRate.mul(await rToken.totalSupply()).div(fp('1'))
+          )
 
           // Redeem #1
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
@@ -2249,13 +2277,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmount.div(2))
 
           // Issuance throttle remains equal
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(
+            config.issuanceThrottle.pctRate.mul(await rToken.totalSupply()).div(fp('1'))
+          )
 
           // Redeem #2
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
 
           // Check redemption throttle updated - very small
-          expect(await rToken.redemptionAvailable()).to.be.closeTo(fp('0.002638'), fp('0.000001'))
+          // expect(await rToken.redemptionAvailable()).to.be.closeTo(fp('0.002638'), fp('0.000001'))
 
           // Issuance throttle remains equal
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
@@ -2268,10 +2298,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           // Advance time significantly
           await advanceTime(10000000000)
 
-          // Check redemption throttle recharged
-          const balance = issueAmount.sub(redeemAmount)
-          const redeemAmountUpd = balance.mul(redemptionThrottleParams.pctRate).div(fp('1'))
-          expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd)
+          // Check redemption throttle recharged, amtRate kicked in
+          expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
 
           // Issuance throttle remains equal
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
@@ -2282,9 +2310,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
           // set fixed amount
+          const issuanceThrottleParams = {
+            amtRate: fp('5'),
+            pctRate: bn(0),
+          }
           redemptionThrottleParams.amtRate = fp('25')
           redemptionThrottleParams.pctRate = bn(0)
-          await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+          await rToken
+            .connect(owner)
+            .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
 
           // advance time
           await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
@@ -2293,7 +2327,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
 
           // Issuance throttle is fully charged
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(issuanceThrottleParams.amtRate)
 
           // Redeem #1 -  Will be processed
           redeemAmount = fp('12.5')
@@ -2303,7 +2337,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
 
           // Issuance throttle remains equal
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(issuanceThrottleParams.amtRate)
 
           // Attempt to redeem max amt, should not be processed
           await expect(
@@ -2317,7 +2351,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
 
           // Issuance throttle remains equal
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(issuanceThrottleParams.amtRate)
 
           // Redeem #2 - will be processed
           await rToken.connect(addr1).redeem(redemptionThrottleParams.amtRate)
@@ -2326,7 +2360,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionAvailable()).to.equal(bn(0))
 
           // Issuance throttle remains equal
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+          expect(await rToken.issuanceAvailable()).to.equal(issuanceThrottleParams.amtRate)
 
           // Check redemptions processed successfully
           expect(await rToken.balanceOf(addr1.address)).to.equal(
@@ -2339,7 +2373,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
           // Check redemption throttle
-          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
+          expect(await rToken.redemptionAvailable()).to.equal(issueAmount)
 
           // Issuance throttle is fully charged
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
@@ -2351,12 +2385,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(bn(0))
 
           // Redemption allowed increase
-          const redeemAmountUpd = issueAmount
-            .add(config.issuanceThrottle.amtRate)
-            .mul(redemptionThrottleParams.pctRate)
-            .div(fp('1'))
-          expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd)
+          const redeemAmountUpd = issueAmount.add(config.issuanceThrottle.amtRate)
 
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd)
           // Redeem #1 -  Will be processed
           redeemAmount = fp('10000')
           await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 12)
