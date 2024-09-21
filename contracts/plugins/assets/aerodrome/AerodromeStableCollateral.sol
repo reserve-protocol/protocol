@@ -21,7 +21,7 @@ IERC20 constant AERO = IERC20(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
  *  Each token in the pool can have between 1 and 2 oracles per each token.
  *
  * tok = AerodromeStakingWrapper(stablePool)
- * ref = toFix(2)
+ * ref = LP token /w shift
  * tar = USD
  * UoA = USD
  *
@@ -38,6 +38,7 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         AerodromePoolTokens(aptConfig)
     {
         require(config.defaultThreshold != 0, "defaultThreshold zero");
+        assert((token0.decimals() + token1.decimals()) % 2 == 0);
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
 
@@ -65,7 +66,7 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         console.log("reserves0: %s", r0);
         console.log("reserves1: %s", r1);
 
-        // x3y+y3x >= k for sAMM pools
+        // xy^3 + yx^3 >= k for sAMM pools
         uint256 sqrtReserve = sqrt256(sqrt256(r0 * r1) * sqrt256(r0 * r0 + r1 * r1));
 
         console.log("sqrtReserve: %s", sqrtReserve);
@@ -104,6 +105,8 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
 
         assert(low <= high); //obviously true just by inspection
         pegPrice = FIX_ONE;
+
+        console.log("refPerTok: %s", refPerTok());
     }
 
     /// Should not revert
@@ -159,9 +162,8 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual override returns (uint192) {
-        // TODO: Review case of negative offset
-        uint8 decimalOffset = token0.decimals() + token1.decimals() - 18;
-        return toFix(2).mulu(10**decimalOffset);
+        int8 shift = 18 - int8((token0.decimals() + token1.decimals()) / 2);
+        return shiftl_toFix(2, shift, FLOOR);
     }
 
     // === Internal ===

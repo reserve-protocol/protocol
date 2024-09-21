@@ -1,7 +1,7 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   IAeroPool,
   MockV3Aggregator,
@@ -40,7 +40,6 @@ import {
 } from './constants'
 import { expectPrice } from '../../../utils/oracles'
 import { mintWrappedLpToken, resetFork, getFeeds, pushAllFeedsForward } from './helpers'
-import BigNumber from 'bignumber.js'
 
 /*
   Define interfaces
@@ -84,7 +83,7 @@ interface AerodromeCollateralFixtureContext extends CollateralFixtureContext {
 const config = networkConfig['8453'] // use Base fork
 
 // Test all Aerodrome Stable pools
-const all = [
+const all: AeroStablePoolEnumeration[] = [
   {
     testName: 'Aerodrome - USDC/eUSD Stable',
     pool: AERO_USDC_eUSD_POOL,
@@ -383,11 +382,11 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
     const initRefPerTok = await ctx.collateral.refPerTok()
     const coll = await ethers.getContractAt('AerodromeStableCollateral', ctx.collateral.address)
 
-    const feed0 =  await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(0))[0])
+    const feed0 = await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(0))[0])
     const decimals0 = await feed0.decimals()
     const initData0 = await feed0.latestRoundData()
 
-    const feed1 =  await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(1))[0])
+    const feed1 = await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(1))[0])
     const decimals1 = await feed1.decimals()
     const initData1 = await feed1.latestRoundData()
 
