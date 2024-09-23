@@ -353,6 +353,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
+      await advanceTime(3600)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // Mint any excess possible before increasing exchange rate to avoid blowing through max BU exchange rate
@@ -496,6 +497,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
+      await advanceTime(3600)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -556,7 +558,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     })
   })
 
-  context.only('Recovery from default', function () {
+  context('Recovery from default', function () {
     const runRecollateralizationAuctions = async (basketSize: number) => {
       let uncollateralized = true
       const basketsNeeded = await rToken.basketsNeeded()
