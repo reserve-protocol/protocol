@@ -1,5 +1,8 @@
 import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
+import { useEnv } from '#/utils/env'
+
+export const forkNetwork = useEnv('FORK_NETWORK') ?? 'base'
 
 // Base Addresses
 export const AERO_USDC_eUSD_GAUGE = '0x793F22aB88dC91793E5Ce6ADbd7E733B0BD4733e'

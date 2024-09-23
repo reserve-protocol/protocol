@@ -14,6 +14,7 @@ import {
 import { expect } from 'chai'
 import { ZERO_ADDRESS } from '#/common/constants'
 import {
+  forkNetwork,
   AERO,
   eUSD,
   AERO_USDC_eUSD_GAUGE,
@@ -24,7 +25,7 @@ import { bn, fp } from '#/common/numbers'
 import { getChainId } from '#/common/blockchain-utils'
 import { advanceTime } from '#/test/utils/time'
 
-const describeFork = useEnv('FORK') ? describe : describe.skip
+const describeFork = useEnv('FORK') && forkNetwork == 'base' ? describe : describe.skip
 
 const point1Pct = (value: BigNumber): BigNumber => {
   return value.div(1000)
