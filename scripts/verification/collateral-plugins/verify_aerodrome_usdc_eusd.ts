@@ -8,7 +8,7 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
-import { combinedError, revenueHiding } from '../../deployment/utils'
+import { combinedError } from '../../deployment/utils'
 import { IAeroPool } from '@typechain/IAeroPool'
 import {
   AerodromePoolType,
@@ -83,7 +83,6 @@ async function main() {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        revenueHiding.toString(),
         {
           pool: AERO_USDC_eUSD_POOL,
           poolType: AerodromePoolType.Stable,

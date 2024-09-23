@@ -390,11 +390,12 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
     const decimals1 = await feed1.decimals()
     const initData1 = await feed1.latestRoundData()
 
-    return initData0.answer
-      .mul(bn(10).pow(18 - decimals0))
-      .mul(initData1.answer)
-      .mul(bn(10).pow(18 - decimals1))
-      .div(fp('1'))
+    const avgPrice = (initData0.answer
+    .mul(bn(10).pow(18 - decimals0)))
+    .add(initData1.answer.mul(bn(10).pow(18 - decimals1)))
+    .div(2)
+
+    return avgPrice
       .mul(initRefPerTok)
       .div(fp('1'))
   }

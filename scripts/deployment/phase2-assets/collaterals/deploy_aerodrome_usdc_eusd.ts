@@ -12,7 +12,7 @@ import {
   fileExists,
 } from '../../common'
 import { AerodromeStableCollateral, AerodromeGaugeWrapper, IAeroPool } from '../../../../typechain'
-import { combinedError, revenueHiding } from '../../utils'
+import { combinedError } from '../../utils'
 import {
   AerodromePoolType,
   DEFAULT_THRESHOLD,
@@ -101,7 +101,6 @@ async function main() {
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      revenueHiding.toString(),
       {
         pool: AERO_USDC_eUSD_POOL,
         poolType: AerodromePoolType.Stable,

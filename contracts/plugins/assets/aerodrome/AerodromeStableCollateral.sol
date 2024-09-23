@@ -10,8 +10,6 @@ import "contracts/plugins/assets/FiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
 import "./AerodromePoolTokens.sol";
 
-import "hardhat/console.sol";
-
 // This plugin only works on Base
 IERC20 constant AERO = IERC20(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
 
@@ -63,27 +61,14 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         uint256 r0 = tokenReserve(0);
         uint256 r1 = tokenReserve(1);
 
-        console.log("reserves0: %s", r0);
-        console.log("reserves1: %s", r1);
-
         // xy^3 + yx^3 >= k for sAMM pools
         uint256 sqrtReserve = sqrt256(sqrt256(r0 * r1) * sqrt256(r0 * r0 + r1 * r1));
-
-        console.log("sqrtReserve: %s", sqrtReserve);
 
         // get token prices
         (uint192 p0_low, uint192 p0_high) = tokenPrice(0);
         (uint192 p1_low, uint192 p1_high) = tokenPrice(1);
 
-        console.log("p0_low: %s", p0_low);
-        console.log("p0_high: %s", p0_high);
-        console.log("p1_low: %s", p1_low);
-        console.log("p1_high: %s", p1_high);
-
         uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
-
-        console.log("total supply raw: %s", pool.totalSupply());
-        console.log("total supply: %s", totalSupply);
 
         // low
         uint256 ratioLow = ((1e18) * p0_low) / p1_low;
@@ -92,8 +77,6 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         );
         low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
 
-        console.log("low: %s", low);
-
         // high
         uint256 ratioHigh = ((1e18) * p0_high) / p1_high;
         uint256 sqrtPriceHigh = sqrt256(
@@ -101,12 +84,8 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         );
         high = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply);
 
-        console.log("high: %s", high);
-
         assert(low <= high); //obviously true just by inspection
         pegPrice = FIX_ONE;
-
-        console.log("refPerTok: %s", refPerTok());
     }
 
     /// Should not revert
