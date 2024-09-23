@@ -350,10 +350,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        const amt =
-          remaining < noThrottleIssuance.amtRate
-            ? remaining
-            : noThrottleIssuance.amtRate.mod(remaining)
+        const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
@@ -496,10 +493,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        const amt =
-          remaining < noThrottleIssuance.amtRate
-            ? remaining
-            : noThrottleIssuance.amtRate.mod(remaining)
+        const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
@@ -562,7 +556,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     })
   })
 
-  context('Recovery from default', function () {
+  context.only('Recovery from default', function () {
     const runRecollateralizationAuctions = async (basketSize: number) => {
       let uncollateralized = true
       const basketsNeeded = await rToken.basketsNeeded()
@@ -678,10 +672,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        const amt =
-          remaining < noThrottleIssuance.amtRate
-            ? remaining
-            : noThrottleIssuance.amtRate.mod(remaining)
+        const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
 
