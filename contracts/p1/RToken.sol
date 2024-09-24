@@ -80,8 +80,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         furnace = main_.furnace();
 
         mandate = mandate_;
-        setRedemptionThrottleParams(redemptionThrottleParams_);
-        setIssuanceThrottleParams(issuanceThrottleParams_);
+        setThrottleParams(issuanceThrottleParams_, redemptionThrottleParams_);
 
         issuanceThrottle.lastTimestamp = uint48(block.timestamp);
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
@@ -464,7 +463,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     function setThrottleParams(
         ThrottleLib.Params calldata issuanceParams,
         ThrottleLib.Params calldata redemptionParams
-    ) external governance {
+    ) public governance {
         _setIssuanceThrottleParams(issuanceParams);
         _setRedemptionThrottleParams(redemptionParams);
         require(
@@ -475,7 +474,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     // === Private Helpers ===
 
-    function _setIssuanceThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function _setIssuanceThrottleParams(ThrottleLib.Params calldata params) private {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
@@ -486,7 +485,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function _setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function _setRedemptionThrottleParams(ThrottleLib.Params calldata params) private {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
