@@ -77,6 +77,7 @@ export interface DefaultFixture extends RSRAndModuleFixture {
 export const getDefaultFixture = async function (salt: string) {
   const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
     let chainId = await getChainId(hre)
+    const signers = await ethers.getSigners()
     if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
     if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = 42161
     const { rsr } = await rsrFixture(chainId)
@@ -87,7 +88,12 @@ export const getDefaultFixture = async function (salt: string) {
 
     // Deploy Facade
     const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-    const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+    const facade = await ethers.getContractAt(
+      'TestIFacade',
+      (
+        await FacadeFactory.deploy(signers[0].address)
+      ).address
+    )
 
     // Save ReadFacet to Facade
     const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')

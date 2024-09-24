@@ -8,6 +8,12 @@ import { IComponents, arbitrumL2Chains, baseL2Chains } from '../../common/config
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
+import { networkConfig } from '../../common/configuration'
+
+import Safe from '@safe-global/protocol-kit'
+import SafeApiKit from '@safe-global/api-kit'
+import { HttpNetworkConfig } from 'hardhat/types'
+import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 export const priceTimeout = bn('604800') // 1 week
 
@@ -273,4 +279,55 @@ export const getUsdtOracleError = (network: string): BigNumber => {
   } else {
     return fp('0.0025') // 0.25% mainnet
   }
+}
+
+export const initiateMultisigTx = async (
+  chainId: string,
+  tx: MetaTransactionData
+): Promise<void> => {
+  return await initiateMultisigTxs(chainId, [tx])
+}
+
+// Note: may end up with conflicting nonces if used naively
+export const initiateMultisigTxs = async (
+  chainId: string,
+  txs: MetaTransactionData[]
+): Promise<void> => {
+  if (hre.network.name == 'localhost' || hre.network.name == 'hardhat') {
+    console.log('Skipping multisig tx on localhost')
+    return
+  }
+
+  const provider = (hre.config.networks[hre.network.name] as HttpNetworkConfig).url
+  const wallet = hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!)
+  const safeAddress = networkConfig[chainId].DEV_MULTISIG!
+
+  const safe = await Safe.init({
+    provider,
+    signer: wallet.privateKey,
+    safeAddress,
+  })
+  const safeApi = new SafeApiKit({
+    chainId: parseInt(chainId) as unknown as bigint,
+  })
+  const safeTx = await safe.createTransaction({ transactions: txs })
+  const safeTxHash = await safe.getTransactionHash(safeTx)
+  const signature = await safe.signHash(safeTxHash)
+
+  // Propose transaction to the service
+  await safeApi.proposeTransaction({
+    safeAddress: await safe.getAddress(),
+    safeTransactionData: safeTx.data,
+    safeTxHash,
+    senderAddress: wallet.address,
+    senderSignature: signature.data,
+  })
+
+  let prefix = 'base'
+  if (hre.network.name == 'mainnet') prefix = 'eth'
+  else if (hre.network.name == 'arbitrum') prefix = 'arb'
+
+  const hyperlink = `https://app.safe.global/transactions/queue?safe=${prefix}:${networkConfig[chainId].DEV_MULTISIG}`
+
+  console.log(`Queued tx, requires confirmation: ${hyperlink}`)
 }
