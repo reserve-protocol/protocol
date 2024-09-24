@@ -6,7 +6,6 @@ import { ITokens, IComponents, IImplementations, IPools } from '../../common/con
 export interface IPrerequisites {
   RSR: string
   RSR_FEED: string
-  GNOSIS_EASY_AUCTION: string
 }
 
 export interface IFacets {
