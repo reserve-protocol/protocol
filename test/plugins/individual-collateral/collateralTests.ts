@@ -150,7 +150,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let ctx: X
       let alice: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let collateral: TestICollateral
       let chainlinkFeed: MockV3Aggregator
@@ -428,8 +428,8 @@ export default function fn<X extends CollateralFixtureContext>(
           const priceTimeout = await collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
           p = await collateral.price()
-          expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(p[1]).to.be.closeTo(savedHigh.mul(2), p[1].mul(2).div(10000)) // 1 part in 10 thousand
+          expect(p[0]).to.be.closeTo(savedLow.div(2), savedLow.div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.mul(3).div(2), savedHigh.mul(3).div(2).div(10000)) // 1 part in 10k
 
           // Should be unpriced after full priceTimeout
           await advanceTime(priceTimeout / 2)

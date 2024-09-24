@@ -3412,11 +3412,36 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             expect(await trade2.canSettle()).to.equal(false)
 
             // Bid + settle RSR auction
-
             await expect(await router.connect(addr1).bid(trade2.address, addr1.address)).to.emit(
               backingManager,
               'TradeSettled'
             )
+          })
+
+          it('and be able to continue rebalance immediately -- regression test 09/05/2024', async () => {
+            // Context: https://github.com/code-423n4/2024-07-reserve-findings/issues/6
+
+            await token1.connect(addr1).approve(trade2.address, initialBal)
+
+            // Advance to midpoint of auction
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + 900)
+            expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
+            expect(await trade2.canSettle()).to.equal(false)
+
+            // Bid + settle RSR auction
+            await expect(await router.connect(addr1).bid(trade2.address, addr1.address)).to.emit(
+              backingManager,
+              'TradeSettled'
+            )
+            expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
+
+            // Should be able to immediately continue
+            const amt = await token1.balanceOf(backingManager.address)
+            await token1.burn(backingManager.address, amt)
+
+            // Should not revert, if we were to continue
+            await backingManager.callStatic.rebalance(TradeKind.DUTCH_AUCTION)
+            await token1.mint(backingManager.address, amt)
           })
 
           it('via fallback to Batch Auction', async () => {

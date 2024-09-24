@@ -80,7 +80,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset, implementations)
+      return <TestIDeployer>await DeployerFactory.deploy(rsr, rsrAsset, implementations)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
@@ -165,10 +165,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address, implementations)
-        ).to.be.revertedWith('invalid address')
-
-        await expect(
           deployNewDeployer(ZERO_ADDRESS, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
@@ -216,7 +212,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup values correctly', async () => {
       expect(await deployer.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployer.rsr()).to.equal(rsr.address)
-      expect(await deployer.gnosis()).to.equal(gnosis.address)
       expect(await deployer.rsrAsset()).to.equal(rsrAsset.address)
     })
 

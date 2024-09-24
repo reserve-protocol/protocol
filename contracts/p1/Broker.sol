@@ -35,8 +35,9 @@ contract BrokerP1 is ComponentP1, IBroker {
     // The Batch Auction Trade contract to clone on openTrade(). Governance parameter.
     ITrade public batchTradeImplementation;
 
-    // The Gnosis contract to init batch auction trades with. Governance parameter.
-    IGnosis public gnosis;
+    /// @custom:oz-renamed-from gnosis
+    // Deprecated in 4.0.0
+    IGnosis public gnosis_DEPRECATED;
 
     /// @custom:oz-renamed-from auctionLength
     // {s} the length of a Gnosis EasyAuction. Governance parameter.
@@ -72,7 +73,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     // effects: initial parameters are set
     function init(
         IMain main_,
-        IGnosis gnosis_,
         ITrade batchTradeImplementation_,
         uint48 batchAuctionLength_,
         ITrade dutchTradeImplementation_,
@@ -80,8 +80,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     ) external initializer {
         __Component_init(main_);
         cacheComponents();
-
-        setGnosis(gnosis_);
 
         require(
             address(batchTradeImplementation_) != address(0),
@@ -174,14 +172,6 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // === Setters ===
 
-    /// @custom:governance
-    function setGnosis(IGnosis newGnosis) public governance {
-        require(address(newGnosis) != address(0), "invalid Gnosis address");
-
-        emit GnosisSet(gnosis, newGnosis);
-        gnosis = newGnosis;
-    }
-
     /// @custom:main
     function setBatchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
@@ -261,7 +251,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             address(trade),
             req.sellAmount
         );
-        trade.init(this, caller, gnosis, batchAuctionLength, req);
+        trade.init(this, caller, batchAuctionLength, req);
         return trade;
     }
 
