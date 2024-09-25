@@ -209,6 +209,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     const MIN_RTOKENS = fp('1e-6')
 
     let paramList
+    const MIN_THROTTLE_DELTA = 25
 
     if (SLOW) {
       const bounds: BigNumber[][] = [
@@ -219,7 +220,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
         [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp('1e-2').mul(125).div(100), fp(1).mul(125).div(100)], // redemptionThrottle.pctRate
+        [
+          MIN_REDEMPTION_PCT,
+          fp('1e-2').mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100),
+          fp(1).mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100),
+        ], // redemptionThrottle.pctRate
+        [bn(6), bn(18), bn(21), bn(27)], // collateralDecimals
       ]
 
       paramList = cartesianProduct(...bounds)
@@ -232,7 +238,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
         [MIN_WEIGHT], // weightRest
         [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp(1).mul(125).div(100)], // redemptionThrottle.pctRate
+        [MIN_REDEMPTION_PCT, fp(1).mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100)], // redemptionThrottle.pctRate
+        [bn(6), bn(18), bn(27)], // collateralDecimals
       ]
       paramList = cartesianProduct(...bounds)
     }
