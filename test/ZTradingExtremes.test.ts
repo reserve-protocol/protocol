@@ -437,10 +437,12 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const noThrottleIssuance = { amtRate: MAX_THROTTLE_AMT_RATE.mul(80).div(100), pctRate: 0 }
       const noThrottleRedemption = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
       await rToken.setThrottleParams(noThrottleIssuance, noThrottleRedemption)
-      while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
+      while ((await rToken.balanceOf(addr1.address)).lt(rTokenSupply)) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
+        const amt = remaining.lt(noThrottleIssuance.amtRate)
+          ? remaining
+          : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
       await advanceTime(3600)
@@ -622,10 +624,12 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const noThrottleIssuance = { amtRate: MAX_THROTTLE_AMT_RATE.mul(80).div(100), pctRate: 0 }
       const noThrottleRedemption = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
       await rToken.setThrottleParams(noThrottleIssuance, noThrottleRedemption)
-      while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
+      while ((await rToken.balanceOf(addr1.address)).lt(rTokenSupply)) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
+        const amt = remaining.lt(noThrottleIssuance.amtRate)
+          ? remaining
+          : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
       await advanceTime(3600)
@@ -834,10 +838,12 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const noThrottleIssuance = { amtRate: MAX_THROTTLE_AMT_RATE.mul(80).div(100), pctRate: 0 }
       const noThrottleRedemption = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
       await rToken.setThrottleParams(noThrottleIssuance, noThrottleRedemption)
-      while ((await rToken.balanceOf(addr1.address)) < rTokenSupply) {
+      while ((await rToken.balanceOf(addr1.address)).lt(rTokenSupply)) {
         await advanceTime(3600)
         const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
-        const amt = remaining < noThrottleIssuance.amtRate ? remaining : noThrottleIssuance.amtRate
+        const amt = remaining.lt(noThrottleIssuance.amtRate)
+          ? remaining
+          : noThrottleIssuance.amtRate
         await rToken.connect(addr1).issue(amt)
       }
 

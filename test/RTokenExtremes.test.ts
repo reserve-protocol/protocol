@@ -178,14 +178,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       if (toIssue0.gt(0)) {
-        await rToken.connect(owner).issue(toIssue0)
+        while ((await rToken.balanceOf(owner.address)).lt(toIssue0)) {
+          const remaining = toIssue0.sub(await rToken.balanceOf(owner.address))
+          const amt =
+            remaining < issuanceThrottleParams.amtRate ? remaining : issuanceThrottleParams.amtRate
+          await rToken.connect(addr1).issue(amt)
+          await advanceTime(3600)
+        }
         expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
       }
 
       // ==== Issue the toIssue supply to addr1
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).issue(toIssue)
+      while ((await rToken.balanceOf(addr1.address)).lt(toIssue)) {
+        const remaining = toIssue.sub(await rToken.balanceOf(addr1.address))
+        const amt =
+          remaining < issuanceThrottleParams.amtRate ? remaining : issuanceThrottleParams.amtRate
+        await rToken.connect(addr1).issue(amt)
+        await advanceTime(3600)
+      }
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
@@ -210,11 +222,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     const MAX_WEIGHT = fp(1000)
     const MIN_WEIGHT = fp('1e-6')
     const MIN_ISSUANCE_PCT = fp('1e-6')
-    const MIN_REDEMPTION_PCT = MIN_ISSUANCE_PCT.mul(125).div(100)
+    const MIN_THROTTLE_DELTA = 25
+    const MIN_REDEMPTION_PCT = MIN_ISSUANCE_PCT.mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100)
     const MIN_RTOKENS = fp('1e-6')
 
     let paramList
-    const MIN_THROTTLE_DELTA = 25
 
     if (SLOW) {
       const bounds: BigNumber[][] = [
