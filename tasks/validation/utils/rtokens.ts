@@ -53,7 +53,11 @@ export const redeemRTokens = async (
   await assetRegistry.refresh()
   const basketsNeeded = await rToken.basketsNeeded()
   const totalSupply = await rToken.totalSupply()
-  const redeemQuote = await basketHandler.quote(redeemAmount.mul(basketsNeeded).div(totalSupply), 0)
+  const redeemQuote = await basketHandler.quote(
+    redeemAmount.mul(basketsNeeded).div(totalSupply),
+    false,
+    0
+  )
   const expectedTokens = redeemQuote.erc20s
   const expectedBalances: Balances = {}
   let log = ''

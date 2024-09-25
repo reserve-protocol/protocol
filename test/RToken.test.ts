@@ -317,7 +317,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return a price of 0 if the assets become unregistered', async () => {
-      const startPrice = await basketHandler.price()
+      const startPrice = await basketHandler.price(false)
 
       expect(startPrice[0]).to.gt(0)
       expect(startPrice[1]).to.gt(0)
@@ -326,10 +326,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await assetRegistry.connect(owner).unregister(basket[i].address)
       }
 
-      const endPrice = await basketHandler.price()
+      const endPrice = await basketHandler.price(false)
 
       expect(endPrice[0]).to.eq(0)
       expect(endPrice[1]).to.eq(0)
+    })
+
+    it('Should not allow redemption to zero address', async function () {
+      // Redeem rTokens to zero address
+      await expect(rToken.connect(addr1).redeemTo(ZERO_ADDRESS, fp('1'))).to.be.revertedWith(
+        'cannot redeem to zero address'
+      )
     })
   })
 
