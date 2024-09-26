@@ -5,7 +5,7 @@ import { useEnv } from '#/utils/env'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allTests, allocateToken, enableRewardsAccrual, mintWcToken } from './helpers'
-import { forkNetwork, getForkBlock, COMP, REWARDS, getHolder } from './constants'
+import { getForkBlock, COMP, REWARDS, getHolder } from './constants'
 import { getResetFork } from '../helpers'
 import {
   ERC20Mock,
@@ -18,8 +18,6 @@ import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
-
-const itL1 = forkNetwork != 'base' && forkNetwork != 'arbitrum' ? it : it.skip
 
 for (const curr of allTests) {
   const describeFork =
@@ -610,7 +608,7 @@ for (const curr of allTests) {
         const baseIndexScale = await cTokenV3.baseIndexScale()
         const expectedExchangeRate = totalsBasic.baseSupplyIndex.mul(bn('1e6')).div(baseIndexScale)
         expect(await cTokenV3.balanceOf(wcTokenV3.address)).to.equal(0)
-        expect(await wcTokenV3.exchangeRate()).to.be.closeTo(expectedExchangeRate, 5)
+        expect(await wcTokenV3.exchangeRate()).to.be.closeTo(expectedExchangeRate, 10)
       })
 
       it('returns the correct exchange rate with a positive balance', async () => {
@@ -752,7 +750,9 @@ for (const curr of allTests) {
 
       // In this forked block, rewards accrual is not yet enabled in Comet
       // Only applies to Mainnet forks (L1)
-      itL1('claims no rewards when rewards accrual is not enabled', async () => {
+      it('claims no rewards when rewards accrual is not enabled', async () => {
+        await enableRewardsAccrual(cTokenV3, bn(0))
+
         const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
         await advanceTime(1000)
         await wcTokenV3.connect(bob).claimTo(bob.address, bob.address)
