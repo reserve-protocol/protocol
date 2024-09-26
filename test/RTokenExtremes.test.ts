@@ -159,8 +159,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
 
       if (
-        issuanceThrottleParams.amtRate.gt(redemptionThrottleParams.amtRate) &&
-        issuancePctAmt.gt(redemptionPctAmt)
+        issuanceThrottleParams.amtRate.lt(redemptionThrottleParams.amtRate) &&
+        issuancePctAmt.lt(redemptionPctAmt)
       ) {
         await rToken
           .connect(owner)
