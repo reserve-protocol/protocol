@@ -169,6 +169,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
         ).to.be.revertedWith('redemption throttle too low')
+        return
       }
 
       // Recharge throttle
