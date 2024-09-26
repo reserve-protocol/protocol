@@ -180,8 +180,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       if (toIssue0.gt(0)) {
         while ((await rToken.balanceOf(owner.address)).lt(toIssue0)) {
           const remaining = toIssue0.sub(await rToken.balanceOf(owner.address))
-          const amt =
-            remaining < issuanceThrottleParams.amtRate ? remaining : issuanceThrottleParams.amtRate
+          const avail = await rToken.issuanceAvailable()
+          const amt = remaining < avail ? remaining : avail
           await rToken.connect(addr1).issue(amt)
           await advanceTime(3600)
         }
@@ -193,8 +193,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       while ((await rToken.balanceOf(addr1.address)).lt(toIssue)) {
         const remaining = toIssue.sub(await rToken.balanceOf(addr1.address))
-        const amt =
-          remaining < issuanceThrottleParams.amtRate ? remaining : issuanceThrottleParams.amtRate
+        const avail = await rToken.issuanceAvailable()
+        const amt = remaining < avail ? remaining : avail
         await rToken.connect(addr1).issue(amt)
         await advanceTime(3600)
       }
