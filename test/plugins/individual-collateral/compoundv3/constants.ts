@@ -50,7 +50,7 @@ const USDC_FORK_BLOCKS: { [key: string]: number } = {
 }
 
 const USDT_FORK_BLOCKS: { [key: string]: number } = {
-  '1': 20528446,
+  '1': 20814000,
   '8453': 12292893, // not used
   '42161': 247293528,
 }
