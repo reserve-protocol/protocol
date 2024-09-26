@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "../assets/compoundv3/CusdcV3Wrapper.sol";
-import "../assets/compoundv3/ICusdcV3Wrapper.sol";
+import "../assets/compoundv3/CFiatV3Wrapper.sol";
+import "../assets/compoundv3/ICFiatV3Wrapper.sol";
 
-interface ICusdcV3WrapperMock is ICusdcV3Wrapper {
+interface ICFiatV3WrapperMock is ICFiatV3Wrapper {
     function setMockExchangeRate(bool setMock, uint256 mockValue) external;
 }
 
-contract CusdcV3WrapperMock {
+contract CFiatV3WrapperMock {
     uint256[20] private __gap;
     address internal mockTarget;
     mapping(bytes4 => bool) internal isMocking;
@@ -33,7 +33,7 @@ contract CusdcV3WrapperMock {
         if (isMocking[this.exchangeRate.selector]) {
             return mockExchangeRate_;
         } else {
-            return CusdcV3Wrapper(mockTarget).exchangeRate();
+            return CFiatV3Wrapper(mockTarget).exchangeRate();
         }
     }
 

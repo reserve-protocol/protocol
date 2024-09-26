@@ -5,62 +5,66 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./vendor/CometInterface.sol";
 import "./WrappedERC20.sol";
 import "./vendor/ICometRewards.sol";
-import "./ICusdcV3Wrapper.sol";
+import "./ICFiatV3Wrapper.sol";
 import "./CometHelpers.sol";
 
 /**
- * @title CusdcV3Wrapper
- * @notice Wrapper for cUSDCV3 / COMET that acts as a stable-balance ERC20, instead of rebasing
- * token. {comet} will be used as the unit for the underlying token, and {wComet} will be used
- * as the unit for wrapped tokens.
+ * @title CFiatV3Wrapper
+ * @notice Wrapper for Compound V3 fiat coins such as cUSDCv3, cUSDTv3 / COMET that acts
+ * as a stable-balance ERC20, instead of rebasing token. {comet} will be used as the unit
+ * for the underlying token, and {wComet} will be used as the unit for wrapped tokens.
  */
-contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
+contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
     using SafeERC20 for IERC20;
-
-    /// From cUSDCv3, used in principal <> present calculations
-    uint256 public constant TRACKING_INDEX_SCALE = 1e15;
-    /// From cUSDCv3, scaling factor for USDC rewards
-    uint256 public constant RESCALE_FACTOR = 1e12;
 
     CometInterface public immutable underlyingComet;
     ICometRewards public immutable rewardsAddr;
     IERC20 public immutable rewardERC20;
+    uint256 public immutable trackingIndexScale;
+    uint256 public immutable rescaleFactor;
+    uint8 internal immutable cometDecimals;
 
     mapping(address => uint64) public baseTrackingIndex; // uint64 for consistency with CometHelpers
     mapping(address => uint256) public baseTrackingAccrued; // uint256 to avoid overflow in L:199
     mapping(address => uint256) public rewardsClaimed;
 
     constructor(
-        address cusdcv3,
+        address ctokenv3,
         address rewardsAddr_,
-        address rewardERC20_
-    ) WrappedERC20("Wrapped cUSDCv3", "wcUSDCv3") {
-        if (cusdcv3 == address(0)) revert ZeroAddress();
+        address rewardERC20_,
+        string memory name,
+        string memory symbol
+    ) WrappedERC20(name, symbol) {
+        if (ctokenv3 == address(0)) revert ZeroAddress();
 
         rewardsAddr = ICometRewards(rewardsAddr_);
         rewardERC20 = IERC20(rewardERC20_);
-        underlyingComet = CometInterface(cusdcv3);
+        underlyingComet = CometInterface(ctokenv3);
+        cometDecimals = underlyingComet.decimals();
+        trackingIndexScale = underlyingComet.trackingIndexScale();
+        // TODO replace with formula, scaling factor for USDC/USDT rewards
+        rescaleFactor = 1e12;
     }
 
     /// @return number of decimals
-    function decimals() public pure override(IERC20Metadata, WrappedERC20) returns (uint8) {
-        return 6;
+    function decimals() public view override(IERC20Metadata, WrappedERC20) returns (uint8) {
+        return cometDecimals;
     }
 
-    /// @param amount {Comet} The amount of cUSDCv3 to deposit
+    /// @param amount {Comet} The amount of cTokenV3 to deposit
     function deposit(uint256 amount) external {
         _deposit(msg.sender, msg.sender, msg.sender, amount);
     }
 
     /// @param dst The dst to deposit into
-    /// @param amount {Comet} The amount of cUSDCv3 to deposit
+    /// @param amount {Comet} The amount of cTokenV3 to deposit
     function depositTo(address dst, uint256 amount) external {
         _deposit(msg.sender, msg.sender, dst, amount);
     }
 
     /// @param src The address to deposit from
     /// @param dst The address to deposit to
-    /// @param amount {Comet} The amount of cUSDCv3 to deposit
+    /// @param amount {Comet} The amount of cTokenV3 to deposit
     function depositFrom(
         address src,
         address dst,
@@ -70,11 +74,11 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// Only called internally to run the deposit logic
-    /// Takes `amount` fo cUSDCv3 from `src` and deposits to `dst` account in the wrapper.
+    /// Takes `amount` fo cTokenV3 from `src` and deposits to `dst` account in the wrapper.
     /// @param operator The address calling the contract (msg.sender)
     /// @param src The address to deposit from
     /// @param dst The address to deposit to
-    /// @param amount {Comet} The amount of cUSDCv3 to deposit
+    /// @param amount {Comet} The amount of cTokenv3 to deposit
     function _deposit(
         address operator,
         address src,
@@ -102,7 +106,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         _mint(dst, uint104(wrapperPostPrinc - wrapperPrePrinc));
     }
 
-    /// @param amount {Comet} The amount of cUSDCv3 to withdraw
+    /// @param amount {Comet} The amount of cTokenV3 to withdraw
     function withdraw(uint256 amount) external {
         _withdraw(msg.sender, msg.sender, msg.sender, amount);
     }
@@ -195,7 +199,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         accrueAccount(src);
         uint256 claimed = rewardsClaimed[src];
-        uint256 accrued = baseTrackingAccrued[src] * RESCALE_FACTOR;
+        uint256 accrued = baseTrackingAccrued[src] * rescaleFactor;
         uint256 owed;
         if (accrued > claimed) {
             owed = accrued - claimed;
@@ -260,10 +264,10 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
         uint256 newBaseTrackingAccrued = baseTrackingAccrued[account] +
             (safe104(balanceOf(account)) * indexDelta) /
-            TRACKING_INDEX_SCALE;
+            trackingIndexScale;
 
         uint256 claimed = rewardsClaimed[account];
-        uint256 accrued = newBaseTrackingAccrued * RESCALE_FACTOR;
+        uint256 accrued = newBaseTrackingAccrued * rescaleFactor;
         uint256 owed = accrued > claimed ? accrued - claimed : 0;
 
         return owed;
@@ -289,7 +293,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         (, uint64 trackingSupplyIndex) = getSupplyIndices();
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
 
-        baseTrackingAccrued[account] += (safe104(accountBal) * indexDelta) / TRACKING_INDEX_SCALE;
+        baseTrackingAccrued[account] += (safe104(accountBal) * indexDelta) / trackingIndexScale;
         baseTrackingIndex[account] = trackingSupplyIndex;
     }
 
