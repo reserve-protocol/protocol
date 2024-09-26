@@ -52,7 +52,7 @@ const USDC_FORK_BLOCKS: { [key: string]: number } = {
 const USDT_FORK_BLOCKS: { [key: string]: number } = {
   '1': 20528446,
   '8453': 12292893, // not used
-  '42161': 227293528,
+  '42161': 247293528,
 }
 
 export const FORK_BLOCKS: { [key: string]: { [chainId: string]: number } } = {
