@@ -41,9 +41,10 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         rewardERC20 = IERC20(rewardERC20_);
         underlyingComet = CometInterface(ctokenv3);
         cometDecimals = underlyingComet.decimals();
+        // for principal <> present calculations
         trackingIndexScale = underlyingComet.trackingIndexScale();
-        // TODO replace with formula, scaling factor for USDC/USDT rewards
-        rescaleFactor = 1e12;
+        // scaling factor for rewards
+        rescaleFactor = 10**(18 - cometDecimals);
     }
 
     /// @return number of decimals
