@@ -11,7 +11,7 @@ contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    uint192 public constant MAX_HIGH_PRICE_BUFFER = 2 * FIX_ONE; // {UoA/tok} 200%
+    uint192 public constant MAX_HIGH_PRICE_BUFFER = FIX_ONE; // {UoA/tok} 100%
 
     AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
 
@@ -147,7 +147,7 @@ contract Asset is IAsset, VersionedAsset {
             } else {
                 // decayDelay <= delta <= decayDelay + priceTimeout
 
-                // Decay _high upwards to 3x savedHighPrice
+                // Decay _high upwards to 2x savedHighPrice
                 // {UoA/tok} = {UoA/tok} * {1}
                 _high = savedHighPrice.safeMul(
                     FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay, priceTimeout),
