@@ -89,6 +89,7 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
+      'collateral-plugins/verify_morphoeUSD.ts',
       'assets/verify_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
