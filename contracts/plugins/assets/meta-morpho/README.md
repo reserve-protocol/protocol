@@ -14,6 +14,7 @@ MetaMorpho suffers from a similar to that of the Curve volatile pools which can 
 | Steakhouse USDC | steakUSDC| 0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB | wstETH, MORPHO |
 | Steakhouse PYSUD | steakPYUSD | 0xbEEF02e5E13584ab96848af90261f0C8Ee04722a | MORPHO |
 | Flagship USDT | bbUSDT| 0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1 | MORPHO |
+| Morpho eUSD (Base) | meUSD | 0xbb819D845b573B5D7C538F5b85057160cfb5f313 | MORPHO |
 
 **ETH**
 
