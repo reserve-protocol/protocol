@@ -140,7 +140,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const erc20: ERC20MockDecimals = erc20s[i]
         // user owner starts with enough basket assets to issue (totalSupply - toIssue)
         const toIssue0Scaled: BigNumber = toBNDecimals(toIssue0, Number(collateralDecimals))
-        const toMint0: BigNumber = toIssue0Scaled.mul(weights[i]).add(e18).div(e18)
+        const toMint0: BigNumber = toIssue0Scaled.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(owner.address, toMint0)
         await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
 
