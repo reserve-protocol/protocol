@@ -140,7 +140,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const erc20: ERC20MockDecimals = erc20s[i]
         // user owner starts with enough basket assets to issue (totalSupply - toIssue)
         const toIssue0Scaled: BigNumber = toBNDecimals(toIssue0, Number(collateralDecimals))
-        const toMint0: BigNumber = toIssue0Scaled.mul(weights[i]).add(e18.sub(1)).div(e18)
+        const toMint0: BigNumber = toIssue0Scaled.mul(weights[i]).add(e18).div(e18)
         await erc20.mint(owner.address, toMint0)
         await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
 
@@ -182,8 +182,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         while ((await rToken.balanceOf(owner.address)).lt(toIssue0)) {
           const remaining = toIssue0.sub(await rToken.balanceOf(owner.address))
           const avail = await rToken.issuanceAvailable()
-          const amt = remaining < avail ? remaining : avail
-          await rToken.connect(addr1).issue(amt)
+          const amt = remaining.lt(avail) ? remaining : avail
+          await rToken.connect(owner).issue(amt)
           await advanceTime(3600)
         }
         expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
@@ -195,7 +195,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       while ((await rToken.balanceOf(addr1.address)).lt(toIssue)) {
         const remaining = toIssue.sub(await rToken.balanceOf(addr1.address))
         const avail = await rToken.issuanceAvailable()
-        const amt = remaining < avail ? remaining : avail
+        const amt = remaining.lt(avail) ? remaining : avail
         await rToken.connect(addr1).issue(amt)
         await advanceTime(3600)
       }
