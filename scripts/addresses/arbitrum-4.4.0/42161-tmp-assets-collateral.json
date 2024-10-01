@@ -1,0 +1,9 @@
+{
+  "assets": {},
+  "collateral": {
+    "cUSDTv3": "0xF8660F3dd5076F4071e5E4C4D34E60A67d88657D"
+  },
+  "erc20s": {
+    "cUSDTv3": "0x870fb8352B99Fd5Ed5C0AB18d458dA5933aA5266"
+  }
+}
