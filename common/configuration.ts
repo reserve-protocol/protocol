@@ -116,6 +116,9 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  // Aerodrome
+  AERO?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
