@@ -35,7 +35,7 @@ async function main() {
   /********  Verify meUSD  **************************/
   await verifyContract(
     chainId,
-    deployments.collateral.steakUSDC,
+    deployments.collateral.meUSD,
     [
       {
         priceTimeout: PRICE_TIMEOUT.toString(),
