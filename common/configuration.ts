@@ -115,6 +115,10 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  // Angle
+  USDA?: string
+  stUSD?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -256,6 +260,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      USDA: '0x0000206329b97DB379d5E1Bf586BbDB969C63274',
+      stUSD: '0x0022228a2cc5E7eF0274A7Baa600d44da5aB5776',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
