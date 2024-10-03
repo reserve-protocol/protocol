@@ -112,15 +112,15 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         _withdraw(msg.sender, msg.sender, msg.sender, amount);
     }
 
-    /// @param dst The address to withdraw cUSDCv3 to
-    /// @param amount {Comet} The amount of cUSDCv3 to withdraw
+    /// @param dst The address to withdraw cTokenv3 to
+    /// @param amount {Comet} The amount of cTokenv3 to withdraw
     function withdrawTo(address dst, uint256 amount) external {
         _withdraw(msg.sender, msg.sender, dst, amount);
     }
 
     /// @param src The address to withdraw from
-    /// @param dst The address to withdraw cUSDCv3 to
-    /// @param amount {Comet} The amount of cUSDCv3 to withdraw
+    /// @param dst The address to withdraw cTokenv3 to
+    /// @param amount {Comet} The amount of cTokenv3 to withdraw
     function withdrawFrom(
         address src,
         address dst,
@@ -130,12 +130,12 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// Internally called to run the withdraw logic
-    /// Withdraws `amount` cUSDCv3 from `src` account in the wrapper and sends to `dst`
+    /// Withdraws `amount` cTokenv3 from `src` account in the wrapper and sends to `dst`
     /// @dev Rounds conservatively so as not to over-withdraw from the wrapper
     /// @param operator The address calling the contract (msg.sender)
     /// @param src The address to withdraw from
-    /// @param dst The address to withdraw cUSDCv3 to
-    /// @param amount {Comet} The amount of cUSDCv3 to withdraw
+    /// @param dst The address to withdraw cTokenv3 to
+    /// @param amount {Comet} The amount of cTokenv3 to withdraw
     function _withdraw(
         address operator,
         address src,
@@ -215,20 +215,20 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         emit RewardsClaimed(rewardERC20, owed);
     }
 
-    /// Accure the cUSDCv3 account of the wrapper
+    /// Accure the cTokenv3 account of the wrapper
     function accrue() public {
         underlyingComet.accrueAccount(address(this));
     }
 
-    /// @param account The address to accrue, first in cUSDCv3, then locally
+    /// @param account The address to accrue, first in cTokenv3, then locally
     function accrueAccount(address account) public {
         underlyingComet.accrueAccount(address(this));
         accrueAccountRewards(account);
     }
 
-    /// Get the balance of cUSDCv3 that is represented by the `accounts` wrapper value.
-    /// @param account The address to calculate the cUSDCv3 balance of
-    /// @return {Comet} The cUSDCv3 balance that `account` holds in the wrapper
+    /// Get the balance of cTokenv3 that is represented by the `accounts` wrapper value.
+    /// @param account The address to calculate the cTokenv3 balance of
+    /// @return {Comet} The cTokenv3 balance that `account` holds in the wrapper
     function underlyingBalanceOf(address account) public view returns (uint256) {
         uint256 balance = balanceOf(account);
         if (balance == 0) {
@@ -244,7 +244,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// @param amount The value of {wComet} to convert to {Comet}
-    /// @return {Comet} The amount of cUSDCv3 represented by `amount of {wComet}
+    /// @return {Comet} The amount of cTokenv3 represented by `amount of {wComet}
     function convertStaticToDynamic(uint104 amount) public view returns (uint256) {
         (uint64 baseSupplyIndex, ) = getUpdatedSupplyIndicies();
         return presentValueSupply(baseSupplyIndex, amount);
