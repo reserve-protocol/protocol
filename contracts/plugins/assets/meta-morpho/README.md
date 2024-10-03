@@ -6,6 +6,23 @@ Morpho Blue is a permisionless lending protocol. At the time of this writing (Ma
 
 MetaMorpho suffers from a similar to that of the Curve volatile pools which can lose assets on admin fee claim.
 
+## Reward claiming
+
+Rewards can be claimed permissionlessly by anyone from off-chain, following this detailed guide from the Morpho docs:
+
+https://docs.morpho.org/rewards/tutorials/claim-rewards/
+
+It requires the following steps:
+
+1. Querying the Morpho API with the holder address: https://rewards.morpho.org/v1/users/0xADDRESS/distributions
+2. Retrieving the distributor contract and sending a transaction to `claim()` the rewards with the following parameters (all obtained from the previous call):
+   - `account`: the holder address
+   - `reward`: the address of the reward token
+   - `claimable`: the amount of reward tokens to claim
+   - `proof`: the merkle proof
+
+It is important to note that in the case of Rtokens, rewards will need to be claimed on behalf of the Backing Manager.
+
 ## Target tokens
 
 **USD**
