@@ -125,6 +125,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         assert(reg.erc20s.length == reg.assets.length);
     }
 
+    function validateCurrentAssets() external view {}
+
     /// @return The number of registered ERC20s
     function size() external view returns (uint256) {
         return _erc20s.length();
@@ -174,9 +176,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
         require(
-            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            gas > (64 * GAS_FOR_BH_QTY) / 63 + GAS_FOR_DISABLE_BASKET,
             "not enough gas to unregister safely"
         );
-        return gas - GAS_FOR_DISABLE_BASKET;
+        return GAS_FOR_BH_QTY;
     }
 }

@@ -165,7 +165,7 @@ async function main() {
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '86400', // 24 hr
           targetName: hre.ethers.utils.formatBytes32String('BTC'),
-          defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
+          defaultThreshold: fp('0.01').add(wbtcOracleError).toString(), // 3%
           delayUntilDefault: bn('86400').toString(), // 24h
         },
         networkConfig[chainId].chainlinkFeeds.BTC,
@@ -208,7 +208,7 @@ async function main() {
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '86400', // 24h
           targetName: ethers.utils.formatBytes32String('BTC'),
-          defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
+          defaultThreshold: fp('0.01').add(wbtcOracleError).toString(), // 3%
           delayUntilDefault: bn('86400').toString(), // 24h
         },
         networkConfig[chainId].chainlinkFeeds.BTC,

@@ -78,6 +78,24 @@ The warmup period is how many seconds should pass after the basket regained the 
 Default value: `900` = 15 minutes
 Reasonable range: 0 to 604800
 
+### `reweightable`
+
+Dimension: `{bool}`
+
+A reweightable RToken can have its target amounts changed by governance via `forceSetPrimeBasket()`. In general RTokens should be non-reweightable, unless their usecase requires it. The work required to change the target amounts of a reweightable RToken responsibly is non-trivial, and should be done by a spell.
+
+Default value: `false`
+
+### `enableIssuancePremium`
+
+Dimension: `{bool}`
+
+An RToken with issuance premium enabled will increase issuance costs to compensate for any (partial) de-pegs observed in the underlying collateral. This protects RToken holders and RSR stakers from toxic issuance that may occur on the way to a default, or simply when a collateral reliably trades below its peg, such as frxETH.
+
+This also creates an additional revenue stream for the RToken that scales with issuance velocity.
+
+Default value: `true`
+
 ### `batchAuctionLength`
 
 Dimension: `{seconds}`

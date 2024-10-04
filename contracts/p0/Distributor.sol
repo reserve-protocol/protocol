@@ -25,7 +25,8 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
     function init(IMain main_, RevenueShare memory dist) public initializer {
         __Component_init(main_);
-        _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
+
+        _ensureSufficientTotal(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
     }
@@ -40,7 +41,29 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
         _setDistribution(dest, share);
         RevenueTotals memory revTotals = totals();
-        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
+        _ensureSufficientTotal(revTotals.rTokenTotal, revTotals.rsrTotal);
+    }
+
+    /// Set RevenueShares for destinations. Destinations `FURNACE` and `ST_RSR` refer to
+    /// main.furnace() and main.stRSR().
+    /// @custom:governance
+    function setDistributions(address[] calldata dests, RevenueShare[] calldata shares)
+        external
+        governance
+    {
+        require(dests.length == shares.length, "array length mismatch");
+
+        // solhint-disable-next-line no-empty-blocks
+        try main.rsrTrader().distributeTokenToBuy() {} catch {}
+        // solhint-disable-next-line no-empty-blocks
+        try main.rTokenTrader().distributeTokenToBuy() {} catch {}
+
+        for (uint256 i = 0; i < dests.length; ++i) {
+            _setDistribution(dests[i], shares[i]);
+        }
+
+        RevenueTotals memory revTotals = totals();
+        _ensureSufficientTotal(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
 
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
@@ -116,8 +139,13 @@ contract DistributorP0 is ComponentP0, IDistributor {
         require(dest != address(0), "dest cannot be zero");
         require(
             dest != address(main.furnace()) && dest != address(main.stRSR()),
-            "destination can not be furnace or strsr directly"
+            "destination cannot be furnace or strsr directly"
         );
+        require(
+            dest != address(main.rsr()) && dest != address(main.rToken()),
+            "destination cannot be rsr or rToken"
+        );
+        require(dest != address(main.daoFeeRegistry()), "destination cannot be daoFeeRegistry");
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= MAX_DISTRIBUTION, "RSR distribution too high");
@@ -134,8 +162,8 @@ contract DistributorP0 is ComponentP0, IDistributor {
         emit DistributionSet(dest, share.rTokenDist, share.rsrDist);
     }
 
-    /// Ensures distribution values are non-zero
-    function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
-        require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
+    /// Ensures distribution values are large enough
+    function _ensureSufficientTotal(uint24 rTokenTotal, uint24 rsrTotal) internal pure {
+        require(rTokenTotal + rsrTotal >= MAX_DISTRIBUTION, "totals too low");
     }
 }

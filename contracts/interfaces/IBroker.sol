@@ -34,7 +34,6 @@ struct TradeRequest {
  *   the continued proper functioning of trading platforms.
  */
 interface IBroker is IComponent {
-    event GnosisSet(IGnosis oldVal, IGnosis newVal);
     event BatchTradeImplementationSet(ITrade oldVal, ITrade newVal);
     event DutchTradeImplementationSet(ITrade oldVal, ITrade newVal);
     event BatchAuctionLengthSet(uint48 oldVal, uint48 newVal);
@@ -45,7 +44,6 @@ interface IBroker is IComponent {
     // Initialization
     function init(
         IMain main_,
-        IGnosis gnosis_,
         ITrade batchTradeImplemention_,
         uint48 batchAuctionLength_,
         ITrade dutchTradeImplemention_,
@@ -69,6 +67,12 @@ interface IBroker is IComponent {
     function dutchTradeDisabled(IERC20Metadata erc20) external view returns (bool);
 }
 
+interface IExtendedBroker is IBroker {
+    function setBatchTradeImplementation(ITrade newTradeImplementation) external;
+
+    function setDutchTradeImplementation(ITrade newTradeImplementation) external;
+}
+
 interface TestIBroker is IBroker {
     function gnosis() external view returns (IGnosis);
 
@@ -79,8 +83,6 @@ interface TestIBroker is IBroker {
     function batchAuctionLength() external view returns (uint48);
 
     function dutchAuctionLength() external view returns (uint48);
-
-    function setGnosis(IGnosis newGnosis) external;
 
     function setBatchTradeImplementation(ITrade newTradeImplementation) external;
 

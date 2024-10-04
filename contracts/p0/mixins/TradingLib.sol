@@ -59,9 +59,18 @@ library TradingLibP0 {
             minTradeVolume
         );
 
-        // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellLow); // {sellTok}
-        uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
+        // Cap sell amount using the high price
+        // Under price decay trade.prices.sellHigh can become up to 2x the savedHighPrice before
+        // becoming FIX_MAX after the full price timeout
+        uint192 s = trade.sellAmount;
+        if (trade.prices.sellHigh != FIX_MAX) {
+            // {sellTok}
+            uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh);
+            require(maxSell > 1, "trade sizing error");
+            if (s > maxSell) s = maxSell;
+        } else {
+            require(trade.prices.sellLow == 0, "trade pricing error");
+        }
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
@@ -269,7 +278,7 @@ library TradingLibP0 {
         view
         returns (BasketRange memory range)
     {
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(false); // {UoA/BU}
 
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {

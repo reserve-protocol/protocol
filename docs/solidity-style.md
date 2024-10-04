@@ -135,6 +135,28 @@ That is, we expect timestamps to be any uint48 value.
 
 This should work without change for around 9M years, which is more than enough.
 
+### Collateral decimals
+
+`{decimals}`: [6, 21]
+
+The protocol only supports collateral tokens up to 21 decimals, and they must be sufficiently valuable.
+
+At 21 decimals one whole collateral token must be worth `>= $1` when _at-peg_. This range enables support for `$1` tokens that have been deposited into 3 decimal offset vaults. Note that the protocol does not rely on this property for the _sale_ of collateral, only the _purchase_; therefore it is acceptable for a backing collateral to lose its peg and be worth less than `$1`, as long as its collateral plugin puts it into an IFFY state and begins the default process.
+
+minimum whole token value requirement (at common decimals):
+
+- 21 decimals: `>= $1`
+- 18 decimals: `>= $0.001`
+- 6 decimals: `>= $0.000000000000001`
+
+### Minimum RToken price
+
+Whole RTokens should be worth `>= $0.001` at-peg, since they must be purchasable in revenue auctions.
+
+### Minimum RSR price
+
+The protocol functions best when whole RSR is worth `>= $0.001`. This constraint is less strong than in the case of backing collateral tokens, however. The core functionality of the protocol functions properly even even below this boundary.
+
 ## Function annotations
 
 All core functions that can be called from outside our system are classified into one of the following 3 categories:

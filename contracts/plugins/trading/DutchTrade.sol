@@ -165,8 +165,14 @@ contract DutchTrade is ITrade, Versioned {
         assert(address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60);
 
         // Only start dutch auctions under well-defined prices
-        require(prices.sellLow != 0 && prices.sellHigh < FIX_MAX / 1000, "bad sell pricing");
-        require(prices.buyLow != 0 && prices.buyHigh < FIX_MAX / 1000, "bad buy pricing");
+        require(
+            prices.sellLow != 0 && prices.sellHigh != 0 && prices.sellHigh < FIX_MAX / 1000,
+            "bad sell pricing"
+        );
+        require(
+            prices.buyLow != 0 && prices.buyHigh != 0 && prices.buyHigh < FIX_MAX / 1000,
+            "bad buy pricing"
+        );
 
         broker = IBroker(msg.sender);
         origin = origin_;
@@ -174,7 +180,7 @@ contract DutchTrade is ITrade, Versioned {
         buy = buy_.erc20();
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
-        sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
+        sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals()), FLOOR); // {sellTok}
 
         // Track auction end by time, to generalize to all chains
         uint48 _startTime = uint48(block.timestamp) + 1; // cannot fulfill in current block

@@ -13,7 +13,7 @@ import "../lib/FacetLib.sol";
  * @title ActFacet
  * @notice
  *   Facet to help batch compound actions that cannot be done from an EOA, solely.
- *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
+ *   Compatible with 2.1.0, ^3.0.0, and ^4.0.0 RTokens.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 // slither-disable-start

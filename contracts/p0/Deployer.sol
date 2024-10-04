@@ -95,7 +95,12 @@ contract DeployerP0 is IDeployer, Versioned {
         );
 
         // Init Basket Handler
-        main.basketHandler().init(main, params.warmupPeriod, params.reweightable);
+        main.basketHandler().init(
+            main,
+            params.warmupPeriod,
+            params.reweightable,
+            params.enableIssuancePremium
+        );
 
         // Init Revenue Traders
         main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
@@ -114,8 +119,7 @@ contract DeployerP0 is IDeployer, Versioned {
 
         main.broker().init(
             main,
-            gnosis,
-            ITrade(address(new GnosisTrade())),
+            ITrade(address(new GnosisTrade(gnosis))),
             params.batchAuctionLength,
             ITrade(address(new DutchTrade())),
             params.dutchAuctionLength
@@ -170,4 +174,7 @@ contract DeployerP0 is IDeployer, Versioned {
         rTokenAsset = new RTokenAsset(rToken, maxTradeVolume);
         emit RTokenAssetCreated(rToken, rTokenAsset);
     }
+
+    /// @dev Just to make solc happy.
+    function implementations() external view returns (Implementations memory) {}
 }

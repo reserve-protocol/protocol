@@ -29,7 +29,7 @@ library FacetLib {
 
     function settleTrade(ITrading trader, IERC20 toSettle) internal {
         bytes1 majorVersion = bytes(trader.version())[0];
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             // Settle auctions
             trader.settleTrade(toSettle);
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
@@ -42,7 +42,7 @@ library FacetLib {
     function forwardRevenue(IBackingManager bm, IERC20[] memory toStart) internal {
         bytes1 majorVersion = bytes(bm.version())[0];
         // Need to use try-catch here in order to still show revenueOverview when basket not ready
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             // solhint-disable-next-line no-empty-blocks
             try bm.forwardRevenue(toStart) {} catch {}
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
@@ -63,7 +63,7 @@ library FacetLib {
     ) internal {
         bytes1 majorVersion = bytes(revenueTrader.version())[0];
 
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             revenueTrader.manageTokens(toStart, kinds);
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
             for (uint256 i = 0; i < toStart.length; ++i) {
@@ -79,7 +79,7 @@ library FacetLib {
     function rebalance(IBackingManager bm, TradeKind kind) internal {
         bytes1 majorVersion = bytes(bm.version())[0];
 
-        if (majorVersion == bytes1("3")) {
+        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
             // solhint-disable-next-line no-empty-blocks
             try bm.rebalance(kind) {} catch {}
         } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
