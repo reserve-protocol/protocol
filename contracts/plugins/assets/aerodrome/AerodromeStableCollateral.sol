@@ -71,21 +71,29 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
 
         // low
-        uint256 ratioLow = ((1e18) * p0_low) / p1_low;
-        uint256 sqrtPriceLow = sqrt256(
-            sqrt256((1e18) * ratioLow) * sqrt256(1e36 + ratioLow * ratioLow)
-        );
-        low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
-
+        {
+            uint256 ratioLow = ((1e18) * p0_low) / p1_low;
+            uint256 sqrtPriceLow = sqrt256(
+                sqrt256((1e18) * ratioLow) * sqrt256(1e36 + ratioLow * ratioLow)
+            );
+            low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
+        }
         // high
-        uint256 ratioHigh = ((1e18) * p0_high) / p1_high;
-        uint256 sqrtPriceHigh = sqrt256(
-            sqrt256((1e18) * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
-        );
-        high = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply);
+        {
+            uint256 ratioHigh = ((1e18) * p0_high) / p1_high;
+            uint256 sqrtPriceHigh = sqrt256(
+                sqrt256((1e18) * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
+            );
 
+            high = _safeWrap(
+                ((((1e18) * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply
+            );
+        }
         assert(low <= high); //obviously true just by inspection
-        pegPrice = FIX_ONE;
+
+        // {target/ref} = {UoA/ref} = {UoA/tok} / ({ref/tok}
+        // {target/ref} and {UoA/ref} are the same since target == UoA
+        pegPrice = ((low + high) / 2).div(refPerTok());
     }
 
     /// Should not revert
