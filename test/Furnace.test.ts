@@ -506,9 +506,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token3.connect(addr1).approve(rToken.address, max256)
 
       // Set up larger throttles
-      const throttle = { amtRate: bal.lt(fp('1')) ? fp('1') : bal, pctRate: 0 }
-      await rToken.connect(owner).setIssuanceThrottleParams(throttle)
-      await rToken.connect(owner).setRedemptionThrottleParams(throttle)
+      const issuanceThrottle = { amtRate: bal.lt(fp('1')) ? fp('1') : bal, pctRate: 0 }
+      const redemptionThrottle = {
+        amtRate: bal.lt(fp('1')) ? fp('1').mul(125).div(100) : bal.mul(125).div(100),
+        pctRate: 0,
+      }
+      await rToken.connect(owner).setThrottleParams(issuanceThrottle, redemptionThrottle)
       await advanceTime(3600)
 
       // Issue and send tokens to furnace

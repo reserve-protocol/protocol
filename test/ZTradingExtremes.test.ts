@@ -434,12 +434,18 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Issue rTokens
-      const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
-      await rToken.setIssuanceThrottleParams(noThrottle)
-      await rToken.setRedemptionThrottleParams(noThrottle)
-      // Recharge throttle
+      const noThrottleIssuance = { amtRate: MAX_THROTTLE_AMT_RATE.mul(80).div(100), pctRate: 0 }
+      const noThrottleRedemption = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setThrottleParams(noThrottleIssuance, noThrottleRedemption)
+      while ((await rToken.balanceOf(addr1.address)).lt(rTokenSupply)) {
+        await advanceTime(3600)
+        const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
+        const amt = remaining.lt(noThrottleIssuance.amtRate)
+          ? remaining
+          : noThrottleIssuance.amtRate
+        await rToken.connect(addr1).issue(amt)
+      }
       await advanceTime(3600)
-      await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // Mint any excess possible before increasing exchange rate to avoid blowing through max BU exchange rate
@@ -615,13 +621,18 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Issue rTokens
-      const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
-      await rToken.setIssuanceThrottleParams(noThrottle)
-      await rToken.setRedemptionThrottleParams(noThrottle)
-
-      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
-
-      await rToken.connect(addr1).issue(rTokenSupply)
+      const noThrottleIssuance = { amtRate: MAX_THROTTLE_AMT_RATE.mul(80).div(100), pctRate: 0 }
+      const noThrottleRedemption = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setThrottleParams(noThrottleIssuance, noThrottleRedemption)
+      while ((await rToken.balanceOf(addr1.address)).lt(rTokenSupply)) {
+        await advanceTime(3600)
+        const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
+        const amt = remaining.lt(noThrottleIssuance.amtRate)
+          ? remaining
+          : noThrottleIssuance.amtRate
+        await rToken.connect(addr1).issue(amt)
+      }
+      await advanceTime(3600)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -824,14 +835,17 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await stRSR.connect(addr1).stake(fp('1e29'))
 
       // Issue rTokens
-      const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
-      await rToken.setIssuanceThrottleParams(noThrottle)
-      await rToken.setRedemptionThrottleParams(noThrottle)
-
-      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
-
-      await rToken.connect(addr1).issue(rTokenSupply)
-      expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
+      const noThrottleIssuance = { amtRate: MAX_THROTTLE_AMT_RATE.mul(80).div(100), pctRate: 0 }
+      const noThrottleRedemption = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setThrottleParams(noThrottleIssuance, noThrottleRedemption)
+      while ((await rToken.balanceOf(addr1.address)).lt(rTokenSupply)) {
+        await advanceTime(3600)
+        const remaining = rTokenSupply.sub(await rToken.balanceOf(addr1.address))
+        const amt = remaining.lt(noThrottleIssuance.amtRate)
+          ? remaining
+          : noThrottleIssuance.amtRate
+        await rToken.connect(addr1).issue(amt)
+      }
 
       // === Execution ===
 
