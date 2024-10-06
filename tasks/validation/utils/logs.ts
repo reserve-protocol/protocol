@@ -79,6 +79,7 @@ const tokens: { [key: string]: string } = {
   ['0x53f1df4e5591ae35bf738742981669c3767241fa'.toLowerCase()]: 'wcUSDCv3 (base)',
   ['0x6f6f81e5e66f503184f2202d83a79650c3285759'.toLowerCase()]: 'saBasUSDC (base)',
   ['0x184460704886f9f2a7f3a0c2887680867954dc6e'.toLowerCase()]: 'saBasUSDC (base)',
+  ['0xA35b1B31Ce002FBF2058D22F30f95D405200A15b'.toLowerCase()]: 'ETHx',
 }
 
 export const logToken = (tokenAddress: string) => {
