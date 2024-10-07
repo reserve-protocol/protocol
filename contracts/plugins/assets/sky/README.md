@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plugin allows `sUSDS` holders to use their tokens as collateral in the Reserve Protocol.
+This plugin allows `sUSDS` (Sky) holders to use their tokens as collateral in the Reserve Protocol.
 
 `sUSDS` token represents a tokenized implementation of the Sky Savings Rate for `USDS`, fully compliant with the ERC-4626 standard. It enables real-time share-to-asset conversions, ensuring accurate values even if the system's drip function hasn't been called recently.
 
@@ -11,6 +11,8 @@ These `sUSDS` tokens serve as a digital record of any value accrued to a specifi
 Since it is ERC4626, the redeemable USDS amount can be gotten by dividing `sUSDS.totalAssets()` by `sUSDS.totalSupply()`. However, the same rate can be read out more directly by calling `sUSDS.chi()`.
 
 `sUSDS` contract: <https://etherscan.io/address/0xdC035D45d973E3EC169d2276DDab16f1e407384F#code>
+
+Sky Money: https://sky.money/
 
 ## Implementation
 
