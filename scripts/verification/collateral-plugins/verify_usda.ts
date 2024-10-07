@@ -49,7 +49,7 @@ async function main() {
       },
       fp('1e-6').toString(),
     ],
-    'contracts/plugins/assets/angle/USDAFiatCollateral.sol:USDAFiatCollateral'
+    'contracts/plugins/assets/angle/StakedUSDAFiatCollateral.sol:StakedUSDAFiatCollateral'
   )
 }
 

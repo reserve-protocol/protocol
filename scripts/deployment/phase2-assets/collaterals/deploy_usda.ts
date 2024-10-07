@@ -13,7 +13,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { USDAFiatCollateral } from '../../../../typechain'
+import { StakedUSDAFiatCollateral } from '../../../../typechain'
 import {
   DELAY_UNTIL_DEFAULT,
   PRICE_TIMEOUT,
@@ -45,14 +45,14 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy USDA Collateral - stUSD  **************************/
-  let collateral: USDAFiatCollateral
+  /********  Deploy Staked USDA (stUSD) Collateral **************************/
+  let collateral: StakedUSDAFiatCollateral
 
-  const USDAFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'USDAFiatCollateral'
+  const StakedUSDAFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'StakedUSDAFiatCollateral'
   )
 
-  collateral = <USDAFiatCollateral>await USDAFiatCollateralFactory.connect(deployer).deploy(
+  collateral = <StakedUSDAFiatCollateral>await StakedUSDAFiatCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: PRICE_TIMEOUT.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
@@ -70,7 +70,7 @@ async function main() {
   await collateral.deployed()
 
   console.log(
-    `Deployed USDA (stUSD) Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Staked USDA (stUSD) Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)

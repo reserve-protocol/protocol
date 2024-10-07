@@ -13,5 +13,5 @@ export const ORACLE_ERROR = fp('0.005') // 0.5%
 export const DEFAULT_THRESHOLD = fp('0.05') // 5%
 export const DELAY_UNTIL_DEFAULT = bn(259200) // 72h
 export const MAX_TRADE_VOL = bn(1000)
-
+export const REVENUE_HIDING = fp('1e-6')
 export const FORK_BLOCK = 20871587

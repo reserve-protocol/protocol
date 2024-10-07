@@ -28,6 +28,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   DEFAULT_THRESHOLD,
   FORK_BLOCK,
+  REVENUE_HIDING,
 } from './constants'
 import { getResetFork } from '../helpers'
 
@@ -46,16 +47,16 @@ export const defaultUSDACollateralOpts: CollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD, // 72 hs
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  revenueHiding: fp('0'),
+  revenueHiding: REVENUE_HIDING,
 }
 
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultUSDACollateralOpts, ...opts }
 
-  const USDAFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'USDAFiatCollateral'
+  const StakedUSDAFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'StakedUSDAFiatCollateral'
   )
-  const collateral = <TestICollateral>await USDAFiatCollateralFactory.deploy(
+  const collateral = <TestICollateral>await StakedUSDAFiatCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -165,15 +166,15 @@ const increaseRefPerTok = async (
   await mintUSDA(usda, ctx.alice!, addBal, ctx.tok.address)
 }
 
+// Calculate the expected price based on the StakedUSDAFiatCollateral's tryPrice() implementation (inherited from AppreciatingFiatCollateral)
 const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
-
+  const underlyingRefPerTok = await ctx.collateral.underlyingRefPerTok()
   return clData.answer
     .mul(bn(10).pow(18 - clDecimals))
-    .mul(refPerTok)
+    .mul(underlyingRefPerTok)
     .div(fp('1'))
 }
 
@@ -213,11 +214,10 @@ const opts = {
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
-  collateralName: 'USDA Fiat Collateral',
+  collateralName: 'Staked USDA (stUSD) Fiat Collateral',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
   resetFork: getResetFork(FORK_BLOCK),
-  toleranceDivisor: bn('1e8'), // 1 part in 100 million
 }
 
 collateralTests(opts)

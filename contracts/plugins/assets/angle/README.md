@@ -1,4 +1,4 @@
-# Angle USDA Collateral Plugin
+# Angle Staked USDA (stUSD) Collateral Plugin
 
 ## Summary
 
