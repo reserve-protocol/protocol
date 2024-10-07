@@ -72,7 +72,7 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
 
         // low
         {
-            uint256 ratioLow = ((1e18) * p0_low) / p1_low;
+            uint256 ratioLow = ((1e18) * p0_high) / p1_low;
             uint256 sqrtPriceLow = sqrt256(
                 sqrt256((1e18) * ratioLow) * sqrt256(1e36 + ratioLow * ratioLow)
             );
@@ -80,7 +80,7 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
         }
         // high
         {
-            uint256 ratioHigh = ((1e18) * p0_high) / p1_high;
+            uint256 ratioHigh = ((1e18) * p0_low) / p1_high;
             uint256 sqrtPriceHigh = sqrt256(
                 sqrt256((1e18) * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
             );
