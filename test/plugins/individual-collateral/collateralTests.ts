@@ -58,6 +58,7 @@ import {
 } from '../../../typechain'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
+import { NUM_HOLDER } from './num/constants'
 
 const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
@@ -1003,6 +1004,32 @@ export default function fn<X extends CollateralFixtureContext>(
             targetUnitOracle.address,
             ORACLE_TIMEOUT
           )
+        } else if (target == ethers.utils.formatBytes32String('ARS')) {
+          // ARS
+          const erc20 = await ethers.getContractAt(
+            'IERC20Metadata',
+            onBase ? networkConfig[chainId].tokens.snARS! : networkConfig[chainId].tokens.snARS!
+          )
+          const whale = NUM_HOLDER
+          await whileImpersonating(whale, async (signer) => {
+            await erc20
+              .connect(signer)
+              .transfer(addr1.address, await erc20.balanceOf(signer.address))
+          })
+          const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+            'FiatCollateral'
+          )
+          return <TestICollateral>await FiatCollateralFactory.deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            oracleTimeout: ORACLE_TIMEOUT,
+            maxTradeVolume: MAX_UINT192,
+            erc20: erc20.address,
+            targetName: ethers.utils.formatBytes32String('ARS'),
+            defaultThreshold: fp('0.01'), // 1%
+            delayUntilDefault: bn('86400'), // 24h,
+          })
         } else {
           throw new Error(`Unknown target: ${target}`)
         }
