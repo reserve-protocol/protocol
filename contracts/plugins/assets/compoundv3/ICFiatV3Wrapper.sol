@@ -7,7 +7,7 @@ import "./vendor/CometInterface.sol";
 import "./IWrappedERC20.sol";
 import "../../../interfaces/IRewardable.sol";
 
-interface ICusdcV3Wrapper is IWrappedERC20, IRewardable {
+interface ICFiatV3Wrapper is IWrappedERC20, IRewardable {
     struct UserBasic {
         uint104 principal;
         uint64 baseTrackingIndex;

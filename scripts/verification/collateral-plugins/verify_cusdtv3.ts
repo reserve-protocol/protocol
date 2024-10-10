@@ -7,7 +7,12 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
+import {
+  getUsdtOracleError,
+  priceTimeout,
+  verifyContract,
+  revenueHiding,
+} from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -22,9 +27,9 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
-  // Only exists on Base L2
-  if (!baseL2Chains.includes(hre.network.name)) {
-    throw new Error(`Invalid network ${hre.network.name} - only available on Base`)
+  // Does not exist on Base L2
+  if (baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - Not available on Base`)
   }
 
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
@@ -32,42 +37,42 @@ async function main() {
 
   const collateral = await ethers.getContractAt(
     'CTokenV3Collateral',
-    deployments.collateral.cUSDbCv3 as string
+    deployments.collateral.cUSDTv3 as string
   )
 
-  /********  Verify Wrapper token - wcUSDCv3 **************************/
+  /********  Verify Wrapper token - wcUSDTv3 **************************/
 
   await verifyContract(
     chainId,
     await collateral.erc20(),
     [
-      networkConfig[chainId].tokens.cUSDbCv3,
+      networkConfig[chainId].tokens.cUSDTv3,
       networkConfig[chainId].COMET_REWARDS,
       networkConfig[chainId].tokens.COMP,
-      'Wrapped cUSDCv3',
-      'wcUSDCv3',
+      'Wrapped cUSDTv3',
+      'wcUSDTv3',
     ],
     'contracts/plugins/assets/compoundv3/CFiatV3Wrapper.sol:CFiatV3Wrapper'
   )
 
-  /********  Verify Collateral - wcUSDbCv3  **************************/
+  /********  Verify Collateral - wcUSDTv3  **************************/
 
-  const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = fp('0.003') // 0.3% (Base)
+  const usdtOracleTimeout = '86400' // 24 hr
+  const usdtOracleError = getUsdtOracleError(hre.network.name)
 
   await verifyContract(
     chainId,
-    deployments.collateral.cUSDbCv3,
+    deployments.collateral.cUSDTv3,
     [
       {
         priceTimeout: priceTimeout.toString(),
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
-        oracleError: usdcOracleError.toString(),
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT,
+        oracleError: usdtOracleError.toString(),
         erc20: await collateral.erc20(),
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: usdcOracleTimeout, // 24h hr,
+        oracleTimeout: usdtOracleTimeout, // 24h hr,
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.01').add(usdcOracleError).toString(), // 1% + 0.3%
+        defaultThreshold: fp('0.01').add(usdtOracleError).toString(),
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       revenueHiding,
