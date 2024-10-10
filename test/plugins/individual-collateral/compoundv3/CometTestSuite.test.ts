@@ -184,7 +184,8 @@ allTests.forEach((curr: CTokenV3Enumeration) => {
         REWARDS,
         COMP,
         curr.wrapperName,
-        curr.wrapperSymbol
+        curr.wrapperSymbol,
+        fp('1')
       )) as unknown as ICFiatV3Wrapper)
     )
     const CTokenV3WrapperMockFactory = <CFiatV3WrapperMock__factory>(

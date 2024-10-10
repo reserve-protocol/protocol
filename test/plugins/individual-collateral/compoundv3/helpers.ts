@@ -9,7 +9,7 @@ import {
   CFiatV3Wrapper__factory,
 } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { BigNumberish } from 'ethers'
 import {
   USDC,
@@ -105,7 +105,8 @@ export const makewCSUDC = async (): Promise<WrappedCTokenFixture> => {
       REWARDS,
       COMP,
       'Wrapped cUSDCv3',
-      'wcUSDCv3'
+      'wcUSDCv3',
+      fp('1')
     )
   )
   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
@@ -124,7 +125,8 @@ export const makewCSUDT = async (): Promise<WrappedCTokenFixture> => {
       REWARDS,
       COMP,
       'Wrapped cUSDTv3',
-      'wcUSDTv3'
+      'wcUSDTv3',
+      fp('1')
     )
   )
   const usdt = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDT)

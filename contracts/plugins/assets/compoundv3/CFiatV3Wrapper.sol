@@ -23,6 +23,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
     uint256 public immutable trackingIndexScale;
     uint256 public immutable rescaleFactor;
     uint256 internal immutable accrualDescaleFactor;
+    uint256 public immutable multiplier;
     uint8 internal immutable cometDecimals;
 
     mapping(address => uint64) public baseTrackingIndex; // uint64 for consistency with CometHelpers
@@ -34,7 +35,8 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         address rewardsAddr_,
         address rewardERC20_,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        uint256 rewardMultiplier
     ) WrappedERC20(name, symbol) {
         if (ctokenv3 == address(0)) revert ZeroAddress();
 
@@ -47,6 +49,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         // scaling factor for rewards
         rescaleFactor = 10**(18 - cometDecimals);
         accrualDescaleFactor = 10**(cometDecimals - 6);
+        multiplier = rewardMultiplier;
     }
 
     /// @return number of decimals
@@ -202,7 +205,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
 
         accrueAccount(src);
         uint256 claimed = rewardsClaimed[src];
-        uint256 accrued = baseTrackingAccrued[src] * rescaleFactor;
+        uint256 accrued = (baseTrackingAccrued[src] * rescaleFactor * multiplier) / 1e18;
         uint256 owed;
         if (accrued > claimed) {
             owed = accrued - claimed;
@@ -271,7 +274,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
             accrualDescaleFactor;
 
         uint256 claimed = rewardsClaimed[account];
-        uint256 accrued = newBaseTrackingAccrued * rescaleFactor;
+        uint256 accrued = (newBaseTrackingAccrued * rescaleFactor * multiplier) / 1e18;
         uint256 owed = accrued > claimed ? accrued - claimed : 0;
 
         return owed;

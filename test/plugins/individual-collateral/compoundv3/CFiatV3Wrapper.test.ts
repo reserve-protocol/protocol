@@ -13,7 +13,7 @@ import {
   ICFiatV3Wrapper,
   CFiatV3Wrapper__factory,
 } from '../../../../typechain'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -60,7 +60,8 @@ for (const curr of allTests) {
           REWARDS,
           COMP,
           curr.wrapperName,
-          curr.wrapperSymbol
+          curr.wrapperSymbol,
+          fp('1')
         )
       ).to.be.reverted
     })
