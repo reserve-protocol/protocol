@@ -22,6 +22,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
     IERC20 public immutable rewardERC20;
     uint256 public immutable trackingIndexScale;
     uint256 public immutable rescaleFactor;
+    uint256 internal immutable accrualDescaleFactor;
     uint8 internal immutable cometDecimals;
 
     mapping(address => uint64) public baseTrackingIndex; // uint64 for consistency with CometHelpers
@@ -45,6 +46,7 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         trackingIndexScale = underlyingComet.trackingIndexScale();
         // scaling factor for rewards
         rescaleFactor = 10**(18 - cometDecimals);
+        accrualDescaleFactor = 10**(cometDecimals - 6);
     }
 
     /// @return number of decimals
@@ -265,7 +267,8 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
         uint256 newBaseTrackingAccrued = baseTrackingAccrued[account] +
             (safe104(balanceOf(account)) * indexDelta) /
-            trackingIndexScale;
+            trackingIndexScale /
+            accrualDescaleFactor;
 
         uint256 claimed = rewardsClaimed[account];
         uint256 accrued = newBaseTrackingAccrued * rescaleFactor;
@@ -294,7 +297,10 @@ contract CFiatV3Wrapper is ICFiatV3Wrapper, WrappedERC20, CometHelpers {
         (, uint64 trackingSupplyIndex) = getSupplyIndices();
         uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
 
-        baseTrackingAccrued[account] += (safe104(accountBal) * indexDelta) / trackingIndexScale;
+        baseTrackingAccrued[account] +=
+            (safe104(accountBal) * indexDelta) /
+            trackingIndexScale /
+            accrualDescaleFactor;
         baseTrackingIndex[account] = trackingSupplyIndex;
     }
 
