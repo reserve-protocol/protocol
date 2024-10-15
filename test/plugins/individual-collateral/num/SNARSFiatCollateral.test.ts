@@ -166,7 +166,7 @@ const makeFiatCollateralTestSuite = (
     collateralName,
     chainlinkDefaultAnswer: defaultCollateralOpts.defaultPrice!,
     itIsPricedByPeg: true,
-    toleranceDivisor: bn('1e7'), // 1 part in 1 billion
+    toleranceDivisor: bn('1e7'), // 1 part in 10 million
     targetNetwork: 'base',
   }
 

@@ -13,7 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { priceTimeout } from '../../utils'
-import { SFraxCollateral } from '../../../../typechain'
+import { SnARSFiatCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
 async function main() {
@@ -46,16 +46,16 @@ async function main() {
     'FiatCollateral'
   )
 
-  const collateral = <SFraxCollateral>await nuARSCollateralFactory.connect(deployer).deploy(
+  const collateral = <SnARSFiatCollateral>await nuARSCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.snARS,
-      oracleError: fp('0.01').toString(), // 1%
+      oracleError: fp('0.005').toString(), // 0.5%
       erc20: networkConfig[chainId].tokens.snARS,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr
+      oracleTimeout: '900', // 15min
       targetName: hre.ethers.utils.formatBytes32String('ARS'),
-      defaultThreshold: fp('0.02').toString(), // 2% = 1% oracleError + 1% buffer
+      defaultThreshold: fp('0.015').toString(), // 2% = 0.5% oracleError + 1% buffer
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     '0' // revenueHiding = 0

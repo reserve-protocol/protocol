@@ -3,8 +3,8 @@ import { networkConfig } from '../../../../common/configuration'
 
 // oracle settings
 export const ORACLE_FEED = networkConfig['8453'].chainlinkFeeds.nARS!
-export const ORACLE_TIMEOUT = bn('86400')
-export const ORACLE_ERROR = fp('0.0025')
+export const ORACLE_TIMEOUT = bn('900')
+export const ORACLE_ERROR = fp('0.005')
 
 // general
 export const PRICE_TIMEOUT = bn(604800) // 1 week
