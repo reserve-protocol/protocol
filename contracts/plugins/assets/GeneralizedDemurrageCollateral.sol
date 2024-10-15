@@ -6,44 +6,41 @@ import "./Asset.sol";
 
 struct DemurrageConfig {
     bytes32 targetName;
-    uint192 decay; // {1/s} fraction of the target unit to decay each second
+    uint192 fee; // {1/s} per-second inflation/deflation of refPerTok/targetPerRef
     //
-    AggregatorV3Interface feed0;
-    AggregatorV3Interface feed1;
+    AggregatorV3Interface feed0; // {UoA/tok} or {target/tok}
+    AggregatorV3Interface feed1; // empty or {UoA/target}
     uint48 timeout0; // {s}
     uint192 error0; // {1}
     uint48 timeout1; // {s}
     uint192 error1; // {1}
+    //
+    bool isFiat;
 }
 
 /**
- * @title SelfReferentialDemurrageCollateral
- * @notice Collateral plugin for a self-referential demurrage collateral, i.e /w a management fee
+ * @title GeneralizedDemurrageCollateral
+ * @notice Collateral plugin for a genneralized demurrage collateral (/w management fee)
  *
- * No default detection
- * Demurrage collateral implement a management fee in the form of a decaying exponential
+ * refPerTok() * targetPerRef() = refPerTokt0 * targetPerReft0, within precision
  *
- * refPerTok = up-only
- * targetPerRef = down-only
- * product = constant
+ * refPerTok is artificially up-only
+ * targetPerRef is artificially down-only
  *
- * If 1 feed:
- *   - feed0 must be {UoA/tok}
- *   - does not implement issuance premium
- * If 2 feeds:
- *   - feed0 must be {target/tok}
- *   - feed1 must be {UoA/target}
- *   - implements issuance premium
+ * 1 feed:
+ *   - feed0 {UoA/tok}
+ *   - apply issuance premium IFF isFiat is true
+ * 2 feeds:
+ *   - feed0 {target/tok}
+ *   - feed1 {UoA/target}
+ *   - apply issuance premium using feed0
  *
- * t0 = a previous (or current) moment in time, used as reference for the decay
- *
- * For Target Unit X:
  * - tok = Tokenized X
- * - ref = X @ t0 /w decay
+ * - ref = Inflationary X
  * - target = X
  * - UoA = USD
  */
-contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
+contract GeneralizedDemurrageCollateral is ICollateral, Asset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -55,12 +52,9 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
 
     // === New stuff ===
 
-    uint48 public immutable t0; // {s} deployment timestamp
-    uint192 public immutable decay; // {1/s} fraction of the target unit to decay each second
+    bool internal immutable isFiat;
 
     // For each token, we maintain up to two feeds/timeouts/errors
-    // The data below would normally be a struct, but we want bytecode substitution
-
     AggregatorV3Interface internal immutable feed0; // {UoA/tok} or {target/tok}
     AggregatorV3Interface internal immutable feed1; // empty or {UoA/target}
     uint48 internal immutable timeout0; // {s}
@@ -68,18 +62,22 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
     uint192 internal immutable error0; // {1}
     uint192 internal immutable error1; // {1}
 
-    bool internal immutable targetIsUoA;
+    uint48 public immutable t0; // {s} deployment timestamp
+    uint192 public immutable fee; // {1/s} demurrage fee; manifests as reference unit inflation
 
     /// @param priceTimeout_ {s} The number of seconds over which savedHighPrice decays to 0
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until the chainlinkFeed becomes invalid
+    /// @param demurrageConfig.decay_ {1/s} fraction of the reference unit to inflate each second
+    /// @param demurrageConfig.feed0_ {UoA/tok} or {target/tok}
+    /// @param demurrageConfig.feed1_ empty or {UoA/target}
+    /// @param demurrageConfig.isFiat_ true iff {target} == {UoA}
     constructor(
         uint48 priceTimeout_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
-        DemurrageConfig memory demurrageConfig,
-        bool targetIsUoA_
+        DemurrageConfig memory demurrageConfig
     )
         Asset(
             priceTimeout_,
@@ -90,6 +88,9 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
             oracleTimeout_
         )
     {
+        targetName = demurrageConfig.targetName;
+        isFiat = demurrageConfig.isFiat;
+
         require(address(demurrageConfig.feed0) != address(0), "missing feed0");
         require(demurrageConfig.timeout0 != 0, "missing timeout0");
         require(demurrageConfig.error0 > 0 && demurrageConfig.error0 < FIX_ONE, "bad error0");
@@ -99,8 +100,6 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
             require(demurrageConfig.error1 > 0 && demurrageConfig.error1 < FIX_ONE, "bad error1");
         }
 
-        t0 = uint48(block.timestamp);
-        decay = demurrageConfig.decay;
         feed0 = demurrageConfig.feed0;
         feed1 = demurrageConfig.feed1;
         timeout0 = demurrageConfig.timeout0;
@@ -108,8 +107,8 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
         error0 = demurrageConfig.error0;
         error1 = demurrageConfig.error1;
 
-        targetName = demurrageConfig.targetName;
-        targetIsUoA = targetIsUoA_;
+        t0 = uint48(block.timestamp);
+        fee = demurrageConfig.fee;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -117,7 +116,7 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
-    ///         unused if only 1 feed
+    ///                               can be 0 if only 1 feed AND not fiat
     function tryPrice()
         external
         view
@@ -128,7 +127,7 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
             uint192 pegPrice
         )
     {
-        uint192 x = feed0.price(timeout0);
+        uint192 x = feed0.price(timeout0); // initially {UoA/tok}
         uint192 xErr = error0;
 
         // Use only 1 feed if 2nd feed not defined; else multiply together
@@ -137,34 +136,39 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
         uint192 y = FIX_ONE;
         uint192 yErr;
         if (address(feed1) != address(0)) {
-            y = feed1.price(timeout1); // {target/tok}
+            y = feed1.price(timeout1); // {UoA/target}
             yErr = error1;
 
             // {target/ref} = {target/tok} / {ref/tok}
-            pegPrice = y.mul(_decay(), FLOOR);
-        } else if (targetIsUoA) {
+            pegPrice = x.mul(_feeSinceT0(), FLOOR);
+        } else if (isFiat) {
+            // apply issuance premium for fiat collateral since target == UoA
+
             // {target/ref} = {UoA/ref} = {UoA/tok} / {ref/tok}
-            pegPrice = x.mul(_decay(), FLOOR);
+            pegPrice = x.mul(_feeSinceT0(), FLOOR);
         }
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         low = x.mul(FIX_ONE - xErr).mul(y.mul(FIX_ONE - yErr), FLOOR);
         high = x.mul(FIX_ONE + xErr).mul(y.mul(FIX_ONE + yErr), CEIL);
-        // assert(low <= high); obviously true just by inspection
+        assert(low <= high);
     }
 
     // === Demurrage rates ===
 
+    // usually targetPerRef() is constant -- in a demurrage collateral the product
+    //   refPerTok() * targetPerRef() is kept (roughly) constant
+
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         // up-only
-        return FIX_ONE.div(_decay(), FLOOR);
+        return FIX_ONE.div(_feeSinceT0(), FLOOR);
     }
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view override returns (uint192) {
         // down-only
-        return _decay();
+        return _feeSinceT0();
     }
 
     /// @return If the asset is an instance of ICollateral or not
@@ -174,9 +178,9 @@ contract SelfReferentialDemurrageCollateral is ICollateral, Asset {
 
     // === Internal ===
 
-    /// @return {1} The decay since t0
-    function _decay() internal view returns (uint192) {
+    /// @return {1} The overall fee since t0
+    function _feeSinceT0() internal view returns (uint192) {
         // 1 - (1 - decay)^(block.timestamp - t0)
-        return FIX_ONE.minus(FIX_ONE.minus(decay).powu(uint48(block.timestamp - t0)));
+        return FIX_ONE.minus(FIX_ONE.minus(fee).powu(uint48(block.timestamp - t0)));
     }
 }
