@@ -32,7 +32,6 @@ describe(`DeployerRegistry contract #fast`, () => {
   describe('Deployment', () => {
     it('Should deploy registry correctly', async () => {
       expect(await deployerRegistry.owner()).to.equal(owner.address)
-      expect(await deployerRegistry.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployerRegistry.latestDeployment()).to.equal(ZERO_ADDRESS)
       expect(await deployerRegistry.deployments('1.0.0')).to.equal(ZERO_ADDRESS)
     })

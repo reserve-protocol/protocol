@@ -6,6 +6,7 @@ import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validateImplementations } from '../utils'
 import { DeployerP1 } from '../../../typechain'
+import { registryConfig } from '#/common/registries'
 
 let deployer: DeployerP1
 
@@ -35,13 +36,24 @@ async function main() {
     throw new Error(`Facade contract not found in network ${hre.network.name}`)
   }
 
+  const rConfig = registryConfig[chainId]
+
+  if (!rConfig) {
+    throw new Error(`Missing registry configuration for ${hre.network.name}`)
+  }
+
+  if (Object.values(rConfig.registries).includes('')) {
+    throw new Error(`Missing registry configuration for ${hre.network.name}, please run phase0`)
+  }
+
   // ******************** Deploy Deployer ****************************************/
   const DeployerFactory = await ethers.getContractFactory('DeployerP1')
   deployer = <DeployerP1>(
     await DeployerFactory.connect(burner).deploy(
       deployments.prerequisites.RSR,
       deployments.rsrAsset,
-      deployments.implementations
+      deployments.implementations,
+      rConfig.registries
     )
   )
   await deployer.deployed()

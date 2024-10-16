@@ -3,6 +3,7 @@ import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { arbitrumL2Chains, baseL2Chains, networkConfig } from '../common/configuration'
 import { sh } from './deployment/utils'
+import { registryConfig } from '#/common/registries'
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners()
@@ -24,6 +25,18 @@ async function main() {
 
   // Part 1/3 of the *overall* deployment process: Deploy all contracts
   // See `confirm.ts` for part 2
+
+  // Phase 0 -- Registries
+  // Phase 0 must be run manually, and is a one time setup for the DAO.
+  const rConfig = registryConfig[chainId]
+
+  if (!rConfig) {
+    throw new Error(`Missing registry configuration for ${hre.network.name}`)
+  }
+
+  if (Object.values(rConfig.registries).includes('')) {
+    throw new Error(`Missing registry configuration for ${hre.network.name}, please run phase0`)
+  }
 
   // Phase 1 -- Implementations
   const scripts = [

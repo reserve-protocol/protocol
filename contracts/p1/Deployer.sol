@@ -29,20 +29,21 @@ import "../plugins/trading/GnosisTrade.sol";
 contract DeployerP1 is IDeployer, Versioned {
     using Clones for address;
 
-    string public constant ENS = "reserveprotocol.eth";
-
     IERC20Metadata public immutable rsr;
     IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
     Implementations private _implementations;
 
+    Registries public registries;
+
     // checks: every address in the input is nonzero
     // effects: post, all contract-state values are set
     constructor(
         IERC20Metadata rsr_,
         IAsset rsrAsset_,
-        Implementations memory implementations_
+        Implementations memory implementations_,
+        Registries memory registries_
     ) {
         require(
             address(rsr_) != address(0) &&
@@ -62,6 +63,15 @@ contract DeployerP1 is IDeployer, Versioned {
                 address(implementations_.components.stRSR) != address(0),
             "invalid address"
         );
+
+        require(
+            address(registries_.versionRegistry) != address(0) &&
+                address(registries_.assetPluginRegistry) != address(0) &&
+                address(registries_.daoFeeRegistry) != address(0),
+            "invalid registry address"
+        );
+
+        registries = registries_;
 
         rsr = rsr_;
         rsrAsset = rsrAsset_;
@@ -251,11 +261,17 @@ contract DeployerP1 is IDeployer, Versioned {
         // Init Asset Registry
         components.assetRegistry.init(main, assets);
 
+        // Assign DAO Registries
+        main.setVersionRegistry(registries.versionRegistry);
+        main.setAssetPluginRegistry(registries.assetPluginRegistry);
+        main.setDAOFeeRegistry(registries.daoFeeRegistry);
+
         // Transfer Ownership
         main.grantRole(OWNER, owner);
         main.renounceRole(OWNER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
+
         return (address(components.rToken));
     }
 

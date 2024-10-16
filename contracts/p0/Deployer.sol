@@ -27,8 +27,6 @@ import "../mixins/Versioned.sol";
  * @notice The factory contract that deploys the entire P0 system.
  */
 contract DeployerP0 is IDeployer, Versioned {
-    string public constant ENS = "reserveprotocol.eth";
-
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
@@ -36,7 +34,8 @@ contract DeployerP0 is IDeployer, Versioned {
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IAsset rsrAsset_
+        IAsset rsrAsset_,
+        Registries memory // ignored
     ) {
         require(
             address(rsr_) != address(0) &&

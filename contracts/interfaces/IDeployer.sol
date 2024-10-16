@@ -12,6 +12,10 @@ import "./IStRSR.sol";
 import "./ITrade.sol";
 import "./IVersioned.sol";
 
+import "../registry/VersionRegistry.sol";
+import "../registry/AssetPluginRegistry.sol";
+import "../registry/DAOFeeRegistry.sol";
+
 /**
  * @title DeploymentParams
  * @notice The set of protocol params needed to configure a new system deployment.
@@ -92,7 +96,11 @@ interface IDeployer is IVersioned {
     /// @param rTokenAsset The address of the RTokenAsset
     event RTokenAssetCreated(IRToken indexed rToken, IAsset rTokenAsset);
 
-    //
+    struct Registries {
+        VersionRegistry versionRegistry;
+        AssetPluginRegistry assetPluginRegistry;
+        DAOFeeRegistry daoFeeRegistry;
+    }
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
@@ -117,10 +125,6 @@ interface IDeployer is IVersioned {
 }
 
 interface TestIDeployer is IDeployer {
-    /// A top-level ENS domain that should always point to the latest Deployer instance
-    // solhint-disable-next-line func-name-mixedcase
-    function ENS() external view returns (string memory);
-
     function rsr() external view returns (IERC20Metadata);
 
     function rsrAsset() external view returns (IAsset);
