@@ -2,12 +2,14 @@
 pragma solidity 0.8.19;
 
 import "../../plugins/assets/DemurrageCollateral.sol";
+import "../../plugins/assets/UnpricedCollateral.sol";
 
 /**
- * @title DemurrageCollateralFactory
+ * @title CollateralFactory
  */
-contract DemurrageCollateralFactory {
+contract CollateralFactory {
     event DemurrageCollateralDeployed(address indexed collateral);
+    event OraclelessCollateralDeployed(address indexed collateral);
 
     bytes32 public constant USD = bytes32("USD");
 
@@ -21,5 +23,13 @@ contract DemurrageCollateralFactory {
 
         newCollateral = address(new DemurrageCollateral(config, demurrageConfig));
         emit DemurrageCollateralDeployed(newCollateral);
+    }
+
+    function deployNewUnpricedCollateral(IERC20Metadata _erc20, bytes32 _targetName)
+        external
+        returns (address newCollateral)
+    {
+        newCollateral = address(new UnpricedCollateral(_erc20, _targetName));
+        emit OraclelessCollateralDeployed(newCollateral);
     }
 }
