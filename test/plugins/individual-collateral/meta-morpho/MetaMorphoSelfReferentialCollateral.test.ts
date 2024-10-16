@@ -167,6 +167,7 @@ const makeFiatCollateralTestSuite = (
     itChecksTargetPerRefDefaultUp: it.skip,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
+    itChecksPriceChangesRefPerTok: it,
     itChecksNonZeroDefaultThreshold: it.skip,
     itHasRevenueHiding: it,
     resetFork: getResetFork(FORK_BLOCK),

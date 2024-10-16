@@ -116,6 +116,8 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  PAXG?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -127,6 +129,7 @@ export interface IFeeds {
   cbETHETHexr?: string
   ETHUSD?: string
   wstETHstETH?: string
+  XAU?: string
 }
 
 export interface IPools {
@@ -257,6 +260,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      PAXG: '0x45804880De22913dAFE09f4980848ECE6EcbAf78',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -286,6 +290,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
       apxETH: '0x19219BC90F48DeE4d5cF202E09c438FAacFd8Bea', // apxETH/ETH
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
+      XAU: '0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',

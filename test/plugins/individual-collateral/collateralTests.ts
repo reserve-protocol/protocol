@@ -86,6 +86,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksTargetPerRefDefaultUp,
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
+    itChecksPriceChangesRefPerTok,
     itChecksNonZeroDefaultThreshold,
     itHasRevenueHiding,
     itIsPricedByPeg,
@@ -295,7 +296,7 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         )
 
-        itChecksPriceChanges('prices change as refPerTok changes', async () => {
+        itChecksPriceChangesRefPerTok('prices change as refPerTok changes', async () => {
           const initRefPerTok = await collateral.refPerTok()
 
           const oracleError = await collateral.oracleError()
@@ -689,6 +690,7 @@ export default function fn<X extends CollateralFixtureContext>(
           pctRate: fp('0.05'), // 5%
         },
         reweightable: false,
+        enableIssuancePremium: true,
       }
 
       interface IntegrationFixture {
@@ -1013,6 +1015,37 @@ export default function fn<X extends CollateralFixtureContext>(
             },
             targetUnitOracle.address,
             ORACLE_TIMEOUT
+          )
+        } else if (target === ethers.utils.formatBytes32String('XAU')) {
+          if (onBase || onArbitrum) throw new Error('PAXG only supported on mainnet')
+
+          // PAXG
+          const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
+          const erc20 = await ERC20Factory.deploy('PAXG', 'PAXG', 18)
+          await erc20.mint(addr1.address, bn('1e30'))
+
+          const DemurrageFactory: ContractFactory = await ethers.getContractFactory(
+            'DemurrageCollateral'
+          )
+          return <TestICollateral>await DemurrageFactory.deploy(
+            {
+              erc20: erc20.address,
+              targetName: ethers.utils.formatBytes32String('XAU'),
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: chainlinkFeed.address,
+              oracleError: ORACLE_ERROR,
+              oracleTimeout: ORACLE_TIMEOUT,
+              maxTradeVolume: MAX_UINT192,
+              defaultThreshold: bn('0'),
+              delayUntilDefault: bn('0'),
+            },
+            {
+              isFiat: false,
+              fee: bn('0'),
+              feed1: ZERO_ADDRESS,
+              timeout1: bn(0),
+              error1: bn(0),
+            }
           )
         } else {
           throw new Error(`Unknown target: ${target}`)

@@ -213,6 +213,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
     itIsPricedByPeg: true,
     chainlinkDefaultAnswer: 1e8,
     itChecksPriceChanges: it,
+    itChecksPriceChangesRefPerTok: it,
     getExpectedPrice,
     toleranceDivisor: altParams.toleranceDivisor ?? bn('1e9'), // 1e15 adjusted for ((x + 1)/x) timestamp precision
     targetNetwork: altParams.targetNetwork,

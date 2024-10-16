@@ -309,6 +309,7 @@ const opts = {
   itChecksTargetPerRefDefaultUp: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
+  itChecksPriceChangesRefPerTok: it,
   itHasRevenueHiding: it.skip, // implemented in this file
   itChecksNonZeroDefaultThreshold: it,
   resetFork,
