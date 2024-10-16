@@ -1041,6 +1041,7 @@ export default function fn<X extends CollateralFixtureContext>(
             },
             {
               isFiat: false,
+              targetUnitFeed0: false,
               fee: bn('0'),
               feed1: ZERO_ADDRESS,
               timeout1: bn(0),
