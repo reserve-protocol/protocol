@@ -2,12 +2,11 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
-import "../contracts/p1/Deployer.sol";
+import "../p1/Deployer.sol";
 
 // interface avoids needing to know about P1 contracts
 interface ICachedComponent {
