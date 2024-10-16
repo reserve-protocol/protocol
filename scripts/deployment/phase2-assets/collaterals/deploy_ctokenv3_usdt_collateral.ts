@@ -53,7 +53,8 @@ async function main() {
     networkConfig[chainId].COMET_REWARDS,
     networkConfig[chainId].tokens.COMP,
     'Wrapped cUSDTv3',
-    'wcUSDTv3'
+    'wcUSDTv3',
+    fp(1).toString()
   )
   await erc20.deployed()
 
