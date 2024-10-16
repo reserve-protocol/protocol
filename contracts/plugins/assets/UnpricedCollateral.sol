@@ -39,12 +39,11 @@ contract UnpricedCollateral is ICollateral, VersionedAsset {
 
     bytes32 public immutable targetName;
 
-    constructor(IERC20Metadata _erc20, bytes32 _targetName) {
+    constructor(IERC20Metadata _erc20) {
         require(address(_erc20) != address(0), "missing erc20");
-        require(_targetName != bytes32(0), "targetName missing");
         erc20 = _erc20;
         erc20Decimals = _erc20.decimals();
-        targetName = _targetName;
+        targetName = bytes32(bytes(_erc20.symbol()));
     }
 
     // solhint-disable no-empty-blocks

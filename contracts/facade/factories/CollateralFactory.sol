@@ -25,11 +25,11 @@ contract CollateralFactory {
         emit DemurrageCollateralDeployed(newCollateral);
     }
 
-    function deployNewUnpricedCollateral(IERC20Metadata _erc20, bytes32 _targetName)
+    function deployNewUnpricedCollateral(IERC20Metadata _erc20)
         external
         returns (address newCollateral)
     {
-        newCollateral = address(new UnpricedCollateral(_erc20, _targetName));
+        newCollateral = address(new UnpricedCollateral(_erc20));
         emit UnpricedCollateralDeployed(newCollateral);
     }
 }
