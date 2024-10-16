@@ -51,6 +51,7 @@ async function main() {
       networkConfig[chainId].tokens.COMP,
       'Wrapped cUSDTv3',
       'wcUSDTv3',
+      fp(1).toString(),
     ],
     'contracts/plugins/assets/compoundv3/CFiatV3Wrapper.sol:CFiatV3Wrapper'
   )
@@ -75,7 +76,7 @@ async function main() {
         defaultThreshold: fp('0.01').add(usdtOracleError).toString(),
         delayUntilDefault: bn('86400').toString(), // 24h
       },
-      revenueHiding,
+      fp('1e-5').toString(),
     ],
     'contracts/plugins/assets/compoundv3/CTokenV3Collateral.sol:CTokenV3Collateral'
   )

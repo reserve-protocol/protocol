@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { getUsdtOracleError, priceTimeout, revenueHiding } from '../../utils'
+import { getUsdtOracleError, priceTimeout } from '../../utils'
 import { CTokenV3Collateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -77,7 +77,7 @@ async function main() {
       defaultThreshold: fp('0.01').add(usdtOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    revenueHiding.toString()
+    fp('1e-5').toString() // results from backtester, 1e-6 defaulted
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
