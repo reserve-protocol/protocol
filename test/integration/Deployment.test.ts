@@ -10,7 +10,7 @@ import { IConfig, IRTokenConfig, IRTokenSetup, networkConfig } from '../../commo
 import { ZERO_ADDRESS } from '../../common/constants'
 import { expectInIndirectReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-import { FacadeWrite, FiatCollateral, TestIDeployer, TestIMain } from '../../typechain'
+import { FacadeWrite, FiatCollateral, DeployerP1, TestIMain } from '../../typechain'
 import { useEnv } from '#/utils/env'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
@@ -26,7 +26,7 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
 
   // Contracts to retrieve after deploy
   let main: TestIMain
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let facadeWrite: FacadeWrite
   let config: IConfig
 

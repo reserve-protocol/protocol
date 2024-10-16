@@ -54,7 +54,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -102,7 +102,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let other: SignerWithAddress
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Assets
   let collateral: Collateral[]

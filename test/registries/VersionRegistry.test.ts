@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ONE_ADDRESS, ZERO_ADDRESS, ZERO_BYTES } from '#/common/constants'
 import { IImplementations } from '#/common/configuration'
-import { DeployerMock, RoleRegistry, TestIDeployer, VersionRegistry } from '../../typechain'
+import { DeployerMock, RoleRegistry, DeployerP1, VersionRegistry } from '../../typechain'
 import { Implementation, IMPLEMENTATION, defaultFixture } from '../fixtures'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
@@ -12,7 +12,7 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 describeP1('Version Registry', () => {
   let roleRegistry: RoleRegistry
   let versionRegistry: VersionRegistry
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let deployerMockV1: DeployerMock
   let deployerMockV2: DeployerMock
   let owner: SignerWithAddress

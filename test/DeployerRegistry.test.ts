@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
-import { DeployerRegistry, TestIDeployer } from '../typechain'
+import { DeployerRegistry, DeployerP1 } from '../typechain'
 import { defaultFixture } from './fixtures'
 
 describe(`DeployerRegistry contract #fast`, () => {
@@ -16,7 +16,7 @@ describe(`DeployerRegistry contract #fast`, () => {
   let deployerRegistry: DeployerRegistry
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   beforeEach(async () => {
     ;[owner, mockDeployer1, mockDeployer2, addr1] = await ethers.getSigners()

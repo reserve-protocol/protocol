@@ -15,7 +15,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -32,7 +32,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let mock: SignerWithAddress
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Config
   let config: IConfig
@@ -69,7 +69,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     gnosis: string,
     rsrAsset: string,
     implementations?: IImplementations
-  ): Promise<TestIDeployer> => {
+  ): Promise<DeployerP1> => {
     if (IMPLEMENTATION == Implementation.P0) {
       const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
       const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
@@ -77,10 +77,10 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
         libraries: { TradingLibP0: tradingLib.address },
       })
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
+      return <DeployerP1>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, rsrAsset, implementations)
+      return <DeployerP1>await DeployerFactory.deploy(rsr, rsrAsset, implementations)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }

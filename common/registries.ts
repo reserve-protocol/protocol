@@ -29,3 +29,5 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
     },
   },
 }
+
+registryConfig['31337'] = registryConfig['1']

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/governance/IGovernor.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
+import "../contracts/p1/Deployer.sol";
 
 // interface avoids needing to know about P1 contracts
 interface ICachedComponent {
@@ -120,7 +121,7 @@ contract Upgrade3_4_0 {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    TestIDeployer public deployer;
+    DeployerP1 public deployer;
 
     struct NewGovernance {
         IGovernor anastasius;
@@ -163,7 +164,7 @@ contract Upgrade3_4_0 {
         // Setup `assets` array
         if (_mainnet) {
             // Setup `deployer`
-            deployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
+            deployer = DeployerP1(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
 
             // Setup `newGovs`
             // eUSD
@@ -244,7 +245,7 @@ contract Upgrade3_4_0 {
             }
         } else {
             // Setup `deployer`
-            deployer = TestIDeployer(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
+            deployer = DeployerP1(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
 
             // Setup `newGovs`
             // hyUSD (base)

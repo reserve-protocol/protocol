@@ -64,7 +64,7 @@ import {
   RTokenAsset,
   TestIBackingManager,
   TestIBasketHandler,
-  TestIDeployer,
+  DeployerP1,
   TestIFacade,
   TestIMain,
   TestIRToken,
@@ -121,7 +121,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
 
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite

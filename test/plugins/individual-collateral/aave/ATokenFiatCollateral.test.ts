@@ -61,7 +61,7 @@ import {
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
-  TestIDeployer,
+  DeployerP1,
   TestIFacade,
   TestIMain,
   TestIRToken,
@@ -123,7 +123,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let basketHandler: IBasketHandler
   let chainlinkFeed: AggregatorInterface
 
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite

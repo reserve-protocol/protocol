@@ -123,11 +123,3 @@ interface IDeployer is IVersioned {
 
     function implementations() external view returns (Implementations memory);
 }
-
-interface TestIDeployer is IDeployer {
-    function rsr() external view returns (IERC20Metadata);
-
-    function rsrAsset() external view returns (IAsset);
-
-    function implementations() external view returns (Implementations memory);
-}

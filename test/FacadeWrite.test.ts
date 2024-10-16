@@ -41,7 +41,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -97,7 +97,7 @@ describe('FacadeWrite contract', () => {
   let config: IConfig
 
   // Deployer
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Governor
   let governor: Governance

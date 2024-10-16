@@ -55,7 +55,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -585,7 +585,7 @@ type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
 export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
-  deployer: TestIDeployer
+  deployer: DeployerP1
   main: TestIMain
   assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
@@ -758,9 +758,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
-  let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
-  )
+  let deployer = await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
 
   if (IMPLEMENTATION == Implementation.P1) {
     // Deploy implementations
@@ -833,10 +831,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       },
     }
 
-    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-    deployer = <DeployerP1>(
-      await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
-    )
+    const DeployerFactory = await ethers.getContractFactory('DeployerP1')
+    deployer = await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
   }
 
   // Deploy actual contracts
