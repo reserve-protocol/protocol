@@ -46,6 +46,7 @@ async function main() {
       networkConfig[chainId].tokens.COMP,
       'Wrapped cUSDCv3',
       'wcUSDCv3',
+      fp(1).toString(),
     ],
     'contracts/plugins/assets/compoundv3/CFiatV3Wrapper.sol:CFiatV3Wrapper'
   )
