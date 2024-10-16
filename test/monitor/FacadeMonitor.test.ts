@@ -833,7 +833,8 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             networkConfig[chainId].COMET_REWARDS || '',
             networkConfig[chainId].tokens.COMP || '',
             'Wrapped cUSDCv3',
-            'wcUSDCv3'
+            'wcUSDCv3',
+            fp(1).toString()
           )
         )
         await wcusdcV3.deployed()
