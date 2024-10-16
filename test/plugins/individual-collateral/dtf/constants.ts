@@ -11,4 +11,10 @@ export const ORACLE_ERROR = fp('0.003') // 0.3%
 export const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 export const MAX_TRADE_VOL = fp('1e6')
 
+export const TWO_PERCENT_FEE = bn('627937192') // 2% annually
+export const ONE_PERCENT_FEE = bn('315522921') // 1% annually
+export const FIFTY_BPS_FEE = bn('158153903') // 0.5% annually
+export const TWENTY_FIVE_BPS_FEE = bn('079175551') // 0.25% annually
+export const TEN_BPS_FEE = bn('31693947') // 0.1% annually
+
 export const FORK_BLOCK = 20963623

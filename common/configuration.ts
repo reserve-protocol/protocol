@@ -117,7 +117,10 @@ export interface ITokens {
   USDM?: string
   wUSDM?: string
 
+  // Demurrage collateral
   PAXG?: string
+  cbBTC?: string
+  EURC?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -130,6 +133,7 @@ export interface IFeeds {
   ETHUSD?: string
   wstETHstETH?: string
   XAU?: string
+  EUR?: string
 }
 
 export interface IPools {
@@ -519,6 +523,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
+      cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+      EURC: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -535,6 +541,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
+      BTC: '0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F', // 0.1%, 1200s
+      cbBTC: '0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D', // 0.5%, 24h
+      EURC: '0xDAe398520e2B67cd3f27aeF9Cf14D93D927f8250', // 0.3%, 24h
+      EUR: '0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F', // 0.3%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',

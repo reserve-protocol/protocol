@@ -11,6 +11,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   DELAY_UNTIL_DEFAULT,
   PAXG,
+  ONE_PERCENT_FEE,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
@@ -35,7 +36,7 @@ export const defaultPAXGCollateralOpts: PAXGCollateralOpts = {
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  fee: fp('1e-9'), // about 3.1% annually
+  fee: ONE_PERCENT_FEE,
 }
 
 export const deployCollateral = async (opts: PAXGCollateralOpts = {}): Promise<TestICollateral> => {
@@ -58,6 +59,7 @@ export const deployCollateral = async (opts: PAXGCollateralOpts = {}): Promise<T
     },
     {
       isFiat: false,
+      targetUnitFeed0: false,
       fee: opts.fee,
       feed1: ZERO_ADDRESS,
       timeout1: bn(0),
