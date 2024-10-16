@@ -9,7 +9,7 @@ import "../../plugins/assets/UnpricedCollateral.sol";
  */
 contract CollateralFactory {
     event DemurrageCollateralDeployed(address indexed collateral);
-    event OraclelessCollateralDeployed(address indexed collateral);
+    event UnpricedCollateralDeployed(address indexed collateral);
 
     bytes32 public constant USD = bytes32("USD");
 
@@ -30,6 +30,6 @@ contract CollateralFactory {
         returns (address newCollateral)
     {
         newCollateral = address(new UnpricedCollateral(_erc20, _targetName));
-        emit OraclelessCollateralDeployed(newCollateral);
+        emit UnpricedCollateralDeployed(newCollateral);
     }
 }
