@@ -300,77 +300,92 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         }
       })
 
-      it('prices/pegPrices should respond correctly to devaluation', async () => {
+      it('should detect default and propagate through to prices/pegPrices correctly', async () => {
         // 1. break uoaPerTokFeed
         await uoaPerTokFeed.updateAnswer(bn('1e8').div(2))
+        await assetRegistry.refresh()
 
         // token1
         let [low, high, pegPrice] = await collateral[0].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('0.5'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[0].status()).to.equal(CollateralStatus.SOUND)
 
         // token2
         ;[low, high, pegPrice] = await collateral[1].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('0.5'))
         expect(pegPrice).to.equal(fp('0.5'))
+        expect(await collateral[1].status()).to.equal(CollateralStatus.IFFY)
 
         // token3
         ;[low, high, pegPrice] = await collateral[2].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('0.5'))
         expect(pegPrice).to.equal(fp('0.5'))
+        expect(await collateral[2].status()).to.equal(CollateralStatus.IFFY)
 
         // token4
         ;[low, high, pegPrice] = await collateral[3].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1.0001'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[3].status()).to.equal(CollateralStatus.SOUND)
 
         // 2. break uoaPerTargetFeed
         await uoaPerTokFeed.updateAnswer(bn('1e8'))
         await uoaPerTargetFeed.updateAnswer(bn('1e8').div(2))
+        await assetRegistry.refresh()
 
         // token1
         ;[low, high, pegPrice] = await collateral[0].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[0].status()).to.equal(CollateralStatus.SOUND)
 
         // token2
         ;[low, high, pegPrice] = await collateral[1].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[1].status()).to.equal(CollateralStatus.SOUND)
 
         // token3
         ;[low, high, pegPrice] = await collateral[2].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1'))
         expect(pegPrice).to.equal(fp('2'))
+        expect(await collateral[2].status()).to.equal(CollateralStatus.IFFY)
 
         // token4
         ;[low, high, pegPrice] = await collateral[3].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('0.50005'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[3].status()).to.equal(CollateralStatus.SOUND)
 
         // 3. break targetPerTokFeed
         await uoaPerTargetFeed.updateAnswer(bn('1e8'))
         await targetPerTokFeed.updateAnswer(bn('1e8').div(2))
+        await assetRegistry.refresh()
 
         // token1
         ;[low, high, pegPrice] = await collateral[0].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[0].status()).to.equal(CollateralStatus.SOUND)
 
         // token2
         ;[low, high, pegPrice] = await collateral[1].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[1].status()).to.equal(CollateralStatus.SOUND)
 
         // token3
         ;[low, high, pegPrice] = await collateral[2].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('1'))
         expect(pegPrice).to.equal(fp('1'))
+        expect(await collateral[2].status()).to.equal(CollateralStatus.SOUND)
 
         // token4
         ;[low, high, pegPrice] = await collateral[3].tryPrice()
         expect(low.add(high).div(2)).to.equal(fp('0.50005'))
         expect(pegPrice).to.equal(fp('0.5'))
+        expect(await collateral[3].status()).to.equal(CollateralStatus.IFFY)
       })
     })
   })
