@@ -6,6 +6,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
+  getYYYYMMDDHHmmss,
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
@@ -57,7 +58,7 @@ async function main() {
   const collateral = <DemurrageCollateral>await DemurrageCollateralFactory.connect(deployer).deploy(
     {
       erc20: networkConfig[chainId].tokens.EURC,
-      targetName: hre.ethers.utils.formatBytes32String('EUR'),
+      targetName: hre.ethers.utils.formatBytes32String(`${getYYYYMMDDHHmmss()}-EUR-1%`),
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.EURC,
       oracleError: fp('0.003').toString(), // 0.3%

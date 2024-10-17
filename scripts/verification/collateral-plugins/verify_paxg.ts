@@ -45,13 +45,18 @@ async function main() {
     throw new Error(`Unsupported chainId: ${chainId}`)
   }
 
+  const collateral = await hre.ethers.getContractAt(
+    'ICollateral',
+    assetCollDeployments.collateral.PAXG!
+  )
+
   await verifyContract(
     chainId,
     assetCollDeployments.collateral.PAXG,
     [
       {
         erc20: networkConfig[chainId].tokens.PAXG,
-        targetName: hre.ethers.utils.formatBytes32String('XAU'),
+        targetName: await collateral.targetName(),
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.XAU, // {UoA/tok}
         oracleError: fp('0.003').toString(), // 0.3%
