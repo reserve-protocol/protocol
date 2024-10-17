@@ -14,6 +14,7 @@ import {
   IRTokenDeployments,
 } from '../common'
 import { AssetRegistryP1, DeployerP1, FacadeWrite, MainP1 } from '../../../typechain'
+import { ZERO_ADDRESS } from '#/common/constants'
 
 async function main() {
   // ==== Read Configuration ====
@@ -104,7 +105,13 @@ async function main() {
   )
 
   // Deploy RToken
-  const receipt = await (await facadeWrite.deployRToken(rTokenConfig, rTokenSetup)).wait()
+  const receipt = await (
+    await facadeWrite.deployRToken(rTokenConfig, rTokenSetup, {
+      assetPluginRegistry: ZERO_ADDRESS,
+      daoFeeRegistry: ZERO_ADDRESS,
+      versionRegistry: ZERO_ADDRESS,
+    })
+  ).wait()
 
   // Get Main
   const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main

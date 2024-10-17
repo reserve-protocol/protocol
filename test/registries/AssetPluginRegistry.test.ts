@@ -7,7 +7,7 @@ import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from '../f
 import {
   AssetPluginRegistry,
   RoleRegistry,
-  TestIDeployer,
+  DeployerP1,
   VersionRegistry,
   DeployerMock,
 } from '../../typechain'
@@ -24,7 +24,7 @@ describeP1('Asset Plugin Registry', () => {
   let basket: Collateral[]
 
   // Deployers
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let deployerMockV1: DeployerMock
   let deployerMockV2: DeployerMock
 

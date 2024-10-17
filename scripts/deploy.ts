@@ -25,6 +25,10 @@ async function main() {
   // Part 1/3 of the *overall* deployment process: Deploy all contracts
   // See `confirm.ts` for part 2
 
+  // Phase 0 -- Registries
+  // Phase 0 must be run manually, and is a one time setup for the DAO.
+  // The deploy scripts do not enforce them.
+
   // Phase 1 -- Implementations
   const scripts = [
     'phase1-core/0_setup_deployments.ts',
