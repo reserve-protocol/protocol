@@ -19,9 +19,9 @@ refPerTok(): 1 / (1 - demurrage_rate_per_second) ^ t
     where t is seconds since 01/01/2024 00:00:00 GMT+0000
 ```
 
-The timestamp of 01/01/2024 00:00:00 GMT+0000 is chosen arbitrarily. It's not important what this value is, but there are benefits to using a common anchor (and 1970 is too far).
+The timestamp of 01/01/2024 00:00:00 GMT+0000 is chosen arbitrarily. It's not important what this value is, but there are benefits to using a common anchor (and 1970 is wastefully far).
 
-In unix time this is `1640995200`
+In unix time this is `1704085200`
 
 ### Target Unit
 
