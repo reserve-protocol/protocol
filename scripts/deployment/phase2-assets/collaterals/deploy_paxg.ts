@@ -11,7 +11,6 @@ import {
   IAssetCollDeployments,
   getDeploymentFilename,
   fileExists,
-  getYYYYMMDDHHmmss,
 } from '../../common'
 import {
   DELAY_UNTIL_DEFAULT,
@@ -58,7 +57,7 @@ async function main() {
   const collateral = <DemurrageCollateral>await DemurrageCollateralFactory.connect(deployer).deploy(
     {
       erc20: networkConfig[chainId].tokens.PAXG,
-      targetName: hre.ethers.utils.formatBytes32String(`${getYYYYMMDDHHmmss()}-XAU-1%`),
+      targetName: hre.ethers.utils.formatBytes32String('DMR100XAU'),
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.XAU, // {UoA/tok}
       oracleError: fp('0.003').toString(), // 0.3%

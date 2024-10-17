@@ -29,20 +29,19 @@ In unix time this is `1640995200`
 targetPerRef(): 1
 ```
 
-The target unit must be named in a way that distinguishes it from the non-demurrage version of itself. We suggest the following naming scheme:
-
 `DMR{annual_demurrage_in_basis_points}{token_symbol}` or `DMR100USD`, for example
 
-The `DMR` prefix is short for demurrage; the `annual_demurrage_in_basis_points` is a number such as 100 for 1% annually; the `token_symbol` is the symbol of what would have otherwise been the target unit had the collateral been purely SelfReferential.
+1. The `DMR` prefix is short for demurrage
+2. The `annual_demurrage_in_basis_points` is a number such as 100 for 1% annually
+3. The `token_symbol` is the symbol of what would have otherwise been the target unit had the collateral been purely SelfReferential
 
-Collateral can only be automatically substituted in the basket with collateral that share the same target unit. This unfortuna
-tely means that a standard WETH collateral would not be in the same class as our demurrage ETH collateral, unless the WETH collateral were also demurrage-based, and at the same rate.
+Collateral can only be automatically substituted in the basket with collateral that share the _exact_ same target unit. This unfortunately means a standard WETH collateral cannot be backup for a demurrage ETH collateral. Both the unit type and rate must be identical in order for two collateral to be in the same target unit class.
 
 ### Setting the basket weights
 
-For demurrage collateral, the prime basket weights are in units of January 1st 2020 collateral, not today's collateral. It doesn't matter if the collateral wasn't around in 2020 -- when setting the basket weights the setter must take into account how much demurrage has occurred since January 1st 2020.
+Prime basket weights are in units of January 1st 2020 collateral, not today's collateral. It doesn't matter if the collateral wasn't around in 2020 -- when setting the basket weights the setter must take into account how much demurrage has occurred since January 1st 2020.
 
-For example, say an asset has had 5% total demurrage since January 1st 2020 and you want to (on today's date) create a basket of that is worth $1: the correct basket weight would be `1 / 0.95 = ~1.0526`.
+For example, say an asset has had 5% total demurrage since January 1st 2020 and you want to (on today's date) create a basket of that is worth $1: the correct basket weight to provide to `setPrimeBasket()` would be `1 / 0.95 = ~1.0526`.
 
 To calculate total demurrage since 2020-01-01 00:00:00 UTC, use:
 
@@ -51,3 +50,7 @@ fee() ^ (seconds_since_2020_01_01)
 ```
 
 (where `fee()` is the per-second demurrage rate, usually found on the `DemurrageCollateral` contract)
+
+### Implementation
+
+[DemurrageCollateral.sol](../contracts/plugins/assets/DemurrageCollateral.sol) implements a generalized demurrage collateral plugin that should support almost all use-cases

@@ -29,7 +29,7 @@ interface PAXGCollateralOpts extends CollateralOpts {
 
 export const defaultPAXGCollateralOpts: PAXGCollateralOpts = {
   erc20: PAXG,
-  targetName: ethers.utils.formatBytes32String('XAU'),
+  targetName: `DMR100XAU`,
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: XAU_USD_PRICE_FEED,

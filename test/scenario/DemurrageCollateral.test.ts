@@ -111,7 +111,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[0].address,
-            targetName: ethers.utils.formatBytes32String('20241017-USD-50%'),
+            targetName: ethers.utils.formatBytes32String('DMR5000USD'),
             priceTimeout: bn('604800'),
             chainlinkFeed: uoaPerTokFeed.address, // {UoA/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -132,7 +132,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[1].address,
-            targetName: ethers.utils.formatBytes32String('20241017-EUR-50%'),
+            targetName: ethers.utils.formatBytes32String('DMR5000EUR'),
             priceTimeout: bn('604800'),
             chainlinkFeed: uoaPerTokFeed.address, // {UoA/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -153,7 +153,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[2].address,
-            targetName: ethers.utils.formatBytes32String('20241017-XAU-50%'),
+            targetName: ethers.utils.formatBytes32String('DMR5000XAU'),
             priceTimeout: bn('604800'),
             chainlinkFeed: uoaPerTokFeed.address, // {UoA/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -174,7 +174,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[3].address,
-            targetName: ethers.utils.formatBytes32String('20241017-SPY-50%'),
+            targetName: ethers.utils.formatBytes32String('DMR5000SPY'),
             priceTimeout: bn('604800'),
             chainlinkFeed: targetPerTokFeed.address, // {target/tok}
             oracleError: fp('0.01').toString(), // 1%
