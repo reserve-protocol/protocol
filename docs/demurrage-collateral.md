@@ -16,10 +16,10 @@ The reference unit becomes naturally inflationary, resulting in a `refPerTok` of
 
 ```
 refPerTok(): 1 / (1 - demurrage_rate_per_second) ^ t
-    where t is seconds since 01/01/2020 00:00:00 GMT+0000
+    where t is seconds since 01/01/2024 00:00:00 GMT+0000
 ```
 
-The timestamp of 01/01/2020 00:00:00 GMT+0000 is chosen arbitrarily. It's not important what this value is, but there are benefits to using a common anchor (and 1970 is too far).
+The timestamp of 01/01/2024 00:00:00 GMT+0000 is chosen arbitrarily. It's not important what this value is, but there are benefits to using a common anchor (and 1970 is too far).
 
 In unix time this is `1640995200`
 
@@ -39,17 +39,17 @@ Collateral can only be automatically substituted in the basket with collateral t
 
 ### Setting the basket weights
 
-Prime basket weights are in units of January 1st 2020 collateral, not today's collateral. It doesn't matter if the collateral wasn't around in 2020 -- when setting the basket weights the setter must take into account how much demurrage has occurred since January 1st 2020.
+Prime basket weights are in units of January 1st 2024 collateral, not today's collateral. It doesn't matter if the collateral wasn't around in Jan 2024 -- when setting the basket weights the setter must take into account how much demurrage has occurred since January 1st 2024.
 
-For example, say an asset has had 5% total demurrage since January 1st 2020 and you want to (on today's date) create a basket of that is worth $1: the correct basket weight to provide to `setPrimeBasket()` would be `1 / 0.95 = ~1.0526`.
+For example, say an asset has had 2% total demurrage since January 1st 2024 and you want to (on today's date) create a basket of that is worth $1: the correct basket weight to provide to `setPrimeBasket()` would be `1 / (1 - 0.02) = ~1.0204`.
 
-To calculate total demurrage since 2020-01-01 00:00:00 UTC, use:
+To calculate total demurrage since 2024-01-01 00:00:00 UTC, use:
 
 ```
-fee() ^ (seconds_since_2020_01_01)
+fee() ^ (seconds_since_2024_01_01)
 ```
 
-(where `fee()` is the per-second demurrage rate, usually found on the `DemurrageCollateral` contract)
+(where `fee()` is the per-second demurrage rate found on the `DemurrageCollateral` contract below)
 
 ### Implementation
 
