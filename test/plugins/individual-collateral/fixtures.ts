@@ -13,7 +13,6 @@ import {
   BasketHandlerP1,
   BasketLibP1,
   BrokerP1,
-  DeployerP0,
   DeployerP1,
   DistributorP1,
   DutchTrade,
@@ -215,6 +214,7 @@ export const getDefaultFixture = async function (salt: string) {
           stRSR: stRSRImpl.address,
         },
       }
+
       const DeployerFactory = await ethers.getContractFactory('DeployerP1')
       deployer = await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
     }

@@ -55,7 +55,6 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -755,7 +754,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   await rsrAsset.refresh()
 
   // Create Deployer
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+  const DeployerFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer = await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
@@ -832,12 +831,20 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     }
 
     const DeployerFactory = await ethers.getContractFactory('DeployerP1')
-    deployer = await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
+    deployer = (await DeployerFactory.deploy(
+      rsr.address,
+      rsrAsset.address,
+      implementations
+    )) as unknown as DeployerP0
   }
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+      assetPluginRegistry: ZERO_ADDRESS,
+      daoFeeRegistry: ZERO_ADDRESS,
+      versionRegistry: ZERO_ADDRESS,
+    })
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

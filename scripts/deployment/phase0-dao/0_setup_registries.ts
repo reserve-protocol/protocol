@@ -23,6 +23,10 @@ async function main() {
     throw new Error(`Missing registry owner configuration for ${hre.network.name}`)
   }
 
+  console.log('!!!!!!!!!!!!!!!! IMPORTANT !!!!!!!!!!!!!!!!')
+  console.log('This will only deploy registries that are not already deployed.')
+  console.log('!!!!!!!!!!!!!!!! IMPORTANT !!!!!!!!!!!!!!!!')
+
   /**
    * Deploy Registries
    */

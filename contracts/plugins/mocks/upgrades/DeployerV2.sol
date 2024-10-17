@@ -10,9 +10,8 @@ contract DeployerP1V2 is DeployerP1 {
     constructor(
         IERC20Metadata rsr_,
         IAsset rsrAsset_,
-        Implementations memory implementations_,
-        Registries memory registries_
-    ) DeployerP1(rsr_, rsrAsset_, implementations_, registries_) {}
+        Implementations memory implementations_
+    ) DeployerP1(rsr_, rsrAsset_, implementations_) {}
 
     function setNewValue(uint256 newValue_) external {
         newValue = newValue_;

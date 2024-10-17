@@ -34,8 +34,7 @@ contract DeployerP0 is IDeployer, Versioned {
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IAsset rsrAsset_,
-        Registries memory // ignored
+        IAsset rsrAsset_
     ) {
         require(
             address(rsr_) != address(0) &&
@@ -60,7 +59,8 @@ contract DeployerP0 is IDeployer, Versioned {
         string memory symbol,
         string calldata mandate,
         address owner,
-        DeploymentParams memory params
+        DeploymentParams memory params,
+        Registries calldata // ignored
     ) external returns (address) {
         require(owner != address(0) && owner != address(this), "invalid owner");
 

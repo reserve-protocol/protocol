@@ -35,15 +35,12 @@ contract DeployerP1 is IDeployer, Versioned {
     // Implementation contracts for Upgradeability
     Implementations private _implementations;
 
-    Registries public registries;
-
     // checks: every address in the input is nonzero
     // effects: post, all contract-state values are set
     constructor(
         IERC20Metadata rsr_,
         IAsset rsrAsset_,
-        Implementations memory implementations_,
-        Registries memory registries_
+        Implementations memory implementations_
     ) {
         require(
             address(rsr_) != address(0) &&
@@ -63,15 +60,6 @@ contract DeployerP1 is IDeployer, Versioned {
                 address(implementations_.components.stRSR) != address(0),
             "invalid address"
         );
-
-        require(
-            address(registries_.versionRegistry) != address(0) &&
-                address(registries_.assetPluginRegistry) != address(0) &&
-                address(registries_.daoFeeRegistry) != address(0),
-            "invalid registry address"
-        );
-
-        registries = registries_;
 
         rsr = rsr_;
         rsrAsset = rsrAsset_;
@@ -116,7 +104,8 @@ contract DeployerP1 is IDeployer, Versioned {
         string memory symbol,
         string calldata mandate,
         address owner,
-        DeploymentParams memory params
+        DeploymentParams memory params,
+        Registries calldata registries
     ) external returns (address) {
         require(owner != address(0) && owner != address(this), "invalid owner");
 
@@ -262,9 +251,15 @@ contract DeployerP1 is IDeployer, Versioned {
         components.assetRegistry.init(main, assets);
 
         // Assign DAO Registries
-        main.setVersionRegistry(registries.versionRegistry);
-        main.setAssetPluginRegistry(registries.assetPluginRegistry);
-        main.setDAOFeeRegistry(registries.daoFeeRegistry);
+        if (address(registries.versionRegistry) != address(0)) {
+            main.setVersionRegistry(registries.versionRegistry);
+        }
+        if (address(registries.assetPluginRegistry) != address(0)) {
+            main.setAssetPluginRegistry(registries.assetPluginRegistry);
+        }
+        if (address(registries.daoFeeRegistry) != address(0)) {
+            main.setDAOFeeRegistry(registries.daoFeeRegistry);
+        }
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);

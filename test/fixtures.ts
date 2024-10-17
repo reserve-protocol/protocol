@@ -620,7 +620,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+      assetPluginRegistry: ZERO_ADDRESS,
+      daoFeeRegistry: ZERO_ADDRESS,
+      versionRegistry: ZERO_ADDRESS,
+    })
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

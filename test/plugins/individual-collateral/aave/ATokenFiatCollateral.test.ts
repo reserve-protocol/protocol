@@ -159,6 +159,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     },
     warmupPeriod: bn('60'),
     reweightable: false,
+    enableIssuancePremium: false,
   }
 
   const defaultThreshold = fp('0.01') // 1%
@@ -166,7 +167,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let initialBal: BigNumber
 
-  let chainId: number
+  let chainId: string
 
   let ATokenFiatCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
@@ -284,7 +285,11 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     // Deploy RToken via FacadeWrite
     const receipt = await (
-      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
+      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+      })
     ).wait()
 
     // Get Main

@@ -33,7 +33,7 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
   let rTokenConfig: IRTokenConfig
   let rTokenSetup: IRTokenSetup
 
-  let chainId: number
+  let chainId: string
 
   describe('Deployment', () => {
     before(async () => {
@@ -87,7 +87,11 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
       }
       // Deploy RToken via FacadeWrite
       const receipt = await (
-        await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
+        await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+        })
       ).wait()
 
       const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args

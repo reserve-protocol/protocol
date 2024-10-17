@@ -108,13 +108,15 @@ interface IDeployer is IVersioned {
     /// @param mandate An IPFS link or direct string; describes what the RToken _should be_
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
+    /// @param registries Registries list; can be 0 to unset
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string calldata name,
         string calldata symbol,
         string calldata mandate,
         address owner,
-        DeploymentParams calldata params
+        DeploymentParams calldata params,
+        Registries calldata registries
     ) external returns (address);
 
     /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
