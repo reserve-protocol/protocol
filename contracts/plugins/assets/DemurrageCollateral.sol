@@ -30,8 +30,8 @@ struct DemurrageConfig {
  *   - apply issuance premium
  *
  * - tok = Tokenized X
- * - ref = Decayed X (since 2020-01-01 00:00:00 UTC)
- * - target = Decayed X (since 2020-01-01 00:00:00 UTC)
+ * - ref = Decayed X (since 2020-01-01 00:00:00 GMT+0000)
+ * - target = Decayed X (since 2020-01-01 00:00:00 GMT+0000)
  * - UoA = USD
  */
 contract DemurrageCollateral is FiatCollateral {
