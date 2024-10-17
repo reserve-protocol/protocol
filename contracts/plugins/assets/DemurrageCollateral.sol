@@ -18,8 +18,17 @@ struct DemurrageConfig {
 /**
  * @title DemurrageCollateral
  * @notice Collateral plugin for a genneralized demurrage collateral (i.e /w management fee)
+ * Warning: Do NOT use the standard targetName() format of "USD"
  *
- * if only 1 feed:
+ * DemurrageCollateral's targetName() must be contain 3 dimensions:
+ *   1. date
+ *   2. unit
+ *   3. annual rate
+ * For example: 20241017USD50% describes a USD peg of $1 on 2024-10-17 and $0.50 on 2025-10-17.
+ * An RToken looking to put this collateral into its basket on 2025-10-17 would use 2 units,
+ * if the intent were to achieve $1 in _today's_ dollars.
+ *
+ * under 1 feed:
  *   - feed0/chainlinkFeed must be {UoA/tok}
  *   - apply issuance premium IFF isFiat is true
  * 2 feeds:
@@ -28,8 +37,8 @@ struct DemurrageConfig {
  *   - apply issuance premium
  *
  * - tok = Tokenized X
- * - ref = Virtual (inflationary) X
- * - target = X
+ * - ref = Virtually inflationary X
+ * - target = YYYYMMDD-X-APR%
  * - UoA = USD
  */
 contract DemurrageCollateral is FiatCollateral {
@@ -138,17 +147,12 @@ contract DemurrageCollateral is FiatCollateral {
 
     // === Demurrage rates ===
 
-    // invariant: targetPerRef() * refPerTok() ~= FIX_ONE
-
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        // up-only
-        return FIX_ONE.div(targetPerRef(), FLOOR);
-    }
+        uint192 denominator = FIX_ONE.minus(fee).powu(uint48(block.timestamp - t0));
+        if (denominator == 0) return FIX_MAX;
 
-    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function targetPerRef() public view override returns (uint192) {
-        // down-only
-        return FIX_ONE.minus(fee).powu(uint48(block.timestamp - t0));
+        // up-only
+        return FIX_ONE.div(denominator, FLOOR);
     }
 }
