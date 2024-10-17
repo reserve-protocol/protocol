@@ -63,14 +63,14 @@ async function main() {
       oracleError: fp('0.003').toString(), // 0.3%
       oracleTimeout: bn('86400').toString(), // 24 hr
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      defaultThreshold: fp('0.01').add(fp('0.003')).toString(),
+      defaultThreshold: fp('0.02').add(fp('0.003')).toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
     {
       isFiat: false,
       targetUnitFeed0: false,
       fee: ONE_PERCENT_FEE,
-      feed1: networkConfig[chainId].chainlinkFeeds.EURC, // {UoA/target}
+      feed1: networkConfig[chainId].chainlinkFeeds.EUR,
       timeout1: bn('86400').toString(), // 24 hr
       error1: fp('0.003').toString(), // 0.3%
     }
