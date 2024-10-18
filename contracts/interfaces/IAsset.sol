@@ -130,6 +130,9 @@ interface ICollateral is IAsset {
 
 // Used only in Testing. Strictly speaking a Collateral does not need to adhere to this interface
 interface TestICollateral is TestIAsset, ICollateral {
+    /// deprecated
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
+
     /// @return The epoch timestamp when the collateral will default from IFFY to DISABLED
     function whenDefault() external view returns (uint256);
 

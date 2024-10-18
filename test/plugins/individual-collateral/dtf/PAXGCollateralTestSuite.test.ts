@@ -1,59 +1,51 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, mintSDAI } from './helpers'
+import { resetFork, mintPAXG } from './helpers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
-import {
-  ERC20Mock,
-  IERC20Metadata,
-  MockV3Aggregator,
-  MockV3Aggregator__factory,
-  PotMock,
-  TestICollateral,
-} from '../../../../typechain'
-import { pushOracleForward } from '../../../utils/oracles'
+import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
-  POT,
-  SDAI,
+  DELAY_UNTIL_DEFAULT,
+  PAXG,
+  ONE_PERCENT_FEE,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
-  DEFAULT_THRESHOLD,
-  DELAY_UNTIL_DEFAULT,
-  DAI_USD_PRICE_FEED,
+  XAU_USD_PRICE_FEED,
 } from './constants'
 
 /*
   Define deployment functions
 */
 
-export const defaultSDaiCollateralOpts: CollateralOpts = {
-  erc20: SDAI,
-  targetName: ethers.utils.formatBytes32String('USD'),
+interface PAXGCollateralOpts extends CollateralOpts {
+  fee?: BigNumberish
+}
+
+export const defaultPAXGCollateralOpts: PAXGCollateralOpts = {
+  erc20: PAXG,
+  targetName: ethers.utils.formatBytes32String('DMR100XAU'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: DAI_USD_PRICE_FEED,
+  chainlinkFeed: XAU_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: DEFAULT_THRESHOLD,
-  delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  revenueHiding: fp('0'),
+  fee: ONE_PERCENT_FEE,
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
-  opts = { ...defaultSDaiCollateralOpts, ...opts }
+export const deployCollateral = async (opts: PAXGCollateralOpts = {}): Promise<TestICollateral> => {
+  opts = { ...defaultPAXGCollateralOpts, ...opts }
 
-  const PotFactory: ContractFactory = await ethers.getContractFactory('PotMock')
-  const pot = <PotMock>await PotFactory.deploy(POT)
-
-  const SDaiCollateralFactory: ContractFactory = await ethers.getContractFactory('SDaiCollateral')
-  const collateral = <TestICollateral>await SDaiCollateralFactory.deploy(
+  const PAXGCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'DemurrageCollateral'
+  )
+  const collateral = <TestICollateral>await PAXGCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -62,18 +54,20 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       oracleError: opts.oracleError,
       oracleTimeout: opts.oracleTimeout,
       maxTradeVolume: opts.maxTradeVolume,
-      defaultThreshold: opts.defaultThreshold,
-      delayUntilDefault: opts.delayUntilDefault,
+      defaultThreshold: bn('0'),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
-    opts.revenueHiding,
-    pot.address,
+    {
+      isFiat: false,
+      targetUnitFeed0: false,
+      fee: opts.fee,
+      feed1: ZERO_ADDRESS,
+      timeout1: bn(0),
+      error1: bn(0),
+    },
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
-
-  // Push forward chainlink feed
-  await pushOracleForward(opts.chainlinkFeed!)
-
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
@@ -81,15 +75,15 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
   return collateral
 }
 
-const chainlinkDefaultAnswer = bn('1e8')
+const chainlinkDefaultAnswer = bn('266347300000') // $2,663.473
 
 type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
-  opts: CollateralOpts = {}
+  opts: PAXGCollateralOpts = {}
 ): Fixture<CollateralFixtureContext> => {
-  const collateralOpts = { ...defaultSDaiCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultPAXGCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
@@ -101,8 +95,6 @@ const makeCollateralFixtureContext = (
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
-    const sdai = (await ethers.getContractAt('IERC20Metadata', SDAI)) as IERC20Metadata
-    const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
     const tok = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
 
@@ -111,8 +103,6 @@ const makeCollateralFixtureContext = (
       collateral,
       chainlinkFeed,
       tok,
-      sdai,
-      rewardToken,
     }
   }
 
@@ -125,49 +115,20 @@ const mintCollateralTo: MintCollateralFunc<CollateralFixtureContext> = async (
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintSDAI(ctx.tok, user, amount, recipient)
+  await mintPAXG(ctx.tok, amount, recipient)
 }
 
-const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
-  const lastRound = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceTargetPerRef = async () => {}
 
-const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
-  const lastRound = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseTargetPerRef = async () => {}
 
-// prettier-ignore
-const reduceRefPerTok = async (
-  ctx: CollateralFixtureContext,
-  pctDecrease: BigNumberish 
-) => {
-  const collateral = await ethers.getContractAt('SDaiCollateral', ctx.collateral.address)
-  const pot = await ethers.getContractAt('PotMock', await collateral.pot())
-  await pot.drip()
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceRefPerTok = async () => {}
 
-  const chi = await pot.chi()
-  const newChi = chi.sub(chi.mul(bn(pctDecrease)).div(bn('100')))
-  await pot.setChi(newChi)
-}
-
-// prettier-ignore
-const increaseRefPerTok = async (
-  ctx: CollateralFixtureContext,
-  pctIncrease: BigNumberish 
-
-) => {
-  const collateral = await ethers.getContractAt('SDaiCollateral', ctx.collateral.address)
-  const pot = await ethers.getContractAt('PotMock', await collateral.pot())
-  await pot.drip()
-
-  const chi = await pot.chi()
-  const newChi = chi.add(chi.mul(bn(pctIncrease)).div(bn('100')))
-  await pot.setChi(newChi)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseRefPerTok = async () => {}
 
 const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
@@ -210,17 +171,18 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it,
-  itChecksTargetPerRefDefaultUp: it,
-  itChecksRefPerTokDefault: it,
+  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefaultUp: it.skip,
+  itChecksNonZeroDefaultThreshold: it.skip,
+  itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
-  itChecksPriceChangesRefPerTok: it,
-  itChecksNonZeroDefaultThreshold: it,
+  itChecksPriceChangesRefPerTok: it.skip,
   itHasRevenueHiding: it.skip,
   resetFork,
-  collateralName: 'SDaiCollateral',
+  collateralName: 'PAXG Demurrage Collateral',
   chainlinkDefaultAnswer,
-  itIsPricedByPeg: true,
+  itIsAXGCricedByPeg: true,
+  toleranceDivisor: bn('1e8'), // 1-part in 100 million
 }
 
 collateralTests(opts)

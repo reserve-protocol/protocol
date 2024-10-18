@@ -197,6 +197,7 @@ const opts = {
   itChecksNonZeroDefaultThreshold: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itChecksPriceChangesRefPerTok: it,
   itHasRevenueHiding: it.skip,
   resetFork,
   collateralName: 'SFraxCollateral',
