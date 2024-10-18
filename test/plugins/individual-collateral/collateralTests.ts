@@ -1016,7 +1016,7 @@ export default function fn<X extends CollateralFixtureContext>(
             targetUnitOracle.address,
             ORACLE_TIMEOUT
           )
-        } else if (target === ethers.utils.formatBytes32String('XAU')) {
+        } else if (target.indexOf(ethers.utils.formatBytes32String('XAU'))) {
           if (onBase || onArbitrum) throw new Error('PAXG only supported on mainnet')
 
           // PAXG
@@ -1030,7 +1030,7 @@ export default function fn<X extends CollateralFixtureContext>(
           return <TestICollateral>await DemurrageFactory.deploy(
             {
               erc20: erc20.address,
-              targetName: ethers.utils.formatBytes32String('XAU'),
+              targetName: target,
               priceTimeout: PRICE_TIMEOUT,
               chainlinkFeed: chainlinkFeed.address,
               oracleError: ORACLE_ERROR,
@@ -1041,6 +1041,7 @@ export default function fn<X extends CollateralFixtureContext>(
             },
             {
               isFiat: false,
+              targetUnitFeed0: false,
               fee: bn('0'),
               feed1: ZERO_ADDRESS,
               timeout1: bn(0),

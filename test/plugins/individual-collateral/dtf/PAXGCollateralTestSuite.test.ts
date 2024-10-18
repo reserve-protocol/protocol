@@ -11,6 +11,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   DELAY_UNTIL_DEFAULT,
   PAXG,
+  ONE_PERCENT_FEE,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
@@ -28,14 +29,14 @@ interface PAXGCollateralOpts extends CollateralOpts {
 
 export const defaultPAXGCollateralOpts: PAXGCollateralOpts = {
   erc20: PAXG,
-  targetName: ethers.utils.formatBytes32String('XAU'),
+  targetName: ethers.utils.formatBytes32String('DMR100XAU'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: XAU_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  fee: fp('1e-9'), // about 3.1% annually
+  fee: ONE_PERCENT_FEE,
 }
 
 export const deployCollateral = async (opts: PAXGCollateralOpts = {}): Promise<TestICollateral> => {
@@ -58,6 +59,7 @@ export const deployCollateral = async (opts: PAXGCollateralOpts = {}): Promise<T
     },
     {
       isFiat: false,
+      targetUnitFeed0: false,
       fee: opts.fee,
       feed1: ZERO_ADDRESS,
       timeout1: bn(0),
