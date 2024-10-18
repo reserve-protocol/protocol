@@ -45,10 +45,14 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let bh: TestIBasketHandler
 
-  // Perform tests for each of these decimal variations (> 18)
-  describe(`Demurrage Collateral`, () => {
-    before(async () => {
+  describe('Demurrage Collateral', () => {
+    beforeEach(async () => {
       ;[owner, addr1] = await ethers.getSigners()
+
+      // Deploy fixture
+      ;({ assetRegistry, backingManager, config, main, rToken } = await loadFixture(
+        defaultFixtureNoBasket
+      ))
 
       // Setup Factories
       const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
@@ -62,11 +66,6 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
       )
       const ERC20Factory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const ChainlinkFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
-
-      // Deploy fixture
-      ;({ assetRegistry, backingManager, config, main, rToken } = await loadFixture(
-        defaultFixtureNoBasket
-      ))
 
       // Replace with reweightable basket handler
       bh = await ethers.getContractAt(
@@ -232,7 +231,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
     })
 
     context('after 1 year', () => {
-      before(async () => {
+      beforeEach(async () => {
         await advanceTime(Number(bn('31535955'))) // 1 year - 45s
         await uoaPerTokFeed.updateAnswer(bn('1e8'))
         await uoaPerTargetFeed.updateAnswer(bn('1e8'))
@@ -268,7 +267,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         expect(bottom).to.be.closeTo(amt.mul(2), amt.div(bn('1e3')))
       })
 
-      it('refreshBasket() should not restore the RToken back to $1', async () => {
+      it('refreshBasket() should not restore the RToken back genesis peg', async () => {
         const [erc20s, quantities] = await bh.quote(fp('1'), false, 2)
         await expect(bh.connect(owner).refreshBasket()).to.emit(bh, 'BasketSet')
         const [newERC20s, newQuantities] = await bh.quote(fp('1'), false, 2)
