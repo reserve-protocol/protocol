@@ -36,7 +36,7 @@ import {
   TestIRToken,
   USDCMock,
   StaticATokenV3LM,
-  CusdcV3Wrapper,
+  CFiatV3Wrapper,
   CometInterface,
   StargateRewardableWrapper,
   StargatePoolFiatCollateral,
@@ -822,16 +822,19 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
     describe('Compound V3', () => {
       const issueAmount: BigNumber = bn('1000000e18')
-      let wcusdcV3: CusdcV3Wrapper
+      let wcusdcV3: CFiatV3Wrapper
 
       beforeEach(async () => {
-        const CUsdcV3WrapperFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
+        const CUsdcV3WrapperFactory = await hre.ethers.getContractFactory('CFiatV3Wrapper')
 
-        wcusdcV3 = <CusdcV3Wrapper>(
+        wcusdcV3 = <CFiatV3Wrapper>(
           await CUsdcV3WrapperFactory.deploy(
             cusdcV3.address,
             networkConfig[chainId].COMET_REWARDS || '',
-            networkConfig[chainId].tokens.COMP || ''
+            networkConfig[chainId].tokens.COMP || '',
+            'Wrapped cUSDCv3',
+            'wcUSDCv3',
+            fp(1).toString()
           )
         )
         await wcusdcV3.deployed()
