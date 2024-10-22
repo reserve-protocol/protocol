@@ -34,7 +34,7 @@ refPerTok(): 1 / (1 - demurrage_rate_per_second) ^ t
 
 The timestamp of 01/01/2024 00:00:00 GMT+0000 is chosen arbitrarily. It's not important what this value is, but there are benefits to using a common anchor (and 1970 is wastefully far).
 
-In unix time this is `1704085200`
+In unix time this is `1704067200`
 
 ### Target Unit (inflationary)
 
@@ -64,7 +64,7 @@ For example, say an asset has had 2% total demurrage since January 1st 2024 and 
 To calculate total demurrage:
 
 ```
-per_second_fee ^ (seconds)
+1 - (1 - per_second_fee) ^ (seconds)
 ```
 
 Switching between tiers requires calculating total demurrage for both tiers in order to ensure the basket change does not accidentally appreciate or depreciate the RToken.
