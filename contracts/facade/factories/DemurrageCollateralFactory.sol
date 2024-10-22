@@ -9,6 +9,8 @@ import "../../plugins/assets/DemurrageCollateral.sol";
 contract DemurrageCollateralFactory {
     event DemurrageCollateralDeployed(address indexed collateral);
 
+    mapping(address coll => uint192 feePerSecond) public demurrageDeployments;
+
     bytes32 public constant USD = bytes32("USD");
 
     function deployNewDemurrageCollateral(
@@ -20,6 +22,7 @@ contract DemurrageCollateralFactory {
         }
 
         newCollateral = address(new DemurrageCollateral(config, demurrageConfig));
+        demurrageDeployments[newCollateral] = demurrageConfig.fee;
         emit DemurrageCollateralDeployed(newCollateral);
     }
 }
