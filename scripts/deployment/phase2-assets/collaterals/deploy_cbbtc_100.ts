@@ -1,10 +1,10 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { arbitrumL2Chains, baseL2Chains, networkConfig } from '../../../../common/configuration'
+import { baseL2Chains, networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
-import { CollateralStatus, ZERO_ADDRESS } from '../../../../common/constants'
+import { CollateralStatus } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -44,9 +44,9 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy PAXG Demurrage Collateral - PAXG  **************************/
+  /********  Deploy cbBTC Demurrage Collateral - cbBTC  **************************/
 
-  if (baseL2Chains.includes(hre.network.name) || arbitrumL2Chains.includes(hre.network.name)) {
+  if (!baseL2Chains.includes(hre.network.name)) {
     throw new Error(`Unsupported chainId: ${chainId}`)
   }
 
@@ -56,33 +56,33 @@ async function main() {
 
   const collateral = <DemurrageCollateral>await DemurrageCollateralFactory.connect(deployer).deploy(
     {
-      erc20: networkConfig[chainId].tokens.PAXG,
-      targetName: hre.ethers.utils.formatBytes32String('DMR100XAU'),
+      erc20: networkConfig[chainId].tokens.cbBTC,
+      targetName: hre.ethers.utils.formatBytes32String('DMR100BTC'),
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.XAU, // {UoA/tok}
-      oracleError: fp('0.003').toString(), // 0.3%
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.cbBTC, // {UoA/tok}
+      oracleError: fp('0.005').toString(), // 0.5%
       oracleTimeout: bn('86400').toString(), // 24 hr
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      defaultThreshold: bn('0'),
+      defaultThreshold: fp('0.02').add(fp('0.005')).toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
     {
       isFiat: false,
       targetUnitFeed0: false,
       fee: ONE_PERCENT_FEE,
-      feed1: ZERO_ADDRESS,
-      timeout1: bn('0'),
-      error1: bn('0'),
+      feed1: networkConfig[chainId].chainlinkFeeds.BTC, // {UoA/target}
+      timeout1: bn('1200'), // 20 min
+      error1: fp('0.001').toString(), // 0.1%
     }
   )
   await collateral.deployed()
 
-  console.log(`Deployed PAXG to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed cbBTC to ${hre.network.name} (${chainId}): ${collateral.address}`)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  assetCollDeployments.collateral.PAXG = collateral.address
-  assetCollDeployments.erc20s.PAXG = networkConfig[chainId].tokens.PAXG
+  assetCollDeployments.collateral.DMR100cbBTC = collateral.address
+  assetCollDeployments.erc20s.DMR100cbBTC = networkConfig[chainId].tokens.cbBTC
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
