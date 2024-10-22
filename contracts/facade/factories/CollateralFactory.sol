@@ -11,9 +11,11 @@ contract CollateralFactory {
     event DemurrageCollateralDeployed(address indexed collateral);
     event UnpricedCollateralDeployed(address indexed collateral);
 
-    mapping(address coll => uint192 feePerSecond) public demurrageDeployments; // not unique by erc20
+    /// @notice collateral address => fee per second
+    mapping(address => uint192) public demurrageDeployments;
 
-    mapping(address erc20 => address coll) public unpricedDeployments; // unique by erc20
+    /// @notice erc20 address => collateral address
+    mapping(address => address) public unpricedDeployments;
 
     bytes32 public constant USD = bytes32("USD");
 

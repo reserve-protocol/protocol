@@ -38,6 +38,8 @@ contract DemurrageCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
+    uint48 public constant t0 = 1704067200; // {s} Jan 1st 2024 00:00:00 GMT+0000
+
     bool internal immutable isFiat;
     bool internal immutable targetUnitFeed0; // if true: feed0 is {target/tok}
 
@@ -50,8 +52,6 @@ contract DemurrageCollateral is FiatCollateral {
     uint192 internal immutable error1; // {1}
 
     // immutable in spirit -- cannot be because of FiatCollateral's targetPerRef() call
-    // TODO would love to find a way to make these immutable for gas reasons
-    uint48 public t0; // {s} deployment timestamp
     uint192 public fee; // {1/s} demurrage fee; target unit deflation
 
     /// @param config.chainlinkFeed => feed0: {UoA/tok} or {target/tok}
@@ -81,7 +81,6 @@ contract DemurrageCollateral is FiatCollateral {
         error0 = config.oracleError;
         error1 = demurrageConfig.error1;
 
-        t0 = uint48(block.timestamp);
         fee = demurrageConfig.fee;
     }
 
