@@ -9,7 +9,8 @@ import "../../plugins/assets/DemurrageCollateral.sol";
 contract DemurrageCollateralFactory {
     event DemurrageCollateralDeployed(address indexed collateral);
 
-    mapping(address coll => uint192 feePerSecond) public demurrageDeployments;
+    // collateral address => fee per second
+    mapping(address => uint192) public demurrageDeployments;
 
     bytes32 public constant USD = bytes32("USD");
 
