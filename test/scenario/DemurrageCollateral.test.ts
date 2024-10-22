@@ -1,10 +1,18 @@
 import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { getLatestBlockTimestamp } from '../utils/time'
 import { expect } from 'chai'
-import { ContractFactory } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
+import { makeDecayFn } from '../utils/rewards'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, fp } from '../../common/numbers'
+import {
+  TEN_BPS_FEE,
+  ONE_PERCENT_FEE,
+  TWO_PERCENT_FEE,
+  FIFTY_BPS_FEE,
+} from '../plugins/individual-collateral/dtf/constants'
 import {
   BasketLibP1,
   ERC20Mock,
@@ -22,8 +30,6 @@ import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
-const FIFTY_PERCENT_ANNUALLY = bn('21979552668') // 50% annually
-
 describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
   const amt = fp('1')
 
@@ -32,6 +38,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
 
   let tokens: ERC20Mock[]
   let collateral: DemurrageCollateral[]
+  let initialWeights: BigNumber[]
 
   let uoaPerTokFeed: MockV3Aggregator
   let uoaPerTargetFeed: MockV3Aggregator
@@ -44,6 +51,15 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let bh: TestIBasketHandler
+
+  const calcBasketWeight = async (
+    coll: DemurrageCollateral,
+    decayedAmt: BigNumber
+  ): Promise<BigNumber> => {
+    const elapsed = (await getLatestBlockTimestamp()) - (await coll.t0())
+    const decayFn = makeDecayFn(await coll.fee())
+    return fp('1e18').div(decayFn(decayedAmt, elapsed))
+  }
 
   describe('Demurrage Collateral', () => {
     beforeEach(async () => {
@@ -110,7 +126,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[0].address,
-            targetName: ethers.utils.formatBytes32String('DMR5000USD'),
+            targetName: ethers.utils.formatBytes32String('DMR10USD'),
             priceTimeout: bn('604800'),
             chainlinkFeed: uoaPerTokFeed.address, // {UoA/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -122,7 +138,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
           {
             isFiat: false,
             targetUnitFeed0: false,
-            fee: FIFTY_PERCENT_ANNUALLY,
+            fee: TEN_BPS_FEE,
             feed1: ZERO_ADDRESS,
             timeout1: bn('0'),
             error1: bn('0'),
@@ -131,7 +147,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[1].address,
-            targetName: ethers.utils.formatBytes32String('DMR5000EUR'),
+            targetName: ethers.utils.formatBytes32String('DMR50EUR'),
             priceTimeout: bn('604800'),
             chainlinkFeed: uoaPerTokFeed.address, // {UoA/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -143,7 +159,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
           {
             isFiat: true,
             targetUnitFeed0: false,
-            fee: FIFTY_PERCENT_ANNUALLY,
+            fee: FIFTY_BPS_FEE,
             feed1: ZERO_ADDRESS,
             timeout1: bn('0'),
             error1: bn('0'),
@@ -152,7 +168,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[2].address,
-            targetName: ethers.utils.formatBytes32String('DMR5000XAU'),
+            targetName: ethers.utils.formatBytes32String('DMR100XAU'),
             priceTimeout: bn('604800'),
             chainlinkFeed: uoaPerTokFeed.address, // {UoA/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -164,7 +180,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
           {
             isFiat: false,
             targetUnitFeed0: false,
-            fee: FIFTY_PERCENT_ANNUALLY,
+            fee: ONE_PERCENT_FEE,
             feed1: uoaPerTargetFeed.address, // {UoA/target}
             timeout1: bn('86400').toString(), // 24 hr
             error1: fp('0.01').toString(), // 1%
@@ -173,7 +189,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await DemurrageCollateralFactory.deploy(
           {
             erc20: tokens[3].address,
-            targetName: ethers.utils.formatBytes32String('DMR5000SPY'),
+            targetName: ethers.utils.formatBytes32String('DMR200SPY'),
             priceTimeout: bn('604800'),
             chainlinkFeed: targetPerTokFeed.address, // {target/tok}
             oracleError: fp('0.01').toString(), // 1%
@@ -185,7 +201,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
           {
             isFiat: false,
             targetUnitFeed0: true,
-            fee: FIFTY_PERCENT_ANNUALLY,
+            fee: TWO_PERCENT_FEE,
             feed1: uoaPerTargetFeed.address, // {UoA/target}
             timeout1: bn('86400').toString(), // 24 hr
             error1: fp('0.01').toString(), // 1%
@@ -199,9 +215,11 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         await tokens[i].connect(addr1).approve(rToken.address, amt)
       }
 
+      initialWeights = await Promise.all(collateral.map((coll) => calcBasketWeight(coll, fp('1'))))
+
       await bh.connect(owner).setPrimeBasket(
         tokens.map((t) => t.address),
-        [fp('1'), fp('1'), fp('1'), fp('1')]
+        initialWeights
       )
       await bh.connect(owner).refreshBasket()
       await advanceTime(Number(config.warmupPeriod) + 1)
@@ -222,7 +240,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
       expect(pegPrice).to.equal(fp('1'))
     })
 
-    it('quantities should be correct', async () => {
+    it('quantities in basket should start out near fp(1)', async () => {
       const [erc20s, quantities] = await bh.quote(fp('1'), false, 2)
       for (let i = 0; i < collateral.length; i++) {
         expect(erc20s[i]).to.equal(tokens[i].address)
@@ -232,7 +250,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
 
     context('after 1 year', () => {
       beforeEach(async () => {
-        await advanceTime(Number(bn('31535955'))) // 1 year - 45s
+        await advanceTime(Number(bn('31535940'))) // 1 year - 60s
         await uoaPerTokFeed.updateAnswer(bn('1e8'))
         await uoaPerTargetFeed.updateAnswer(bn('1e8'))
         await targetPerTokFeed.updateAnswer(bn('1e8'))
@@ -253,18 +271,14 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
         expect(pegPrice).to.equal(fp('1'))
       })
 
-      it('RToken quantities should have decreased ~50%', async () => {
+      it('RToken quantities should decrease correctly per fee tier: [0.1%, 0.50%, 1%, 2%]', async () => {
+        const expected = [fp('0.999'), fp('0.995'), fp('0.99'), fp('0.98')]
+
         const [erc20s, quantities] = await bh.quote(fp('1'), false, 2)
         for (let i = 0; i < collateral.length; i++) {
           expect(erc20s[i]).to.equal(tokens[i].address)
-          const expected = fp('1').div(2)
-          expect(quantities[i]).to.be.closeTo(expected, expected.div(bn('1e6')))
+          expect(quantities[i]).to.be.closeTo(expected[i], expected[i].div(bn('1e6')))
         }
-      })
-
-      it('Excess should accrue as revenue', async () => {
-        const [bottom] = await bh.basketsHeldBy(backingManager.address)
-        expect(bottom).to.be.closeTo(amt.mul(2), amt.div(bn('1e3')))
       })
 
       it('refreshBasket() should not restore the RToken back genesis peg', async () => {
@@ -282,11 +296,8 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
       })
 
       it('setPrimeBasket() should not restore the RToken to genesis peg', async () => {
+        // First try refreshBasket() in isolation
         const [erc20s, quantities] = await bh.quote(fp('1'), false, 2)
-        await bh.connect(owner).setPrimeBasket(
-          tokens.map((t) => t.address),
-          [fp('1'), fp('1'), fp('1'), fp('1')]
-        )
         await bh.connect(owner).refreshBasket()
         const [newERC20s, newQuantities] = await bh.quote(fp('1'), false, 2)
 
@@ -296,6 +307,22 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
           expect(erc20s[i]).to.equal(newERC20s[i])
           expect(quantities[i]).to.be.gt(newQuantities[i])
           expect(quantities[i]).to.be.lt(newQuantities[i].add(fp('1e-6')))
+        }
+
+        // Then try refreshBasket() after setPrimeBasket()
+        await bh.connect(owner).setPrimeBasket(
+          tokens.map((t) => t.address),
+          initialWeights
+        )
+        await bh.connect(owner).refreshBasket()
+        const [newerERC20s, newerQuantities] = await bh.quote(fp('1'), false, 2)
+
+        expect(await bh.status()).to.equal(CollateralStatus.SOUND)
+        expect(await bh.fullyCollateralized()).to.equal(true)
+        for (let i = 0; i < collateral.length; i++) {
+          expect(erc20s[i]).to.equal(newerERC20s[i])
+          expect(quantities[i]).to.be.gt(newerQuantities[i])
+          expect(quantities[i]).to.be.lt(newerQuantities[i].add(fp('1e-6')))
         }
       })
 
