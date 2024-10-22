@@ -80,8 +80,8 @@ async function main() {
       'collateral-plugins/verify_ethx.ts',
       'collateral-plugins/verify_apxeth.ts',
       'collateral-plugins/verify_USDe.ts',
-      'collateral-plugins/verify_pyusd.ts',
-      'collateral-plugins/verify_paxg.ts'
+      'collateral-plugins/verify_pyusd_100.ts',
+      'collateral-plugins/verify_paxg_100.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -92,7 +92,7 @@ async function main() {
       'collateral-plugins/verify_cbeth.ts',
       'assets/verify_stg.ts',
       'collateral-plugins/verify_cbbtc.ts',
-      'collateral-plugins/verify_eurc.ts'
+      'collateral-plugins/verify_eurc_100.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One
@@ -101,7 +101,8 @@ async function main() {
       'collateral-plugins/verify_cusdcv3.ts',
       'collateral-plugins/verify_convex_crvusd_usdc.ts',
       'collateral-plugins/verify_convex_crvusd_usdt.ts',
-      'collateral-plugins/verify_usdm.ts'
+      'collateral-plugins/verify_usdm.ts',
+      'collateral-plugins/verify_arb_100.ts'
     )
   }
 

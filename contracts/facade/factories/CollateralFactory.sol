@@ -11,6 +11,8 @@ contract CollateralFactory {
     event DemurrageCollateralDeployed(address indexed collateral);
     event UnpricedCollateralDeployed(address indexed collateral);
 
+    mapping(address coll => uint192 feePerSecond) public demurrageDeployments;
+
     bytes32 public constant USD = bytes32("USD");
 
     function deployNewDemurrageCollateral(
@@ -22,6 +24,7 @@ contract CollateralFactory {
         }
 
         newCollateral = address(new DemurrageCollateral(config, demurrageConfig));
+        demurrageDeployments[newCollateral] = demurrageConfig.fee;
         emit DemurrageCollateralDeployed(newCollateral);
     }
 

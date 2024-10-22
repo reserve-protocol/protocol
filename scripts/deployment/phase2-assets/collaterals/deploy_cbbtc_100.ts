@@ -44,7 +44,7 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy EURC Demurrage Collateral - EURC  **************************/
+  /********  Deploy cbBTC Demurrage Collateral - cbBTC  **************************/
 
   if (!baseL2Chains.includes(hre.network.name)) {
     throw new Error(`Unsupported chainId: ${chainId}`)
@@ -56,33 +56,33 @@ async function main() {
 
   const collateral = <DemurrageCollateral>await DemurrageCollateralFactory.connect(deployer).deploy(
     {
-      erc20: networkConfig[chainId].tokens.EURC,
-      targetName: hre.ethers.utils.formatBytes32String('DMR100EUR'),
+      erc20: networkConfig[chainId].tokens.cbBTC,
+      targetName: hre.ethers.utils.formatBytes32String('DMR100BTC'),
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.EURC,
-      oracleError: fp('0.003').toString(), // 0.3%
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.cbBTC, // {UoA/tok}
+      oracleError: fp('0.005').toString(), // 0.5%
       oracleTimeout: bn('86400').toString(), // 24 hr
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      defaultThreshold: fp('0.02').add(fp('0.003')).toString(),
+      defaultThreshold: fp('0.02').add(fp('0.005')).toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
     {
       isFiat: false,
       targetUnitFeed0: false,
       fee: ONE_PERCENT_FEE,
-      feed1: networkConfig[chainId].chainlinkFeeds.EUR,
-      timeout1: bn('86400').toString(), // 24 hr
-      error1: fp('0.003').toString(), // 0.3%
+      feed1: networkConfig[chainId].chainlinkFeeds.BTC, // {UoA/target}
+      timeout1: bn('1200'), // 20 min
+      error1: fp('0.001').toString(), // 0.1%
     }
   )
   await collateral.deployed()
 
-  console.log(`Deployed EURC to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed cbBTC to ${hre.network.name} (${chainId}): ${collateral.address}`)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  assetCollDeployments.collateral.EURC = collateral.address
-  assetCollDeployments.erc20s.EURC = networkConfig[chainId].tokens.EURC
+  assetCollDeployments.collateral.DMR100cbBTC = collateral.address
+  assetCollDeployments.erc20s.DMR100cbBTC = networkConfig[chainId].tokens.cbBTC
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

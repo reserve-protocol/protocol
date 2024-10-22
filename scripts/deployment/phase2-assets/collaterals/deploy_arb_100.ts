@@ -1,10 +1,10 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { baseL2Chains, networkConfig } from '../../../../common/configuration'
+import { arbitrumL2Chains, networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
-import { CollateralStatus } from '../../../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -16,7 +16,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   ONE_PERCENT_FEE,
 } from '../../../../test/plugins/individual-collateral/dtf/constants'
-import { priceTimeout } from '../../utils'
+import { priceTimeout, getArbOracleError } from '../../utils'
 import { DemurrageCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -44,9 +44,9 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy cbBTC Demurrage Collateral - cbBTC  **************************/
+  /********  Deploy ARB Demurrage Collateral - ARB  **************************/
 
-  if (!baseL2Chains.includes(hre.network.name)) {
+  if (!arbitrumL2Chains.includes(hre.network.name)) {
     throw new Error(`Unsupported chainId: ${chainId}`)
   }
 
@@ -54,35 +54,37 @@ async function main() {
     'DemurrageCollateral'
   )
 
+  const oracleError = getArbOracleError(hre.network.name)
+
   const collateral = <DemurrageCollateral>await DemurrageCollateralFactory.connect(deployer).deploy(
     {
-      erc20: networkConfig[chainId].tokens.cbBTC,
-      targetName: hre.ethers.utils.formatBytes32String('DMR100BTC'),
+      erc20: networkConfig[chainId].tokens.ARB,
+      targetName: hre.ethers.utils.formatBytes32String('DMR100ARB'),
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.cbBTC, // {UoA/tok}
-      oracleError: fp('0.005').toString(), // 0.5%
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ARB, // {UoA/tok}
+      oracleError: oracleError.toString(),
       oracleTimeout: bn('86400').toString(), // 24 hr
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      defaultThreshold: fp('0.02').add(fp('0.005')).toString(),
+      defaultThreshold: bn('0'),
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
     {
       isFiat: false,
       targetUnitFeed0: false,
       fee: ONE_PERCENT_FEE,
-      feed1: networkConfig[chainId].chainlinkFeeds.BTC, // {UoA/target}
-      timeout1: bn('1200'), // 20 min
-      error1: fp('0.001').toString(), // 0.1%
+      feed1: ZERO_ADDRESS,
+      timeout1: bn('0'),
+      error1: bn('0'),
     }
   )
   await collateral.deployed()
 
-  console.log(`Deployed cbBTC to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed ARB to ${hre.network.name} (${chainId}): ${collateral.address}`)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  assetCollDeployments.collateral.cbBTC = collateral.address
-  assetCollDeployments.erc20s.cbBTC = networkConfig[chainId].tokens.cbBTC
+  assetCollDeployments.collateral.DMR100ARB = collateral.address
+  assetCollDeployments.erc20s.DMR100ARB = networkConfig[chainId].tokens.ARB
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

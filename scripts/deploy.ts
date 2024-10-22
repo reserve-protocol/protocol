@@ -91,7 +91,7 @@ async function main() {
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
       'phase2-assets/collaterals/deploy_pyusd.ts',
-      'phase2-assets/collaterals/deploy_paxg.ts'
+      'phase2-assets/collaterals/deploy_paxg_100.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -104,8 +104,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
-      'phase2-assets/collaterals/deploy_cbbtc.ts',
-      'phase2-assets/collaterals/deploy_eurc.ts',
+      'phase2-assets/collaterals/deploy_cbbtc_100.ts',
+      'phase2-assets/collaterals/deploy_eurc_100.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
@@ -120,7 +120,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_usdm.ts',
-      'phase2-assets/assets/deploy_arb.ts'
+      'phase2-assets/assets/deploy_arb.ts',
+      'phase2-assets/assets/deploy_arb_100.ts'
     )
   }
 

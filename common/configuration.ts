@@ -117,13 +117,19 @@ export interface ITokens {
   USDM?: string
   wUSDM?: string
 
-  // Demurrage collateral
   PAXG?: string
   cbBTC?: string
   EURC?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
+
+export interface IDemurrageCollateral {
+  DMR100PAXG?: string
+  DMR100cbBTC?: string
+  DMR100EURC?: string
+  DMR100ARB?: string
+}
 
 export interface IFeeds {
   stETHETH?: string
