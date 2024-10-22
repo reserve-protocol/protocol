@@ -5,6 +5,8 @@ import { ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
+import { MAX_UINT192 } from '../../common/constants'
+import { getTrade } from '../utils/trades'
 import {
   BasketLibP1,
   ERC20MockDecimals,
@@ -12,7 +14,9 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIMain,
+  TestIRevenueTrader,
   TestIRToken,
+  RTokenAsset,
   UnpricedCollateral,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
@@ -38,6 +42,9 @@ describeP1(`Unpriced Collateral - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let bh: TestIBasketHandler
+  let rTokenAsset: RTokenAsset
+  let rsrTrader: TestIRevenueTrader
+  let rsr: ERC20MockDecimals
 
   describe('Unpriced Collateral', () => {
     beforeEach(async () => {
@@ -45,9 +52,17 @@ describeP1(`Unpriced Collateral - P${IMPLEMENTATION}`, () => {
 
       // Deploy fixture
       let erc20s: ERC20MockDecimals[]
-      ;({ assetRegistry, backingManager, config, main, rToken, erc20s } = await loadFixture(
-        defaultFixtureNoBasket
-      ))
+      ;({
+        assetRegistry,
+        backingManager,
+        config,
+        main,
+        rToken,
+        erc20s,
+        rTokenAsset,
+        rsrTrader,
+        rsr,
+      } = await loadFixture(defaultFixtureNoBasket))
 
       // Setup Factories
       const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
@@ -134,6 +149,10 @@ describeP1(`Unpriced Collateral - P${IMPLEMENTATION}`, () => {
         expect(await collateral[i].bal(addr1.address)).to.equal(
           (await tokens[i].balanceOf(addr1.address)).mul(bn('10').pow(18 - decimals[i]))
         )
+
+        const [low, high] = await collateral[i].price()
+        expect(low).to.equal(0)
+        expect(high).to.equal(MAX_UINT192)
       }
     })
 
@@ -163,6 +182,7 @@ describeP1(`Unpriced Collateral - P${IMPLEMENTATION}`, () => {
     it('should not be able to rebalance because never uncollateralized', async () => {
       await rToken.connect(addr1).issue(amt)
       await expect(backingManager.rebalance(0)).to.be.revertedWith('already collateralized')
+      await expect(rTokenAsset.tryPrice()).to.be.revertedWith('invalid price')
     })
 
     it('even IF it were to become undercollateralized by way of a hacked token, rebalance STILL should not haircut', async () => {
@@ -172,6 +192,32 @@ describeP1(`Unpriced Collateral - P${IMPLEMENTATION}`, () => {
       await tokens[0].burn(backingManager.address, 1)
       expect(await bh.fullyCollateralized()).to.equal(false)
       await expect(backingManager.rebalance(0)).to.be.revertedWith('BUs unpriced')
+      await expect(rTokenAsset.tryPrice()).to.be.revertedWith('invalid price')
+    })
+
+    it('can coexist with appreciating collateral and process RSR revenue auctions like normal', async () => {
+      const initialStRSRBalance = await rsr.balanceOf(await main.stRSR())
+
+      // Simulate appreciation
+      await tokens[4].mint(backingManager.address, amt)
+      await backingManager.forwardRevenue([tokens[4].address])
+      await rsrTrader.manageTokens([tokens[4].address], [0])
+      expect(await rsrTrader.tradesOpen()).to.equal(1)
+
+      // Bid in dutch auction
+      await advanceTime(config.dutchAuctionLength.toNumber() - 5)
+      const t = await ethers.getContractAt(
+        'DutchTrade',
+        (
+          await getTrade(rsrTrader, tokens[4].address)
+        ).address
+      )
+      await rsr.connect(addr1).mint(addr1.address, amt)
+      await rsr.connect(addr1).approve(t.address, amt)
+      await t.connect(addr1).bid()
+
+      // RSR should have been rewarded
+      expect(await rsr.balanceOf(await main.stRSR())).to.be.gt(initialStRSRBalance)
     })
   })
 })
