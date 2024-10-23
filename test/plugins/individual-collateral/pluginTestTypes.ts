@@ -100,6 +100,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   // toggle on or off: tests that focus on price changes
   itChecksPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
 
+  // toggle on or off: tests that focus on price change around refPerTok manipulation
+  itChecksPriceChangesRefPerTok: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // toggle on or off: tests that focus on revenue hiding (off if plugin does not hide revenue)
   itHasRevenueHiding: Mocha.TestFunction | Mocha.PendingTestFunction
 

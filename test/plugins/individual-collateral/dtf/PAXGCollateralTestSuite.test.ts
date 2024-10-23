@@ -1,54 +1,51 @@
 import collateralTests from '../collateralTests'
-import { setStorageAt, getStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, mintSFrax } from './helpers'
+import { resetFork, mintPAXG } from './helpers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
-import {
-  ERC20Mock,
-  IERC20Metadata,
-  MockV3Aggregator,
-  MockV3Aggregator__factory,
-  TestICollateral,
-} from '../../../../typechain'
+import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
-  SFRAX,
+  DELAY_UNTIL_DEFAULT,
+  PAXG,
+  ONE_PERCENT_FEE,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
-  DEFAULT_THRESHOLD,
-  DELAY_UNTIL_DEFAULT,
-  FRAX_USD_PRICE_FEED,
+  XAU_USD_PRICE_FEED,
 } from './constants'
 
 /*
   Define deployment functions
 */
 
-export const defaultSFraxCollateralOpts: CollateralOpts = {
-  erc20: SFRAX,
-  targetName: ethers.utils.formatBytes32String('USD'),
+interface PAXGCollateralOpts extends CollateralOpts {
+  fee?: BigNumberish
+}
+
+export const defaultPAXGCollateralOpts: PAXGCollateralOpts = {
+  erc20: PAXG,
+  targetName: ethers.utils.formatBytes32String('DMR100XAU'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: FRAX_USD_PRICE_FEED,
+  chainlinkFeed: XAU_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: DEFAULT_THRESHOLD,
-  delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  revenueHiding: fp('0'),
+  fee: ONE_PERCENT_FEE,
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
-  opts = { ...defaultSFraxCollateralOpts, ...opts }
+export const deployCollateral = async (opts: PAXGCollateralOpts = {}): Promise<TestICollateral> => {
+  opts = { ...defaultPAXGCollateralOpts, ...opts }
 
-  const SFraxCollateralFactory: ContractFactory = await ethers.getContractFactory('SFraxCollateral')
-  const collateral = <TestICollateral>await SFraxCollateralFactory.deploy(
+  const PAXGCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'DemurrageCollateral'
+  )
+  const collateral = <TestICollateral>await PAXGCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -57,10 +54,17 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       oracleError: opts.oracleError,
       oracleTimeout: opts.oracleTimeout,
       maxTradeVolume: opts.maxTradeVolume,
-      defaultThreshold: opts.defaultThreshold,
-      delayUntilDefault: opts.delayUntilDefault,
+      defaultThreshold: bn('0'),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
-    opts.revenueHiding,
+    {
+      isFiat: false,
+      targetUnitFeed0: false,
+      fee: opts.fee,
+      feed1: ZERO_ADDRESS,
+      timeout1: bn(0),
+      error1: bn(0),
+    },
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -71,15 +75,15 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
   return collateral
 }
 
-const chainlinkDefaultAnswer = bn('1e8')
+const chainlinkDefaultAnswer = bn('266347300000') // $2,663.473
 
 type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
-  opts: CollateralOpts = {}
+  opts: PAXGCollateralOpts = {}
 ): Fixture<CollateralFixtureContext> => {
-  const collateralOpts = { ...defaultSFraxCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultPAXGCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
@@ -91,8 +95,6 @@ const makeCollateralFixtureContext = (
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
-    const sfrax = (await ethers.getContractAt('IERC20Metadata', SFRAX)) as IERC20Metadata
-    const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
     const tok = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
 
@@ -101,8 +103,6 @@ const makeCollateralFixtureContext = (
       collateral,
       chainlinkFeed,
       tok,
-      sfrax,
-      rewardToken,
     }
   }
 
@@ -115,51 +115,25 @@ const mintCollateralTo: MintCollateralFunc<CollateralFixtureContext> = async (
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintSFrax(ctx.tok, amount, recipient)
+  await mintPAXG(ctx.tok, amount, recipient)
 }
 
-const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
-  const lastRound = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceTargetPerRef = async () => {}
 
-const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
-  const lastRound = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseTargetPerRef = async () => {}
 
-// prettier-ignore
-const reduceRefPerTok = async (
-  ctx: CollateralFixtureContext,
-  pctDecrease: BigNumberish 
-) => {
-  const storedTotalAssets = BigNumber.from(await getStorageAt(ctx.tok.address, 9))
-  const newStoredTotalAssets = storedTotalAssets.sub(storedTotalAssets.mul(pctDecrease).div(100))
-  await setStorageAt(ctx.tok.address, 9, newStoredTotalAssets)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceRefPerTok = async () => {}
 
-// prettier-ignore
-const increaseRefPerTok = async (
-  ctx: CollateralFixtureContext,
-  pctIncrease: BigNumberish 
-
-) => {
-  const storedTotalAssets = BigNumber.from(await getStorageAt(ctx.tok.address, 9))
-  const newStoredTotalAssets = storedTotalAssets.add(storedTotalAssets.mul(pctIncrease).div(100))
-  await setStorageAt(ctx.tok.address, 9, newStoredTotalAssets)
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseRefPerTok = async () => {}
 
 const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
-
-  const refPerTok = await ctx.collateral.refPerTok()
-  return clData.answer
-    .mul(bn(10).pow(18 - clDecimals))
-    .mul(refPerTok)
-    .div(fp('1'))
+  return clData.answer.mul(bn(10).pow(18 - clDecimals))
 }
 
 /*
@@ -192,17 +166,17 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it,
-  itChecksTargetPerRefDefaultUp: it,
-  itChecksNonZeroDefaultThreshold: it,
-  itChecksRefPerTokDefault: it,
+  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefaultUp: it.skip,
+  itChecksNonZeroDefaultThreshold: it.skip,
+  itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
-  itChecksPriceChangesRefPerTok: it,
+  itChecksPriceChangesRefPerTok: it.skip,
   itHasRevenueHiding: it.skip,
   resetFork,
-  collateralName: 'SFraxCollateral',
+  collateralName: 'PAXG Demurrage Collateral',
   chainlinkDefaultAnswer,
-  itIsPricedByPeg: true,
+  itIsAXGCricedByPeg: true,
   toleranceDivisor: bn('1e8'), // 1-part in 100 million
 }
 

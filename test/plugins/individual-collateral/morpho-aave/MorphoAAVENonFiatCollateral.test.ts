@@ -228,6 +228,7 @@ const makeAaveNonFiatCollateralTestSuite = (
     itChecksTargetPerRefDefaultUp: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
+    itChecksPriceChangesRefPerTok: it,
     itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
     itIsPricedByPeg: true,

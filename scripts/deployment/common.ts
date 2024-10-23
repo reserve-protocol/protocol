@@ -1,5 +1,11 @@
 import fs from 'fs'
-import { ITokens, IComponents, IImplementations, IPools } from '../../common/configuration'
+import {
+  IDemurrageCollateral,
+  ITokens,
+  IComponents,
+  IImplementations,
+  IPools,
+} from '../../common/configuration'
 
 // This file is intended to have minimal imports, so that it can be used from tasks if necessary
 
@@ -32,8 +38,8 @@ export interface IDeployments {
 
 export interface IAssetCollDeployments {
   assets: ITokens
-  collateral: ITokens & IPools
-  erc20s: ITokens & IPools
+  collateral: ITokens & IPools & IDemurrageCollateral
+  erc20s: ITokens & IPools & IDemurrageCollateral
 }
 
 export interface IRTokenDeployments {

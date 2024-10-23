@@ -268,6 +268,7 @@ const opts = {
   itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itChecksPriceChangesRefPerTok: it,
   itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
   resetFork,
