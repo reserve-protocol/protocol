@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "../p1/mixins/BasketLib.sol";
 import "../p1/BasketHandler.sol";
+import "../p1/Main.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 import "../p1/Deployer.sol";
@@ -27,7 +28,7 @@ contract SpellBasketNormalizer {
     ) external {
         require(erc20s.length == targetAmts.length, "SBN: mismatch");
 
-        IMain main = rToken.main();
+        MainP1 main = MainP1(address(rToken.main()));
         IAssetRegistry assetRegistry = main.assetRegistry();
         IBasketHandler basketHandler = main.basketHandler();
 
@@ -45,7 +46,6 @@ contract SpellBasketNormalizer {
 
         basketHandler.forceSetPrimeBasket(erc20s, newTargetAmts);
 
-        // TODO: Should role stuff happen here or outside?
-        //       Pros of doing it outside would mean this can be a generic use contract
+        main.revokeRole(main.OWNER_ROLE(), address(this));
     }
 }

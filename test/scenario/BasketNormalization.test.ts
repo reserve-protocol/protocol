@@ -195,7 +195,8 @@ describeP1(`Basket Normalization Test (Spell)`, () => {
         [ethERC20.address, usdERC20.address], // Assets
         [fp('1'), fp('2')] // Next Ratio by Quantity: 33% ETH + 66% USD
       )
-      await main.connect(owner).revokeRole(await main.OWNER_ROLE(), basketNormalizerSpell.address)
+
+      expect(await main.hasRole(await main.OWNER_ROLE(), basketNormalizerSpell.address)).to.be.false
 
       const nextBasket = await bh.getPrimeBasket()
       expect(nextBasket.targetAmts[0]).to.greaterThanOrEqual(fp('24.9'))
