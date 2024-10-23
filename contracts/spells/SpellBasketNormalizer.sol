@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import "../p1/mixins/BasketLib.sol";
+import "../p1/BasketHandler.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
 import "../p1/Deployer.sol";
@@ -24,11 +25,13 @@ contract SpellBasketNormalizer {
         IERC20[] calldata erc20s,
         uint192[] calldata targetAmts
     ) external {
-        require(erc20s.length == targetAmts.length);
+        require(erc20s.length == targetAmts.length, "SBN: mismatch");
 
         IMain main = rToken.main();
         IAssetRegistry assetRegistry = main.assetRegistry();
         IBasketHandler basketHandler = main.basketHandler();
+
+        require(BasketHandlerP1(address(basketHandler)).reweightable(), "SBN: reweightable");
 
         assetRegistry.refresh();
         (uint192 low, uint192 high) = basketHandler.price(false);
