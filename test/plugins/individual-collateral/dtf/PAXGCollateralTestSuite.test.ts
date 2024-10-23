@@ -133,12 +133,7 @@ const increaseRefPerTok = async () => {}
 const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
-
-  const refPerTok = await ctx.collateral.refPerTok()
-  return clData.answer
-    .mul(bn(10).pow(18 - clDecimals))
-    .mul(refPerTok)
-    .div(fp('1'))
+  return clData.answer.mul(bn(10).pow(18 - clDecimals))
 }
 
 /*
