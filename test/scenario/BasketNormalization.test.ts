@@ -189,6 +189,8 @@ describeP1(`Basket Normalization Test (Spell)`, () => {
       expect(currentBasket.targetAmts[0]).to.equal(fp('1'))
       expect(currentBasket.targetAmts[1]).to.equal(fp('1'))
 
+      const initialPrice = await bh['price(bool)'](false)
+
       await main.connect(owner).grantRole(await main.OWNER_ROLE(), basketNormalizerSpell.address)
       await basketNormalizerSpell.setNormalizedBasket(
         rToken.address,
@@ -199,8 +201,14 @@ describeP1(`Basket Normalization Test (Spell)`, () => {
       expect(await main.hasRole(await main.OWNER_ROLE(), basketNormalizerSpell.address)).to.be.false
 
       const nextBasket = await bh.getPrimeBasket()
-      expect(nextBasket.targetAmts[0]).to.greaterThanOrEqual(fp('24.9'))
-      expect(nextBasket.targetAmts[1]).to.greaterThanOrEqual(fp('49.9'))
+      expect(nextBasket.targetAmts[0]).to.be.greaterThanOrEqual(fp('24.9'))
+      expect(nextBasket.targetAmts[1]).to.be.greaterThanOrEqual(fp('49.9'))
+      expect(nextBasket.targetAmts[0]).to.be.lessThanOrEqual(fp('25'))
+      expect(nextBasket.targetAmts[1]).to.be.lessThanOrEqual(fp('50'))
+
+      const price = await bh['price(bool)'](false)
+      expect(price.low).to.be.closeTo(initialPrice.low, 1)
+      expect(price.high).to.be.closeTo(initialPrice.high, 1)
     })
   })
 })
