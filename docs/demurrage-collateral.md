@@ -65,6 +65,8 @@ This is identical to the calculation for the `refPerTok()` function in the [Demu
 weight = 1 / (1 - fee) ^ seconds;
 ```
 
+`fee()` available on DemurrageCollateral contract
+
 ### Implementation
 
 [DemurrageCollateral.sol](../contracts/plugins/assets/DemurrageCollateral.sol) implements a generalized demurrage collateral plugin that should support almost all use-cases

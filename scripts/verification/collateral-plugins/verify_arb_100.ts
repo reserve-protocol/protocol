@@ -49,7 +49,7 @@ async function main() {
 
   await verifyContract(
     chainId,
-    assetCollDeployments.collateral.ARB,
+    assetCollDeployments.collateral.DMR100ARB,
     [
       {
         erc20: networkConfig[chainId].tokens.ARB,

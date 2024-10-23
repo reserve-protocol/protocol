@@ -46,12 +46,12 @@ async function main() {
 
   const collateral = await hre.ethers.getContractAt(
     'ICollateral',
-    assetCollDeployments.collateral.cbBTC!
+    assetCollDeployments.collateral.DMR100cbBTC!
   )
 
   await verifyContract(
     chainId,
-    assetCollDeployments.collateral.cbBTC,
+    assetCollDeployments.collateral.DMR100cbBTC,
     [
       {
         erc20: networkConfig[chainId].tokens.cbBTC,
