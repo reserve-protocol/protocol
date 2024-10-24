@@ -16,7 +16,13 @@ import {
 } from './fixtures'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { whileImpersonating } from '../../utils/impersonation'
-import { IGovParams, IGovRoles, IRTokenSetup, networkConfig } from '../../../common/configuration'
+import {
+  IConfig,
+  IGovParams,
+  IGovRoles,
+  IRTokenSetup,
+  networkConfig,
+} from '../../../common/configuration'
 import {
   advanceBlocks,
   advanceTime,
@@ -51,7 +57,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestICollateral,
-  TestIDeployer,
+  DeployerP1,
   TestIMain,
   TestIRevenueTrader,
   TestIRToken,
@@ -437,6 +443,7 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         it('lotPrice (deprecated) is equal to price()', async () => {
+          // @ts-expect-error -- this is deprecated but whatever
           const lotPrice = await collateral.lotPrice()
           const price = await collateral.price()
           expect(price.length).to.equal(2)
@@ -636,7 +643,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let owner: SignerWithAddress
       let addr1: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let defaultFixture: Fixture<DefaultFixture>
 
@@ -657,12 +664,12 @@ export default function fn<X extends CollateralFixtureContext>(
       let rsrTrader: TestIRevenueTrader
       let rsr: ERC20Mock
 
-      let deployer: TestIDeployer
+      let deployer: DeployerP1
       let facadeWrite: FacadeWrite
       let govParams: IGovParams
       let govRoles: IGovRoles
 
-      const config = {
+      const config: IConfig = {
         dist: {
           rTokenDist: bn(0), // 0% RToken
           rsrDist: bn(10000), // 100% RSR
@@ -689,6 +696,7 @@ export default function fn<X extends CollateralFixtureContext>(
           pctRate: fp('0.05'), // 5%
         },
         reweightable: false,
+        enableIssuancePremium: false,
       }
 
       interface IntegrationFixture {
@@ -709,8 +717,8 @@ export default function fn<X extends CollateralFixtureContext>(
       before(async () => {
         defaultFixture = await getDefaultFixture(collateralName)
         chainId = await getChainId(hre)
-        if (useEnv('FORK_NETWORK').toLowerCase() === 'base') chainId = 8453
-        if (useEnv('FORK_NETWORK').toLowerCase() === 'arbitrum') chainId = 42161
+        if (useEnv('FORK_NETWORK').toLowerCase() === 'base') chainId = '8453'
+        if (useEnv('FORK_NETWORK').toLowerCase() === 'arbitrum') chainId = '42161'
         if (!networkConfig[chainId]) {
           throw new Error(`Missing network configuration for ${hre.network.name}`)
         }
@@ -758,7 +766,12 @@ export default function fn<X extends CollateralFixtureContext>(
               mandate: 'mandate',
               params: config,
             },
-            rTokenSetup
+            rTokenSetup,
+            {
+              assetPluginRegistry: ZERO_ADDRESS,
+              daoFeeRegistry: ZERO_ADDRESS,
+              versionRegistry: ZERO_ADDRESS,
+            }
           )
         ).wait()
 

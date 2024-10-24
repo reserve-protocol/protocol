@@ -49,15 +49,18 @@ const pathToFolder = './scripts/addresses/'
 const tempFileSuffix = '-tmp-deployments.json'
 const tempAssetCollFileSuffix = '-tmp-assets-collateral.json'
 
-export const getDeploymentFilename = (chainId: number, version?: string): string => {
+export const getDeploymentFilename = (chainId: number | string, version?: string): string => {
   return `${pathToFolder}${version ? `/${version}/` : ''}${chainId}${tempFileSuffix}`
 }
 
-export const getAssetCollDeploymentFilename = (chainId: number, version?: string): string => {
+export const getAssetCollDeploymentFilename = (
+  chainId: number | string,
+  version?: string
+): string => {
   return `${pathToFolder}${version ? `/${version}/` : ''}${chainId}${tempAssetCollFileSuffix}`
 }
 
-export const getRTokenDeploymentFilename = (chainId: number, name: string): string => {
+export const getRTokenDeploymentFilename = (chainId: number | string, name: string): string => {
   return `${pathToFolder}${chainId}-${name}${tempFileSuffix}`
 }
 

@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import "../interfaces/IFacadeWrite.sol";
+import "../interfaces/IDeployer.sol";
 import "./lib/FacadeWriteLib.sol";
 
 /**
@@ -21,10 +22,11 @@ contract FacadeWrite is IFacadeWrite {
     }
 
     /// Step 1
-    function deployRToken(ConfigurationParams calldata config, SetupParams calldata setup)
-        external
-        returns (address)
-    {
+    function deployRToken(
+        ConfigurationParams calldata config,
+        SetupParams calldata setup,
+        IDeployer.Registries calldata registries
+    ) external returns (address) {
         // Perform validations
         require(setup.primaryBasket.length != 0, "no collateral");
         require(setup.primaryBasket.length == setup.weights.length, "invalid length");
@@ -51,7 +53,8 @@ contract FacadeWrite is IFacadeWrite {
                 config.symbol,
                 config.mandate,
                 address(this), // set as owner
-                config.params
+                config.params,
+                registries
             )
         );
 
