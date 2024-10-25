@@ -16,6 +16,7 @@ import { priceTimeout } from '../../utils'
 import { SUSDSCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 import { ORACLE_ERROR, ORACLE_TIMEOUT } from '#/test/plugins/individual-collateral/sky/constants'
+import { getLatestBlockNumber } from '#/utils/time'
 
 async function main() {
   // ==== Read Configuration ====
@@ -64,6 +65,11 @@ async function main() {
   await collateral.deployed()
 
   console.log(`Deployed sUSDS to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(await getLatestBlockNumber(hre))
+  console.log(await collateral.status())
+  console.log(await collateral.refPerTok())
+  console.log(await collateral.underlyingRefPerTok())
+  
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
