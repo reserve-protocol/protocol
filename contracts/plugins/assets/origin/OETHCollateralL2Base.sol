@@ -58,7 +58,16 @@ contract OETHCollateralL2Base is AppreciatingFiatCollateral {
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
-    function tryPrice() external view override returns (uint192 low, uint192 high, uint192 pegPrice) {
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
         // {tar/tok}
         // {ETH/wsuperOETHb}
         uint192 targetPerTok = _safeWrap(targetPerTokChainlinkFeed.price());
