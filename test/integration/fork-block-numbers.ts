@@ -11,7 +11,7 @@ const forkBlockNumber = {
   'mainnet-3.4.0': 20328530, // Ethereum
 
   // TODO add all the block numbers we fork from to benefit from caching
-  default: 20679946, // Ethereum
+  default: 20890018, // Ethereum
 }
 
 export default forkBlockNumber
