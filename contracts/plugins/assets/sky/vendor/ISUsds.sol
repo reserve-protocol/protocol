@@ -10,9 +10,9 @@ interface ISUsds {
 
     function ssr() external view returns (uint256);
 
-    function chi() external view returns (uint256);
+    function chi() external view returns (uint192);
 
-    function rho() external view returns (uint256);
+    function rho() external view returns (uint64);
 
     function drip() external returns (uint256);
 }

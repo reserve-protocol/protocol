@@ -25,6 +25,18 @@ contract SUSDSCollateral is AppreciatingFiatCollateral {
         require(config.defaultThreshold != 0, "defaultThreshold zero");
     }
 
+    /// Refresh exchange rates and update default status.
+    /// @custom:interaction RCEI
+    function refresh() public virtual override {
+        // == Refresh ==
+        // Update SSR
+        ISUsds pot = ISUsds(address(erc20));
+        if (block.timestamp > pot.rho()) pot.drip();
+
+        // Intentional and correct for the super call to be last!
+        super.refresh(); // already handles all necessary default checks
+    }
+
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         return shiftl_toFix(ISUsds(address(erc20)).chi(), -27, FLOOR);
