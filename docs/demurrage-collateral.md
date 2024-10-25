@@ -59,15 +59,13 @@ This also means there can be multiple demurrage collateral for a single token. W
 
 Prime basket weights are in units of January 1st 2024 collateral, not today's collateral. It doesn't matter if the collateral wasn't around in Jan 2024 -- when setting the basket weights the setter must take into account how much demurrage has occurred since January 1st 2024.
 
-For example, say an asset has had 2% total demurrage since January 1st 2024 and you want to (on today's date) create a basket of that is worth $1: the correct basket weight to provide to `setPrimeBasket()` would be `1 / (1 - 0.02) = ~1.0204`.
-
-To calculate total demurrage:
+This is identical to the calculation for the `refPerTok()` function in the [DemurrageCollateral.sol](../contracts/plugins/assets/DemurrageCollateral.sol) contract, but calculating for an arbitrary timestamp.
 
 ```
-1 - (1 - per_second_fee) ^ (seconds)
+weight = 1 / (1 - fee) ^ seconds;
 ```
 
-Switching between tiers requires calculating total demurrage for both tiers in order to ensure the basket change does not accidentally appreciate or depreciate the RToken.
+`fee()` available on DemurrageCollateral contract
 
 ### Implementation
 

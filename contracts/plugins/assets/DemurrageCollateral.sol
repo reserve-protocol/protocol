@@ -38,7 +38,7 @@ contract DemurrageCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    uint48 public constant t0 = 1704067200; // {s} Jan 1st 2024 00:00:00 GMT+0000
+    uint48 public constant T0 = 1704067200; // {s} Jan 1st 2024 00:00:00 GMT+0000
 
     bool internal immutable isFiat;
     bool internal immutable targetUnitFeed0; // if true: feed0 is {target/tok}
@@ -141,7 +141,7 @@ contract DemurrageCollateral is FiatCollateral {
     function refPerTok() public view override returns (uint192) {
         // Monotonically increasing due to target unit (and reference unit) deflation
 
-        uint192 denominator = FIX_ONE.minus(fee).powu(uint48(block.timestamp - t0));
+        uint192 denominator = FIX_ONE.minus(fee).powu(uint48(block.timestamp - T0));
         if (denominator == 0) return FIX_MAX; // TODO
 
         // up-only
