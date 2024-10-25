@@ -64,7 +64,7 @@ describeP1(`Demurrage Collateral - P${IMPLEMENTATION}`, () => {
     coll: DemurrageCollateral,
     decayedAmt: BigNumber
   ): Promise<BigNumber> => {
-    const elapsed = (await getLatestBlockTimestamp()) - (await coll.t0())
+    const elapsed = (await getLatestBlockTimestamp()) - (await coll.T0())
     const decayFn = makeDecayFn(await coll.fee())
     return fp('1e18').div(decayFn(decayedAmt, elapsed))
   }
