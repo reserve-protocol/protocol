@@ -118,7 +118,6 @@ export interface ITokens {
   wUSDM?: string
 
   // Sky
-  SKY?: string
   USDS?: string
   sUSDS?: string
 }
@@ -262,7 +261,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
-      SKY: '0x56072C95FAA701256059aa122697B133aDEd9279',
       USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
       sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
     },

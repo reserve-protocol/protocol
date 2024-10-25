@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "./vendor/ISUsds.sol";
@@ -23,18 +22,6 @@ contract SUSDSCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {
         require(config.defaultThreshold != 0, "defaultThreshold zero");
-    }
-
-    /// Refresh exchange rates and update default status.
-    /// @custom:interaction RCEI
-    function refresh() public virtual override {
-        // == Refresh ==
-        // Update SSR
-        ISUsds pot = ISUsds(address(erc20));
-        if (block.timestamp > pot.rho()) pot.drip();
-
-        // Intentional and correct for the super call to be last!
-        super.refresh(); // already handles all necessary default checks
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
