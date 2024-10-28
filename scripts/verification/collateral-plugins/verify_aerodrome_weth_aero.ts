@@ -64,7 +64,7 @@ async function main() {
       'contracts/plugins/assets/aerodrome/AerodromeGaugeWrapper.sol:AerodromeGaugeWrapper'
     )
 
-    /********  Verify USDC-eUSD plugin  **************************/
+    /********  Verify WETH-AERO plugin  **************************/
     const oracleError = combinedError(AERO_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.5% & 0.15%
     await verifyContract(
       chainId,
