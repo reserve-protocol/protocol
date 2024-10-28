@@ -76,7 +76,10 @@ contract AerodromePoolTokens {
 
         // === Tokens ===
 
-        if (config.poolType != AeroPoolType.Stable || !config.pool.stable()) {
+        if (config.poolType == AeroPoolType.Stable && !config.pool.stable()) {
+            revert("invalid poolType");
+        }
+        if (config.poolType == AeroPoolType.Volatile && config.pool.stable()) {
             revert("invalid poolType");
         }
 
