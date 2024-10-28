@@ -12,7 +12,7 @@ interface IMinimalRToken {
 
 contract ExchangeRateOracle {
     error MissingRToken();
-    
+
     address public immutable rToken;
 
     constructor(address _rToken) {
@@ -23,7 +23,7 @@ contract ExchangeRateOracle {
     function exchangeRate() public view returns (uint256) {
         address _rToken = rToken;
         if (_rToken == address(0)) revert MissingRToken();
-        
+
         uint256 supply = IMinimalRToken(_rToken).totalSupply();
         if (supply == 0) return FIX_ONE;
 
@@ -50,7 +50,6 @@ contract ExchangeRateOracle {
     }
 }
 
-
 /**
  * @title ExchangeRateOracleFactory
  * @notice An immutable factory for Exchange Rate Oracles
@@ -60,13 +59,14 @@ contract ExchangeRateOracleFactory {
 
     event OracleDeployed(address indexed rToken, address indexed oracle);
 
-    mapping(address rToken => ExchangeRateOracle oracle) public oracles;
+    // {rtoken} => {oracle}
+    mapping(address => ExchangeRateOracle) public oracles;
 
     function deployOracle(address rToken) external returns (address) {
         if (address(oracles[rToken]) != address(0)) revert OracleAlreadyDeployed();
         ExchangeRateOracle oracle = new ExchangeRateOracle(rToken);
 
-        if (rToken != address(0)){
+        if (rToken != address(0)) {
             oracle.exchangeRate();
             oracle.latestRoundData();
             oracle.decimals();
