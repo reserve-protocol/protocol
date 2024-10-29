@@ -119,6 +119,7 @@ export interface ITokens {
 
   // Aerodrome
   AERO?: string
+  USDz?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -147,6 +148,7 @@ export interface IPools {
   crvMIM3Pool?: string
   sdUSDCUSDCPlus?: string
   aeroUSDCeUSD?: string
+  aeroUSDzUSDC?: string
 }
 
 interface INetworkConfig {
@@ -522,6 +524,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
       eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
+      USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -539,6 +542,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab',
+      USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',

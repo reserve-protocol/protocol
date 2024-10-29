@@ -1,7 +1,7 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
+import { ContractFactory, BigNumberish } from 'ethers'
 import {
   IAeroPool,
   MockV3Aggregator,
@@ -18,52 +18,25 @@ import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   AerodromePoolType,
-  USDC_USD_FEED,
-  USDC_HOLDER,
-  USDC_ORACLE_ERROR,
-  USDC_ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  AERO_USDC_eUSD_POOL,
-  AERO_USDC_eUSD_GAUGE,
-  AERO_USDC_eUSD_HOLDER,
   AERO,
-  USDC,
-  eUSD,
-  eUSD_HOLDER,
-  eUSD_USD_FEED,
-  eUSD_ORACLE_ERROR,
-  eUSD_ORACLE_TIMEOUT,
-  ORACLE_ERROR,
 } from './constants'
 import { expectPrice } from '../../../utils/oracles'
-import { mintWrappedLpToken, resetFork, getFeeds, pushAllFeedsForward } from './helpers'
+import {
+  mintWrappedLpToken,
+  resetFork,
+  getFeeds,
+  pushAllFeedsForward,
+  allStableTests,
+  AeroStablePoolEnumeration,
+} from './helpers'
 
 /*
   Define interfaces
 */
-
-interface AeroPoolTokenConfig {
-  token: string
-  feeds: string[]
-  oracleTimeouts: BigNumberish[]
-  oracleErrors: BigNumberish[]
-  holder: string
-}
-
-interface AeroStablePoolEnumeration {
-  testName: string
-  pool: string
-  gauge: string
-  holder: string
-  toleranceDivisor: BigNumber
-  amountScaleDivisor: BigNumber
-  tokens: AeroPoolTokenConfig[]
-  oracleTimeout: BigNumberish
-  oracleError: BigNumberish
-}
 
 interface AeroStableCollateralOpts extends CollateralOpts {
   pool?: string
@@ -82,37 +55,7 @@ interface AerodromeCollateralFixtureContext extends CollateralFixtureContext {
 
 const config = networkConfig['8453'] // use Base fork
 
-// Test all Aerodrome Stable pools
-const all: AeroStablePoolEnumeration[] = [
-  {
-    testName: 'Aerodrome - USDC/eUSD Stable',
-    pool: AERO_USDC_eUSD_POOL,
-    gauge: AERO_USDC_eUSD_GAUGE,
-    holder: AERO_USDC_eUSD_HOLDER,
-    tokens: [
-      {
-        token: USDC,
-        feeds: [USDC_USD_FEED],
-        oracleTimeouts: [USDC_ORACLE_TIMEOUT],
-        oracleErrors: [USDC_ORACLE_ERROR],
-        holder: USDC_HOLDER,
-      },
-      {
-        token: eUSD,
-        feeds: [eUSD_USD_FEED],
-        oracleTimeouts: [eUSD_ORACLE_TIMEOUT],
-        oracleErrors: [eUSD_ORACLE_ERROR],
-        holder: eUSD_HOLDER,
-      },
-    ],
-    oracleTimeout: PRICE_TIMEOUT, // max
-    oracleError: ORACLE_ERROR, // combined
-    amountScaleDivisor: bn('1e2'),
-    toleranceDivisor: bn('1e2'),
-  },
-]
-
-all.forEach((curr: AeroStablePoolEnumeration) => {
+allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
   const defaultCollateralOpts: AeroStableCollateralOpts = {
     erc20: ZERO_ADDRESS,
     targetName: ethers.utils.formatBytes32String('USD'),
