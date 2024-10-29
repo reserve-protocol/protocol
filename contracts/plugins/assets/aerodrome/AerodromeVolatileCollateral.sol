@@ -37,7 +37,6 @@ contract AerodromeVolatileCollateral is FiatCollateral, AerodromePoolTokens {
         FiatCollateral(config)
         AerodromePoolTokens(aptConfig)
     {
-        require(config.defaultThreshold != 0, "defaultThreshold zero");
         assert((token0.decimals() + token1.decimals()) % 2 == 0);
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
