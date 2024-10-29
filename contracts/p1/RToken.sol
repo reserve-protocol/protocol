@@ -24,7 +24,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
     uint192 public constant MIN_EXCHANGE_RATE = 1e9; // D18{BU/rTok}
     uint192 public constant MAX_EXCHANGE_RATE = 1e27; // D18{BU/rTok}
-    uint256 public constant MIN_THROTTLE_DELTA = 25; // {%}
+    uint192 public constant MIN_THROTTLE_DELTA = 25e16; // {1} 25%
 
     /// The mandate describes what goals its governors should try to achieve. By succinctly
     /// explaining the RToken's purpose and what the RToken is intended to do, it provides common
@@ -526,9 +526,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         ThrottleLib.Params memory redemption
     ) private pure returns (bool) {
         uint256 requiredAmtRate = issuance.amtRate +
-            ((issuance.amtRate * MIN_THROTTLE_DELTA) / 100);
+            ((issuance.amtRate * MIN_THROTTLE_DELTA) / FIX_ONE);
         uint256 requiredPctRate = issuance.pctRate +
-            ((issuance.pctRate * MIN_THROTTLE_DELTA) / 100);
+            ((issuance.pctRate * MIN_THROTTLE_DELTA) / FIX_ONE);
 
         return redemption.amtRate >= requiredAmtRate && redemption.pctRate >= requiredPctRate;
     }

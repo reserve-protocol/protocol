@@ -28,7 +28,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
     uint192 public constant MIN_EXCHANGE_RATE = 1e9; // D18{BU/rTok}
     uint192 public constant MAX_EXCHANGE_RATE = 1e27; // D18{BU/rTok}
-    uint256 public constant MIN_THROTTLE_DELTA = 25; // {%}
+    uint192 public constant MIN_THROTTLE_DELTA = 25e16; // {1} 25%
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
     string public mandate;
@@ -404,9 +404,9 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         ThrottleLib.Params memory redemption
     ) private pure returns (bool) {
         uint256 requiredAmtRate = issuance.amtRate +
-            ((issuance.amtRate * MIN_THROTTLE_DELTA) / 100);
+            ((issuance.amtRate * MIN_THROTTLE_DELTA) / FIX_ONE);
         uint256 requiredPctRate = issuance.pctRate +
-            ((issuance.pctRate * MIN_THROTTLE_DELTA) / 100);
+            ((issuance.pctRate * MIN_THROTTLE_DELTA) / FIX_ONE);
 
         return redemption.amtRate >= requiredAmtRate && redemption.pctRate >= requiredPctRate;
     }
