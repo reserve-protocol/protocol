@@ -10,6 +10,21 @@ interface IMinimalRToken {
     function totalSupply() external view returns (uint256);
 }
 
+/**
+ * @title ExchangeRateOracle
+ * @notice An immutable Exchange Rate Oracle for an RToken
+ *
+ * Warning! In the event of an RToken taking a loss in excess of the StRSR overcollateralization
+ * layer, the devaluation will not be reflected until the RToken is done trading. This causes
+ * the exchange rate to be too high during the rebalancing phase. If the exchange rate is relied
+ * upon naively, then it could be misleading.
+ *
+ * As a consumer of this oracle, you may want to guard against this case by monitoring:
+ *     `rToken.status() == 0 && rToken.fullyCollateralized()`
+ *
+ * However, note that `fullyCollateralized()` is extremely gas-costly. We recommend executing
+ * the function off-chain. `status()` is cheap and more reasonable to be called from on-chain.
+ */
 contract ExchangeRateOracle {
     error MissingRToken();
 
@@ -42,6 +57,8 @@ contract ExchangeRateOracle {
             uint80 answeredInRound
         )
     {
+        // TODO
+        // make better to work with more than just Morpho
         return (0, int256(exchangeRate()), 0, 0, 0);
     }
 
