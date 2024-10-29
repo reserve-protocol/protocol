@@ -224,6 +224,7 @@ const getExpectedPrice = async (ctx: WSUPEROETHBCollateralFixtureContext): Promi
   return result
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
