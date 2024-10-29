@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import { FIX_ONE, divuu } from "../../libraries/Fixed.sol";
 
-// weird circular inheritance preventing us from using proper IRToken, not worth figuring out
 interface IMinimalRToken {
     function basketsNeeded() external view returns (uint192);
 
@@ -14,7 +13,7 @@ interface IMinimalRToken {
  * @title ExchangeRateOracle
  * @notice An immutable Exchange Rate Oracle for an RToken
  *
- * Warning! In the event of an RToken taking a loss in excess of the StRSR overcollateralization
+ * ::Warning:: In the event of an RToken taking a loss in excess of the StRSR overcollateralization
  * layer, the devaluation will not be reflected until the RToken is done trading. This causes
  * the exchange rate to be too high during the rebalancing phase. If the exchange rate is relied
  * upon naively, then it could be misleading.
@@ -23,7 +22,7 @@ interface IMinimalRToken {
  *     `rToken.status() == 0 && rToken.fullyCollateralized()`
  *
  * However, note that `fullyCollateralized()` is extremely gas-costly. We recommend executing
- * the function off-chain. `status()` is cheap and more reasonable to be called from on-chain.
+ * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.
  */
 contract ExchangeRateOracle {
     error MissingRToken();
@@ -36,16 +35,18 @@ contract ExchangeRateOracle {
     }
 
     function exchangeRate() public view returns (uint256) {
-        address _rToken = rToken;
-        if (_rToken == address(0)) revert MissingRToken();
+        if (rToken == address(0)) {
+            revert MissingRToken();
+        }
 
-        uint256 supply = IMinimalRToken(_rToken).totalSupply();
-        if (supply == 0) return FIX_ONE;
+        uint256 supply = IMinimalRToken(rToken).totalSupply();
+        if (supply == 0) {
+            return FIX_ONE;
+        }
 
-        return divuu(uint256(IMinimalRToken(_rToken).basketsNeeded()), supply);
+        return divuu(uint256(IMinimalRToken(rToken).basketsNeeded()), supply);
     }
 
-    // basic chainlink interface sufficient for Morpho
     function latestRoundData()
         external
         view
@@ -57,22 +58,26 @@ contract ExchangeRateOracle {
             uint80 answeredInRound
         )
     {
-        // TODO
-        // make better to work with more than just Morpho
-        return (0, int256(exchangeRate()), 0, 0, 0);
+        return (
+            uint80(block.timestamp),
+            int256(exchangeRate()),
+            block.timestamp - 1,
+            block.timestamp,
+            uint80(block.timestamp)
+        );
     }
 
     function decimals() external pure returns (uint8) {
-        return 18;
+        return 18; // RToken is always 18 decimals
     }
 }
 
 /**
  * @title ExchangeRateOracleFactory
- * @notice An immutable factory for Exchange Rate Oracles
+ * @notice An immutable factory for RToken Exchange Rate Oracles
  */
 contract ExchangeRateOracleFactory {
-    error OracleAlreadyDeployed();
+    error OracleAlreadyDeployed(address oracle);
 
     event OracleDeployed(address indexed rToken, address indexed oracle);
 
@@ -80,7 +85,10 @@ contract ExchangeRateOracleFactory {
     mapping(address => ExchangeRateOracle) public oracles;
 
     function deployOracle(address rToken) external returns (address) {
-        if (address(oracles[rToken]) != address(0)) revert OracleAlreadyDeployed();
+        if (address(oracles[rToken]) != address(0)) {
+            revert OracleAlreadyDeployed(address(oracles[rToken]));
+        }
+
         ExchangeRateOracle oracle = new ExchangeRateOracle(rToken);
 
         if (rToken != address(0)) {
@@ -91,6 +99,7 @@ contract ExchangeRateOracleFactory {
 
         oracles[rToken] = oracle;
         emit OracleDeployed(address(rToken), address(oracle));
+
         return address(oracle);
     }
 }
