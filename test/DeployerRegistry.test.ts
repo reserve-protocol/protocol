@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
-import { DeployerRegistry, TestIDeployer } from '../typechain'
+import { DeployerRegistry, DeployerP1 } from '../typechain'
 import { defaultFixture } from './fixtures'
 
 describe(`DeployerRegistry contract #fast`, () => {
@@ -16,7 +16,7 @@ describe(`DeployerRegistry contract #fast`, () => {
   let deployerRegistry: DeployerRegistry
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   beforeEach(async () => {
     ;[owner, mockDeployer1, mockDeployer2, addr1] = await ethers.getSigners()
@@ -32,7 +32,6 @@ describe(`DeployerRegistry contract #fast`, () => {
   describe('Deployment', () => {
     it('Should deploy registry correctly', async () => {
       expect(await deployerRegistry.owner()).to.equal(owner.address)
-      expect(await deployerRegistry.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployerRegistry.latestDeployment()).to.equal(ZERO_ADDRESS)
       expect(await deployerRegistry.deployments('1.0.0')).to.equal(ZERO_ADDRESS)
     })

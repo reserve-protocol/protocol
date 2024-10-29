@@ -27,8 +27,6 @@ import "../mixins/Versioned.sol";
  * @notice The factory contract that deploys the entire P0 system.
  */
 contract DeployerP0 is IDeployer, Versioned {
-    string public constant ENS = "reserveprotocol.eth";
-
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
@@ -61,7 +59,8 @@ contract DeployerP0 is IDeployer, Versioned {
         string memory symbol,
         string calldata mandate,
         address owner,
-        DeploymentParams memory params
+        DeploymentParams memory params,
+        Registries calldata // ignored
     ) external returns (address) {
         require(owner != address(0) && owner != address(this), "invalid owner");
 
