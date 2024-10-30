@@ -55,7 +55,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '900', // 15min
       targetName: hre.ethers.utils.formatBytes32String('ARS'),
-      defaultThreshold: fp('0.015').toString(), // 2% = 0.5% oracleError + 1% buffer
+      defaultThreshold: fp('0.015').toString(), // 1.5% = 0.5% oracleError + 1% buffer
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     '0' // revenueHiding = 0

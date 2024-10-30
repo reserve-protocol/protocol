@@ -7,7 +7,10 @@ import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
 /**
  * @title SnARSFiatCollateral
  * @notice Collateral plugin for a Num vault with fiat collateral
- * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == ARS, {UoA} == USD
+ * tok = sNARS
+ * ref = nARS
+ * tar = ARS
+ * UoA = USD
  */
 contract SnARSFiatCollateral is ERC4626FiatCollateral {
     /// config.erc20 must be a Num ERC4626 vault

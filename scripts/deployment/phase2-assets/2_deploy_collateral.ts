@@ -204,30 +204,6 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
-  /********  Deploy Fiat Collateral - nARS  **************************/
-  if (networkConfig[chainId].tokens.nARS && networkConfig[chainId].chainlinkFeeds.nARS) {
-    const { collateral: narsCollateral } = await hre.run('deploy-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.nARS,
-      oracleError: fp('0.005').toString(), // 0.5%
-      tokenAddress: networkConfig[chainId].tokens.nARS,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '900',
-      targetName: hre.ethers.utils.formatBytes32String('ARS'),
-      defaultThreshold: fp('0.01').toString(), // 1.5%
-      delayUntilDefault: bn('86400').toString(), // 24h
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', narsCollateral)
-    await (await collateral.refresh()).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.nARS = narsCollateral
-    assetCollDeployments.erc20s.nARS = networkConfig[chainId].tokens.nARS
-    deployedCollateral.push(narsCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-  }
-
   /*** AAVE V2 not available in Base or Arbitrum L2s */
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     /********  Deploy AToken Fiat Collateral - aDAI  **************************/
