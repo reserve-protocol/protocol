@@ -106,6 +106,7 @@ export interface ITokens {
   bbUSDT?: string
   steakPYUSD?: string
   Re7WETH?: string
+  meUSD?: string
 
   pxETH?: string
   apxETH?: string
@@ -516,6 +517,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
+      eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
+      meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -532,6 +535,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
+      eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',

@@ -108,6 +108,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
+      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
       'phase2-assets/assets/deploy_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
