@@ -32,7 +32,6 @@ import {
   CTokenSelfReferentialCollateral,
   CTokenMock,
   ERC20Mock,
-  DeployerP0,
   DeployerP1,
   DutchTrade,
   ReadFacet,
@@ -59,7 +58,6 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -398,7 +396,7 @@ type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
 export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
-  deployer: TestIDeployer
+  deployer: DeployerP1
   main: TestIMain
   assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
@@ -526,12 +524,14 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   await rsrAsset.refresh()
 
   // Create Deployer
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+  const DeployerFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
-  let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, gnosisAddr, rsrAsset.address)
-  )
+  let deployer = (await DeployerFactory.deploy(
+    rsr.address,
+    gnosisAddr,
+    rsrAsset.address
+  )) as unknown as DeployerP1
 
   if (IMPLEMENTATION == Implementation.P1) {
     // Deploy implementations
@@ -579,7 +579,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
     const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy(gnosisAddr)
 
     const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
     const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
@@ -614,15 +614,17 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       },
     }
 
-    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-    deployer = <DeployerP1>(
-      await DeployerFactory.deploy(rsr.address, gnosisAddr, rsrAsset.address, implementations)
-    )
+    const DeployerFactory = await ethers.getContractFactory('DeployerP1')
+    deployer = await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
   }
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+      assetPluginRegistry: ZERO_ADDRESS,
+      daoFeeRegistry: ZERO_ADDRESS,
+      versionRegistry: ZERO_ADDRESS,
+    })
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

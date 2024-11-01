@@ -56,7 +56,7 @@ import {
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from './utils/time'
-import { ITradeRequest, disableBatchTrade, disableDutchTrade, getTrade } from './utils/trades'
+import { ITradeRequest, disableBatchTrade, disableDutchTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 import { parseUnits } from 'ethers/lib/utils'
 
@@ -136,7 +136,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
-      expect(await broker.gnosis()).to.equal(gnosis.address)
       expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await broker.batchTradeDisabled()).to.equal(false)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
@@ -158,65 +157,22 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       await expect(
-        newBroker.init(main.address, ZERO_ADDRESS, ZERO_ADDRESS, bn('100'), ZERO_ADDRESS, bn('100'))
-      ).to.be.revertedWith('invalid Gnosis address')
-      await expect(
-        newBroker.init(
-          main.address,
-          gnosis.address,
-          ZERO_ADDRESS,
-          bn('1000'),
-          ZERO_ADDRESS,
-          bn('1000')
-        )
+        newBroker.init(main.address, ZERO_ADDRESS, bn('1000'), ZERO_ADDRESS, bn('1000'))
       ).to.be.revertedWith('invalid batchTradeImplementation address')
       await expect(
-        newBroker.init(
-          main.address,
-          gnosis.address,
-          ONE_ADDRESS,
-          bn('1000'),
-          ZERO_ADDRESS,
-          bn('1000')
-        )
+        newBroker.init(main.address, ONE_ADDRESS, bn('1000'), ZERO_ADDRESS, bn('1000'))
       ).to.be.revertedWith('invalid dutchTradeImplementation address')
     })
   })
 
   describe('Configuration/State', () => {
-    it('Should allow to update Gnosis if Owner and perform validations', async () => {
-      // Check existing value
-      expect(await broker.gnosis()).to.equal(gnosis.address)
-
-      // If not owner cannot update
-      await expect(broker.connect(other).setGnosis(mock.address)).to.be.revertedWith(
-        'governance only'
-      )
-
-      // Check value did not change
-      expect(await broker.gnosis()).to.equal(gnosis.address)
-
-      // Attempt to update with Owner but zero address - not allowed
-      await expect(broker.connect(owner).setGnosis(ZERO_ADDRESS)).to.be.revertedWith(
-        'invalid Gnosis address'
-      )
-
-      // Update with owner
-      await expect(broker.connect(owner).setGnosis(mock.address))
-        .to.emit(broker, 'GnosisSet')
-        .withArgs(gnosis.address, mock.address)
-
-      // Check value was updated
-      expect(await broker.gnosis()).to.equal(mock.address)
-    })
-
     it('Should allow to update BatchTrade Implementation if Owner and perform validations', async () => {
       const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
       const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
 
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy(gnosis.address)
 
       // Update to a trade implementation to use as baseline for tests
       await whileImpersonating(upgraderAddr, async (upgSigner) => {
@@ -570,19 +526,63 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Trades', () => {
     context('GnosisTrade', () => {
       const amount = fp('100.0')
+      let reentrantGnosis: GnosisMockReentrant
+      let tradeWithReentrantGnosis: GnosisTrade
       let trade: GnosisTrade
 
       beforeEach(async () => {
         // Create a Trade
         const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        trade = <GnosisTrade>await TradeFactory.deploy()
-
+        trade = <GnosisTrade>await TradeFactory.deploy(gnosis.address)
         await setStorageAt(trade.address, 0, 0)
+
+        // Create a Trade with reentrant Gnosis
+        const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
+          'GnosisMockReentrant'
+        )
+        reentrantGnosis = <GnosisMockReentrant>await GnosisReentrantFactory.deploy()
+        tradeWithReentrantGnosis = <GnosisTrade>await TradeFactory.deploy(reentrantGnosis.address)
+        await setStorageAt(tradeWithReentrantGnosis.address, 0, 0)
 
         // Check state
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
         expect(await trade.canSettle()).to.equal(false)
+        expect(await tradeWithReentrantGnosis.status()).to.equal(TradeStatus.NOT_STARTED)
+        expect(await tradeWithReentrantGnosis.canSettle()).to.equal(false)
       })
+
+      it('Should not allow to force settle a trade unless governance', async () => {
+        // Initialize trade - simulate from backingManager
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: amount,
+          minBuyAmount: bn('0'),
+        }
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            broker.address,
+            backingManager.address,
+            config.batchAuctionLength,
+            tradeRequest
+          )
+        ).to.not.be.reverted
+
+        await expect(
+          backingManager.connect(addr1).forceSettleTrade(trade.address)
+        ).to.be.revertedWith('governance only')
+      })
+
+      it('Should not allow deployment with zero address gnosis', async () => {
+        const GnosisTradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+        await expect(GnosisTradeFactory.deploy(ZERO_ADDRESS)).to.be.revertedWith(
+          'gnosis address zero'
+        )
+      })
+
       it('Should initialize GnosisTrade correctly - only once', async () => {
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
@@ -598,7 +598,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -625,7 +624,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             await trade.broker(),
             await trade.origin(),
-            await trade.gnosis(),
             await broker.batchAuctionLength(),
             tradeRequest
           )
@@ -648,7 +646,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -671,13 +668,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should protect against reentrancy when initializing GnosisTrade', async () => {
-        // Create a Reetrant Gnosis
-        const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
-          'GnosisMockReentrant'
-        )
-        const reentrantGnosis: GnosisMockReentrant = <GnosisMockReentrant>(
-          await GnosisReentrantFactory.deploy()
-        )
         await reentrantGnosis.setReenterOnInit(true)
 
         // Initialize trade - simulate from backingManager
@@ -689,12 +679,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         }
 
         // Fund trade and initialize with reentrant Gnosis
-        await token0.connect(owner).mint(trade.address, amount)
+        await token0.connect(owner).mint(tradeWithReentrantGnosis.address, amount)
         await expect(
-          trade.init(
+          tradeWithReentrantGnosis.init(
             broker.address,
             backingManager.address,
-            reentrantGnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -719,7 +708,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -734,7 +722,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -751,7 +738,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -772,7 +758,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -803,7 +788,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -926,13 +910,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should protect against reentrancy when settling GnosisTrade', async () => {
-        // Create a Reetrant Gnosis
-        const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
-          'GnosisMockReentrant'
-        )
-        const reentrantGnosis: GnosisMockReentrant = <GnosisMockReentrant>(
-          await GnosisReentrantFactory.deploy()
-        )
         await reentrantGnosis.setReenterOnInit(false)
         await reentrantGnosis.setReenterOnSettle(true)
 
@@ -945,12 +922,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         }
 
         // Fund trade and initialize
-        await token0.connect(owner).mint(trade.address, amount)
+        await token0.connect(owner).mint(tradeWithReentrantGnosis.address, amount)
         await expect(
-          trade.init(
+          tradeWithReentrantGnosis.init(
             broker.address,
             backingManager.address,
-            reentrantGnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -980,7 +956,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -1054,7 +1029,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -1652,7 +1626,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           newTrade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -1667,7 +1640,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await newTrade.init(
           broker.address,
           backingManager.address,
-          gnosis.address,
           config.batchAuctionLength,
           tradeRequest
         )

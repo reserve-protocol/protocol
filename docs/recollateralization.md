@@ -60,7 +60,7 @@ This allows the protocol to deterministically select the next trade based on the
    (Caveat: if the protocol gets an unreasonably good trade in excess of what was indicated by an asset's price range, this can happen)
 5. Large trades first, as determined by comparison in the `{UoA}`
 
-If there does not exist a trade that meets these constraints, then the protocol "takes a haircut", which is a colloquial way of saying it reduces `RToken.basketsNeeded()` to its current BU holdings. This causes a loss for RToken holders (undesirable) but causes the protocol to become collateralized again, allowing it to re-enter into a period of normal operation.
+If there does not exist a trade that meets these constraints, the protocol considers the RSR balance in StRSR before moving to "take a haircut", which is a colloquial way of saying it reduces `RToken.basketsNeeded()` to its current BU holdings to become by-definition collateralized. This causes a loss for RToken holders (undesirable) but causes the protocol to regain normal function.
 
 #### Trade Sizing
 

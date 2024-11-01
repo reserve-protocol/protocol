@@ -8,6 +8,7 @@ import {
   MAX_TRADING_DELAY,
   MAX_TRADE_SLIPPAGE,
   MAX_BACKING_BUFFER,
+  MIN_TARGET_AMT,
   MAX_TARGET_AMT,
   MAX_MIN_TRADE_VOLUME,
   MIN_WARMUP_PERIOD,
@@ -53,7 +54,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -101,7 +102,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let other: SignerWithAddress
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Assets
   let collateral: Collateral[]
@@ -420,13 +421,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - Broker
       const GnosisTradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy(gnosis.address)
       const DutchTradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
       const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
       await expect(
         broker.init(
           main.address,
-          gnosis.address,
           gnosisTrade.address,
           config.batchAuctionLength,
           dutchTrade.address,
@@ -478,7 +478,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       invalidDistConfig.dist = { rTokenDist: bn(0), rsrDist: bn(0) }
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('totals too low')
 
       // Create a new instance of Main
@@ -512,7 +516,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+        })
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -1040,7 +1048,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot update with value > max
       await expect(
-        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE)
+        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE.add(1))
       ).to.be.revertedWith('invalid maxTradeSlippage')
     })
 
@@ -2158,6 +2166,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         ).to.be.revertedWith('invalid collateral')
       })
 
+      it('Should not allow to bypass MIN_TARGET_AMT', async () => {
+        // not possible on non-fresh basketHandler
+        await expect(
+          indexBH.connect(owner).setPrimeBasket([token0.address], [MIN_TARGET_AMT.sub(1)])
+        ).to.be.revertedWith('invalid target amount')
+        await expect(
+          indexBH.connect(owner).forceSetPrimeBasket([token0.address], [MIN_TARGET_AMT.sub(1)])
+        ).to.be.revertedWith('invalid target amount')
+      })
+
       it('Should not allow to bypass MAX_TARGET_AMT', async () => {
         // not possible on non-fresh basketHandler
         await expect(
@@ -2859,7 +2877,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'RTKN (empty basket)',
           'mandate (empty basket)',
           owner.address,
-          config
+          config,
+          {
+            assetPluginRegistry: ZERO_ADDRESS,
+            daoFeeRegistry: ZERO_ADDRESS,
+            versionRegistry: ZERO_ADDRESS,
+          }
         )
       ).wait()
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

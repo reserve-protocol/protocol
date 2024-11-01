@@ -5,6 +5,9 @@ import "./vendor/EasyAuction.sol";
 
 // ==== From https://etherscan.io/address/0x0b7ffc1f4ad541a4ed16b40d8c37f0929158d101 ====
 
+// solhint-disable
+
+// Used in production since 3.4.0
 contract EasyAuction is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint64;

@@ -311,6 +311,7 @@ const opts = {
   itChecksPriceChanges: it,
   itHasRevenueHiding: it.skip, // implemented in this file
   itChecksNonZeroDefaultThreshold: it,
+  itChecksMainChainlinkOracleRevert: it,
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,

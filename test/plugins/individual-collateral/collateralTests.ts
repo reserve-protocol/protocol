@@ -16,7 +16,13 @@ import {
 } from './fixtures'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { whileImpersonating } from '../../utils/impersonation'
-import { IGovParams, IGovRoles, IRTokenSetup, networkConfig } from '../../../common/configuration'
+import {
+  IConfig,
+  IGovParams,
+  IGovRoles,
+  IRTokenSetup,
+  networkConfig,
+} from '../../../common/configuration'
 import {
   advanceBlocks,
   advanceTime,
@@ -51,7 +57,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestICollateral,
-  TestIDeployer,
+  DeployerP1,
   TestIMain,
   TestIRevenueTrader,
   TestIRToken,
@@ -87,6 +93,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
     itChecksNonZeroDefaultThreshold,
+    itChecksMainChainlinkOracleRevert,
     itHasRevenueHiding,
     itIsPricedByPeg,
     itHasOracleRefPerTok,
@@ -151,7 +158,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let ctx: X
       let alice: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let collateral: TestICollateral
       let chainlinkFeed: MockV3Aggregator
@@ -394,29 +401,32 @@ export default function fn<X extends CollateralFixtureContext>(
           ) // within 1-part-in-1-thousand
         })
 
-        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
-          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-            'InvalidMockV3Aggregator'
-          )
-          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-            await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
-          )
+        itChecksMainChainlinkOracleRevert(
+          'reverts if Chainlink feed reverts or runs out of gas, maintains status',
+          async () => {
+            const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+              'InvalidMockV3Aggregator'
+            )
+            const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+              await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+            )
 
-          const invalidCollateral = await deployCollateral({
-            erc20: ctx.tok.address,
-            chainlinkFeed: invalidChainlinkFeed.address,
-          })
+            const invalidCollateral = await deployCollateral({
+              erc20: ctx.tok.address,
+              chainlinkFeed: invalidChainlinkFeed.address,
+            })
 
-          // Reverting with no reason
-          await invalidChainlinkFeed.setSimplyRevert(true)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+            // Reverting with no reason
+            await invalidChainlinkFeed.setSimplyRevert(true)
+            await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+            expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-          // Runnning out of gas (same error)
-          await invalidChainlinkFeed.setSimplyRevert(false)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-        })
+            // Runnning out of gas (same error)
+            await invalidChainlinkFeed.setSimplyRevert(false)
+            await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+            expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+          }
+        )
 
         it('decays price over priceTimeout period', async () => {
           await collateral.refresh()
@@ -433,8 +443,8 @@ export default function fn<X extends CollateralFixtureContext>(
           const priceTimeout = await collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
           p = await collateral.price()
-          expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(p[1]).to.be.closeTo(savedHigh.mul(2), p[1].mul(2).div(10000)) // 1 part in 10 thousand
+          expect(p[0]).to.be.closeTo(savedLow.div(2), savedLow.div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.mul(3).div(2), savedHigh.mul(3).div(2).div(10000)) // 1 part in 10k
 
           // Should be unpriced after full priceTimeout
           await advanceTime(priceTimeout / 2)
@@ -442,6 +452,7 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         it('lotPrice (deprecated) is equal to price()', async () => {
+          // @ts-expect-error -- this is deprecated but whatever
           const lotPrice = await collateral.lotPrice()
           const price = await collateral.price()
           expect(price.length).to.equal(2)
@@ -641,7 +652,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let owner: SignerWithAddress
       let addr1: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let defaultFixture: Fixture<DefaultFixture>
 
@@ -662,7 +673,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let rsrTrader: TestIRevenueTrader
       let rsr: ERC20Mock
 
-      let deployer: TestIDeployer
+      let deployer: DeployerP1
       let facadeWrite: FacadeWrite
       let govParams: IGovParams
       let govRoles: IGovRoles
@@ -696,6 +707,7 @@ export default function fn<X extends CollateralFixtureContext>(
           pctRate: fp('0.05'), // 5%
         },
         reweightable: false,
+        enableIssuancePremium: false,
       }
 
       interface IntegrationFixture {
@@ -716,8 +728,8 @@ export default function fn<X extends CollateralFixtureContext>(
       before(async () => {
         defaultFixture = await getDefaultFixture(collateralName)
         chainId = await getChainId(hre)
-        if (useEnv('FORK_NETWORK').toLowerCase() === 'base') chainId = 8453
-        if (useEnv('FORK_NETWORK').toLowerCase() === 'arbitrum') chainId = 42161
+        if (useEnv('FORK_NETWORK').toLowerCase() === 'base') chainId = '8453'
+        if (useEnv('FORK_NETWORK').toLowerCase() === 'arbitrum') chainId = '42161'
         if (!networkConfig[chainId]) {
           throw new Error(`Missing network configuration for ${hre.network.name}`)
         }
@@ -766,7 +778,12 @@ export default function fn<X extends CollateralFixtureContext>(
               mandate: 'mandate',
               params: config,
             },
-            rTokenSetup
+            rTokenSetup,
+            {
+              assetPluginRegistry: ZERO_ADDRESS,
+              daoFeeRegistry: ZERO_ADDRESS,
+              versionRegistry: ZERO_ADDRESS,
+            }
           )
         ).wait()
 

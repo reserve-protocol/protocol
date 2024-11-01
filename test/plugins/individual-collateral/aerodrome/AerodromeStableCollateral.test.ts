@@ -6,13 +6,14 @@ import {
   IAeroPool,
   MockV3Aggregator,
   MockV3Aggregator__factory,
+  InvalidMockV3Aggregator,
   AerodromeGaugeWrapper__factory,
   TestICollateral,
   AerodromeGaugeWrapper,
   ERC20Mock,
 } from '../../../../typechain'
 import { networkConfig } from '../../../../common/configuration'
-import { ZERO_ADDRESS } from '#/common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '#/common/constants'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -319,6 +320,31 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
       const finalRefPerTok = await coll.refPerTok()
       expect(finalRefPerTok).to.equal(initialRefPerTok)
     })
+
+    it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
+      )
+
+      const invalidCollateral = await deployCollateral({
+        pool: curr.pool,
+        gauge: curr.gauge,
+        feeds: [[invalidChainlinkFeed.address], [invalidChainlinkFeed.address]],
+      })
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+      expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+      expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
   }
 
   const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
@@ -367,6 +393,7 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it.skip,
     itChecksNonZeroDefaultThreshold: it,
+    itChecksMainChainlinkOracleRevert: it.skip,
     itHasRevenueHiding: it.skip,
     resetFork,
     collateralName: curr.testName,

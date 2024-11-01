@@ -378,6 +378,7 @@ const opts = {
   itChecksRefPerTokDefault: it.skip, // implemented in this file
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
+  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it.skip, // implemented in this file
   resetFork,
   collateralName: 'ApxETH',
