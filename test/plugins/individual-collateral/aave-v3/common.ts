@@ -210,6 +210,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
     itChecksRefPerTokDefault: it,
     itHasRevenueHiding: it,
     itChecksNonZeroDefaultThreshold: it,
+    itChecksMainChainlinkOracleRevert: it,
     itIsPricedByPeg: true,
     chainlinkDefaultAnswer: 1e8,
     itChecksPriceChanges: it,
