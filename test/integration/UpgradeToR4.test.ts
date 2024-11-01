@@ -1,13 +1,13 @@
 import hre, { ethers } from 'hardhat'
-import { reset } from '@nomicfoundation/hardhat-network-helpers'
 import { VersionRegistry } from '@typechain/VersionRegistry'
 import { expect } from 'chai'
-import { forkRpcs } from '#/utils/fork'
 import { IImplementations } from '#/common/configuration'
 import { DeployerP1 } from '@typechain/DeployerP1'
 import { AssetPluginRegistry } from '@typechain/AssetPluginRegistry'
 import { whileImpersonating } from '#/utils/impersonation'
 import { DAOFeeRegistry } from '@typechain/DAOFeeRegistry'
+import { resetFork } from '#/utils/chain'
+import forkBlockNumber from './fork-block-numbers'
 
 interface RTokenParams {
   name: string
@@ -40,8 +40,9 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
   let daoFeeRegistry: DAOFeeRegistry
 
   before(async () => {
-    await reset(forkRpcs.mainnet, 19991614)
     const [owner] = await ethers.getSigners()
+
+    await resetFork(hre, forkBlockNumber.default)
 
     const TradingLibFactory = await ethers.getContractFactory('RecollateralizationLibP1')
     const BasketLibFactory = await ethers.getContractFactory('BasketLibP1')
@@ -84,7 +85,8 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
         stRSR: (await StRSRFactory.deploy()).address,
       },
       trading: {
-        gnosisTrade: (await GnosisTradeFactory.deploy()).address,
+        gnosisTrade: (await GnosisTradeFactory.deploy('0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101'))
+          .address,
         dutchTrade: (await DutchTradeFactory.deploy()).address,
       },
     }
@@ -92,7 +94,6 @@ describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
     const DeployerFactory = await ethers.getContractFactory('DeployerP1')
     deployer = await DeployerFactory.deploy(
       '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
-      '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
       '0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA',
       implementations
     )

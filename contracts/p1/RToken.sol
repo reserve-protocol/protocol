@@ -189,6 +189,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         address caller = _msgSender();
 
         require(amount != 0, "Cannot redeem zero");
+        require(recipient != address(0), "cannot redeem to zero address");
         require(amount <= balanceOf(caller), "insufficient balance");
         require(basketHandler.fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
@@ -355,7 +356,12 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function mint(uint192 baskets) external {
         require(_msgSender() == address(backingManager), "not backing manager");
-        _scaleUp(address(backingManager), baskets, totalSupply());
+        uint256 supply = totalSupply();
+
+        // Accumulate the throttle before the supply change
+        issuanceThrottle.useAvailable(supply, 0);
+        redemptionThrottle.useAvailable(supply, 0);
+        _scaleUp(address(backingManager), baskets, supply);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -372,6 +378,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(caller == address(furnace), "furnace only");
         _burn(caller, amtRToken);
         emit Melted(amtRToken);
+        // do not update throttles: melting is frequent and always small
     }
 
     /// Burn an amount of RToken from caller's account and scale basketsNeeded down
@@ -387,6 +394,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     function dissolve(uint256 amount) external {
         address caller = _msgSender();
         require(caller == address(backingManager), "not backing manager");
+        uint256 supply = totalSupply();
+
+        // Accumulate the throttle before the supply change
+        issuanceThrottle.useAvailable(supply, 0);
+        redemptionThrottle.useAvailable(supply, 0);
         _scaleDown(caller, amount);
     }
 

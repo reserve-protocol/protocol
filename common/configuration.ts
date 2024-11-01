@@ -70,6 +70,7 @@ export interface ITokens {
   cUSDCv3?: string
   wcUSDCv3?: string
   cUSDbCv3?: string
+  cUSDTv3?: string
   ONDO?: string
   sFRAX?: string
   sDAI?: string
@@ -105,6 +106,7 @@ export interface ITokens {
   bbUSDT?: string
   steakPYUSD?: string
   Re7WETH?: string
+  meUSD?: string
 
   pxETH?: string
   apxETH?: string
@@ -161,7 +163,6 @@ interface INetworkConfig {
   COMPTROLLER?: string
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
-  EASY_AUCTION_OWNER?: string
   MORPHO_AAVE_CONTROLLER?: string
   MORPHO_REWARDS_DISTRIBUTOR?: string
   MORPHO_AAVE_LENS?: string
@@ -238,6 +239,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       apxETH: '0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
+      cUSDTv3: '0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
@@ -299,8 +301,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_DATA_PROVIDER: '0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
-    GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
-    EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    GNOSIS_EASY_AUCTION: '0x462302752B63Ee7c207459112CA8D38498Fb54f2', // our deployment
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
@@ -400,7 +401,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_DATA_PROVIDER: '0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
-    GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    GNOSIS_EASY_AUCTION: '0x462302752B63Ee7c207459112CA8D38498Fb54f2', // our deployment
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
@@ -520,8 +521,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
-      AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
       eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
+      meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
+      AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -538,8 +540,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
+      eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
-      eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab',
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
@@ -563,6 +565,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
       USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
       cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      cUSDTv3: '0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07',
       WETH: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
       WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
       aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
@@ -716,6 +719,7 @@ export interface IGovRoles {
 // System constants
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
+export const MIN_TARGET_AMT = BigNumber.from(10).pow(12)
 export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
 export const MAX_RATIO = BigNumber.from(10).pow(14)
 export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)

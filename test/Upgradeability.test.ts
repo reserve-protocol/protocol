@@ -270,14 +270,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - Broker / Trade', async () => {
-      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy(gnosis.address)
       const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
         [
           main.address,
-          gnosis.address,
           gnosisTrade.address,
           config.batchAuctionLength,
           dutchTrade.address,
@@ -290,7 +289,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       await newBroker.deployed()
 
-      expect(await newBroker.gnosis()).to.equal(gnosis.address)
       expect(await newBroker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await newBroker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
       expect(await newBroker.batchTradeDisabled()).to.equal(false)
@@ -702,7 +700,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         expect(brokerV2.address).to.equal(broker.address)
 
         // Check state is preserved
-        expect(await brokerV2.gnosis()).to.equal(gnosis.address)
         expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
         expect(await brokerV2.batchTradeDisabled()).to.equal(false)
         expect(await brokerV2.dutchTradeDisabled(rToken.address)).to.equal(false)
@@ -934,7 +931,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           const DeployerV2Factory = await ethers.getContractFactory('DeployerP1V2')
           deployerV2 = await DeployerV2Factory.deploy(
             rsr.address,
-            gnosis.address,
             rsrAsset.address,
             implementationsV2
           )

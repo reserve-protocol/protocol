@@ -216,6 +216,7 @@ const opts = {
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
   resetFork,
+  toleranceDivisor: bn('1e8'),
 }
 
 collateralTests(opts)

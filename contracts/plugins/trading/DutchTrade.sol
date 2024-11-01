@@ -165,8 +165,14 @@ contract DutchTrade is ITrade, Versioned {
         assert(address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60);
 
         // Only start dutch auctions under well-defined prices
-        require(prices.sellLow != 0 && prices.sellHigh < FIX_MAX / 1000, "bad sell pricing");
-        require(prices.buyLow != 0 && prices.buyHigh < FIX_MAX / 1000, "bad buy pricing");
+        require(
+            prices.sellLow != 0 && prices.sellHigh != 0 && prices.sellHigh < FIX_MAX / 1000,
+            "bad sell pricing"
+        );
+        require(
+            prices.buyLow != 0 && prices.buyHigh != 0 && prices.buyHigh < FIX_MAX / 1000,
+            "bad buy pricing"
+        );
 
         broker = IBroker(msg.sender);
         origin = origin_;
