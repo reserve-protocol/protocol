@@ -532,13 +532,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
-<<<<<<< HEAD
       cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
       EURC: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42',
-=======
       eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
->>>>>>> 4.0.0
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
