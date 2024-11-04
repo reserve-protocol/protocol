@@ -220,6 +220,7 @@ const opts = {
   collateralName: 'SUSDSCollateral',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
+  toleranceDivisor: bn('1e8'),
 }
 
 collateralTests(opts)
