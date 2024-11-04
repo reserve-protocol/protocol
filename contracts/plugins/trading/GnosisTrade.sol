@@ -41,7 +41,7 @@ contract GnosisTrade is ITrade, Versioned {
 
     // ==== The rest of contract state is all parameters that are immutable after init()
     // == Metadata
-    IGnosis public gnosis_DEPRECATED; // made immutable in 4.0.0; left in for testing compatibility
+    IGnosis public gnosis_DEPRECATED; // made immutable in 4.0.0; left in for storage compat
     uint256 public auctionId; // The Gnosis Auction ID returned by gnosis.initiateAuction()
     IBroker public broker; // The Broker that cloned this contract into existence
 

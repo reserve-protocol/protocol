@@ -32,6 +32,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { useEnv } from '#/utils/env'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../utils/oracles'
 import {
+  IConfig,
   IGovParams,
   IGovRoles,
   IRTokenSetup,
@@ -53,7 +54,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestICollateral,
-  TestIDeployer,
+  DeployerP1,
   TestIMain,
   TestIRevenueTrader,
   TestIRToken,
@@ -509,6 +510,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         it('lotPrice (deprecated) is equal to price()', async () => {
+          // @ts-expect-error -- deprecated but oh well
           const lotPrice = await ctx.collateral.lotPrice()
           const price = await ctx.collateral.price()
           expect(price.length).to.equal(2)
@@ -799,7 +801,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       let owner: SignerWithAddress
       let addr1: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let defaultFixture: Fixture<DefaultFixture>
 
@@ -820,12 +822,12 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       let rsrTrader: TestIRevenueTrader
       let rsr: ERC20Mock
 
-      let deployer: TestIDeployer
+      let deployer: DeployerP1
       let facadeWrite: FacadeWrite
       let govParams: IGovParams
       let govRoles: IGovRoles
 
-      const config = {
+      const config: IConfig = {
         dist: {
           rTokenDist: bn(0), // 0% RToken
           rsrDist: bn(10000), // 100% RSR
@@ -852,6 +854,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           pctRate: fp('0.05'), // 5%
         },
         reweightable: false,
+        enableIssuancePremium: false,
       }
 
       interface IntegrationFixture {
@@ -919,7 +922,12 @@ export default function fn<X extends CurveCollateralFixtureContext>(
               mandate: 'mandate',
               params: config,
             },
-            rTokenSetup
+            rTokenSetup,
+            {
+              assetPluginRegistry: ZERO_ADDRESS,
+              daoFeeRegistry: ZERO_ADDRESS,
+              versionRegistry: ZERO_ADDRESS,
+            }
           )
         ).wait()
 
@@ -1082,8 +1090,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         )
 
         let chainId = await getChainId(hre)
-        if (onBase) chainId = 8453
-        if (onArbitrum) chainId = 42161
+        if (onBase) chainId = '8453'
+        if (onArbitrum) chainId = '42161'
 
         if (target == ethers.utils.formatBytes32String('USD')) {
           // USD

@@ -66,6 +66,7 @@ async function main() {
       'collateral-plugins/verify_curve_stable_rtoken_metapool.ts',
       'collateral-plugins/verify_stakedao_usdc_usdcplus.ts',
       'collateral-plugins/verify_cusdcv3.ts',
+      'collateral-plugins/verify_cusdtv3.ts',
       'collateral-plugins/verify_reth.ts',
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
@@ -90,15 +91,15 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
-      'assets/verify_stg.ts',
-      'collateral-plugins/verify_cbbtc.ts',
-      'collateral-plugins/verify_eurc_100.ts'
+      'collateral-plugins/verify_morphoeUSD.ts',
+      'assets/verify_stg.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One
     scripts.push(
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_cusdcv3.ts',
+      'collateral-plugins/verify_cusdtv3.ts',
       'collateral-plugins/verify_convex_crvusd_usdc.ts',
       'collateral-plugins/verify_convex_crvusd_usdt.ts',
       'collateral-plugins/verify_usdm.ts',

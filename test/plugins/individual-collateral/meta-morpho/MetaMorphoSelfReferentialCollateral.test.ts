@@ -1,4 +1,3 @@
-import { networkConfig } from '#/common/configuration'
 import { bn, fp } from '#/common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'
@@ -18,12 +17,16 @@ import {
   ETH_ORACLE_ERROR,
   ETH_ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  RE7WETH,
+  ETH_USD_FEED,
+  forkNetwork,
 } from './constants'
 import { mintCollateralTo } from './mintCollateralTo'
 
 interface MAFiatCollateralOpts extends CollateralOpts {
   defaultPrice?: BigNumberish
   defaultRefPerTok?: BigNumberish
+  forkNetwork?: string
 }
 
 const makeFiatCollateralTestSuite = (
@@ -171,6 +174,7 @@ const makeFiatCollateralTestSuite = (
     itChecksNonZeroDefaultThreshold: it.skip,
     itHasRevenueHiding: it,
     resetFork: getResetFork(FORK_BLOCK),
+    targetNetwork: defaultCollateralOpts.forkNetwork,
     collateralName,
     chainlinkDefaultAnswer: defaultCollateralOpts.defaultPrice!,
     itIsPricedByPeg: true,
@@ -184,7 +188,8 @@ const makeOpts = (
   vault: string,
   chainlinkFeed: string,
   oracleTimeout: BigNumber,
-  oracleError: BigNumber
+  oracleError: BigNumber,
+  forkNetwork: string
 ): MAFiatCollateralOpts => {
   return {
     targetName: ethers.utils.formatBytes32String('ETH'),
@@ -199,14 +204,14 @@ const makeOpts = (
     defaultRefPerTok: fp('1'),
     erc20: vault,
     chainlinkFeed,
+    forkNetwork,
   }
 }
 
 /*
   Run the test suite
 */
-const { tokens, chainlinkFeeds } = networkConfig[31337]
 makeFiatCollateralTestSuite(
   'MetaMorphoSelfReferentialCollateral - Re7WETH',
-  makeOpts(tokens.Re7WETH!, chainlinkFeeds.ETH!, ETH_ORACLE_TIMEOUT, ETH_ORACLE_ERROR)
+  makeOpts(RE7WETH, ETH_USD_FEED, ETH_ORACLE_TIMEOUT, ETH_ORACLE_ERROR, 'mainnet')
 )
