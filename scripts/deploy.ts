@@ -95,8 +95,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_USDe.ts',
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
-      'phase2-assets/collaterals/deploy_pyusd.ts',
-      'phase2-assets/collaterals/deploy_paxg_100.ts'
+      'phase2-assets/collaterals/deploy_pyusd.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -125,8 +124,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_usdm.ts',
-      'phase2-assets/assets/deploy_arb.ts',
-      'phase2-assets/assets/deploy_arb_100.ts'
+      'phase2-assets/assets/deploy_arb.ts'
     )
   }
 
