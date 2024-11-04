@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, revenueHiding } from '../../utils'
+import { getUsdtOracleError, priceTimeout } from '../../utils'
 import { CTokenV3Collateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -29,9 +29,9 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  // Only exists on Base L2
-  if (!baseL2Chains.includes(hre.network.name)) {
-    throw new Error(`Invalid network ${hre.network.name} - only available on Base`)
+  // Does not exist on Base L2
+  if (baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - Not available on Base`)
   }
 
   // Get phase1 deployment
@@ -45,52 +45,48 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy CompoundV3 USDC - cUSDbCv3 **************************/
+  /********  Deploy CompoundV3 USDT - cUSDTv3 **************************/
 
   const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CFiatV3Wrapper')
   const erc20 = await WrapperFactory.deploy(
-    networkConfig[chainId].tokens.cUSDbCv3,
+    networkConfig[chainId].tokens.cUSDTv3,
     networkConfig[chainId].COMET_REWARDS,
     networkConfig[chainId].tokens.COMP,
-    'Wrapped cUSDbCv3',
-    'wcUSDbCv3',
+    'Wrapped cUSDTv3',
+    'wcUSDTv3',
     fp(1).toString()
   )
   await erc20.deployed()
 
-  console.log(
-    `Deployed wrapper for cUSDbCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `
-  )
+  console.log(`Deployed wrapper for cUSDTv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
-  const usdcOracleTimeout = '86400' // 24 hr
-  const usdcOracleError = fp('0.003') // 0.3% (Base)
+  const usdtOracleTimeout = '86400' // 24 hr
+  const usdtOracleError = getUsdtOracleError(hre.network.name)
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
-      oracleError: usdcOracleError.toString(),
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT,
+      oracleError: usdtOracleError.toString(),
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: usdcOracleTimeout, // 24h hr,
+      oracleTimeout: usdtOracleTimeout, // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.01').add(usdcOracleError).toString(), // 1% + 0.3%
+      defaultThreshold: fp('0.01').add(usdtOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    revenueHiding.toString()
+    fp('1e-5').toString() // results from backtester, 1e-6 defaulted
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(
-    `Deployed CompoundV3 USDbC to ${hre.network.name} (${chainId}): ${collateral.address}`
-  )
+  console.log(`Deployed CompoundV3 USDT to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.cUSDbCv3 = collateral.address
-  assetCollDeployments.erc20s.cUSDbCv3 = erc20.address
+  assetCollDeployments.collateral.cUSDTv3 = collateral.address
+  assetCollDeployments.erc20s.cUSDTv3 = erc20.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
