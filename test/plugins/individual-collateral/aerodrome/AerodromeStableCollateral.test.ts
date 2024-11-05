@@ -158,6 +158,7 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
     }
 
     opts = { ...defaultCollateralOpts, ...opts }
+    opts.feeds![0][0] = opts.chainlinkFeed!
 
     const AeroStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'AerodromeStableCollateral'
@@ -450,7 +451,6 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it.skip,
     itChecksNonZeroDefaultThreshold: it,
-    itChecksMainChainlinkOracleRevert: it.skip,
     itHasRevenueHiding: it.skip,
     resetFork,
     collateralName: curr.testName,
