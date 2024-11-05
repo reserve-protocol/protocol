@@ -106,6 +106,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   // toggle on or off: tests that check that defaultThreshold is not zero
   itChecksNonZeroDefaultThreshold: Mocha.TestFunction | Mocha.PendingTestFunction
 
+  // toggle on or off: tests that check when the main chainlink feed reverts (not always used)
+  itChecksMainChainlinkOracleRevert: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // does the peg price matter for the results of tryPrice()?
   itIsPricedByPeg?: boolean
 

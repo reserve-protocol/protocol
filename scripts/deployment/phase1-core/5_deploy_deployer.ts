@@ -40,7 +40,6 @@ async function main() {
   deployer = <DeployerP1>(
     await DeployerFactory.connect(burner).deploy(
       deployments.prerequisites.RSR,
-      deployments.prerequisites.GNOSIS_EASY_AUCTION,
       deployments.rsrAsset,
       deployments.implementations
     )

@@ -10,6 +10,11 @@ import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  *
  * For example: steakUSDC, steakPYUSD, bbUSDT
+ *
+ * Rewards need to be claimed manually, from off-chain. This can be done permissionlessly,
+ * by anyone, on behalf of the RToken's Backing Manager address.
+ * For more information:  https://docs.morpho.org/rewards/tutorials/claim-rewards/
+ *
  */
 contract MetaMorphoFiatCollateral is ERC4626FiatCollateral {
     /// config.erc20 must be a MetaMorpho ERC4626 vault

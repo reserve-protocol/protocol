@@ -43,6 +43,12 @@ interface ITrading is IComponent, IRewardableComponent {
         uint256 buyAmount
     );
 
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) external;
+
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @param sell The sell token in the trade
     /// @return The trade settled

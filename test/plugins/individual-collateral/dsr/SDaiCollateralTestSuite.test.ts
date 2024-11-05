@@ -215,6 +215,7 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
+  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it.skip,
   resetFork,
   collateralName: 'SDaiCollateral',

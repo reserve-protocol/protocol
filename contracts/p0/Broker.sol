@@ -30,8 +30,6 @@ contract BrokerP0 is ComponentP0, IBroker {
     ITrade public batchTradeImplementation;
     ITrade public dutchTradeImplementation;
 
-    IGnosis public gnosis;
-
     mapping(address => bool) private trades;
 
     uint48 public batchAuctionLength; // {s} the length of a Gnosis EasyAuction
@@ -43,14 +41,12 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     function init(
         IMain main_,
-        IGnosis gnosis_,
         ITrade batchTradeImplementation_, // Added for Interface compatibility with P1
         uint48 batchAuctionLength_,
         ITrade dutchTradeImplementation_, // Added for Interface compatibility with P1
         uint48 dutchAuctionLength_
     ) public initializer {
         __Component_init(main_);
-        setGnosis(gnosis_);
         setBatchTradeImplementation(batchTradeImplementation_);
         setBatchAuctionLength(batchAuctionLength_);
         setDutchTradeImplementation(dutchTradeImplementation_);
@@ -134,14 +130,6 @@ contract BrokerP0 is ComponentP0, IBroker {
     // === Setters ===
 
     /// @custom:governance
-    function setGnosis(IGnosis newGnosis) public governance {
-        require(address(newGnosis) != address(0), "invalid Gnosis address");
-
-        emit GnosisSet(gnosis, newGnosis);
-        gnosis = newGnosis;
-    }
-
-    /// @custom:governance
     function setBatchTradeImplementation(ITrade newTradeImplementation) public governance {
         require(
             address(newTradeImplementation) != address(0),
@@ -220,7 +208,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             req.sellAmount
         );
 
-        trade.init(this, caller, gnosis, batchAuctionLength, req);
+        trade.init(this, caller, batchAuctionLength, req);
         return trade;
     }
 

@@ -18,18 +18,19 @@ For a much more detailed explanation of the economic design, including an hour-l
 
 ## Further Documentation
 
-- [Development Environment](https://github.com/reserve-protocol/protocol/blob/master/docs/dev-env.md): Setup and usage of our dev environment. How to compile, autoformat, lint, and test our code.
-  - [Testing with Echidna](https://github.com/reserve-protocol/protocol/blob/master/docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
-  - [Deployment](https://github.com/reserve-protocol/protocol/blob/master/docs/deployment.md): How to do test deployments in our environment.
-- [System Design](https://github.com/reserve-protocol/protocol/blob/master/docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
-- [Pause and Freeze States](https://github.com/reserve-protocol/protocol/blob/master/docs/pause-freeze-states.md): An overview of which protocol functions are halted in the paused and frozen states.
-- [Deployment Variables](https://github.com/reserve-protocol/protocol/blob/master/docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
-- [Our Solidity Style](https://github.com/reserve-protocol/protocol/blob/master/docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, especially where those go beyond standard practice.
-- [Writing Collateral Plugins](https://github.com/reserve-protocol/protocol/blob/master/docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
-- [Building on Top](https://github.com/reserve-protocol/protocol/blob/master/docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
-- [MEV](https://github.com/reserve-protocol/protocol/blob/master/docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programmatically.
-- [Rebalancing Algorithm](https://github.com/reserve-protocol/protocol/blob/master/docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
-- [Changelog](https://github.com/reserve-protocol/protocol/blob/master/CHANGELOG.md): Release changelog
+- [Overview](docs/overview.md): Start here
+- [Development Environment](docs/dev-env.md): Setup and usage of our dev environment. How to compile, autoformat, lint, and test our code.
+  - [Testing with Echidna](docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
+  - [Deployment](docs/deployment.md): How to do test deployments in our environment.
+- [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
+- [Pause and Freeze States](docs/pause-freeze-states.md): An overview of which protocol functions are halted in the paused and frozen states.
+- [Deployment Variables](docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
+- [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, especially where those go beyond standard practice.
+- [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
+- [Building on Top](docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
+- [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programmatically.
+- [Rebalancing Algorithm](docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
+- [Changelog](CHANGELOG.md): Release changelog
 
 ## Mainnet Addresses (v3.4.0)
 
@@ -57,7 +58,7 @@ For a much more detailed explanation of the economic design, including an hour-l
 
 The DeployerRegistry, which contains a link to all official releases via their Deployer contracts, can be found [here](https://etherscan.io/address/0xD85Fac03804a3e44D29c494f3761D11A2262cBBe).
 
-Deployed collateral plugin addresses and their configuration parameters can be found [here](https://github.com/reserve-protocol/protocol/blob/master/docs/plugin-addresses.md).
+Deployed collateral plugin addresses and their configuration parameters can be found [here](docs/plugin-addresses.md).
 
 ## Parallel Prototypes
 

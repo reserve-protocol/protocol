@@ -13,7 +13,6 @@ import {
   BasketHandlerP1,
   BasketLibP1,
   BrokerP1,
-  DeployerP0,
   DeployerP1,
   DistributorP1,
   DutchTrade,
@@ -28,7 +27,6 @@ import {
   RevenueTraderP1,
   RTokenP1,
   StRSRP1Votes,
-  TestIDeployer,
   TestIFacade,
   RecollateralizationLibP1,
 } from '../../../typechain'
@@ -45,10 +43,8 @@ interface RSRFixture {
   rsr: ERC20Mock
 }
 
-async function rsrFixture(chainId: number): Promise<RSRFixture> {
-  const rsr: ERC20Mock = <ERC20Mock>(
-    await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR || '')
-  )
+async function rsrFixture(chainId: string): Promise<RSRFixture> {
+  const rsr = await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR || '')
   return { rsr }
 }
 
@@ -66,7 +62,7 @@ type RSRAndModuleFixture = RSRFixture & ModuleFixture
 
 export interface DefaultFixture extends RSRAndModuleFixture {
   salt: string
-  deployer: TestIDeployer
+  deployer: DeployerP1
   rsrAsset: Asset
   facade: TestIFacade
   facadeTest: FacadeTest
@@ -77,8 +73,8 @@ export interface DefaultFixture extends RSRAndModuleFixture {
 export const getDefaultFixture = async function (salt: string) {
   const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
     let chainId = await getChainId(hre)
-    if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
-    if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = 42161
+    if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = '8453'
+    if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = '42161'
     const { rsr } = await rsrFixture(chainId)
     const { gnosis } = await gnosisFixture()
     if (!networkConfig[chainId]) {
@@ -136,12 +132,14 @@ export const getDefaultFixture = async function (salt: string) {
     )
 
     // Create Deployer
-    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+    const DeployerFactory = await ethers.getContractFactory('DeployerP0', {
       libraries: { TradingLibP0: tradingLib.address },
     })
-    let deployer: TestIDeployer = <DeployerP0>(
-      await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
-    )
+    let deployer = (await DeployerFactory.deploy(
+      rsr.address,
+      gnosis.address,
+      rsrAsset.address
+    )) as unknown as DeployerP1
 
     if (IMPLEMENTATION == Implementation.P1) {
       // Deploy implementations
@@ -183,7 +181,9 @@ export const getDefaultFixture = async function (salt: string) {
       const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
       const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>(
+        await GnosisTradeImplFactory.deploy(gnosis.address)
+      )
 
       const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
       const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
@@ -214,10 +214,9 @@ export const getDefaultFixture = async function (salt: string) {
           stRSR: stRSRImpl.address,
         },
       }
-      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-      deployer = <DeployerP1>(
-        await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
-      )
+
+      const DeployerFactory = await ethers.getContractFactory('DeployerP1')
+      deployer = await DeployerFactory.deploy(rsr.address, rsrAsset.address, implementations)
     }
 
     // Deploy Facade

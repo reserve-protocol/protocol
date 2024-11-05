@@ -393,9 +393,11 @@ Should never decrease. The plugin should monitor this value for decrease in its 
 
 Should be gas-efficient.
 
+Should return a nonzero value in the range of 1e9 to 1e27.
+
 ### targetPerRef() `{target/ref}`
 
-Should never revert. Must return a constant value. Almost always `FIX_ONE`, but can be different in principle.
+Should never revert. Must return a constant nonzero value. Almost always `FIX_ONE`, but can be different in principle.
 
 Should be gas-efficient.
 

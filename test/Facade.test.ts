@@ -134,7 +134,6 @@ describe('Facade + FacadeMonitor contracts', () => {
       config,
       facade,
       readFacet,
-      revenueFacet,
       facadeTest,
       facadeMonitor,
       rToken,
@@ -261,7 +260,7 @@ describe('Facade + FacadeMonitor contracts', () => {
         expect(actual).to.equal(0)
 
         // Mimic 10% even appreciation across the board on a 0.01% backingBuffer
-        const [erc20s, amounts] = await basketHandler.quote(issueAmount, 0)
+        const [erc20s, amounts] = await basketHandler.quote(issueAmount, false, 0)
         for (let i = 0; i < erc20s.length; i++) {
           const erc20 = await ethers.getContractAt('ERC20Mock', erc20s[i])
           await erc20.connect(addr1).mint(backingManager.address, amounts[i].div(10))
@@ -310,7 +309,7 @@ describe('Facade + FacadeMonitor contracts', () => {
         )
       })
       it('Should return maxIssuableByAmounts correctly', async () => {
-        const [erc20Addrs] = await basketHandler.quote(fp('1'), 0)
+        const [erc20Addrs] = await basketHandler.quote(fp('1'), false, 0)
         const erc20s = await Promise.all(
           erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a))
         )

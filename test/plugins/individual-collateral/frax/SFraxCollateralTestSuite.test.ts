@@ -195,6 +195,7 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksTargetPerRefDefaultUp: it,
   itChecksNonZeroDefaultThreshold: it,
+  itChecksMainChainlinkOracleRevert: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it.skip,

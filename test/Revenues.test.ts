@@ -151,8 +151,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
       )
     } else {
-      const slot = await getStorageAt(broker.address, 56)
-      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+      const slot = await getStorageAt(broker.address, 55)
+      await setStorageAt(broker.address, 55, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
     }
     expect(await broker.batchTradeDisabled()).to.equal(true)
   }
@@ -361,14 +361,28 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         distributor
           .connect(owner)
           .setDistribution(furnace.address, { rTokenDist: bn(5), rsrDist: bn(5) })
-      ).to.be.revertedWith('destination can not be furnace or strsr directly')
+      ).to.be.revertedWith('destination cannot be furnace or strsr directly')
 
       // Cannot set StRSR as beneficiary
       await expect(
         distributor
           .connect(owner)
           .setDistribution(stRSR.address, { rTokenDist: bn(5), rsrDist: bn(5) })
-      ).to.be.revertedWith('destination can not be furnace or strsr directly')
+      ).to.be.revertedWith('destination cannot be furnace or strsr directly')
+
+      // Cannot set RSR as beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(rsr.address, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('destination cannot be rsr or rToken')
+
+      // Cannot set RToken as beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(rToken.address, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('destination cannot be rsr or rToken')
     })
 
     itP1('Should not allow to set Dao fee explicitly', async () => {
