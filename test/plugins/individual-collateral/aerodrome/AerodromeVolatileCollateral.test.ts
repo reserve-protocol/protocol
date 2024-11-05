@@ -135,7 +135,7 @@ const all: AeroVolatilePoolEnumeration[] = [
     ],
     oracleTimeout: AERO_ORACLE_TIMEOUT, // max
     oracleError: AERO_ORACLE_ERROR.add(ETH_ORACLE_ERROR), // combined
-    amountScaleDivisor: bn('1'),
+    amountScaleDivisor: bn('1e2'),
     toleranceDivisor: bn('1e4'),
   },
 ]
