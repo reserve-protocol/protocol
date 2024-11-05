@@ -328,6 +328,7 @@ all.forEach((curr: AeroVolatilePoolEnumeration) => {
       const coll = await deployCollateral({
         pool: curr.pool,
         gauge: curr.gauge,
+        chainlinkFeed: feed0.address,
         feeds: [[feed0.address], [feed1.address]],
       })
 

@@ -318,6 +318,7 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
       const coll = await deployCollateral({
         pool: curr.pool,
         gauge: curr.gauge,
+        chainlinkFeed: feed0.address,
         feeds: [[feed0.address], [feed1.address]],
       })
 
@@ -350,6 +351,7 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
       const coll = await deployCollateral({
         pool: curr.pool,
         gauge: curr.gauge,
+        chainlinkFeed: feed0.address,
         feeds: [[feed0.address], [feed1.address]],
       })
 
@@ -390,6 +392,7 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
       const invalidCollateral = await deployCollateral({
         pool: curr.pool,
         gauge: curr.gauge,
+        chainlinkFeed: invalidChainlinkFeed.address,
         feeds: [[invalidChainlinkFeed.address], [invalidChainlinkFeed.address]],
       })
 
