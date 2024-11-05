@@ -10,7 +10,7 @@ import "../interfaces/IRToken.sol";
 import "../libraries/Fixed.sol";
 import "../p1/RToken.sol";
 import "../plugins/assets/compoundv2/DEPRECATED_CTokenWrapper.sol";
-import "../plugins/assets/compoundv3/ICusdcV3Wrapper.sol";
+import "../plugins/assets/compoundv3/ICFiatV3Wrapper.sol";
 import "../plugins/assets/stargate/StargateRewardableWrapper.sol";
 import { StaticATokenV3LM } from "../plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol";
 import "../plugins/assets/morpho-aave/MorphoAaveV2TokenisedDeposit.sol";
@@ -174,7 +174,7 @@ contract FacadeMonitor is Initializable, OwnableUpgradeable, UUPSUpgradeable, IF
             backingBalance = (cTokenBal * exchangeRate) / 1e18;
             availableLiquidity = underlying.balanceOf(address(cToken));
         } else if (collType == CollPluginType.COMPOUND_V3) {
-            ICusdcV3Wrapper cTokenV3Wrapper = ICusdcV3Wrapper(address(erc20));
+            ICFiatV3Wrapper cTokenV3Wrapper = ICFiatV3Wrapper(address(erc20));
             CometInterface cTokenV3 = CometInterface(address(cTokenV3Wrapper.underlyingComet()));
             IERC20 underlying = IERC20(cTokenV3.baseToken());
 

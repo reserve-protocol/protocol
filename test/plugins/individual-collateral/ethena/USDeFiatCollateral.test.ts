@@ -211,11 +211,13 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
+  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it,
   collateralName: 'USDe Fiat Collateral',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
   resetFork,
+  toleranceDivisor: bn('1e8'),
 }
 
 collateralTests(opts)

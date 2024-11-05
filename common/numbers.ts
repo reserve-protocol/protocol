@@ -14,7 +14,7 @@ export const pow10 = (exponent: BigNumberish): BigNumber => {
 }
 
 // Convert `x` to a new BigNumber with decimals = `decimals`.
-// Input should have SCALE_DECIMALS (18) decimal places, and `decimals` should be less than 18.
+// Input should have SCALE_DECIMALS (18) decimal places.
 export const toBNDecimals = (x: BigNumberish, decimals: number): BigNumber => {
   return decimals < SCALE_DECIMALS
     ? BigNumber.from(x).div(pow10(SCALE_DECIMALS - decimals))

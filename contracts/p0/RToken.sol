@@ -109,7 +109,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             ? basketsNeeded.muluDivu(amount, totalSupply(), CEIL) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
-        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
+        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
+            baskets,
+            true,
+            CEIL
+        );
 
         address issuer = _msgSender();
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -136,6 +140,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         main.poke();
 
         require(amount > 0, "Cannot redeem zero");
+        require(recipient != address(0), "cannot redeem to zero address");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
         require(main.basketHandler().fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
@@ -150,6 +155,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             baskets,
+            false,
             FLOOR
         );
 
@@ -262,6 +268,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     function mint(uint192 baskets) external exchangeRateIsValidAfter {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
+        redemptionThrottle.useAvailable(totalSupply(), 0);
         _scaleUp(address(main.backingManager()), baskets);
     }
 
@@ -280,6 +288,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     function dissolve(uint256 amount) external exchangeRateIsValidAfter {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
+        redemptionThrottle.useAvailable(totalSupply(), 0);
         _scaleDown(_msgSender(), amount);
     }
 

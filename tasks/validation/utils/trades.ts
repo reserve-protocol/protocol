@@ -1,5 +1,5 @@
 import { MAX_UINT256, QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
-import { bn, fp } from '#/common/numbers'
+import { bn, fp, pow10 } from '#/common/numbers'
 import { whileImpersonating } from '#/utils/impersonation'
 import { networkConfig } from '../../../common/configuration'
 import { advanceTime, getLatestBlockTimestamp } from '#/utils/time'
@@ -38,7 +38,7 @@ export const runBatchTrade = async (
     `Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
   )
   const endTime = await trade.endTime()
-  const worstPrice = await trade.worstCasePrice() // trade.buy() per trade.sell()
+  const worstPrice = await trade.worstCasePrice() // trade.buy() per trade.sell(), qTok
   const auctionId = await trade.auctionId()
   const sellAmount = await trade.initBal()
 
@@ -46,13 +46,18 @@ export const runBatchTrade = async (
   const sellDecimals = await sellToken.decimals()
   const buytoken = await hre.ethers.getContractAt('ERC20Mock', await buyTokenAddress)
   const buyDecimals = await buytoken.decimals()
-  let buyAmount = bidExact ? sellAmount : sellAmount.mul(worstPrice).div(fp('1'))
+  let buyAmount = bidExact
+    ? sellAmount
+    : sellAmount
+        .mul(worstPrice)
+        .mul(pow10(buyDecimals - sellDecimals))
+        .div(fp('1'))
   if (buyDecimals > sellDecimals) {
-    buyAmount = buyAmount.mul(bn(10 ** (buyDecimals - sellDecimals)))
+    buyAmount = buyAmount.mul(pow10(buyDecimals - sellDecimals))
   } else if (sellDecimals > buyDecimals) {
-    buyAmount = buyAmount.div(bn(10 ** (sellDecimals - buyDecimals)))
+    buyAmount = buyAmount.div(pow10(sellDecimals - buyDecimals))
   }
-  buyAmount = buyAmount.add(fp('1').div(bn(10 ** (18 - buyDecimals))))
+  buyAmount = buyAmount.add(fp('1').div(pow10(18 - buyDecimals)))
 
   const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
   const whaleAddr = whales[buyTokenAddress.toLowerCase()]
@@ -382,7 +387,7 @@ const getERC20Tokens = async (
 
     // Solutions for wrappers without whales
     if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
-      const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+      const wcUSDCv3 = await hre.ethers.getContractAt('CFiatV3Wrapper', tokAddress)
       await whileImpersonating(
         hre,
         whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
@@ -457,7 +462,7 @@ const getERC20Tokens = async (
 
     // Solutions for wrappers without whales
     if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
-      const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+      const wcUSDCv3 = await hre.ethers.getContractAt('CFiatV3Wrapper', tokAddress)
 
       await whileImpersonating(
         hre,

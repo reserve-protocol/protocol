@@ -82,7 +82,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       await main.assetRegistry()
     )
     const basketHandler = await hre.ethers.getContractAt(
-      'TestIBasketHandler',
+      'BasketHandlerP1',
       await main.basketHandler()
     )
     const backingManager = await hre.ethers.getContractAt(
@@ -103,7 +103,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     console.log('💪 Basket is SOUND and fully collateralized!')
     console.log('\n', 'Basket:')
     const [primeBasketERC20s] = await basketHandler.getPrimeBasket()
-    const [refBasketERC20s] = await basketHandler.quote(fp('1e18'), 0)
+    const [refBasketERC20s] = await basketHandler['quote(uint192,uint8)'](fp('1e18'), 0)
     if (primeBasketERC20s.length != refBasketERC20s.length) {
       throw new Error('Reference basket length != prime basket length')
     }
@@ -337,7 +337,7 @@ const runCheck_mint = async (
   rToken: RTokenP1
 ) => {
   console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
-  const [erc20s] = await basketHandler.quote(fp('1'), 2)
+  const [erc20s] = await basketHandler['quote(uint192,uint8)'](fp('1'), 2)
   for (let i = 0; i < erc20s.length; i++) {
     const erc20 = await hre.ethers.getContractAt(
       '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',

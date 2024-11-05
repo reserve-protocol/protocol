@@ -1145,6 +1145,16 @@ describe('In FixLib,', () => {
         await caller.safeMulDiv(MAX_UINT192.div(fp(2)).sub(1), fp(1), MAX_UINT192, CEIL)
       ).to.equal(1)
     })
+
+    it('regression test -- safeMulDiv with ROUND', async () => {
+      // ROUND was rounding up for _most_ values, instead of half of them
+      // here we test that 0.1, 0.01, ...0.000000000000001 etc are all rounded down
+
+      for (let i = 0; i < 18; i++) {
+        const amt = fp(`1e-${i + 1}`)
+        expect(await caller.safeMulDiv(amt, fp(1).add(1), fp(1), ROUND)).to.equal(amt)
+      }
+    })
   })
 
   describe('safeDiv_', () => {

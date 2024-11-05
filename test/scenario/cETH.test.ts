@@ -325,7 +325,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should swap WETH in for cETH
-      const [tokens] = await basketHandler.quote(fp('1'), 2)
+      const [tokens] = await basketHandler.quote(fp('1'), true, 2)
       expect(tokens[0]).to.equal(token0.address)
       expect(tokens[1]).to.equal(weth.address)
 

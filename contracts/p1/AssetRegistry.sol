@@ -156,13 +156,34 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// Returns keys(assets), values(assets) as (duplicate-free) lists.
     // returns: [keys(assets)], [values(assets)] without duplicates.
     /// @return reg The list of registered ERC20s and Assets, in the same order
-    function getRegistry() external view returns (Registry memory reg) {
+    function getRegistry() public view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
         reg.assets = new IAsset[](length);
         for (uint256 i = 0; i < length; ++i) {
             reg.erc20s[i] = IERC20(_erc20s.at(i));
             reg.assets[i] = assets[IERC20(_erc20s.at(i))];
+        }
+    }
+
+    /// @inheritdoc IAssetRegistry
+    function validateCurrentAssets() external view {
+        Registry memory registry = getRegistry();
+        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+
+        if (address(assetPluginRegistry) != address(0)) {
+            uint256 assetLen = registry.assets.length;
+            for (uint256 i = 0; i < assetLen; ++i) {
+                IAsset asset = registry.assets[i];
+
+                require(
+                    assetPluginRegistry.isValidAsset(
+                        keccak256(abi.encodePacked(this.version())),
+                        address(asset)
+                    ),
+                    "unsupported asset"
+                );
+            }
         }
     }
 
@@ -197,6 +218,17 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             );
         }
 
+        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+        if (address(assetPluginRegistry) != address(0)) {
+            require(
+                main.assetPluginRegistry().isValidAsset(
+                    keccak256(abi.encodePacked(this.version())),
+                    address(asset)
+                ),
+                "unsupported asset"
+            );
+        }
+
         IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
@@ -220,11 +252,15 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
+        // Call to quantity() restricts gas that is passed along to 63 / 64 of gasleft().
+        // Therefore gasleft() must be greater than 64 * GAS_FOR_BH_QTY / 63
+        // GAS_FOR_DISABLE_BASKET is a buffer which can be considerably lower without
+        // security implications.
         require(
-            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            gas > (64 * GAS_FOR_BH_QTY) / 63 + GAS_FOR_DISABLE_BASKET,
             "not enough gas to unregister safely"
         );
-        return gas - GAS_FOR_DISABLE_BASKET;
+        return GAS_FOR_BH_QTY;
     }
 
     /**

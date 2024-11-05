@@ -73,7 +73,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
             }
 
             // Check for soft default + save prices
-            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                 // {UoA/tok}, {UoA/tok}, {UoA/tok}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -81,6 +81,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced

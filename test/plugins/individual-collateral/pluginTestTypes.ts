@@ -106,6 +106,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   // toggle on or off: tests that check that defaultThreshold is not zero
   itChecksNonZeroDefaultThreshold: Mocha.TestFunction | Mocha.PendingTestFunction
 
+  // toggle on or off: tests that check when the main chainlink feed reverts (not always used)
+  itChecksMainChainlinkOracleRevert: Mocha.TestFunction | Mocha.PendingTestFunction
+
   // does the peg price matter for the results of tryPrice()?
   itIsPricedByPeg?: boolean
 
@@ -120,6 +123,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
 
   // the default answer that will come from the chainlink feed after deployment
   chainlinkDefaultAnswer: BigNumberish
+
+  // the scale divisor that will be used for amounts in tests
+  amountScaleDivisor?: BigNumber
 
   // the default tolerance divisor that will be used in expectPrice checks
   toleranceDivisor?: BigNumber

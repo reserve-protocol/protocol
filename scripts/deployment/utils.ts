@@ -14,23 +14,17 @@ export const priceTimeout = bn('604800') // 1 week
 export const revenueHiding = fp('1e-6') // 1 part in a million
 
 export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
-  return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
+  return x.add(y)
 }
 
 export const validatePrerequisites = async (deployments: IDeployments) => {
   // Check prerequisites properly defined
-  if (
-    !deployments.prerequisites.GNOSIS_EASY_AUCTION ||
-    !deployments.prerequisites.RSR ||
-    !deployments.prerequisites.RSR_FEED
-  ) {
+  if (!deployments.prerequisites.RSR || !deployments.prerequisites.RSR_FEED) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR))) {
     throw new Error(`RSR contract not found in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR_FEED))) {
     throw new Error(`RSR_FEED contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.GNOSIS_EASY_AUCTION))) {
-    throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
   }
 }
 
@@ -178,11 +172,16 @@ export const getEmptyDeployment = (): IDeployments => {
     prerequisites: {
       RSR: '',
       RSR_FEED: '',
-      GNOSIS_EASY_AUCTION: '',
     },
     tradingLib: '',
     basketLib: '',
-    facets: { actFacet: '', readFacet: '', maxIssuableFacet: '' },
+    facets: {
+      actFacet: '',
+      readFacet: '',
+      maxIssuableFacet: '',
+      backingBufferFacet: '',
+      revenueFacet: '',
+    },
     facade: '',
     facadeWriteLib: '',
     facadeWrite: '',

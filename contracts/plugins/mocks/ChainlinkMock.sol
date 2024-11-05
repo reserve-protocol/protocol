@@ -52,7 +52,12 @@ contract MockV3Aggregator is AggregatorV3Interface {
     }
 
     // used by Frax oracle
-    function addRoundData(bool isBadData, uint104 low, uint104 high, uint40 timestamp) public {
+    function addRoundData(
+        bool isBadData,
+        uint104 low,
+        uint104 high,
+        uint40 timestamp
+    ) public {
         latestAnswer = int104(low + high) / 2;
         latestTimestamp = block.timestamp;
         latestRound++;

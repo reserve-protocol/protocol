@@ -25,6 +25,10 @@ async function main() {
   // Part 1/3 of the *overall* deployment process: Deploy all contracts
   // See `confirm.ts` for part 2
 
+  // Phase 0 -- Registries
+  // Phase 0 must be run manually, and is a one time setup for the DAO.
+  // The deploy scripts do not enforce them.
+
   // Phase 1 -- Implementations
   const scripts = [
     'phase1-core/0_setup_deployments.ts',
@@ -61,6 +65,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
       'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_ctokenv3_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_3pool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_paypool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
@@ -85,6 +90,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_steakpyusd.ts',
       'phase2-assets/collaterals/deploy_bbusdt.ts',
       'phase2-assets/collaterals/deploy_re7weth.ts',
+      'phase2-assets/collaterals/deploy_ethx_collateral.ts',
       'phase2-assets/collaterals/deploy_apxeth.ts',
       'phase2-assets/collaterals/deploy_USDe.ts',
       'phase2-assets/assets/deploy_crv.ts',
@@ -102,7 +108,9 @@ async function main() {
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
-      'phase2-assets/assets/deploy_stg.ts'
+      'phase2-assets/assets/deploy_stg.ts',
+      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One
@@ -113,6 +121,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_ctokenv3_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_usdm.ts',

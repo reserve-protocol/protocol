@@ -39,19 +39,11 @@ async function main() {
     throw new Error(`RSR Feed contract not found in network ${hre.network.name}`)
   }
 
-  // Get Gnosis EasyAuction Address
-  const gnosisAddr = networkConfig[chainId].GNOSIS_EASY_AUCTION
-  if (!gnosisAddr) {
-    throw new Error(`Missing address for GNOSIS_EASY_AUCTION in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, gnosisAddr))) {
-    throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
-  }
   // ********************* Output Configuration******************************
   const deployments: IDeployments = {
     prerequisites: {
       RSR: rsrAddr,
       RSR_FEED: rsrFeedAddr,
-      GNOSIS_EASY_AUCTION: gnosisAddr,
     },
     tradingLib: '',
     facade: '',
@@ -59,6 +51,8 @@ async function main() {
       actFacet: '',
       readFacet: '',
       maxIssuableFacet: '',
+      backingBufferFacet: '',
+      revenueFacet: '',
     },
     facadeWriteLib: '',
     basketLib: '',
@@ -90,7 +84,6 @@ async function main() {
   console.log(`Deployment file created for ${hre.network.name} (${chainId}):
     RSR: ${rsrAddr}
     RSR FEED: ${rsrFeedAddr}
-    GNOSIS_EASY_AUCTION: ${gnosisAddr}
     Deployment file: ${deploymentFilename}`)
 }
 
