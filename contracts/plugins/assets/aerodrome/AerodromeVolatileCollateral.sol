@@ -156,8 +156,7 @@ contract AerodromeVolatileCollateral is FiatCollateral, AerodromePoolTokens {
 
     // Override this later to implement non-stable pools
     function _anyDepeggedInPool() internal view virtual returns (bool) {
-        // TODO
-        // consider expanding plugin later to support ie WBTC peg checks
+        // TODO maybe expand plugin later to support peg checks, currently not worth it
         return false;
     }
 }

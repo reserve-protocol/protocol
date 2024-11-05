@@ -7,7 +7,9 @@ import {
   TestICollateral,
   MockV3Aggregator,
 } from '@typechain/index'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ethers } from 'hardhat'
+import { BigNumberish } from 'ethers'
 import {
   USDC,
   eUSD,
@@ -58,7 +60,10 @@ export const mintLpToken = async (
   recipient: string
 ) => {
   await whileImpersonating(holder, async (signer) => {
-    await gauge.connect(signer).withdraw(amount)
+    // holder can have lpToken OR gauge
+    if ((await lpToken.balanceOf(signer.address)).lt(amount)) {
+      await gauge.connect(signer).withdraw(amount)
+    }
     await lpToken.connect(signer).transfer(recipient, amount)
   })
 }
@@ -78,9 +83,10 @@ export const mintWrappedLpToken = async (
 }
 
 export const getFeeds = async (coll: TestICollateral): Promise<MockV3Aggregator[]> => {
-  const aeroStableColl = await ethers.getContractAt('AerodromeStableCollateral', coll.address)
+  const aeroColl = await ethers.getContractAt('AerodromeVolatileCollateral', coll.address)
+  // works for AerodromeStableCollateral too
 
-  const feedAddrs = (await aeroStableColl.tokenFeeds(0)).concat(await aeroStableColl.tokenFeeds(1))
+  const feedAddrs = (await aeroColl.tokenFeeds(0)).concat(await aeroColl.tokenFeeds(1))
   const feeds: MockV3Aggregator[] = []
 
   for (const feedAddr of feedAddrs) {
