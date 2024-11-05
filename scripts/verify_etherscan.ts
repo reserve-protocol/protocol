@@ -93,6 +93,7 @@ async function main() {
       'assets/verify_stg.ts',
       'collateral-plugins/verify_aerodrome_usdc_eusd.ts',
       'collateral-plugins/verify_aerodrome_weth_aero.ts',
+      'collateral-plugins/verify_aerodrome_mog_weth.ts',
       'collateral-plugins/verify_morphoeUSD.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {

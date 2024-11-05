@@ -106,9 +106,9 @@ async function main() {
       {
         pool: AERO_MOG_WETH_POOL,
         poolType: AerodromePoolType.Volatile,
-        feeds: [[ETH_USD_FEED], [MOG_USD_FEED]],
-        oracleTimeouts: [[ETH_ORACLE_TIMEOUT], [MOG_ORACLE_TIMEOUT]],
-        oracleErrors: [[ETH_ORACLE_ERROR], [MOG_ORACLE_ERROR]],
+        feeds: [[MOG_USD_FEED], [ETH_USD_FEED]],
+        oracleTimeouts: [[MOG_ORACLE_TIMEOUT], [ETH_ORACLE_TIMEOUT]],
+        oracleErrors: [[MOG_ORACLE_ERROR], [ETH_ORACLE_ERROR]],
       }
     )
   } else {
