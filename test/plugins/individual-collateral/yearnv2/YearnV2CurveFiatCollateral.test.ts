@@ -260,7 +260,6 @@ tests.forEach((test: CurveFiatTest) => {
     itChecksTargetPerRefDefault: it,
     itChecksTargetPerRefDefaultUp: it,
     itChecksRefPerTokDefault: it,
-    itChecksMainChainlinkOracleRevert: it,
     itHasRevenueHiding: it,
     itClaimsRewards: it.skip,
     isMetapool: false,

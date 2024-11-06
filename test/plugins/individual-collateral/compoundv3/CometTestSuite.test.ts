@@ -384,7 +384,6 @@ allTests.forEach((curr: CTokenV3Enumeration) => {
     itChecksRefPerTokDefault: it.skip, // implemented in this file
     itChecksPriceChanges: it,
     itChecksNonZeroDefaultThreshold: it,
-    itChecksMainChainlinkOracleRevert: it,
     itHasRevenueHiding: it.skip, // implemented in this file
     itIsPricedByPeg: true,
     resetFork: getResetFork(getForkBlock(curr.tokenName)),

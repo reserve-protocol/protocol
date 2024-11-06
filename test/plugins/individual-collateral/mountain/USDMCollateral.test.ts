@@ -311,7 +311,6 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it.skip, // implemented in this file
   collateralName: 'USDM Collateral',
   chainlinkDefaultAnswer,
