@@ -98,6 +98,7 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     }
 
     opts = { ...defaultCollateralOpts, ...opts }
+    opts.feeds![0][0] = opts.chainlinkFeed!
 
     const AeroStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'AerodromeStableCollateral'
