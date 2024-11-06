@@ -106,7 +106,6 @@ contract OETHCollateralL2Base is ERC4626FiatCollateral {
 
     /// @param config.chainlinkFeed - ignored
     /// @param config.oracleTimeout - ignored
-    /// @param config.oracleError {1} Should be the oracle error for UoA/tok
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
