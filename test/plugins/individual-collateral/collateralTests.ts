@@ -93,7 +93,6 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
     itChecksNonZeroDefaultThreshold,
-    itChecksMainChainlinkOracleRevert,
     itHasRevenueHiding,
     itIsPricedByPeg,
     itHasOracleRefPerTok,
@@ -401,32 +400,29 @@ export default function fn<X extends CollateralFixtureContext>(
           ) // within 1-part-in-1-thousand
         })
 
-        itChecksMainChainlinkOracleRevert(
-          'reverts if Chainlink feed reverts or runs out of gas, maintains status',
-          async () => {
-            const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-              'InvalidMockV3Aggregator'
-            )
-            const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-              await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
-            )
+        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+            'InvalidMockV3Aggregator'
+          )
+          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+            await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+          )
 
-            const invalidCollateral = await deployCollateral({
-              erc20: ctx.tok.address,
-              chainlinkFeed: invalidChainlinkFeed.address,
-            })
+          const invalidCollateral = await deployCollateral({
+            erc20: ctx.tok.address,
+            chainlinkFeed: invalidChainlinkFeed.address,
+          })
 
-            // Reverting with no reason
-            await invalidChainlinkFeed.setSimplyRevert(true)
-            await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-            expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+          // Reverting with no reason
+          await invalidChainlinkFeed.setSimplyRevert(true)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-            // Runnning out of gas (same error)
-            await invalidChainlinkFeed.setSimplyRevert(false)
-            await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-            expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-          }
-        )
+          // Runnning out of gas (same error)
+          await invalidChainlinkFeed.setSimplyRevert(false)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+        })
 
         it('decays price over priceTimeout period', async () => {
           await collateral.refresh()

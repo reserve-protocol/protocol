@@ -450,7 +450,6 @@ all.forEach((curr: AeroStablePoolEnumeration) => {
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it.skip,
     itChecksNonZeroDefaultThreshold: it,
-    itChecksMainChainlinkOracleRevert: it.skip,
     itHasRevenueHiding: it.skip,
     resetFork,
     collateralName: curr.testName,
