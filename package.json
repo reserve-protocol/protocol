@@ -6,11 +6,11 @@
     "test": "tests"
   },
   "engines": {
-    "node": ">=16.13.0"
+    "node": ">=18.12.0"
   },
   "scripts": {
     "compile": "hardhat compile",
-    "devchain": "NODE_OPTIONS='--max-old-space-size=12000' FORK=true hardhat node --port 8546",
+    "devchain": "FORK=true hardhat node --port 8546",
     "deploy:check_env": "hardhat run scripts/check_env.ts",
     "deploy:run": "hardhat run scripts/deploy.ts",
     "deploy:confirm": "hardhat run scripts/confirm.ts",
@@ -22,6 +22,7 @@
     "test:fast": "bash tools/fast-test.sh",
     "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts",
     "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts ",
+    "test:registries": "PROTO_IMPL=1 hardhat test test/registries/*.test.ts",
     "test:plugins": "hardhat test test/{libraries,plugins}/*.test.ts",
     "test:plugins:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/plugins/individual-collateral/**/*.test.ts",
     "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/**/*.test.ts",
@@ -62,6 +63,8 @@
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@openzeppelin/hardhat-upgrades": "^1.23.0",
+    "@safe-global/api-kit": "^2.4.5",
+    "@safe-global/protocol-kit": "^4.1.0",
     "@tenderly/hardhat-tenderly": "^1.7.7",
     "@typechain/ethers-v5": "^7.2.0",
     "@typechain/hardhat": "^2.3.1",
@@ -110,7 +113,7 @@
   "resolutions": {
     "@solidity-parser/parser": "^0.13.2"
   },
-  "packageManager": "yarn@3.3.1",
+  "packageManager": "yarn@4.3.1",
   "dependencies": {
     "@aave/core-v3": "^1.18.0",
     "@aave/periphery-v3": "^2.5.0",

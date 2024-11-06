@@ -6,7 +6,7 @@ import { Asset, AppreciatingFiatCollateral, CollateralConfig, IRewardable } from
 import { MorphoTokenisedDeposit } from "./MorphoTokenisedDeposit.sol";
 import { OracleLib } from "../OracleLib.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { shiftl_toFix, FIX_ONE, FixLib, CEIL } from "../../../libraries/Fixed.sol";
+import { shiftl_toFix, FIX_ONE, FLOOR, FixLib, CEIL } from "../../../libraries/Fixed.sol";
 
 // solhint-enable max-line-length
 
@@ -39,6 +39,7 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref}
@@ -65,7 +66,7 @@ contract MorphoSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals);
+        return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals, FLOOR);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

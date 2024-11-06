@@ -86,6 +86,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         delete tokensOut[sell];
         trade = super.settleTrade(sell); // nonReentrant
 
+        TradeKind kind = trade.KIND();
+        if (tradeEnd[kind] > block.timestamp) tradeEnd[kind] = uint48(block.timestamp);
+
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
             // solhint-disable-next-line no-empty-blocks
@@ -125,7 +128,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(basketsHeld.bottom < rToken.basketsNeeded(), "already collateralized");
         // require(!basketHandler.fullyCollateralized())
 
-        // First dissolve any held RToken balance (above Distributor-dust)
+        // First dissolve any held RToken balance
         // gas-optimization: 1 whole RToken must be worth 100 trillion dollars for this to skip $1
         uint256 balance = rToken.balanceOf(address(this));
         if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) rToken.dissolve(balance);
@@ -236,6 +239,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
+            // Use same quantity-rounding as BasketHandler.basketsHeldBy()
             // {tok} = {BU} * {tok/BU}
             uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
             uint192 bal = asset.bal(address(this));
@@ -287,6 +291,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         ctx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            // quantities round up, without any issuance premium
         }
         ctx.bals = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
@@ -307,7 +312,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         rToken.setBasketsNeeded(basketsHeldBottom);
     }
 
-    // === Governance Setters ===
+    // === Governance ===
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public override(TradingP1, ITrading) {
+        super.forceSettleTrade(trade); // enforces governance only
+        delete tokensOut[trade.sell()];
+    }
 
     /// @custom:governance
     function setTradingDelay(uint48 val) public governance {

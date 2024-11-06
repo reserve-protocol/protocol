@@ -7,6 +7,9 @@ import "./IComponent.sol";
 uint256 constant MAX_DISTRIBUTION = 1e4; // 10,000
 uint8 constant MAX_DESTINATIONS = 100; // maximum number of RevenueShare destinations
 
+// === 4.0.0 ===
+// Invariant: sum across destinations must be at *least* MAX_DISTRIBUTION
+
 struct RevenueShare {
     uint16 rTokenDist; // {revShare} A value between [0, 10,000]
     uint16 rsrDist; // {revShare} A value between [0, 10,000]
@@ -37,10 +40,13 @@ interface IDistributor is IComponent {
     event RevenueDistributed(IERC20 indexed erc20, address indexed source, uint256 amount);
 
     // Initialization
-    function init(IMain main_, RevenueShare memory dist) external;
+    function init(IMain main_, RevenueShare calldata dist) external;
 
     /// @custom:governance
-    function setDistribution(address dest, RevenueShare memory share) external;
+    function setDistribution(address dest, RevenueShare calldata share) external;
+
+    /// @custom:governance
+    function setDistributions(address[] calldata dests, RevenueShare[] calldata shares) external;
 
     /// Distribute the `erc20` token across all revenue destinations
     /// Only callable by RevenueTraders

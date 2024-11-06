@@ -39,7 +39,7 @@ library OracleLib {
             if (p <= 0) revert InvalidPrice();
 
             // {UoA/tok}
-            return shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()));
+            return shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()), FLOOR);
         } catch (bytes memory errData) {
             // Check if the aggregator was not set: if so, the chainlink feed has been deprecated
             // and a _specific_ error needs to be raised in order to avoid looking like OOG

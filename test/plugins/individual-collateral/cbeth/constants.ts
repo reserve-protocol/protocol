@@ -25,4 +25,4 @@ export const DELAY_UNTIL_DEFAULT = bn(86400)
 export const MAX_TRADE_VOL = bn(1000)
 
 export const FORK_BLOCK = 17479312
-export const FORK_BLOCK_BASE = 4446300
+export const FORK_BLOCK_BASE = 5374534

@@ -41,7 +41,7 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateStored() external view returns (uint256) {
-         if (revertExchangeRateStored) {
+        if (revertExchangeRateStored) {
             revert("reverting exchange rate stored");
         }
         return _exchangeRate;

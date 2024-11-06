@@ -1,5 +1,83 @@
 # Changelog
 
+# 4.0.0
+
+This release prepares the core protocol for veRSR through the introduction of 3 registries (`DAOFeeRegistry`, `AssetPluginRegistry`, and `VersionRegistry`) and through restricting component upgrades to be handled by `Main`, where upgrade constraints can be enforced.
+
+The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
+
+Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg.
+
+## Upgrade Steps
+
+Upgrade to 4.0.0 is expected to occur by spell. This section is still TODO, but some important notes for steps that should be hit:
+
+- Distributor table must sum to >=10000
+- Opt RTokens into the issuance premium by default
+- Upgrade all collateral plugins and RTokenAsset
+- ...
+
+## Core Protocol Contracts
+
+All components: make Main the only component that can call `upgradeTo()`
+
+- `AssetRegistry`
+  - Prevent registering assets that are not in the `AssetPluginRegistry`
+  - Add `validateCurrentAssets() view`
+- `BackingManager`
+  - Switch from sizing trades using the low price to the high price
+- `BasketHandler`
+  - Add `issuancePremium() view returns (uint192)`
+  - Add `setIssuancePremiumEnabled(bool)`, callable by governance. Begins disabled by default for upgraded RTokens
+  - Add `quote(uint192 amount, bool applyIssuancePremium, RoundingMode rounding)`
+  - Modify `quote(uint192 amount, RoundingMode rounding)` to include the issuance premium
+  - Add `price(bool applyIssuancePremium)`
+  - Modify `price()` to include the issuance premium
+  - Remove `lotPrice()`
+  - Minor changes to require error strings
+- `Deployer`
+  - Add `enableIssuancePremium` parameter to `IDeployer.DeploymentParams`
+- `Distributor`
+  - Add `setDistributions()` function to parallel `setDistribution()`
+  - Take DAO fee into account in `distribute()` and `totals()`
+  - Add new revenue share table invariant: must sum to >=10000 (for precision reasons)
+- `Main`
+  - Add `versionRegistry()`/`assetPluginRegistry()`/`daoFeeRegistry()` getters
+  - Add `setVersionRegistry()`/`setAssetPluginRegistry()`/`setDaoFeeRegistry()` setters
+  - Add `upgradeMainTo()` + `upgradeRTokenTo()` functions to handle upgrade of Main + Components
+  - Make Main the only caller that can upgrade Main
+- `RevenueTrader`
+  - Switch from sizing trades using the low price to the high price
+
+## Plugins
+
+### Assets
+
+- Support expanded from 18 to 21 decimals, with minimum collateral token value requirement of `$0.001` at-peg.
+- FLOOR rounding added explicitly to `shiftl_toFix` everywhere
+
+#### Collateral
+
+Add `savedPegPrice` to `ICollateral` interface
+
+- cbETH: Fix deploy script to use right defaultThreshold
+- rETH: Fix deploy script to use right defaultThreshold
+- wstETH: Fix deploy script to use right defaultThreshold
+- sfrxETH: Fix deploy script to use right defaultThreshold
+
+### Trading
+
+- `GnosisTrade`
+  - Change units of `worstCasePrice()` from {buyTok/sellTok} to {qBuyTok/qSellTok}
+  - Small fix to prevent donated tokens from being able to cause the trade to revert
+
+### Facades
+
+- `ActFacet`
+  - Expand to handle 4.0 version numbers
+- `ReadFacet`
+  - Make `shiftl_toFix` rounding in L349 CEIL
+
 # 3.4.0
 
 This release adds Arbitrum support by adjusting `Furnace`/`StRSR`/`Governance` to function off of timestamp/timepoints, instead of discrete periods. This changes the interface of the governance voting token StRSR, making this a complicated and nuanced upgrade to get right.

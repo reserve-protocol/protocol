@@ -3,8 +3,12 @@ name: Tests
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
   deployment-scripts:
@@ -16,12 +20,12 @@ jobs:
           fetch-depth: 1
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn devchain &
         env:
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
       - run: yarn deploy:run --network localhost
         env:
@@ -34,7 +38,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn lint
@@ -51,19 +55,19 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:plugins
 
   plugin-tests-mainnet-1:
-    name: 'Plugin Integration Tests (Mainnet) - 1/2'
+    name: 'Plugin Integration Tests (Mainnet) - 1/3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
@@ -76,21 +80,21 @@ jobs:
             hardhat-network-fork-
       - run: yarn hardhat test ./test/plugins/individual-collateral/[A-Ca-c]*/*.test.ts ./test/plugins/individual-collateral/[A-Ca-c]*/*/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
           PROTO_IMPL: 1
           FORK: 1
 
   plugin-tests-mainnet-2:
-    name: 'Plugin Integration Tests (Mainnet) - 2/2'
+    name: 'Plugin Integration Tests (Mainnet) - 2/3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
@@ -101,11 +105,38 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Zd-z]*/*.test.ts
+      - run: yarn hardhat test ./test/plugins/individual-collateral/[D-Ld-l]*/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          FORK_NETWORK: mainnet
+          PROTO_IMPL: 1
+          FORK: 1
+
+  plugin-tests-mainnet-3:
+    name: 'Plugin Integration Tests (Mainnet) - 3/3'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn hardhat test ./test/plugins/individual-collateral/[M-Zm-z]*/*.test.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=32768'
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
           PROTO_IMPL: 1
           FORK: 1
@@ -117,7 +148,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
@@ -128,11 +159,11 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido}/*.test.ts
+      - run: yarn hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido,meta-morpho,aerodrome}/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
-          BASE_RPC_URL: https://base-mainnet.infura.io/v3/${{ secrets.INFURA_BASE_KEY }}
+          BASE_RPC_URL: https://base-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_BASE_KEY }}
           FORK_NETWORK: base
           FORK_BLOCK: 4446300
           FORK: 1
@@ -145,7 +176,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
@@ -156,9 +187,9 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3,curve/cvx,mountain}/*.test.ts
+      - run: yarn hardhat test ./test/plugins/individual-collateral/{aave-v3,compoundv3,curve/cvx,mountain}/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
           ARBITRUM_RPC_URL: https://arb-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_ARBITRUM_KEY }}
           FORK_NETWORK: arbitrum
@@ -173,12 +204,12 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:p0
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
 
   p1-tests:
     name: 'P1 Tests'
@@ -187,12 +218,12 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:p1
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
 
   scenario-tests:
     name: 'Scenario Tests'
@@ -201,12 +232,12 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:scenario
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
 
   extreme-tests:
     name: 'Extreme Tests'
@@ -215,7 +246,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn test:extreme
@@ -229,9 +260,9 @@ jobs:
             hardhat-network-fork-
       - run: yarn test:extreme:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
 
   integration-tests:
@@ -243,7 +274,7 @@ jobs:
           fetch-depth: 1
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
@@ -256,9 +287,9 @@ jobs:
       - run: yarn install --immutable
       - run: yarn test:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
 
   monitor-tests:
@@ -268,7 +299,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: 'yarn'
       - run: yarn install --immutable
       - name: 'Cache hardhat network fork'
@@ -279,11 +310,25 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: npx hardhat test ./test/monitor/*.test.ts
+      - run: yarn hardhat test ./test/monitor/*.test.ts
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_RPC_URL: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
           FORK_NETWORK: mainnet
           FORK: 1
           PROTO_IMPL: 1
+
+  registry-tests:
+    name: 'Registry Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn test:registries
+        env:
+          NODE_OPTIONS: '--max-old-space-size=32768'

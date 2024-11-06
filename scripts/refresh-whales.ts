@@ -2,20 +2,20 @@ import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { ITokens, ITokensKeys, networkConfig } from '#/common/configuration'
 import { whileImpersonating } from '#/utils/impersonation'
-import axios from "axios";
-import * as cheerio from "cheerio";
-import { NetworkWhales, RTOKENS, getWhalesFile, getWhalesFileName } from './whalesConfig';
+import axios from 'axios'
+import * as cheerio from 'cheerio'
+import { NetworkWhales, RTOKENS, getWhalesFile, getWhalesFileName } from './whalesConfig'
 import fs from 'fs'
-import { useEnv } from '#/utils/env';
+import { useEnv } from '#/utils/env'
 
 // set to true to force a refresh of all whales
-const FORCE_REFRESH = useEnv('FORCE_WHALE_REFRESH');
+const FORCE_REFRESH = useEnv('FORCE_WHALE_REFRESH')
 const BASESCAN_API_KEY = useEnv('BASESCAN_API_KEY')
 const FORK_NETWORK = useEnv('FORK_NETWORK')
 
-const SCANNER_URLS: {[key: string]: string} = {
-  'mainnet': 'etherscan.io',
-  'base': 'basescan.org'
+const SCANNER_URLS: { [key: string]: string } = {
+  mainnet: 'etherscan.io',
+  base: 'basescan.org',
 }
 
 const getstRSRs = async (rTokens: string[]) => {
@@ -51,61 +51,66 @@ async function main() {
   const isGoodWhale = (whale: string) => {
     return !stRSRs.includes(whale)
   }
-  
+
   const getBigWhale = async (token: string) => {
     const ethUrl = `https://${SCANNER_URLS[FORK_NETWORK]}/token/generic-tokenholders2?m=light&a=${token}&p=1`
     // const response = await axios.get(ethUrl);
 
     if (FORK_NETWORK === 'mainnet') {
-      const response = await axios.get(ethUrl);
-      const selector = cheerio.load(response.data);
-      let found = false;
-      let i = 0;
-      let whale = "";
+      const response = await axios.get(ethUrl)
+      const selector = cheerio.load(response.data)
+      let found = false
+      let i = 0
+      let whale = ''
       while (!found) {
-        whale = selector(selector("tbody > tr")[i]).find("td > div > .link-secondary")[0].attribs['data-clipboard-text'];
+        whale = selector(selector('tbody > tr')[i]).find('td > div > .link-secondary')[0].attribs[
+          'data-clipboard-text'
+        ]
         if (isGoodWhale(whale)) {
-          found = true;
-          break;
+          found = true
+          break
         }
-        i++;
+        i++
       }
       return whale
     } else if (FORK_NETWORK === 'base') {
       const response = await fetch(ethUrl, {
-        "headers": {
-          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-          "accept-language": "en-US,en;q=0.9",
-          "cache-control": "max-age=0",
-          "priority": "u=0, i",
-          "sec-ch-ua": "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
-          "sec-ch-ua-mobile": "?0",
-          "sec-ch-ua-platform": "\"macOS\"",
-          "sec-fetch-dest": "document",
-          "sec-fetch-mode": "navigate",
-          "sec-fetch-site": "none",
-          "sec-fetch-user": "?1",
-          "upgrade-insecure-requests": "1"
+        headers: {
+          accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'accept-language': 'en-US,en;q=0.9',
+          'cache-control': 'max-age=0',
+          priority: 'u=0, i',
+          'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"macOS"',
+          'sec-fetch-dest': 'document',
+          'sec-fetch-mode': 'navigate',
+          'sec-fetch-site': 'none',
+          'sec-fetch-user': '?1',
+          'upgrade-insecure-requests': '1',
         },
-        "referrerPolicy": "strict-origin-when-cross-origin",
-        "body": null,
-        "method": "GET",
-        "mode": "cors",
-        "credentials": "include"
-      });
-      const selector = cheerio.load(await response.text());
-      let found = false;
-      let i = 0;
-      let whale = "";
+        referrerPolicy: 'strict-origin-when-cross-origin',
+        body: null,
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'include',
+      })
+      const selector = cheerio.load(await response.text())
+      let found = false
+      let i = 0
+      let whale = ''
       while (!found) {
-        whale = selector(selector("tbody > tr")[i]).find("td > span > a")[0].attribs['href'].split('?a=')[1];
+        whale = selector(selector('tbody > tr')[i])
+          .find('td > span > a')[0]
+          .attribs['href'].split('?a=')[1]
         if (isGoodWhale(whale)) {
-          found = true;
-          break;
+          found = true
+          break
         }
-        i++;
+        i++
       }
-      return whale;
+      return whale
     } else {
       throw new Error('Invalid network')
     }
@@ -117,7 +122,12 @@ async function main() {
     let tokenWhale = whales.tokens[tokenAddress]
     let lastUpdated = whales.lastUpdated[tokenAddress]
     // only get a big whale if the whale is not already set or if it was last updated more than 1 day ago
-    if (!FORCE_REFRESH && tokenWhale && lastUpdated && new Date().getTime() - new Date(lastUpdated).getTime() < 86400000) {
+    if (
+      !FORCE_REFRESH &&
+      tokenWhale &&
+      lastUpdated &&
+      new Date().getTime() - new Date(lastUpdated).getTime() < 86400000
+    ) {
       console.log('Whale already set for', tokenAddress, 'skipping...')
       return
     }
@@ -133,7 +143,7 @@ async function main() {
       console.error('Error getting whale for', tokenAddress, error)
     }
   }
-  
+
   // ERC20 Collaterals
   const tokens: ITokensKeys = Object.keys(networkConfig[chainId].tokens) as ITokensKeys
   for (let i = 0; i < tokens.length; i++) {

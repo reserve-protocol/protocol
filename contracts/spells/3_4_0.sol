@@ -2,11 +2,11 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
 import "../interfaces/IDeployer.sol";
 import "../interfaces/IMain.sol";
+import "../p1/Deployer.sol";
 
 // interface avoids needing to know about P1 contracts
 interface ICachedComponent {
@@ -120,7 +120,7 @@ contract Upgrade3_4_0 {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    TestIDeployer public deployer;
+    DeployerP1 public deployer;
 
     struct NewGovernance {
         IGovernor anastasius;
@@ -163,7 +163,7 @@ contract Upgrade3_4_0 {
         // Setup `assets` array
         if (_mainnet) {
             // Setup `deployer`
-            deployer = TestIDeployer(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
+            deployer = DeployerP1(0x2204EC97D31E2C9eE62eaD9e6E2d5F7712D3f1bF);
 
             // Setup `newGovs`
             // eUSD
@@ -244,7 +244,7 @@ contract Upgrade3_4_0 {
             }
         } else {
             // Setup `deployer`
-            deployer = TestIDeployer(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
+            deployer = DeployerP1(0xFD18bA9B2f9241Ce40CDE14079c1cDA1502A8D0A);
 
             // Setup `newGovs`
             // hyUSD (base)
@@ -343,33 +343,38 @@ contract Upgrade3_4_0 {
 
         // Proxy Upgrades
         {
-            (
-                IMain mainImpl,
-                Components memory compImpls,
-                TradePlugins memory tradingImpls
-            ) = deployer.implementations();
-            UUPSUpgradeable(address(main)).upgradeTo(address(mainImpl));
+            Implementations memory impls = deployer.implementations();
+
+            UUPSUpgradeable(address(main)).upgradeTo(address(impls.main));
             UUPSUpgradeable(address(proxy.assetRegistry)).upgradeTo(
-                address(compImpls.assetRegistry)
+                address(impls.components.assetRegistry)
             );
             UUPSUpgradeable(address(proxy.backingManager)).upgradeTo(
-                address(compImpls.backingManager)
+                address(impls.components.backingManager)
             );
             UUPSUpgradeable(address(proxy.basketHandler)).upgradeTo(
-                address(compImpls.basketHandler)
+                address(impls.components.basketHandler)
             );
-            UUPSUpgradeable(address(proxy.broker)).upgradeTo(address(compImpls.broker));
-            UUPSUpgradeable(address(proxy.distributor)).upgradeTo(address(compImpls.distributor));
-            UUPSUpgradeable(address(proxy.furnace)).upgradeTo(address(compImpls.furnace));
-            UUPSUpgradeable(address(proxy.rTokenTrader)).upgradeTo(address(compImpls.rTokenTrader));
-            UUPSUpgradeable(address(proxy.rsrTrader)).upgradeTo(address(compImpls.rsrTrader));
-            UUPSUpgradeable(address(proxy.stRSR)).upgradeTo(address(compImpls.stRSR));
-            UUPSUpgradeable(address(proxy.rToken)).upgradeTo(address(compImpls.rToken));
+            UUPSUpgradeable(address(proxy.broker)).upgradeTo(address(impls.components.broker));
+            UUPSUpgradeable(address(proxy.distributor)).upgradeTo(
+                address(impls.components.distributor)
+            );
+            UUPSUpgradeable(address(proxy.furnace)).upgradeTo(address(impls.components.furnace));
+            UUPSUpgradeable(address(proxy.rTokenTrader)).upgradeTo(
+                address(impls.components.rTokenTrader)
+            );
+            UUPSUpgradeable(address(proxy.rsrTrader)).upgradeTo(
+                address(impls.components.rsrTrader)
+            );
+            UUPSUpgradeable(address(proxy.stRSR)).upgradeTo(address(impls.components.stRSR));
+            UUPSUpgradeable(address(proxy.rToken)).upgradeTo(address(impls.components.rToken));
 
             // Trading plugins
-            TestIBroker(address(proxy.broker)).setDutchTradeImplementation(tradingImpls.dutchTrade);
+            TestIBroker(address(proxy.broker)).setDutchTradeImplementation(
+                impls.trading.dutchTrade
+            );
             TestIBroker(address(proxy.broker)).setBatchTradeImplementation(
-                tradingImpls.gnosisTrade
+                impls.trading.gnosisTrade
             );
 
             // cacheComponents()

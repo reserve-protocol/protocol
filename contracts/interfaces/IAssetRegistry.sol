@@ -71,6 +71,9 @@ interface IAssetRegistry is IComponent {
     /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg);
 
+    /// Validate that the current assets in the registry are compatible with the current version
+    function validateCurrentAssets() external view;
+
     /// @return The number of registered ERC20s
     function size() external view returns (uint256);
 }

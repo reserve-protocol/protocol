@@ -23,13 +23,13 @@ export const getChainId = async (hre: HardhatRuntimeEnvironment): Promise<string
     switch (useEnv('FORK_NETWORK').toLowerCase()) {
       case 'mainnet':
         _chainId = '1'
-        break;
+        break
       case 'base':
         _chainId = '8453'
-        break;
+        break
       case 'arbitrum':
         _chainId = '42161'
-        break;
+        break
     }
   }
   return _chainId

@@ -66,9 +66,11 @@ export interface ITokens {
   stETH?: string
   wstETH?: string
   rETH?: string
+  ETHx?: string
   cUSDCv3?: string
   wcUSDCv3?: string
   cUSDbCv3?: string
+  cUSDTv3?: string
   ONDO?: string
   sFRAX?: string
   sDAI?: string
@@ -105,6 +107,7 @@ export interface ITokens {
   bbUSDT?: string
   steakPYUSD?: string
   Re7WETH?: string
+  meUSD?: string
 
   pxETH?: string
   apxETH?: string
@@ -116,6 +119,14 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  // Aerodrome
+  AERO?: string
+  USDz?: string
+
+  // Sky
+  USDS?: string
+  sUSDS?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -143,6 +154,8 @@ export interface IPools {
   crvTriCrypto?: string
   crvMIM3Pool?: string
   sdUSDCUSDCPlus?: string
+  aeroUSDCeUSD?: string
+  aeroUSDzUSDC?: string
 }
 
 interface INetworkConfig {
@@ -157,7 +170,6 @@ interface INetworkConfig {
   COMPTROLLER?: string
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
-  EASY_AUCTION_OWNER?: string
   MORPHO_AAVE_CONTROLLER?: string
   MORPHO_REWARDS_DISTRIBUTOR?: string
   MORPHO_AAVE_LENS?: string
@@ -169,6 +181,7 @@ interface INetworkConfig {
   AAVE_V3_POOL?: string
   STARGATE_STAKING_CONTRACT?: string
   CURVE_POOL_WETH_FRXETH?: string
+  DEV_MULTISIG?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -229,10 +242,12 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
+      ETHx: '0xA35b1B31Ce002FBF2058D22F30f95D405200A15b',
       pxETH: '0x04C154b66CB340F3Ae24111CC767e0184Ed00Cc6',
       apxETH: '0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
+      cUSDTv3: '0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840',
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
@@ -257,6 +272,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
+      sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -280,11 +297,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
+      ETHx: '0xC5f8c4aB091Be1A899214c0C3636ca33DcA0C547', // ETHx/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
       frxETH: '0xc58f3385fbc1c8ad2c0c9a061d7c13b141d7a5df', // frxETH/ETH
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
       apxETH: '0x19219BC90F48DeE4d5cF202E09c438FAacFd8Bea', // apxETH/ETH
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
+      USDS: '0xfF30586cD0F29eD462364C7e81375FC0C71219b1',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
@@ -293,8 +312,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_DATA_PROVIDER: '0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
-    GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
-    EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    GNOSIS_EASY_AUCTION: '0x462302752B63Ee7c207459112CA8D38498Fb54f2', // our deployment
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
@@ -306,6 +324,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
     CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '3': {
     name: 'tenderly',
@@ -394,7 +413,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_DATA_PROVIDER: '0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
-    GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    GNOSIS_EASY_AUCTION: '0x462302752B63Ee7c207459112CA8D38498Fb54f2', // our deployment
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
@@ -514,6 +533,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
+      eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
+      USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
+      meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
+      AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
       wsuperOETHb: '0x7FcD174E80f264448ebeE8c88a7C4476AAF58Ea6'
     },
     chainlinkFeeds: {
@@ -531,6 +554,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
+      eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
+      USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
+      AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
       wsuperOETHb: '0x28C964c985fe84736fAdc7Cf0bBd58B54bc7CF93'
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
@@ -541,6 +567,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
     AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
     STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '42161': {
     name: 'arbitrum',
@@ -555,6 +582,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
       USDT: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
       cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      cUSDTv3: '0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07',
       WETH: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
       WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
       aArbUSDCn: '0x724dc807b04555b71ed48a6896b6f41593b8c637', // aArbUSDCn wraps USDC!
@@ -581,6 +609,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x1B2E88cC7365d90e7E81392432482925BD8437E9',
     AAVE_V3_POOL: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x929EC64c34a17401F460460D4B9390518E5B473e',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '421614': {
     name: 'arbitrum-sepolia',
@@ -615,6 +644,7 @@ export interface IConfig {
   withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
   reweightable: boolean
+  enableIssuancePremium: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber
@@ -707,6 +737,7 @@ export interface IGovRoles {
 // System constants
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
+export const MIN_TARGET_AMT = BigNumber.from(10).pow(12)
 export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
 export const MAX_RATIO = BigNumber.from(10).pow(14)
 export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)

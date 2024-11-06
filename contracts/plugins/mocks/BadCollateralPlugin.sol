@@ -55,6 +55,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                     // Save prices
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 }
 
