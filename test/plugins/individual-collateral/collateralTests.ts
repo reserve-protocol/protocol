@@ -16,13 +16,7 @@ import {
 } from './fixtures'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { whileImpersonating } from '../../utils/impersonation'
-import {
-  IConfig,
-  IGovParams,
-  IGovRoles,
-  IRTokenSetup,
-  networkConfig,
-} from '../../../common/configuration'
+import { IGovParams, IGovRoles, IRTokenSetup, networkConfig } from '../../../common/configuration'
 import {
   advanceBlocks,
   advanceTime,
