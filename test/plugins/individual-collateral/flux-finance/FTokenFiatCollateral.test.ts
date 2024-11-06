@@ -258,6 +258,7 @@ all.forEach((curr: FTokenEnumeration) => {
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
     itChecksNonZeroDefaultThreshold: it,
+    itChecksMainChainlinkOracleRevert: it,
     itHasRevenueHiding: it,
     resetFork,
     collateralName: curr.testName,

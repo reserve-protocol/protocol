@@ -153,8 +153,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       pctRate: fp('0.05'), // 5%
     },
     redemptionThrottle: {
-      amtRate: fp('1e6'), // 1M RToken
-      pctRate: fp('0.05'), // 5%
+      amtRate: fp('2e6'), // 2M RToken
+      pctRate: fp('0.1'), // 10%
     },
     reweightable: false,
     enableIssuancePremium: false,

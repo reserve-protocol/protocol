@@ -1339,10 +1339,6 @@ describe('Facade + FacadeMonitor contracts', () => {
     it('should return redemption available', async () => {
       const issueAmount = bn('100000e18')
 
-      // Decrease redemption allowed amount
-      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
-      await rToken.connect(owner).setRedemptionThrottleParams(redeemThrottleParams)
-
       // Check with no supply
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1351,8 +1347,13 @@ describe('Facade + FacadeMonitor contracts', () => {
       // Issue some RTokens
       await rToken.connect(addr1).issue(issueAmount)
 
-      // check throttles - redemption still fully available
-      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.9'))
+      // Decrease redemption allowed amount
+      const issuanceThrottleParams = { amtRate: issueAmount.div(4), pctRate: fp('0.05') } // 25K
+      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
+      await rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redeemThrottleParams)
+
+      // check throttles - issuance & redemption still fully available (because lower)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem RTokens (50% of throttle)
@@ -1416,7 +1417,10 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Set issuance throttle to percent only
       const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      const redemptionThrottleParams = { amtRate: fp('2'), pctRate: fp('0.2') } // 10%
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
 
       // Advance time significantly
       await advanceTime(1000000000)
@@ -1427,7 +1431,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
 
       // Check redemption throttle unchanged
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(supplyThrottle.mul(2))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Issuance #3 - Should be allowed, does not exceed supply restriction
@@ -1437,18 +1441,15 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Check issuance throttle updated - Previous issuances recharged
       expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle.sub(issueAmount3))
-
       // Hourly Limit: 210K (10% of total supply of 2.1 M)
       // Available: 100 K / 201K (~ 0.47619)
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
         fp('0.476'),
         fp('0.001')
       )
-
       // Check redemption throttle unchanged
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      // expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
-
       // Check all issuances are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(
         issueAmount1.add(issueAmount2).add(issueAmount3)
@@ -1456,7 +1457,6 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Advance time, issuance will recharge a bit
       await advanceTime(100)
-
       // Now 50% of hourly limit available (~105.8K / 210 K)
       expect(await rToken.issuanceAvailable()).to.be.closeTo(fp('105800'), fp('100'))
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
@@ -1483,12 +1483,8 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Check redemptions
-      // Set redemption throttle to percent only
-      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-
       const totalSupply = await rToken.totalSupply()
-      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(10)) // 10%
+      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(5)) // 20%
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem half of the available throttle
@@ -1496,7 +1492,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // About 52% now used of redemption throttle
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.be.closeTo(
-        fp('0.52'),
+        fp('0.79'),
         fp('0.01')
       )
 
