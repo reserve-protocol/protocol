@@ -121,7 +121,7 @@ export interface ITokens {
 
   // Aerodrome
   AERO?: string
-  
+
   MOG?: string
 }
 
@@ -151,11 +151,8 @@ export interface IPools {
   crvMIM3Pool?: string
   sdUSDCUSDCPlus?: string
   aeroUSDCeUSD?: string
-<<<<<<< HEAD
   aeroWETHAERO?: string
   aeroMOGWETH?: string
-=======
->>>>>>> 4.0.0
 }
 
 interface INetworkConfig {
@@ -550,10 +547,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
-<<<<<<< HEAD
       MOG: '0x4aeb6D15769EaD32D0c5Be2940F40c7CFf53801d', // 0.5%, 24h
-=======
->>>>>>> 4.0.0
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
