@@ -174,6 +174,7 @@ interface INetworkConfig {
   AAVE_V3_POOL?: string
   STARGATE_STAKING_CONTRACT?: string
   CURVE_POOL_WETH_FRXETH?: string
+  DEV_MULTISIG?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -313,6 +314,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
     CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '3': {
     name: 'tenderly',
@@ -551,6 +553,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
     AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
     STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '42161': {
     name: 'arbitrum',
@@ -592,6 +595,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x1B2E88cC7365d90e7E81392432482925BD8437E9',
     AAVE_V3_POOL: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x929EC64c34a17401F460460D4B9390518E5B473e',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '421614': {
     name: 'arbitrum-sepolia',

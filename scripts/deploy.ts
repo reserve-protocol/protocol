@@ -50,7 +50,8 @@ async function main() {
     'phase1-facade/2_deploy_actFacet.ts',
     'phase1-facade/3_deploy_maxIssuable.ts',
     'phase1-facade/4_deploy_backingBufferFacet.ts',
-    'phase1-facade/5_deploy_revenueFacet.ts'
+    'phase1-facade/5_deploy_revenueFacet.ts',
+    'phase1-facade/save.ts'
   )
 
   // =============================================

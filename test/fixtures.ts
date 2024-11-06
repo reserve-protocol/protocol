@@ -742,7 +742,12 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+  const facade = await ethers.getContractAt(
+    'TestIFacade',
+    (
+      await FacadeFactory.deploy(owner.address)
+    ).address
+  )
 
   // Save ReadFacet to Facade
   const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
