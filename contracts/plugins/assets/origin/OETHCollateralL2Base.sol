@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
-import "../AppreciatingFiatCollateral.sol";
+import "../ERC4626FiatCollateral.sol";
 import "../OracleLib.sol";
 
 interface IWSuperOETHb {
@@ -114,7 +114,7 @@ interface IMorphoChainlinkOracleV2 {
  * tar = ETH
  * UoA = USD
  */
-contract OETHCollateralL2Base is AppreciatingFiatCollateral {
+contract OETHCollateralL2Base is ERC4626FiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -132,7 +132,7 @@ contract OETHCollateralL2Base is AppreciatingFiatCollateral {
         IMorphoChainlinkOracleV2 _targetPerTokChainlinkFeed,
         AggregatorV3Interface _uoaPerTargetChainlinkFeed,
         uint48 _uoaPerTargetChainlinkTimeout
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    ) ERC4626FiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold != 0, "defaultThreshold zero");
 
         require(address(_targetPerTokChainlinkFeed) != address(0), "targetPerTokFeed missing");
@@ -180,11 +180,5 @@ contract OETHCollateralL2Base is AppreciatingFiatCollateral {
         // {tar/ref} = {tar/tok} / {ref/tok} Get current market peg
         // ETH/superOETHb = ETH/wsuperOETHb / superOETHb/wsuperOETHb
         pegPrice = targetPerTok.div(underlyingRefPerTok());
-    }
-
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    /// {superOETHb/wsuperOETHb}
-    function underlyingRefPerTok() public view override returns (uint192) {
-        return _safeWrap(IWSuperOETHb(address(erc20)).convertToAssets(FIX_ONE));
     }
 }
