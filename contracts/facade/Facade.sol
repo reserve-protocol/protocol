@@ -14,7 +14,9 @@ contract Facade is IFacade, Ownable {
     mapping(bytes4 => address) public facets;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() Ownable() {}
+    constructor(address owner) Ownable() {
+        _transferOwnership(owner);
+    }
 
     // Save new facets to the Facade, forcefully
     function save(address facet, bytes4[] memory selectors) external onlyOwner {

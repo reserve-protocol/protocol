@@ -123,6 +123,11 @@ export interface ITokens {
   AERO?: string
 
   MOG?: string
+  USDz?: string
+
+  // Sky
+  USDS?: string
+  sUSDS?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -153,6 +158,7 @@ export interface IPools {
   aeroUSDCeUSD?: string
   aeroWETHAERO?: string
   aeroMOGWETH?: string
+  aeroUSDzUSDC?: string
 }
 
 interface INetworkConfig {
@@ -178,6 +184,7 @@ interface INetworkConfig {
   AAVE_V3_POOL?: string
   STARGATE_STAKING_CONTRACT?: string
   CURVE_POOL_WETH_FRXETH?: string
+  DEV_MULTISIG?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -268,6 +275,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
+      sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -297,6 +306,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       pyUSD: '0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1',
       apxETH: '0x19219BC90F48DeE4d5cF202E09c438FAacFd8Bea', // apxETH/ETH
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
+      USDS: '0xfF30586cD0F29eD462364C7e81375FC0C71219b1',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
@@ -317,6 +327,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
     STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b',
     CURVE_POOL_WETH_FRXETH: '0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '3': {
     name: 'tenderly',
@@ -527,6 +538,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
       eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
       MOG: '0x2Da56AcB9Ea78330f947bD57C54119Debda7AF71',
+      USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
     },
@@ -546,6 +558,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
+      USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
       MOG: '0x4aeb6D15769EaD32D0c5Be2940F40c7CFf53801d', // 0.5%, 24h
     },
@@ -557,6 +570,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_V3_POOL: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
     AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
     STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '42161': {
     name: 'arbitrum',
@@ -598,6 +612,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_EXT: '0x1B2E88cC7365d90e7E81392432482925BD8437E9',
     AAVE_V3_POOL: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x929EC64c34a17401F460460D4B9390518E5B473e',
+    DEV_MULTISIG: '0xe63AfB49529E135be5ab2747104fF1D3ceAE0EFf', // same on all networks
   },
   '421614': {
     name: 'arbitrum-sepolia',
