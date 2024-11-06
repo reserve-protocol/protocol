@@ -35,6 +35,7 @@ import {
   ORACLE_ERROR,
   PRICE_TIMEOUT,
 } from './constants'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { bn } from '#/common/numbers'
 import { BigNumberish, BigNumber } from 'ethers'
 import { getResetFork } from '../helpers'

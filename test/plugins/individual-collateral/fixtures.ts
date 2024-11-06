@@ -82,8 +82,14 @@ export const getDefaultFixture = async function (salt: string) {
     }
 
     // Deploy Facade
+    const signers = await ethers.getSigners()
     const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-    const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+    const facade = await ethers.getContractAt(
+      'TestIFacade',
+      (
+        await FacadeFactory.deploy(signers[0].address)
+      ).address
+    )
 
     // Save ReadFacet to Facade
     const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')

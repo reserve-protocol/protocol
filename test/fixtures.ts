@@ -470,8 +470,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       pctRate: fp('0.05'), // 5%
     },
     redemptionThrottle: {
-      amtRate: fp('1e6'), // 1M RToken
-      pctRate: fp('0.05'), // 5%
+      amtRate: fp('2e6'), // 2M RToken
+      pctRate: fp('0.1'), // 10%
     },
   }
 
@@ -742,7 +742,12 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+  const facade = await ethers.getContractAt(
+    'TestIFacade',
+    (
+      await FacadeFactory.deploy(owner.address)
+    ).address
+  )
 
   // Save ReadFacet to Facade
   const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')

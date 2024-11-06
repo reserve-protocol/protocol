@@ -1,14 +1,9 @@
 import { networkConfig } from '#/common/configuration'
 import { useEnv } from '#/utils/env'
-import hre, { BigNumber, ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
+import { BigNumber } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import {
-  makeWUSDCeUSD,
-  mintLpToken,
-  mintWrappedLpToken,
-  resetFork,
-  allStableTests,
-} from './helpers'
+import { mintLpToken, mintWrappedLpToken, resetFork, allStableTests } from './helpers'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
   IAeroPool,
@@ -19,14 +14,7 @@ import {
 } from '@typechain/index'
 import { expect } from 'chai'
 import { ZERO_ADDRESS } from '#/common/constants'
-import {
-  forkNetwork,
-  AERO,
-  eUSD,
-  AERO_USDC_eUSD_GAUGE,
-  AERO_USDC_eUSD_POOL,
-  AERO_USDC_eUSD_HOLDER,
-} from './constants'
+import { forkNetwork, AERO, eUSD } from './constants'
 import { bn, fp } from '#/common/numbers'
 import { getChainId } from '#/common/blockchain-utils'
 import { advanceTime } from '#/test/utils/time'
@@ -41,8 +29,6 @@ for (const curr of allStableTests) {
     let bob: SignerWithAddress
     let charles: SignerWithAddress
     let don: SignerWithAddress
-    let token0: ERC20Mock
-    let token1: ERC20Mock
     let aero: ERC20Mock
     let gauge: IAeroGauge
     let wrapper: AerodromeGaugeWrapper
@@ -66,7 +52,7 @@ for (const curr of allStableTests) {
 
     beforeEach(async () => {
       ;[, bob, charles, don] = await ethers.getSigners()
-      ;({ token0, token1, wrapper, lpToken } = await loadFixture(curr.fix))
+      ;({ wrapper, lpToken } = await loadFixture(curr.fix))
       gauge = await ethers.getContractAt('IAeroGauge', curr.gauge)
     })
 

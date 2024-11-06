@@ -50,7 +50,8 @@ async function main() {
     'phase1-facade/2_deploy_actFacet.ts',
     'phase1-facade/3_deploy_maxIssuable.ts',
     'phase1-facade/4_deploy_backingBufferFacet.ts',
-    'phase1-facade/5_deploy_revenueFacet.ts'
+    'phase1-facade/5_deploy_revenueFacet.ts',
+    'phase1-facade/save.ts'
   )
 
   // =============================================
@@ -95,7 +96,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_USDe.ts',
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
-      'phase2-assets/collaterals/deploy_pyusd.ts'
+      'phase2-assets/collaterals/deploy_pyusd.ts',
+      'phase2-assets/collaterals/deploy_sky_susds.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains

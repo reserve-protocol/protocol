@@ -81,7 +81,8 @@ async function main() {
       'collateral-plugins/verify_ethx.ts',
       'collateral-plugins/verify_apxeth.ts',
       'collateral-plugins/verify_USDe.ts',
-      'collateral-plugins/verify_pyusd.ts'
+      'collateral-plugins/verify_pyusd.ts',
+      'collateral-plugins/verify_susds.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains

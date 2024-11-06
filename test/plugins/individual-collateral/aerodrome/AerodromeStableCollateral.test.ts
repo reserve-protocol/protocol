@@ -12,7 +12,6 @@ import {
   AerodromeGaugeWrapper,
   ERC20Mock,
 } from '../../../../typechain'
-import { networkConfig } from '../../../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS } from '#/common/constants'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
@@ -53,8 +52,6 @@ interface AerodromeCollateralFixtureContext extends CollateralFixtureContext {
 }
 
 // ====
-
-const config = networkConfig['8453'] // use Base fork
 
 allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
   const defaultCollateralOpts: AeroStableCollateralOpts = {
@@ -393,7 +390,6 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it.skip,
     itChecksNonZeroDefaultThreshold: it,
-    itChecksMainChainlinkOracleRevert: it.skip,
     itHasRevenueHiding: it.skip,
     resetFork,
     collateralName: curr.testName,
