@@ -119,12 +119,13 @@ export interface ITokens {
   USDM?: string
   wUSDM?: string
 
+  // Aerodrome
+  AERO?: string
+  USDz?: string
+
   // Sky
   USDS?: string
   sUSDS?: string
-
-  // Aerodrome
-  AERO?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -153,6 +154,7 @@ export interface IPools {
   crvMIM3Pool?: string
   sdUSDCUSDCPlus?: string
   aeroUSDCeUSD?: string
+  aeroUSDzUSDC?: string
 }
 
 interface INetworkConfig {
@@ -531,6 +533,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
       eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
+      USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
     },
@@ -550,6 +553,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
+      USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
