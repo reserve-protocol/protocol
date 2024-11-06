@@ -19,7 +19,6 @@ export const BASE_FEEDS_TIMEOUT = {
 }
 export const BASE_ORACLE_ERROR = combinedError(fp('0.005'), fp('0.015'))
 
-
 // Data
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours in seconds
