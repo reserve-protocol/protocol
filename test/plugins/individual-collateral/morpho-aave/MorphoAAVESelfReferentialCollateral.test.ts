@@ -229,7 +229,6 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it.skip,
-  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK),
   collateralName: 'MorphoAAVEV2SelfReferentialCollateral - WETH',

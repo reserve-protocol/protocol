@@ -316,7 +316,6 @@ export const stableOpts = {
   itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksNonZeroDefaultThreshold: it,
-  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,
