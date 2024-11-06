@@ -279,7 +279,6 @@ const opts = {
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
   itChecksNonZeroDefaultThreshold: it,
-  itChecksMainChainlinkOracleRevert: it,
   resetFork,
   collateralName: 'CBEthCollateralL2',
   chainlinkDefaultAnswer,

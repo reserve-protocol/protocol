@@ -211,7 +211,6 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it,
   collateralName: 'USDe Fiat Collateral',
   chainlinkDefaultAnswer,

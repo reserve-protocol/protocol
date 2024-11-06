@@ -278,7 +278,6 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itChecksNonZeroDefaultThreshold: it,
-  itChecksMainChainlinkOracleRevert: it,
   itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK_BASE),
   collateralName: 'L2LidoStakedETH',
