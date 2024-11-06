@@ -54,7 +54,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -102,7 +102,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let other: SignerWithAddress
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Assets
   let collateral: Collateral[]
@@ -478,7 +478,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       invalidDistConfig.dist = { rTokenDist: bn(0), rsrDist: bn(0) }
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('totals too low')
 
       // Create a new instance of Main
@@ -512,7 +516,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+        })
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -2869,7 +2877,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'RTKN (empty basket)',
           'mandate (empty basket)',
           owner.address,
-          config
+          config,
+          {
+            assetPluginRegistry: ZERO_ADDRESS,
+            daoFeeRegistry: ZERO_ADDRESS,
+            versionRegistry: ZERO_ADDRESS,
+          }
         )
       ).wait()
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
