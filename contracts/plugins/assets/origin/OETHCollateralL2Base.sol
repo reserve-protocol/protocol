@@ -6,7 +6,6 @@ import "../../../libraries/Fixed.sol";
 import "../ERC4626FiatCollateral.sol";
 import "../OracleLib.sol";
 
-
 interface IMorphoChainlinkOracleV2 {
     function price() external view returns (uint256);
 }
