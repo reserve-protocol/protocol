@@ -60,11 +60,11 @@ contract ExchangeRateOracle is IExchangeRateOracle {
         )
     {
         return (
-            uint80(block.timestamp),
+            uint80(block.number),
             int256(exchangeRate()),
             block.timestamp - 1,
             block.timestamp,
-            uint80(block.timestamp)
+            uint80(block.number)
         );
     }
 

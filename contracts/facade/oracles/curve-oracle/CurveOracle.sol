@@ -73,7 +73,7 @@ contract CurveOracle {
                 revert BadOracleValue();
             }
 
-            if (block.timestamp - updateTime > oracleConfig.timeout) {
+            if (block.timestamp - updateTime > (oracleConfig.timeout + 60)) {
                 revert BadOracleValue();
             }
 

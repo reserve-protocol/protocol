@@ -43,7 +43,44 @@ describeFork('Rate Oracles', () => {
 
     it('log', async () => {
       const price = await curveOracle.getPrice()
-      console.log(price)
+      // console.log(price)
+      expect(price).to.be.eq(BigNumber.from(1012370583548288620n))
+    })
+  })
+
+  describe('USD3/sDAI - Curve LP - Mainnet (w/ ExchangeRateOracle)', () => {
+    let curveOracle: CurveOracle
+
+    beforeEach(async () => {
+      // Mainnet Fork only
+      await resetFork(hre, 21093000)
+
+      const ExchangeRateOracleFactory = await ethers.getContractFactory('ExchangeRateOracle')
+      const exchangeRateOracle = await ExchangeRateOracleFactory.deploy(
+        '0x0d86883faf4ffd7aeb116390af37746f45b6f378'
+      )
+
+      const CurveOracleFactory = await ethers.getContractFactory('CurveOracle')
+      curveOracle = await CurveOracleFactory.deploy(
+        '0x0e84996ac18fcf6fe18c372520798ce0cdf892d4',
+        {
+          oracleType: OracleType.RTOKEN,
+          rateProvider: exchangeRateOracle.address,
+          staticValue: 0,
+          timeout: 0,
+        },
+        {
+          oracleType: OracleType.CHAINLINK,
+          rateProvider: '0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9', // DAI/USD Chainlink
+          staticValue: 0,
+          timeout: 3600,
+        }
+      )
+    })
+
+    it('log', async () => {
+      const price = await curveOracle.getPrice()
+      // console.log(price)
       expect(price).to.be.eq(BigNumber.from(1012370583548288620n))
     })
   })
@@ -76,7 +113,7 @@ describeFork('Rate Oracles', () => {
 
     it('log', async () => {
       const price = await curveOracle.getPrice()
-      console.log(price)
+      // console.log(price)
       expect(price).to.be.eq(BigNumber.from(1014465272399087787n))
     })
   })
@@ -108,7 +145,7 @@ describeFork('Rate Oracles', () => {
 
     it('log', async () => {
       const price = await curveOracle.getPrice()
-      console.log(price)
+      // console.log(price)
       expect(price).to.be.eq(BigNumber.from(1003642593037842342n))
     })
   })
