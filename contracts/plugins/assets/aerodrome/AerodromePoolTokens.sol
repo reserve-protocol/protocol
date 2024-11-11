@@ -178,8 +178,8 @@ contract AerodromePoolTokens {
     }
 
     /// @param index The index of the token: 0 or 1
-    /// @return [{ref_index}]
-    function tokenReserve(uint8 index) public view virtual returns (uint256) {
+    /// @return {ref_index}
+    function tokenReserve(uint8 index) public view virtual returns (uint192) {
         if (index >= nTokens) revert WrongIndex(nTokens - 1);
         // Maybe also cache token decimals as immutable?
         IERC20Metadata tokenInterface = getToken(index);

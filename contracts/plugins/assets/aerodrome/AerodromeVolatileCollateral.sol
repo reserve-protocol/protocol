@@ -38,6 +38,7 @@ contract AerodromeVolatileCollateral is FiatCollateral, AerodromePoolTokens {
         AerodromePoolTokens(aptConfig)
     {
         assert((token0.decimals() + token1.decimals()) % 2 == 0);
+        assert(pool.decimals() == 18);
         maxOracleTimeout = uint48(Math.max(maxOracleTimeout, maxPoolOracleTimeout()));
     }
 
@@ -59,37 +60,27 @@ contract AerodromeVolatileCollateral is FiatCollateral, AerodromePoolTokens {
             uint192 pegPrice
         )
     {
-        uint256 r0 = tokenReserve(0);
-        uint256 r1 = tokenReserve(1);
+        uint192 r0 = tokenReserve(0); // {ref_0}
+        uint192 r1 = tokenReserve(1); // {ref_1}
 
         // x * y >= k for vAMM pools
-        uint256 sqrtReserve = sqrt256(r0 * r1);
+        uint192 sqrtReserve = r0.mul(r1, ROUND).sqrt();
 
         // get token prices
-        (uint192 p0_low, uint192 p0_high) = tokenPrice(0);
-        (uint192 p1_low, uint192 p1_high) = tokenPrice(1);
+        (uint192 p0_low, uint192 p0_high) = tokenPrice(0); // {UoA/ref_0}
+        (uint192 p1_low, uint192 p1_high) = tokenPrice(1); // {UoA/ref_1}
 
-        uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
+        // all aero pools have 18 decimals already
+        uint192 totalSupply = _safeWrap(pool.totalSupply());
 
         // low
-        {
-            uint256 ratioLow = ((1e18) * p0_high) / p1_low;
-            uint256 sqrtPriceLow = sqrt256(
-                sqrt256((1e18) * ratioLow) * sqrt256(1e36 + ratioLow * ratioLow)
-            );
-            low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
-        }
-        // high
-        {
-            uint256 ratioHigh = ((1e18) * p0_low) / p1_high;
-            uint256 sqrtPriceHigh = sqrt256(
-                sqrt256((1e18) * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
-            );
+        uint192 sqrtPriceLow = p0_high.div(p1_low, CEIL).sqrt();
+        low = sqrtReserve.mulDiv(p0_low, sqrtPriceLow, FLOOR).mulDiv(2e18, totalSupply, FLOOR);
 
-            high = _safeWrap(
-                ((((1e18) * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply
-            );
-        }
+        // high
+        uint192 sqrtPriceHigh = p0_low.div(p1_high, FLOOR).sqrt();
+        high = sqrtReserve.mulDiv(p0_high, sqrtPriceHigh, CEIL).mulDiv(2e18, totalSupply, CEIL);
+
         assert(low <= high); // not obviously true just by inspection
 
         pegPrice = 0; //  no default checks or issuance premium
