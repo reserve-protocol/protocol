@@ -121,6 +121,8 @@ export interface ITokens {
 
   // Aerodrome
   AERO?: string
+
+  MOG?: string
   USDz?: string
 
   // Sky
@@ -154,6 +156,8 @@ export interface IPools {
   crvMIM3Pool?: string
   sdUSDCUSDCPlus?: string
   aeroUSDCeUSD?: string
+  aeroWETHAERO?: string
+  aeroMOGWETH?: string
   aeroUSDzUSDC?: string
 }
 
@@ -533,6 +537,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
       eUSD: '0xCfA3Ef56d303AE4fAabA0592388F19d7C3399FB4',
+      MOG: '0x2Da56AcB9Ea78330f947bD57C54119Debda7AF71',
       USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
@@ -555,6 +560,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
       USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
+      MOG: '0x4aeb6D15769EaD32D0c5Be2940F40c7CFf53801d', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
