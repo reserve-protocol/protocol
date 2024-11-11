@@ -31,6 +31,7 @@ type IEnvVars =
   | 'FORK_NETWORK'
   | 'FORK_BLOCK'
   | 'FORCE_WHALE_REFRESH'
+  | 'PRIVATE_KEY'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {
