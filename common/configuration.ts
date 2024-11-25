@@ -124,6 +124,9 @@ export interface ITokens {
 
   MOG?: string
   USDz?: string
+  cbBTC?: string
+  WELL?: string
+  DEGEN?: string
 
   // Sky
   USDS?: string
@@ -159,6 +162,9 @@ export interface IPools {
   aeroWETHAERO?: string
   aeroMOGWETH?: string
   aeroUSDzUSDC?: string
+  aeroWETHcbBTC?: string
+  aeroWETHWELL?: string
+  aeroWETHDEGEN?: string
 }
 
 interface INetworkConfig {
@@ -541,6 +547,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+      cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+      WELL: '0xA88594D404727625A9437C3f886C7643872296AE',
+      DEGEN: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -561,6 +570,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
       MOG: '0x4aeb6D15769EaD32D0c5Be2940F40c7CFf53801d', // 0.5%, 24h
+      cbBTC: '0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D', // 0.3%, 20 min
+      WELL: '0xc15d9944dAefE2dB03e53bef8DDA25a56832C5fe', // 0.5%, 24h
+      DEGEN: '0xE62BcE5D7CB9d16AB8b4D622538bc0A50A5799c2', // 0.5%, 24h
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',

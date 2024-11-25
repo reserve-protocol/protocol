@@ -73,9 +73,7 @@ contract AerodromeStableCollateral is AerodromeVolatileCollateral {
                 sqrt256(1e18 * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
             );
 
-            high = _safeWrap(
-                (((1e18 * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply
-            );
+            high = _safeWrap((((1e18 * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply);
         }
         assert(low <= high); // not obviously true just by inspection
 
