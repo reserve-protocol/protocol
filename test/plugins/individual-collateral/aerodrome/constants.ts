@@ -107,7 +107,7 @@ export const FIX_ONE = 1n * 10n ** 18n
 export const ORACLE_ERROR = fp('0.005')
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const DEFAULT_THRESHOLD = fp('0.02') // 2%
-export const DELAY_UNTIL_DEFAULT = bn('259200') // 72h CAREFUL THIS IS ONLY FOR RTOKEN POOLS
+export const DELAY_UNTIL_DEFAULT = bn('259200') // 72h CAREFUL THIS IS ONLY FOR STABLE POOLS
 export const MAX_TRADE_VOL = fp('1e6')
 
 export enum AerodromePoolType {

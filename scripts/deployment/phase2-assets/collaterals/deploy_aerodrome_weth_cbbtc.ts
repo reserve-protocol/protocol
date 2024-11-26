@@ -65,7 +65,7 @@ async function main() {
 
   // Only for Base
   if (baseL2Chains.includes(hre.network.name)) {
-    const AerodromeStableCollateralFactory = await hre.ethers.getContractFactory(
+    const AerodromeVolatileCollateralFactory = await hre.ethers.getContractFactory(
       'AerodromeVolatileCollateral'
     )
     const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
@@ -89,12 +89,12 @@ async function main() {
 
     const oracleError = combinedError(cbBTC_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.3% & 0.15%
 
-    collateral = <AerodromeVolatileCollateral>await AerodromeStableCollateralFactory.connect(
+    collateral = <AerodromeVolatileCollateral>await AerodromeVolatileCollateralFactory.connect(
       deployer
     ).deploy(
       {
         erc20: wWethcbBTC.address,
-        targetName: ethers.utils.formatBytes32String('50%BTC50%ETH'), // lexicographical order for tokens
+        targetName: ethers.utils.formatBytes32String('ETH_BTC_AERODROME_cpAMM'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: oracleError.toString(), // unused but cannot be zero

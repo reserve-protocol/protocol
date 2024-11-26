@@ -8,7 +8,7 @@ import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 import "./vendor/IAeroPool.sol";
 
-/// Supports Aerodrome stable pools (2 tokens)
+/// Supports Aerodrome stable and volatile pools (2 tokens)
 contract AerodromePoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
@@ -20,7 +20,7 @@ contract AerodromePoolTokens {
 
     enum AeroPoolType {
         Stable,
-        Volatile // not supported in this version
+        Volatile
     }
 
     // === State (Immutable) ===

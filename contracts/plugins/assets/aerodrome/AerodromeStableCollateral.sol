@@ -19,7 +19,7 @@ contract AerodromeStableCollateral is AerodromeVolatileCollateral {
     using FixLib for uint192;
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
-    /// @dev No revenue hiding (refPerTok() == FIX_ONE)
+    /// @dev No revenue hiding (refPerTok() is constant)
     /// @dev config.erc20 should be an AerodromeStakingWrapper
     constructor(CollateralConfig memory config, APTConfiguration memory aptConfig)
         AerodromeVolatileCollateral(config, aptConfig)
