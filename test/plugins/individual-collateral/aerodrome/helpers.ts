@@ -196,7 +196,7 @@ export const allStableTests: AeroStablePoolEnumeration[] = [
     ],
     oracleTimeout: PRICE_TIMEOUT, // max
     oracleError: ORACLE_ERROR, // combined
-    amountScaleDivisor: bn('1e2'),
+    amountScaleDivisor: bn('1e3'),
     toleranceDivisor: bn('1e2'),
     fix: makeWUSDCeUSD,
   },
