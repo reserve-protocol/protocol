@@ -10,7 +10,7 @@ import {
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
-  IWSuperOETHb,
+  IERC4626,
 } from '../../../../typechain'
 import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
@@ -34,7 +34,7 @@ import { getResetFork } from '../helpers'
   Define interfaces
 */
 interface WSUPEROETHBCollateralFixtureContext extends CollateralFixtureContext {
-  wsuperoethb: IWSuperOETHb
+  wsuperoethb: IERC4626
   targetPerRefChainlinkFeed: MockV3Aggregator
   uoaPerTargetChainlinkFeed: MockV3Aggregator
 }
@@ -138,9 +138,9 @@ const makeCollateralFixtureContext = (
     collateralOpts.uoaPerTargetChainlinkFeed = uoaPerTargetChainlinkFeed.address
 
     const wsuperOETHb = (await ethers.getContractAt(
-      'IWSuperOETHb',
+      '@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626',
       BASE_WSUPEROETHB
-    )) as IWSuperOETHb
+    )) as IERC4626
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
 
