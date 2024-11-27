@@ -77,9 +77,7 @@ contract AerodromeStableCollateral is AerodromeVolatileCollateral {
         }
         assert(low <= high); // not obviously true just by inspection
 
-        // {target/ref} = {UoA/ref} = {UoA/tok} / ({ref/tok}
-        // {target/ref} and {UoA/ref} are the same since target == UoA
-        pegPrice = ((low + high) / 2).div(refPerTok());
+        pegPrice = 0;
     }
 
     // === Internal ===

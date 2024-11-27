@@ -40,7 +40,7 @@ Aerodrome Pools do not appreciate in value over time, so `refPerTok()` will be c
 
 ## Implementation
 
-|        `tok`         |       `ref`       |     `target`       | `UoA` |
-| :------------------: | :---------------: | :----------------: | :---: |
-| Aero Staking Wrapper | LP token /w shift |   USD  (Stable)    |  USD  |
-| Aero Staking Wrapper | LP token /w shift |   cpAMM (Volatile) |  USD  | 
+|        `tok`         |       `ref`       |     `target`     | `UoA` |
+| :------------------: | :---------------: | :--------------: | :---: |
+| Aero Staking Wrapper | LP token /w shift |   USD (Stable)   |  USD  |
+| Aero Staking Wrapper | LP token /w shift | cpAMM (Volatile) |  USD  |
