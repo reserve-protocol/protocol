@@ -12,7 +12,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logToken } from './logs'
 import { getChainId } from '#/common/blockchain-utils'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
-
+let done = false
 export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
   trader: TestITrading,
@@ -135,7 +135,7 @@ export const runDutchTrade = async (
   await advanceTime(hre, toAdvance)
   const buyAmount = await trade.bidAmount(await getLatestBlockTimestamp(hre))
 
-  console.log("buy amount", buyAmount)
+  console.log('buy amount', buyAmount)
   // Ensure funds available
   await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
 
@@ -149,7 +149,7 @@ export const runDutchTrade = async (
     router.bid(trade.address, await router.signer.getAddress()),
     trader
   )
-  
+
   console.log(
     'Trade State:',
     TradeStatus[await trade.status()],
@@ -371,7 +371,7 @@ const getERC20Tokens = async (
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
-
+  const wAerodromeEUSDUSDC = '0xDB5b8cead52f77De0f6B5255f73F348AAf2CBb8D'.toLowerCase()
   // special-cases for wrappers with 0 supply
   if (chainId == '1' || chainId == '31337') {
     const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
@@ -383,7 +383,6 @@ const getERC20Tokens = async (
     const stkcvxeUSDFRAXBPAddress = '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A'.toLowerCase()
     const stkcvxeUSDFRAXBPAddressOld = '0x8e33D5aC344f9F2fc1f2670D45194C280d4fBcF1'.toLowerCase()
     const stkcvxeUSDFRAXBPAddressOld2 = '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac'.toLowerCase()
-    const wAerodromeEUSDUSDC = '0xDB5b8cead52f77De0f6B5255f73F348AAf2CBb8D'.toLowerCase() 
 
     const tokAddress = tokenAddress.toLowerCase()
 
@@ -447,68 +446,74 @@ const getERC20Tokens = async (
         await stkcvxeUSDFRAXBP.connect(whaleSigner).deposit(amount.mul(2), whaleSigner.address)
         await token.connect(whaleSigner).transfer(recipient, amount)
       })
-    } else if (tokAddress == wAerodromeEUSDUSDC ) {
-     
+    } else if (tokAddress == wAerodromeEUSDUSDC) {
       const aeroGaugeWrapper = await hre.ethers.getContractAt('AerodromeGaugeWrapper', tokAddress)
-      const lpToken = await hre.ethers.getContractAt('IAeroPool', await aeroGaugeWrapper.underlying())
+      const lpToken = await hre.ethers.getContractAt(
+        'IAeroPool',
+        await aeroGaugeWrapper.underlying()
+      )
       // const gauge = await hre.ethers.getContractAt('IAeroGauge', await aeroGaugeWrapper.gauge())
       // const gaugeERC20 = await hre.ethers.getContractAt('IERC20Metadata', await aeroGaugeWrapper.gauge())
-
 
       // console.log("LP address", networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase())
       // console.log("whale",  whales[networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase()])
       // console.log("amount",  amount)
       // console.log("balance of whale",  await gaugeERC20.balanceOf(whales[networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase()]))
-      
+
       // await whileImpersonating(
       //   hre,
       //   whales[networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase()],
       //   async (whaleSigner) => {
-  
+
       //       await gauge.connect(whaleSigner).withdraw(amount)
       //       await lpToken.connect(whaleSigner).transfer(recipient, amount)
-       
+
       //       await lpToken.approve(aeroGaugeWrapper.address, hre.ethers.constants.MaxUint256)
       //       await aeroGaugeWrapper.deposit(amount, recipient)
       //   })
-        
+
       // get eUSD and USDC (600k of each)
       const eusd_base_holder = '0xb5E331615FdbA7DF49e05CdEACEb14Acdd5091c3'
       const usdc_base_holder = '0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A'
       const eusd = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token1())
       const usdc = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token0())
-       
-      
-      await whileImpersonating(
-        hre,
-        usdc_base_holder,
-        async (whaleSigner) => {
-           await usdc.connect(whaleSigner).transfer(recipient, bn('1000000e6'))
-        })
-        
 
-      await whileImpersonating(
-        hre,
-        eusd_base_holder,
-        async (whaleSigner) => {
-           await eusd.connect(whaleSigner).transfer(recipient, fp('1000000'))
-        })
-        
-  
-          await whileImpersonating(
-            hre,
+      await whileImpersonating(hre, usdc_base_holder, async (whaleSigner) => {
+        await usdc.connect(whaleSigner).transfer(recipient, bn('1000000e6'))
+      })
+
+      await whileImpersonating(hre, eusd_base_holder, async (whaleSigner) => {
+        await eusd.connect(whaleSigner).transfer(recipient, fp('1000000'))
+      })
+
+      await whileImpersonating(hre, recipient, async (recipientSigner) => {
+        const aerodromeRouter = await hre.ethers.getContractAt(
+          'IAeroRouter',
+          '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43'
+        )
+        await eusd
+          .connect(recipientSigner)
+          .approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
+        await usdc
+          .connect(recipientSigner)
+          .approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
+
+        await aerodromeRouter
+          .connect(recipientSigner)
+          .addLiquidity(
+            await lpToken.token0(),
+            await lpToken.token1(),
+            true,
+            bn('1000000e6'),
+            fp('1000000'),
+            1,
+            1,
             recipient,
-            async (recipientSigner) => {
-            const aerodromeRouter = await hre.ethers.getContractAt('IAeroRouter', '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43')
-            await eusd.connect(recipientSigner).approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
-            await usdc.connect(recipientSigner).approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
-         
-            await aerodromeRouter.connect(recipientSigner).addLiquidity(await lpToken.token0(), await lpToken.token1(), true, bn('1000000e6'), fp('1000000'), 1, 1, recipient, await getLatestBlockTimestamp(hre) + 1)
+            (await getLatestBlockTimestamp(hre)) + 1
+          )
+      })
 
-          })
-
-        console.log("finished setting up balance")
-
+      console.log('finished setting up balance')
     } else {
       // Directly get tokens from whale
       const addr = whales[token.address.toLowerCase()]
@@ -542,7 +547,84 @@ const getERC20Tokens = async (
           await wcUSDCv3.connect(whaleSigner).transfer(recipient, bal)
         }
       )
-      }else {
+    } else if (tokAddress == wAerodromeEUSDUSDC) {
+      const aeroGaugeWrapper = await hre.ethers.getContractAt('AerodromeGaugeWrapper', tokAddress)
+      const lpToken = await hre.ethers.getContractAt(
+        'IAeroPool',
+        await aeroGaugeWrapper.underlying()
+      )
+      // const gauge = await hre.ethers.getContractAt('IAeroGauge', await aeroGaugeWrapper.gauge())
+      // const gaugeERC20 = await hre.ethers.getContractAt('IERC20Metadata', await aeroGaugeWrapper.gauge())
+
+      // console.log("LP address", networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase())
+      // console.log("whale",  whales[networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase()])
+      // console.log("amount",  amount)
+      // console.log("balance of whale",  await gaugeERC20.balanceOf(whales[networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase()]))
+
+      // await whileImpersonating(
+      //   hre,
+      //   whales[networkConfig[chainId].tokens.aeroUSDCeUSD!.toLowerCase()],
+      //   async (whaleSigner) => {
+
+      //       await gauge.connect(whaleSigner).withdraw(amount)
+      //       await lpToken.connect(whaleSigner).transfer(recipient, amount)
+
+      //       await lpToken.approve(aeroGaugeWrapper.address, hre.ethers.constants.MaxUint256)
+      //       await aeroGaugeWrapper.deposit(amount, recipient)
+      //   })
+
+      // get eUSD and USDC (600k of each)
+      const eusd_base_holder = '0xb5E331615FdbA7DF49e05CdEACEb14Acdd5091c3'
+      const usdc_base_holder = '0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A'
+      const eusd = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token1())
+      const usdc = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token0())
+
+      if (!done) {
+        await whileImpersonating(hre, usdc_base_holder, async (whaleSigner) => {
+          console.log('transferring usdc')
+          await usdc.connect(whaleSigner).transfer(recipient, bn('2500000e6'))
+        })
+
+        await whileImpersonating(hre, eusd_base_holder, async (whaleSigner) => {
+          console.log('transferring eusd')
+          await eusd.connect(whaleSigner).transfer(recipient, fp('2500000'))
+        })
+        await whileImpersonating(hre, recipient, async (recipientSigner) => {
+          console.log('approving eusd')
+          const aerodromeRouter = await hre.ethers.getContractAt(
+            'IAeroRouter',
+            '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43'
+          )
+          await eusd
+            .connect(recipientSigner)
+            .approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
+          await usdc
+            .connect(recipientSigner)
+            .approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
+
+          await aerodromeRouter
+            .connect(recipientSigner)
+            .addLiquidity(
+              await lpToken.token0(),
+              await lpToken.token1(),
+              true,
+              bn('2500000e6'),
+              fp('2500000'),
+              1,
+              1,
+              recipient,
+              (await getLatestBlockTimestamp(hre)) + 1
+            )
+          const balLp = await lpToken.balanceOf(recipient)
+          await lpToken.connect(recipientSigner).approve(aeroGaugeWrapper.address, balLp)
+          await aeroGaugeWrapper.connect(recipientSigner).deposit(balLp, recipient)
+        })
+        done = true
+      }
+      const bal = await aeroGaugeWrapper.balanceOf(recipient)
+      console.log('balance of recipient', bal)
+      console.log('finished setting up balance')
+    } else {
       // Directly get tokens from whale
       const addr = whales[token.address.toLowerCase()]
       if (!addr) throw new Error('missing whale for ' + tokenAddress)
