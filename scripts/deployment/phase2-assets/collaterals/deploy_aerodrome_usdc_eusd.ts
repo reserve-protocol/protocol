@@ -91,7 +91,7 @@ async function main() {
       deployer
     ).deploy(
       {
-        erc20: wusdceusd.address,
+        erc20: '0xDB5b8cead52f77De0f6B5255f73F348AAf2CBb8D',
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -104,7 +104,7 @@ async function main() {
       {
         pool: AERO_USDC_eUSD_POOL,
         poolType: AerodromePoolType.Stable,
-        feeds: [[USDC_USD_FEED], [eUSD_USD_FEED]],
+        feeds: [[USDC_USD_FEED], [USDC_USD_FEED]],
         oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [eUSD_ORACLE_TIMEOUT]],
         oracleErrors: [[USDC_ORACLE_ERROR], [eUSD_ORACLE_ERROR]],
       }

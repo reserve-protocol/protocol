@@ -3,7 +3,7 @@ import { networkConfig } from '../../../common/configuration'
 import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { BigNumber } from 'ethers'
-import { AggregatorV3Interface } from '@typechain/index'
+import { AggregatorV3Interface, IERC20 } from '@typechain/index'
 import { ONE_ADDRESS } from '../../../common/constants'
 import { logToken } from './logs'
 
@@ -79,6 +79,7 @@ export const pushOracleForward = async (
     addresses.push(chainlinkFeed.address)
     console.log('✅ Feed Updated:', chainlinkFeed.address, logToken(tokAddress))
   }
+
   const assetContract = await hre.ethers.getContractAt('TestIAsset', asset)
   const tokAddress = await assetContract.erc20()
 
@@ -181,25 +182,25 @@ export const pushOracleForward = async (
     }
   }
 
-  // aerodrome stable
-  if (asset.toLowerCase() == '0x9216CD5cA133aBBd23cc6F873bB4a95A78032db0'.toLowerCase()) {
-    const collateral = await hre.ethers.getContractAt('AerodromeStableCollateral', asset)
-    const feeds0 = await collateral.tokenFeeds(0)
-    const feed00 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds0[0])
-    console.log('push 1')
-    await updateAnswer(feed00, tokAddress)
-    // const feed01 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds0[1])
-    // await updateAnswer(feed01, tokAddress)
-    const feeds1 = await collateral.tokenFeeds(1)
-    const feed10 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds1[0])
-    console.log('push 2')
-    await updateAnswer(feed10, tokAddress)
-    const newfeed = await hre.ethers.getContractAt('EACAggregatorProxyMock', feeds1[0])
-    console.log('decimals')
-    console.log('here decimals', await newfeed.decimals())
-    // const feed11 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds1[1])
-    // await updateAnswer(feed11, tokAddress)
-  }
+  // // aerodrome stable
+  // if (asset.toLowerCase() == '0x9216CD5cA133aBBd23cc6F873bB4a95A78032db0'.toLowerCase()) {
+  //   const collateral = await hre.ethers.getContractAt('AerodromeStableCollateral', asset)
+  //   const feeds0 = await collateral.tokenFeeds(0)
+  //   const feed00 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds0[0])
+  //   console.log('push 1')
+  //   await updateAnswer(feed00, tokAddress)
+  //   // const feed01 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds0[1])
+  //   // await updateAnswer(feed01, tokAddress)
+  //   const feeds1 = await collateral.tokenFeeds(1)
+  //   const feed10 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds1[0])
+  //   console.log('push 2')
+  //   await updateAnswer(feed10, tokAddress)
+  //   const newfeed = await hre.ethers.getContractAt('EACAggregatorProxyMock', feeds1[0])
+  //   console.log('decimals')
+  //   console.log('here decimals', await newfeed.decimals())
+  //   const feed11 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds1[1])
+  //   await updateAnswer(feed11, tokAddress)
+  // }
 
   return addresses
 }

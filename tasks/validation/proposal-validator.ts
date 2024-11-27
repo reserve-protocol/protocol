@@ -40,7 +40,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
     const collateralAddress = '0x9216CD5cA133aBBd23cc6F873bB4a95A78032db0'
-    const mockCollateralAddress = '0x2A590C461Db46bca129E8dBe5C3998A8fF402e76'
+    const mockCollateralAddress = '0x9849832a1d8274aaeDb1112ad9686413461e7101' // REPLACE WITH DEPLOYED MOCK
 
     const bytecode = await hre.network.provider.send('eth_getCode', [
       mockCollateralAddress,
