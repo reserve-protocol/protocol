@@ -475,32 +475,35 @@ const getERC20Tokens = async (
       // get eUSD and USDC (600k of each)
       const eusd_base_holder = '0xb5E331615FdbA7DF49e05CdEACEb14Acdd5091c3'
       const usdc_base_holder = '0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A'
-     
+      const eusd = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token1())
+      const usdc = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token0())
+       
       
+      await whileImpersonating(
+        hre,
+        usdc_base_holder,
+        async (whaleSigner) => {
+           await usdc.connect(whaleSigner).transfer(recipient, bn('1000000e6'))
+        })
+        
+
       await whileImpersonating(
         hre,
         eusd_base_holder,
         async (whaleSigner) => {
-          const eusd = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token1())
-           await eusd.connect(whaleSigner).transfer(recipient, fp('600000'))
+           await eusd.connect(whaleSigner).transfer(recipient, fp('1000000'))
         })
         
-
-        await whileImpersonating(
-          hre,
-          usdc_base_holder,
-          async (whaleSigner) => {
-            const eusd = await hre.ethers.getContractAt('IERC20Metadata', await lpToken.token0())
-             await eusd.connect(whaleSigner).transfer(recipient, bn('600000e6'))
-          })
-          
   
           await whileImpersonating(
             hre,
             recipient,
             async (recipientSigner) => {
             const aerodromeRouter = await hre.ethers.getContractAt('IAeroRouter', '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43')
-            await aerodromeRouter.connect(recipientSigner).addLiquidity(await lpToken.token0(), await lpToken.token1(), true, fp('600000'), bn('600000e6'), 1, 1, recipient, await getLatestBlockTimestamp(hre) + 10000)
+            await eusd.connect(recipientSigner).approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
+            await usdc.connect(recipientSigner).approve(aerodromeRouter.address, hre.ethers.constants.MaxUint256)
+         
+            await aerodromeRouter.connect(recipientSigner).addLiquidity(await lpToken.token0(), await lpToken.token1(), true, bn('1000000e6'), fp('1000000'), 1, 1, recipient, await getLatestBlockTimestamp(hre) + 1)
 
           })
 
