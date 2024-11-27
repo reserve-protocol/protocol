@@ -9,6 +9,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/FiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
 import "./AerodromePoolTokens.sol";
+import "hardhat/console.sol";
 
 // This plugin only works on Base
 IERC20 constant AERO = IERC20(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
@@ -58,16 +59,19 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
             uint192 pegPrice
         )
     {
+        console.log("tp", "1");
         uint256 r0 = tokenReserve(0);
         uint256 r1 = tokenReserve(1);
-
+        console.log("tp", "2");
         // xy^3 + yx^3 >= k for sAMM pools
         uint256 sqrtReserve = sqrt256(sqrt256(r0 * r1) * sqrt256(r0 * r0 + r1 * r1));
 
         // get token prices
+        console.log("tp", "2a");
         (uint192 p0_low, uint192 p0_high) = tokenPrice(0);
+        console.log("tp", "2b");
         (uint192 p1_low, uint192 p1_high) = tokenPrice(1);
-
+        console.log("tp", "3");
         uint192 totalSupply = shiftl_toFix(pool.totalSupply(), -int8(pool.decimals()), FLOOR);
 
         // low
@@ -78,6 +82,7 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
             );
             low = _safeWrap(((((1e18) * sqrtReserve) / sqrtPriceLow) * p0_low * 2) / totalSupply);
         }
+        console.log("tp", "4");
         // high
         {
             uint256 ratioHigh = ((1e18) * p0_low) / p1_high;
@@ -89,7 +94,9 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
                 ((((1e18) * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply
             );
         }
+        console.log("tp", "5");
         assert(low <= high); //obviously true just by inspection
+        console.log("tp", "6");
 
         // {target/ref} = {UoA/ref} = {UoA/tok} / ({ref/tok}
         // {target/ref} and {UoA/ref} are the same since target == UoA
@@ -129,6 +136,8 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
+            console.log("try price");
+            console.logBytes(errData);
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.IFFY);
         }
@@ -170,6 +179,8 @@ contract AerodromeStableCollateral is FiatCollateral, AerodromePoolTokens {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 // untested:
                 //      pattern validated in other plugins, cost to test is high
+                console.log("errData", i);
+                console.logBytes(errData);
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 return true;
             }

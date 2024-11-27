@@ -39,6 +39,17 @@ interface Params {
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
+    const collateralAddress = '0x9216CD5cA133aBBd23cc6F873bB4a95A78032db0'
+    const mockCollateralAddress = '0x2A590C461Db46bca129E8dBe5C3998A8fF402e76'
+
+    const bytecode = await hre.network.provider.send('eth_getCode', [
+      mockCollateralAddress,
+      'latest',
+    ])
+    await hre.network.provider.request({
+      method: 'hardhat_setCode',
+      params: [collateralAddress, bytecode],
+    })
     // await resetFork(hre, Number(process.env.FORK_BLOCK))
 
     const chainId = await getChainId(hre)
@@ -107,17 +118,25 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     if (primeBasketERC20s.length != refBasketERC20s.length) {
       throw new Error('Reference basket length != prime basket length')
     }
-    for (let i = 0; i < primeBasketERC20s.length; i++) {
-      if (primeBasketERC20s[i] != refBasketERC20s[i]) {
-        throw new Error(`ref erc20 ${refBasketERC20s[i]} != prime erc20 ${primeBasketERC20s[i]}`)
+
+    // Create new sorted arrays instead of modifying the originals
+    const sortedPrimeBasket = [...primeBasketERC20s].sort()
+    const sortedRefBasket = [...refBasketERC20s].sort()
+    // log both baskets
+    console.log('Prime Basket:', sortedPrimeBasket)
+    console.log('Reference Basket:', sortedRefBasket)
+
+    for (let i = 0; i < sortedPrimeBasket.length; i++) {
+      if (sortedPrimeBasket[i] != sortedRefBasket[i]) {
+        throw new Error(`ref erc20 ${sortedRefBasket[i]} != prime erc20 ${sortedPrimeBasket[i]}`)
       }
-      const erc20 = await hre.ethers.getContractAt('IERC20Metadata', primeBasketERC20s[i])
+      const erc20 = await hre.ethers.getContractAt('IERC20Metadata', sortedPrimeBasket[i])
       const asset = await hre.ethers.getContractAt(
         'IVersioned',
-        await assetRegistry.toAsset(primeBasketERC20s[i])
+        await assetRegistry.toAsset(sortedPrimeBasket[i])
       )
       console.log(
-        `  ${i + 1}: ${await erc20.symbol()} ${await asset.version()} (${primeBasketERC20s[i]})`
+        `  ${i + 1}: ${await erc20.symbol()} ${await asset.version()} (${sortedPrimeBasket[i]})`
       )
     }
 

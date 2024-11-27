@@ -62,7 +62,7 @@ async function main() {
   let wusdceusd: AerodromeGaugeWrapper
 
   // Only for Base
-  if (baseL2Chains.includes(hre.network.name)) {
+  if (hre.network.name == 'localhost' || baseL2Chains.includes(hre.network.name)) {
     const AerodromeStableCollateralFactory = await hre.ethers.getContractFactory(
       'AerodromeStableCollateral'
     )
