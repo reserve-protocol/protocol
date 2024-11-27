@@ -1,0 +1,27 @@
+# Origin Wrapped SuperOETH Collateral Plugin
+
+## Summary
+
+This plugin allows `wsuperOETH` holders on base to use their tokens as collateral in the Reserve Protocol.
+
+`wsuperOETH` is an owned, upgradeable, ERC4626-wrapper around the `superOETH` token.
+
+`wsuperOETH` collects the native `superOETH` yield.
+
+`wsuperOETH` contract: <https://etherscan.io/token/https://etherscan.io/address/0x7fcd174e80f264448ebee8c88a7c4476aaf58ea6#code>
+
+## Implementation
+
+### Units
+
+| tok        | ref       | target | UoA |
+| ---------- | --------- | ------ | --- |
+| wsuperOETH | superOETH | ETH    | USD |
+
+### refPerTok()
+
+Since `wsuperOETH` is an ERC4626 wrapper, the `refPerTok()` is straightforward: `wsuperOETH.convertToAssets(10 ** wsuperOETH.decimals())`
+
+### claimRewards()
+
+There are no rewards to claim from `wsuperOETH`, all yield is already included in the ERC4626 asset appreciation.
