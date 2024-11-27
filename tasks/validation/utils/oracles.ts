@@ -26,17 +26,16 @@ export const overrideOracle = async (
   const mockOracleFactory = await hre.ethers.getContractFactory('EACAggregatorProxyMock')
   const mockOracle = await mockOracleFactory.deploy(aggregator, accessController, initPrice.answer)
   const bytecode = await hre.network.provider.send('eth_getCode', [mockOracle.address, 'latest'])
-  if (oracleAddress.toLowerCase() == '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab'.toLowerCase()) {
-    await hre.network.provider.request({
-      method: 'hardhat_setCode',
-      params: ['0x6c5090e85a65038ca6ab207cdb9e7a897cb33e4d', bytecode],
-    })
-  } else {
-    await hre.network.provider.request({
-      method: 'hardhat_setCode',
-      params: [oracleAddress, bytecode],
-    })
-  }
+  // if (oracleAddress.toLowerCase() == '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab'.toLowerCase()) {
+  //   await hre.network.provider.request({
+  //     method: 'hardhat_setCode',
+  //     params: ['0x6C5090e85a65038ca6AB207CDb9e7a897cb33e4d', bytecode],
+  //   })
+  // }
+  await hre.network.provider.request({
+    method: 'hardhat_setCode',
+    params: [oracleAddress, bytecode],
+  })
   return hre.ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
 }
 
@@ -194,9 +193,6 @@ export const pushOracleForward = async (
     const feed10 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds1[0])
     console.log('push 2')
     await updateAnswer(feed10, tokAddress)
-    const newfeed = await hre.ethers.getContractAt('EACAggregatorProxyMock', feeds1[0])
-    console.log('decimals')
-    console.log('here decimals', await newfeed.decimals())
     // const feed11 = await hre.ethers.getContractAt('AggregatorV3Interface', feeds1[1])
     // await updateAnswer(feed11, tokAddress)
   }

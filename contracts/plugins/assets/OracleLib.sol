@@ -4,7 +4,6 @@ pragma solidity 0.8.19;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../../libraries/Fixed.sol";
 import "./OracleErrors.sol";
-import "hardhat/console.sol";
 
 interface EACAggregatorProxy {
     function aggregator() external view returns (address);
@@ -22,7 +21,6 @@ library OracleLib {
         view
         returns (uint192)
     {
-        console.log("price", "0");
         try chainlinkFeed.latestRoundData() returns (
             uint80 roundId,
             int256 p,
@@ -30,34 +28,26 @@ library OracleLib {
             uint256 updateTime,
             uint80 answeredInRound
         ) {
-            console.log("price", "1");
             if (updateTime == 0 || answeredInRound < roundId) {
-                console.log("price", "2");
                 revert StalePrice();
             }
-            console.log("price", "3");
+
             // Downcast is safe: uint256(-) reverts on underflow; block.timestamp assumed < 2^48
             uint48 secondsSince = uint48(block.timestamp - updateTime);
             if (secondsSince > timeout + ORACLE_TIMEOUT_BUFFER) revert StalePrice();
-            console.log("price", "4");
+
             if (p <= 0) revert InvalidPrice();
-            console.log("price", "5");
-            console.logInt(p);
-            console.log("feed", address(chainlinkFeed));
-            console.log("decimals", address(chainlinkFeed), chainlinkFeed.decimals());
+
             // {UoA/tok}
             return shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()), FLOOR);
         } catch (bytes memory errData) {
-            console.log("price", "6");
             // Check if the aggregator was not set: if so, the chainlink feed has been deprecated
             // and a _specific_ error needs to be raised in order to avoid looking like OOG
             if (errData.length == 0) {
-                console.log("maybe revert here");
                 if (EACAggregatorProxy(address(chainlinkFeed)).aggregator() == address(0)) {
                     revert StalePrice();
                 }
                 // solhint-disable-next-line reason-string
-                console.log("reverting here");
                 revert();
             }
 

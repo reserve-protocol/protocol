@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 import "./vendor/IAeroPool.sol";
-import "hardhat/console.sol";
 
 /// Supports Aerodrome stable pools (2 tokens)
 contract AerodromePoolTokens {
@@ -146,7 +145,6 @@ contract AerodromePoolTokens {
     /// @return low {UoA/ref_index}
     /// @return high {UoA/ref_index}
     function tokenPrice(uint8 index) public view virtual returns (uint192 low, uint192 high) {
-        console.log("token price", "0");
         if (index >= nTokens) revert WrongIndex(nTokens - 1);
 
         // Use only 1 feed if 2nd feed not defined
@@ -158,21 +156,16 @@ contract AerodromePoolTokens {
         // if only 1 feed: `y` is FIX_ONE and `yErr` is 0
 
         if (index == 0) {
-            console.log("token price", "1");
             x = _t0feed0.price(_t0timeout0);
             xErr = _t0error0;
             if (address(_t0feed1) != address(0)) {
-                console.log("token price", "2");
                 y = _t0feed1.price(_t0timeout1);
                 yErr = _t0error1;
             }
         } else {
-            console.log("token price", "3");
             x = _t1feed0.price(_t1timeout0);
-            console.log("token price", "3b");
             xErr = _t1error0;
             if (address(_t1feed1) != address(0)) {
-                console.log("token price", "4");
                 y = _t1feed1.price(_t1timeout1);
                 yErr = _t1error1;
             }

@@ -104,9 +104,9 @@ async function main() {
       {
         pool: AERO_USDC_eUSD_POOL,
         poolType: AerodromePoolType.Stable,
-        feeds: [[USDC_USD_FEED], [eUSD_USD_FEED]],
-        oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [eUSD_ORACLE_TIMEOUT]],
-        oracleErrors: [[USDC_ORACLE_ERROR], [eUSD_ORACLE_ERROR]],
+        feeds: [[USDC_USD_FEED], [USDC_USD_FEED]],
+        oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
+        oracleErrors: [[USDC_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
       }
     )
   } else {

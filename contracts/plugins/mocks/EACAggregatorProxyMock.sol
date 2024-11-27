@@ -375,7 +375,7 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
     /**
      * @notice represents the number of decimals the aggregator responses represent.
      */
-    function decimals() external view override returns (uint8) {
+    function decimals() external view virtual returns (uint8) {
         return currentPhase.aggregator.decimals();
     }
 
@@ -738,6 +738,10 @@ contract EACAggregatorProxyMock is EACAggregatorProxy {
         int256 _initialAnswer
     ) EACAggregatorProxy(_aggregator, _accessController) {
         updateAnswer(_initialAnswer);
+    }
+
+    function decimals() external view virtual override returns (uint8) {
+        return 8;
     }
 
     function updateAnswer(int256 _answer) public {
