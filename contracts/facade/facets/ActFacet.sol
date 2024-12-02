@@ -134,17 +134,17 @@ contract ActFacet is Multicall {
         // Reward counts are disjoint with `surpluses` and `canStart`
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             bmRewards[i] = reg.erc20s[i].balanceOf(address(bm));
+            // solhint-disable-next-line no-empty-blocks
+            try bm.claimRewardsSingle(reg.erc20s[i]) {} catch {} // same between 2.1.0 and 3.0.0
         }
-        // solhint-disable-next-line no-empty-blocks
-        try bm.claimRewards() {} catch {} // same between 2.1.0 and 3.0.0
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             bmRewards[i] = reg.erc20s[i].balanceOf(address(bm)) - bmRewards[i];
         }
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             revTraderRewards[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
+            // solhint-disable-next-line no-empty-blocks
+            try revenueTrader.claimRewardsSingle(reg.erc20s[i]) {} catch {}
         }
-        // solhint-disable-next-line no-empty-blocks
-        try revenueTrader.claimRewards() {} catch {} // same between 2.1.0 and 3.0.0
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             revTraderRewards[i] =
                 reg.erc20s[i].balanceOf(address(revenueTrader)) -
