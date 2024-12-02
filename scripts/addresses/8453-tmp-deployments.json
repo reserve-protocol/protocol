@@ -7,7 +7,7 @@
   "tradingLib": "0x6419fe6cf428150e2d8ed38a3316b1bb468f79a7",
   "facade": "0xE41416d8dC94ac1F6d12282d6D46B714F39a87d9",
   "facets": {
-    "actFacet": "0x0eac15B9Fe585432E48Cf175571D75D111861F43",
+    "actFacet": "0x805bd2Fde1c5269f6C5D6E74394F21651a9C2C7c",
     "readFacet": "0x5Af543D6F95a98200Dd770f39A902Fe793BAeB27",
     "maxIssuableFacet": "0x63FDcB1E8Ee5C4B64A5c4ce0FB97597917920cb6",
     "backingBufferFacet": "0x38c7e9427960E427f6c84b3A096021f47a9Afb82",
