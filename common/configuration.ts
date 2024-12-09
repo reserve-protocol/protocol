@@ -88,6 +88,7 @@ export interface ITokens {
   wsgUSDbC?: string
   yvCurveUSDPcrvUSD?: string
   yvCurveUSDCcrvUSD?: string
+  wsuperOETHb?: string
 
   pyUSD?: string
   aEthPyUSD?: string
@@ -536,6 +537,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+      wsuperOETHb: '0x7FcD174E80f264448ebeE8c88a7C4476AAF58Ea6',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -555,6 +557,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
       USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
+      wsuperOETHb: '0x28C964c985fe84736fAdc7Cf0bBd58B54bc7CF93',
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
