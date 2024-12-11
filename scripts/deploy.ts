@@ -111,9 +111,14 @@ async function main() {
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/assets/deploy_stg.ts',
-      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
       'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts',
-      'phase2-assets/collaterals/deploy_aerodrome_usdz_usdc.ts'
+      'phase2-assets/collaterals/deploy_aerodrome_weth_aero.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_mog_weth.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_usdz_usdc.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_cbbtc.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_well.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_degen.ts',
+      'phase2-assets/collaterals/deploy_morphoeUSD.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One

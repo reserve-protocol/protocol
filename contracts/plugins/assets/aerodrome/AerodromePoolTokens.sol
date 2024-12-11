@@ -8,7 +8,7 @@ import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 import "./vendor/IAeroPool.sol";
 
-/// Supports Aerodrome stable pools (2 tokens)
+/// Supports Aerodrome stable and volatile pools (2 tokens)
 contract AerodromePoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
@@ -20,7 +20,7 @@ contract AerodromePoolTokens {
 
     enum AeroPoolType {
         Stable,
-        Volatile // not supported in this version
+        Volatile
     }
 
     // === State (Immutable) ===
@@ -76,7 +76,10 @@ contract AerodromePoolTokens {
 
         // === Tokens ===
 
-        if (config.poolType != AeroPoolType.Stable || !config.pool.stable()) {
+        if (config.poolType == AeroPoolType.Stable && !config.pool.stable()) {
+            revert("invalid poolType");
+        }
+        if (config.poolType == AeroPoolType.Volatile && config.pool.stable()) {
             revert("invalid poolType");
         }
 
@@ -175,8 +178,8 @@ contract AerodromePoolTokens {
     }
 
     /// @param index The index of the token: 0 or 1
-    /// @return [{ref_index}]
-    function tokenReserve(uint8 index) public view virtual returns (uint256) {
+    /// @return {ref_index}
+    function tokenReserve(uint8 index) public view virtual returns (uint192) {
         if (index >= nTokens) revert WrongIndex(nTokens - 1);
         // Maybe also cache token decimals as immutable?
         IERC20Metadata tokenInterface = getToken(index);
