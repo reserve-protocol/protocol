@@ -21,18 +21,18 @@ import {
   AerodromePoolType,
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
-  AERO_WETH_AERO_POOL,
-  AERO_WETH_AERO_GAUGE,
+  AERO_WETH_WELL_POOL,
+  AERO_WETH_WELL_GAUGE,
   AERO,
-  AERO_USD_FEED,
-  AERO_ORACLE_TIMEOUT,
-  AERO_ORACLE_ERROR,
+  WELL_USD_FEED,
+  WELL_ORACLE_TIMEOUT,
+  WELL_ORACLE_ERROR,
   ETH_USD_FEED,
   ETH_ORACLE_TIMEOUT,
   ETH_ORACLE_ERROR,
 } from '../../../../test/plugins/individual-collateral/aerodrome/constants'
 
-// Aerodrome volatile plugin: WETH-AERO vAMM
+// Aerodrome volatile plugin: WETH-WELL vAMM
 
 async function main() {
   // ==== Read Configuration ====
@@ -58,10 +58,10 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Aerodrome Volatile Pool for WETH-AERO  **************************/
+  /********  Deploy Aerodrome Volatile Pool for WETH-WELL  **************************/
 
   let collateral: AerodromeVolatileCollateral
-  let wWethAero: AerodromeGaugeWrapper
+  let wWethWELL: AerodromeGaugeWrapper
 
   // Only for Base
   if (baseL2Chains.includes(hre.network.name)) {
@@ -71,44 +71,44 @@ async function main() {
     const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
 
     // Deploy gauge wrapper
-    const pool = <IAeroPool>await ethers.getContractAt('IAeroPool', AERO_WETH_AERO_POOL)
-    wWethAero = <AerodromeGaugeWrapper>(
+    const pool = <IAeroPool>await ethers.getContractAt('IAeroPool', AERO_WETH_WELL_POOL)
+    wWethWELL = <AerodromeGaugeWrapper>(
       await AerodromeGaugeWrapperFactory.deploy(
         pool.address,
         'w' + (await pool.name()),
         'w' + (await pool.symbol()),
         AERO,
-        AERO_WETH_AERO_GAUGE
+        AERO_WETH_WELL_GAUGE
       )
     )
-    await wWethAero.deployed()
+    await wWethWELL.deployed()
 
     console.log(
-      `Deployed wrapper for Aerodrome Volatile WETH-AERO pool on ${hre.network.name} (${chainId}): ${wWethAero.address} `
+      `Deployed wrapper for Aerodrome Volatile WETH-WELL pool on ${hre.network.name} (${chainId}): ${wWethWELL.address} `
     )
 
-    const oracleError = combinedError(AERO_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.5% & 0.15%
+    const oracleError = combinedError(WELL_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.5% & 0.15%
 
     collateral = <AerodromeVolatileCollateral>await AerodromeVolatileCollateralFactory.connect(
       deployer
     ).deploy(
       {
-        erc20: wWethAero.address,
-        targetName: ethers.utils.formatBytes32String('ETH_AERO_AERODROME_cpAMM'),
+        erc20: wWethWELL.address,
+        targetName: ethers.utils.formatBytes32String('ETH_WELL_AERODROME_cpAMM'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: oracleError.toString(), // unused but cannot be zero
-        oracleTimeout: AERO_ORACLE_TIMEOUT, // max of oracleTimeouts
+        oracleTimeout: WELL_ORACLE_TIMEOUT, // max of oracleTimeouts
         maxTradeVolume: MAX_TRADE_VOL,
         defaultThreshold: '0',
         delayUntilDefault: '86400', // 24h
       },
       {
-        pool: AERO_WETH_AERO_POOL,
+        pool: AERO_WETH_WELL_POOL,
         poolType: AerodromePoolType.Volatile,
-        feeds: [[ETH_USD_FEED], [AERO_USD_FEED]],
-        oracleTimeouts: [[ETH_ORACLE_TIMEOUT], [AERO_ORACLE_TIMEOUT]],
-        oracleErrors: [[ETH_ORACLE_ERROR], [AERO_ORACLE_ERROR]],
+        feeds: [[ETH_USD_FEED], [WELL_USD_FEED]],
+        oracleTimeouts: [[ETH_ORACLE_TIMEOUT], [WELL_ORACLE_TIMEOUT]],
+        oracleErrors: [[ETH_ORACLE_ERROR], [WELL_ORACLE_ERROR]],
       }
     )
   } else {
@@ -120,11 +120,11 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
-    `Deployed Aerodrome Volatile Collateral for WETH-AERO to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Aerodrome Volatile Collateral for WETH-WELL to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.collateral.aeroWETHAERO = collateral.address
-  assetCollDeployments.erc20s.aeroWETHAERO = wWethAero.address
+  assetCollDeployments.collateral.aeroWETHWELL = collateral.address
+  assetCollDeployments.erc20s.aeroWETHWELL = wWethWELL.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

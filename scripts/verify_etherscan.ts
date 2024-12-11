@@ -96,6 +96,9 @@ async function main() {
       'collateral-plugins/verify_aerodrome_weth_aero.ts',
       'collateral-plugins/verify_aerodrome_mog_weth.ts',
       'collateral-plugins/verify_aerodrome_usdz_usdc.ts',
+      'collateral-plugins/verify_aerodrome_weth_cbbtc.ts',
+      'collateral-plugins/verify_aerodrome_weth_well.ts',
+      'collateral-plugins/verify_aerodrome_weth_degen.ts',
       'collateral-plugins/verify_morphoeUSD.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {

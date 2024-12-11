@@ -65,7 +65,7 @@ async function main() {
 
   // Only for Base
   if (baseL2Chains.includes(hre.network.name)) {
-    const AerodromeStableCollateralFactory = await hre.ethers.getContractFactory(
+    const AerodromeVolatileCollateralFactory = await hre.ethers.getContractFactory(
       'AerodromeVolatileCollateral'
     )
     const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
@@ -87,14 +87,14 @@ async function main() {
       `Deployed wrapper for Aerodrome Volatile MOG-WETH pool on ${hre.network.name} (${chainId}): ${wMogWeth.address} `
     )
 
-    const oracleError = combinedError(MOG_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.5% & 0.5%
+    const oracleError = combinedError(MOG_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.5% & 0.15%
 
-    collateral = <AerodromeVolatileCollateral>await AerodromeStableCollateralFactory.connect(
+    collateral = <AerodromeVolatileCollateral>await AerodromeVolatileCollateralFactory.connect(
       deployer
     ).deploy(
       {
         erc20: wMogWeth.address,
-        targetName: ethers.utils.formatBytes32String('50%ETH50%MOG'), // lexicographical order for tokens
+        targetName: ethers.utils.formatBytes32String('MOG_ETH_AERODROME_cpAMM'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: oracleError.toString(), // unused but cannot be zero

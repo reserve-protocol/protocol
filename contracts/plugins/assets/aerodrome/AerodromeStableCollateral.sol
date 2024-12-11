@@ -19,7 +19,7 @@ contract AerodromeStableCollateral is AerodromeVolatileCollateral {
     using FixLib for uint192;
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
-    /// @dev No revenue hiding (refPerTok() == FIX_ONE)
+    /// @dev No revenue hiding (refPerTok() is constant)
     /// @dev config.erc20 should be an AerodromeStakingWrapper
     constructor(CollateralConfig memory config, APTConfiguration memory aptConfig)
         AerodromeVolatileCollateral(config, aptConfig)
@@ -73,15 +73,11 @@ contract AerodromeStableCollateral is AerodromeVolatileCollateral {
                 sqrt256(1e18 * ratioHigh) * sqrt256(1e36 + ratioHigh * ratioHigh)
             );
 
-            high = _safeWrap(
-                (((1e18 * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply
-            );
+            high = _safeWrap((((1e18 * sqrtReserve) / sqrtPriceHigh) * p0_high * 2) / totalSupply);
         }
         assert(low <= high); // not obviously true just by inspection
 
-        // {target/ref} = {UoA/ref} = {UoA/tok} / ({ref/tok}
-        // {target/ref} and {UoA/ref} are the same since target == UoA
-        pegPrice = ((low + high) / 2).div(refPerTok());
+        pegPrice = 0;
     }
 
     // === Internal ===

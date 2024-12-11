@@ -31,7 +31,7 @@ contract AerodromeVolatileCollateral is FiatCollateral, AerodromePoolTokens {
     using FixLib for uint192;
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimout
-    /// @dev No revenue hiding (refPerTok() == FIX_ONE)
+    /// @dev No revenue hiding (refPerTok() is constant)
     /// @dev config.erc20 should be an AerodromeStakingWrapper
     constructor(CollateralConfig memory config, APTConfiguration memory aptConfig)
         FiatCollateral(config)
