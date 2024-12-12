@@ -1,44 +1,99 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   IAeroPool,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  InvalidMockV3Aggregator,
   AerodromeGaugeWrapper__factory,
   TestICollateral,
   AerodromeGaugeWrapper,
   ERC20Mock,
 } from '../../../../typechain'
-import { CollateralStatus, ZERO_ADDRESS } from '#/common/constants'
+import { ZERO_ADDRESS } from '#/common/constants'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   AerodromePoolType,
+  MOG_USD_FEED,
+  MOG_HOLDER,
+  MOG_ORACLE_ERROR,
+  MOG_ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
+  AERO_MOG_WETH_POOL,
+  AERO_MOG_WETH_GAUGE,
+  AERO_MOG_WETH_HOLDER,
   AERO,
+  AERO_USD_FEED,
+  AERO_ORACLE_ERROR,
+  AERO_ORACLE_TIMEOUT,
+  AERO_HOLDER,
+  MOG,
+  WETH,
+  WETH_HOLDER,
+  AERO_WETH_AERO_POOL,
+  AERO_WETH_AERO_GAUGE,
+  AERO_WETH_AERO_HOLDER,
+  AERO_WETH_cbBTC_POOL,
+  AERO_WETH_cbBTC_GAUGE,
+  AERO_WETH_cbBTC_HOLDER,
+  AERO_WETH_WELL_POOL,
+  AERO_WETH_WELL_GAUGE,
+  AERO_WETH_WELL_HOLDER,
+  AERO_WETH_DEGEN_POOL,
+  AERO_WETH_DEGEN_GAUGE,
+  AERO_WETH_DEGEN_HOLDER,
+  cbBTC,
+  cbBTC_USD_FEED,
+  cbBTC_ORACLE_ERROR,
+  cbBTC_ORACLE_TIMEOUT,
+  cbBTC_HOLDER,
+  WELL,
+  WELL_USD_FEED,
+  WELL_ORACLE_ERROR,
+  WELL_ORACLE_TIMEOUT,
+  WELL_HOLDER,
+  DEGEN,
+  DEGEN_USD_FEED,
+  DEGEN_ORACLE_ERROR,
+  DEGEN_ORACLE_TIMEOUT,
+  DEGEN_HOLDER,
+  ETH_USD_FEED,
+  ETH_ORACLE_ERROR,
+  ETH_ORACLE_TIMEOUT,
 } from './constants'
-import { expectPrice } from '../../../utils/oracles'
-import {
-  mintWrappedLpToken,
-  resetFork,
-  getFeeds,
-  pushAllFeedsForward,
-  allStableTests,
-  AeroStablePoolEnumeration,
-} from './helpers'
+import { mintWrappedLpToken, resetFork, getFeeds, pushAllFeedsForward } from './helpers'
 
 /*
   Define interfaces
 */
 
-interface AeroStableCollateralOpts extends CollateralOpts {
+interface AeroPoolTokenConfig {
+  token: string
+  feeds: string[]
+  oracleTimeouts: BigNumberish[]
+  oracleErrors: BigNumberish[]
+  holder: string
+}
+
+interface AeroVolatilePoolEnumeration {
+  testName: string
+  pool: string
+  gauge: string
+  holder: string
+  toleranceDivisor: BigNumber
+  amountScaleDivisor: BigNumber
+  tokens: AeroPoolTokenConfig[]
+  oracleTimeout: BigNumberish
+  oracleError: BigNumberish
+}
+
+interface AeroVolatileCollateralOpts extends CollateralOpts {
   pool?: string
   poolType?: AerodromePoolType
   gauge?: string
@@ -53,10 +108,144 @@ interface AerodromeCollateralFixtureContext extends CollateralFixtureContext {
 
 // ====
 
-allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
-  const defaultCollateralOpts: AeroStableCollateralOpts = {
+// Test all Aerodrome Volatile pools
+const all: AeroVolatilePoolEnumeration[] = [
+  {
+    testName: 'Aerodrome - MOG/WETH Volatile',
+    pool: AERO_MOG_WETH_POOL,
+    gauge: AERO_MOG_WETH_GAUGE,
+    holder: AERO_MOG_WETH_HOLDER,
+    tokens: [
+      {
+        token: MOG,
+        feeds: [MOG_USD_FEED],
+        oracleTimeouts: [MOG_ORACLE_TIMEOUT],
+        oracleErrors: [MOG_ORACLE_ERROR],
+        holder: MOG_HOLDER,
+      },
+      {
+        token: WETH,
+        feeds: [ETH_USD_FEED],
+        oracleTimeouts: [ETH_ORACLE_TIMEOUT],
+        oracleErrors: [ETH_ORACLE_ERROR],
+        holder: WETH_HOLDER,
+      },
+    ],
+    oracleTimeout: MOG_ORACLE_TIMEOUT, // max
+    oracleError: MOG_ORACLE_ERROR.add(ETH_ORACLE_ERROR), // combined
+    amountScaleDivisor: bn('1'),
+    toleranceDivisor: bn('1e4'),
+  },
+  {
+    testName: 'Aerodrome - WETH/AERO Volatile',
+    pool: AERO_WETH_AERO_POOL,
+    gauge: AERO_WETH_AERO_GAUGE,
+    holder: AERO_WETH_AERO_HOLDER,
+    tokens: [
+      {
+        token: WETH,
+        feeds: [ETH_USD_FEED],
+        oracleTimeouts: [ETH_ORACLE_TIMEOUT],
+        oracleErrors: [ETH_ORACLE_ERROR],
+        holder: WETH_HOLDER,
+      },
+      {
+        token: AERO,
+        feeds: [AERO_USD_FEED],
+        oracleTimeouts: [AERO_ORACLE_TIMEOUT],
+        oracleErrors: [AERO_ORACLE_ERROR],
+        holder: AERO_HOLDER,
+      },
+    ],
+    oracleTimeout: AERO_ORACLE_TIMEOUT, // max
+    oracleError: AERO_ORACLE_ERROR.add(ETH_ORACLE_ERROR), // combined
+    amountScaleDivisor: bn('1e2'),
+    toleranceDivisor: bn('1e4'),
+  },
+  {
+    testName: 'Aerodrome - WETH/cbBTC Volatile',
+    pool: AERO_WETH_cbBTC_POOL,
+    gauge: AERO_WETH_cbBTC_GAUGE,
+    holder: AERO_WETH_cbBTC_HOLDER,
+    tokens: [
+      {
+        token: WETH,
+        feeds: [ETH_USD_FEED],
+        oracleTimeouts: [ETH_ORACLE_TIMEOUT],
+        oracleErrors: [ETH_ORACLE_ERROR],
+        holder: WETH_HOLDER,
+      },
+      {
+        token: cbBTC,
+        feeds: [cbBTC_USD_FEED],
+        oracleTimeouts: [cbBTC_ORACLE_TIMEOUT],
+        oracleErrors: [cbBTC_ORACLE_ERROR],
+        holder: cbBTC_HOLDER,
+      },
+    ],
+    oracleTimeout: ETH_ORACLE_TIMEOUT, // max
+    oracleError: cbBTC_ORACLE_ERROR.add(ETH_ORACLE_ERROR), // combined
+    amountScaleDivisor: bn('1e6'),
+    toleranceDivisor: bn('1e4'),
+  },
+  {
+    testName: 'Aerodrome - WETH/WELL Volatile',
+    pool: AERO_WETH_WELL_POOL,
+    gauge: AERO_WETH_WELL_GAUGE,
+    holder: AERO_WETH_WELL_HOLDER,
+    tokens: [
+      {
+        token: WETH,
+        feeds: [ETH_USD_FEED],
+        oracleTimeouts: [ETH_ORACLE_TIMEOUT],
+        oracleErrors: [ETH_ORACLE_ERROR],
+        holder: WETH_HOLDER,
+      },
+      {
+        token: WELL,
+        feeds: [WELL_USD_FEED],
+        oracleTimeouts: [WELL_ORACLE_TIMEOUT],
+        oracleErrors: [WELL_ORACLE_ERROR],
+        holder: WELL_HOLDER,
+      },
+    ],
+    oracleTimeout: WELL_ORACLE_TIMEOUT, // max
+    oracleError: WELL_ORACLE_ERROR.add(ETH_ORACLE_ERROR), // combined
+    amountScaleDivisor: bn('1e2'),
+    toleranceDivisor: bn('1e4'),
+  },
+  {
+    testName: 'Aerodrome - WETH/DEGN Volatile',
+    pool: AERO_WETH_DEGEN_POOL,
+    gauge: AERO_WETH_DEGEN_GAUGE,
+    holder: AERO_WETH_DEGEN_HOLDER,
+    tokens: [
+      {
+        token: WETH,
+        feeds: [ETH_USD_FEED],
+        oracleTimeouts: [ETH_ORACLE_TIMEOUT],
+        oracleErrors: [ETH_ORACLE_ERROR],
+        holder: WETH_HOLDER,
+      },
+      {
+        token: DEGEN,
+        feeds: [DEGEN_USD_FEED],
+        oracleTimeouts: [DEGEN_ORACLE_TIMEOUT],
+        oracleErrors: [DEGEN_ORACLE_ERROR],
+        holder: DEGEN_HOLDER,
+      },
+    ],
+    oracleTimeout: DEGEN_ORACLE_TIMEOUT, // max
+    oracleError: DEGEN_ORACLE_ERROR.add(ETH_ORACLE_ERROR), // combined
+    amountScaleDivisor: bn('1e2'),
+    toleranceDivisor: bn('1e4'),
+  },
+]
+
+all.forEach((curr: AeroVolatilePoolEnumeration) => {
+  const defaultCollateralOpts: AeroVolatileCollateralOpts = {
     erc20: ZERO_ADDRESS,
-    targetName: ethers.utils.formatBytes32String('USD'),
+    targetName: ethers.utils.formatBytes32String('ETH'), // good enough to test swapping out
     priceTimeout: PRICE_TIMEOUT,
     chainlinkFeed: curr.tokens[0].feeds[0], // unused but cannot be zero
     oracleTimeout: curr.oracleTimeout, // max of oracleTimeouts
@@ -65,7 +254,7 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     defaultThreshold: DEFAULT_THRESHOLD,
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     pool: curr.pool,
-    poolType: AerodromePoolType.Stable,
+    poolType: AerodromePoolType.Volatile,
     gauge: curr.gauge,
     feeds: [curr.tokens[0].feeds, curr.tokens[1].feeds],
     oracleTimeouts: [curr.tokens[0].oracleTimeouts, curr.tokens[1].oracleTimeouts],
@@ -73,7 +262,7 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
   }
 
   const deployCollateral = async (
-    opts: AeroStableCollateralOpts = {}
+    opts: AeroVolatileCollateralOpts = {}
   ): Promise<TestICollateral> => {
     let pool: IAeroPool
     let wrapper: AerodromeGaugeWrapper
@@ -100,11 +289,11 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     opts = { ...defaultCollateralOpts, ...opts }
     opts.feeds![0][0] = opts.chainlinkFeed!
 
-    const AeroStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'AerodromeStableCollateral'
+    const AeroVolatileCollateralFactory: ContractFactory = await ethers.getContractFactory(
+      'AerodromeVolatileCollateral'
     )
 
-    const collateral = <TestICollateral>await AeroStableCollateralFactory.deploy(
+    const collateral = <TestICollateral>await AeroVolatileCollateralFactory.deploy(
       {
         erc20: opts.erc20,
         targetName: opts.targetName,
@@ -141,7 +330,7 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
 
   const makeCollateralFixtureContext = (
     alice: SignerWithAddress,
-    opts: AeroStableCollateralOpts = {}
+    opts: AeroVolatileCollateralOpts = {}
   ): Fixture<AerodromeCollateralFixtureContext> => {
     const collateralOpts = { ...defaultCollateralOpts, ...opts }
 
@@ -217,34 +406,17 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     )
   }
 
-  const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
-    const allFeeds = await getFeeds(ctx.collateral)
-    const initialPrices = await Promise.all(allFeeds.map((f) => f.latestRoundData()))
-    for (const [i, feed] of allFeeds.entries()) {
-      const nextAnswer = initialPrices[i].answer.sub(
-        initialPrices[i].answer.mul(pctDecrease).div(100)
-      )
-      await feed.updateAnswer(nextAnswer)
-    }
-  }
-
-  const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
-    // Update values in Oracles increase by 10%
-    const allFeeds = await getFeeds(ctx.collateral)
-    const initialPrices = await Promise.all(allFeeds.map((f) => f.latestRoundData()))
-    for (const [i, feed] of allFeeds.entries()) {
-      const nextAnswer = initialPrices[i].answer.add(
-        initialPrices[i].answer.mul(pctIncrease).div(100)
-      )
-      await feed.updateAnswer(nextAnswer)
-    }
-  }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const reduceTargetPerRef = async () => {}
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {}
+  const increaseTargetPerRef = async () => {}
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {}
+  const increaseRefPerTok = async () => {}
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const reduceRefPerTok = async () => {}
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificConstructorTests = () => {}
@@ -278,79 +450,15 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
       expect(newLow).to.be.closeTo(low.mul(110).div(100), fp('1e-9'))
       expect(newHigh).to.be.closeTo(high.mul(110).div(100), fp('1e-9'))
 
-      // Check refPerTok remains the same
+      // Check refPerTok remains _exactly_ the same
       const finalRefPerTok = await coll.refPerTok()
       expect(finalRefPerTok).to.equal(initialRefPerTok)
-    })
-
-    it('prices change as targetPerRef changes', async () => {
-      const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-      const feed0 = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-      const feed1 = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-
-      const coll = await deployCollateral({
-        pool: curr.pool,
-        gauge: curr.gauge,
-        chainlinkFeed: feed0.address,
-        feeds: [[feed0.address], [feed1.address]],
-      })
-
-      const tok = await ethers.getContractAt('IERC20Metadata', await coll.erc20())
-      const tempCtx = { collateral: coll, chainlinkFeed: feed0, tok }
-
-      const oracleError = await coll.oracleError()
-      const expectedPrice = await getExpectedPrice(tempCtx)
-      await expectPrice(coll.address, expectedPrice, oracleError, true, curr.toleranceDivisor)
-
-      // Get refPerTok initial values
-      const initialRefPerTok = await coll.refPerTok()
-      const [oldLow, oldHigh] = await coll.price()
-
-      // Update values in Oracles increase by 10-20%
-      await increaseTargetPerRef(tempCtx, 20)
-
-      // Check new prices -- increase expected
-      const newPrice = await getExpectedPrice(tempCtx)
-      await expectPrice(coll.address, newPrice, oracleError, true, curr.toleranceDivisor)
-      const [newLow, newHigh] = await coll.price()
-      expect(oldLow).to.be.lt(newLow)
-      expect(oldHigh).to.be.lt(newHigh)
-
-      // Check refPerTok remains the same
-      const finalRefPerTok = await coll.refPerTok()
-      expect(finalRefPerTok).to.equal(initialRefPerTok)
-    })
-
-    it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
-      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-        'InvalidMockV3Aggregator'
-      )
-      const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-        await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
-      )
-
-      const invalidCollateral = await deployCollateral({
-        pool: curr.pool,
-        gauge: curr.gauge,
-        chainlinkFeed: invalidChainlinkFeed.address,
-        feeds: [[invalidChainlinkFeed.address], [invalidChainlinkFeed.address]],
-      })
-
-      // Reverting with no reason
-      await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-      expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Runnning out of gas (same error)
-      await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-      expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   }
 
   const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
     const initRefPerTok = await ctx.collateral.refPerTok()
-    const coll = await ethers.getContractAt('AerodromeStableCollateral', ctx.collateral.address)
+    const coll = await ethers.getContractAt('AerodromeVolatileCollateral', ctx.collateral.address)
 
     const feed0 = await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(0))[0])
     const decimals0 = await feed0.decimals()
@@ -389,16 +497,16 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
     increaseRefPerTok,
     getExpectedPrice,
     itClaimsRewards: it,
-    itChecksTargetPerRefDefault: it,
-    itChecksTargetPerRefDefaultUp: it,
+    itChecksTargetPerRefDefault: it.skip,
+    itChecksTargetPerRefDefaultUp: it.skip,
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it.skip,
-    itChecksNonZeroDefaultThreshold: it,
+    itChecksNonZeroDefaultThreshold: it.skip,
     itHasRevenueHiding: it.skip,
     resetFork,
     collateralName: curr.testName,
     chainlinkDefaultAnswer: bn('1e8'),
-    itIsPricedByPeg: true,
+    itIsPricedByPeg: false,
     toleranceDivisor: curr.toleranceDivisor,
     amountScaleDivisor: curr.amountScaleDivisor,
     targetNetwork: 'base',
