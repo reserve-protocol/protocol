@@ -224,7 +224,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
       saEthUSDC: '0x0aDc69041a2B086f8772aCcE2A754f410F211bed', // our wrapper
       aEthUSDT: '0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a',
-      saEthUSDT: '', // our wrapper
+      saEthUSDT: '0x7133EbCb1a23e3d8Be7Ff09362b02b2A2e4c3dA4', // our wrapper
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
