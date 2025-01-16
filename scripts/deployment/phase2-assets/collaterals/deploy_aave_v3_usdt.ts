@@ -18,9 +18,12 @@ import {
   USDT_ARBITRUM_MAX_TRADE_VOLUME,
   USDT_ARBITRUM_ORACLE_TIMEOUT,
   USDT_ARBITRUM_ORACLE_ERROR,
+  USDT_MAINNET_MAX_TRADE_VOLUME,
+  USDT_MAINNET_ORACLE_TIMEOUT,
+  USDT_MAINNET_ORACLE_ERROR,
 } from '../../../../test/plugins/individual-collateral/aave-v3/constants'
 
-// This file specifically deploys Aave V3 USDT collateral on Arbitrum
+// This file specifically deploys Aave V3 USDT collateral on Mainnet or Arbitrum
 
 async function main() {
   // ==== Read Configuration ====
@@ -104,7 +107,43 @@ async function main() {
     throw new Error('No Aave V3 USDT on Base')
   } else {
     // === Mainnet ===
-    throw new Error('No Aave V3 USDT on Mainnet')
+    await (
+      await erc20.initialize(
+        networkConfig[chainId].tokens.aEthUSDT!,
+        'Static Aave Ethereum USDT',
+        'saEthUSDT'
+      )
+    ).wait()
+
+    console.log(
+      `Deployed wrapper for Aave V3 USDT on ${hre.network.name} (${chainId}): ${erc20.address} `
+    )
+
+    const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
+      {
+        priceTimeout: priceTimeout,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+        oracleError: USDT_MAINNET_ORACLE_ERROR.toString(),
+        erc20: erc20.address,
+        maxTradeVolume: USDT_MAINNET_MAX_TRADE_VOLUME.toString(),
+        oracleTimeout: USDT_MAINNET_ORACLE_TIMEOUT.toString(),
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01').add(USDT_MAINNET_ORACLE_ERROR).toString(),
+        delayUntilDefault: bn('86400').toString(),
+      },
+      revenueHiding.toString()
+    )
+    await collateral.deployed()
+    await (await collateral.refresh()).wait()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+    console.log(
+      `Deployed Aave V3 USDT collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    )
+
+    assetCollDeployments.erc20s.saEthUSDT = erc20.address
+    assetCollDeployments.collateral.saEthUSDT = collateral.address
+    deployedCollateral.push(collateral.address.toString())
   }
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
