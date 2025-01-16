@@ -122,7 +122,7 @@ async function main() {
     const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout,
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
         oracleError: USDT_MAINNET_ORACLE_ERROR.toString(),
         erc20: erc20.address,
         maxTradeVolume: USDT_MAINNET_MAX_TRADE_VOLUME.toString(),
