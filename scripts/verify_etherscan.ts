@@ -73,6 +73,7 @@ async function main() {
       'collateral-plugins/verify_sdai.ts',
       'collateral-plugins/verify_morpho.ts',
       'collateral-plugins/verify_aave_v3_usdc.ts',
+      'collateral-plugins/verify_aave_v3_usdt.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
       'collateral-plugins/verify_sfrax.ts',
       'collateral-plugins/verify_sfrax_eth.ts',
@@ -105,6 +106,7 @@ async function main() {
     // Arbitrum One
     scripts.push(
       'collateral-plugins/verify_aave_v3_usdc.ts',
+      'collateral-plugins/verify_aave_v3_usdt.ts',
       'collateral-plugins/verify_cusdcv3.ts',
       'collateral-plugins/verify_cusdtv3.ts',
       'collateral-plugins/verify_convex_crvusd_usdc.ts',

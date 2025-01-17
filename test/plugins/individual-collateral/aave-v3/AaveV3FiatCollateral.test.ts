@@ -19,6 +19,9 @@ import {
   USDC_MAINNET_MAX_TRADE_VOLUME,
   USDC_MAINNET_ORACLE_TIMEOUT,
   USDC_MAINNET_ORACLE_ERROR,
+  USDT_MAINNET_MAX_TRADE_VOLUME,
+  USDT_MAINNET_ORACLE_TIMEOUT,
+  USDT_MAINNET_ORACLE_ERROR,
 } from './constants'
 
 // Mainnet - USDC
@@ -90,6 +93,31 @@ makeTests(
     whaleTokenHolder: '0xCFFAd3200574698b78f32232aa9D63eABD290703',
     forkBlock: 19270000,
     targetNetwork: 'mainnet',
+  }
+)
+
+// Mainnet - USDT
+makeTests(
+  {
+    priceTimeout: PRICE_TIMEOUT,
+    chainlinkFeed: networkConfig[1].chainlinkFeeds['USDT']!,
+    oracleError: USDT_MAINNET_ORACLE_ERROR,
+    erc20: '', // to be set
+    maxTradeVolume: USDT_MAINNET_MAX_TRADE_VOLUME,
+    oracleTimeout: USDT_MAINNET_ORACLE_TIMEOUT,
+    targetName: ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.01').add(USDT_MAINNET_ORACLE_TIMEOUT),
+    delayUntilDefault: bn('86400'),
+  },
+  {
+    testName: 'USDT - Mainnet',
+    aaveIncentivesController: networkConfig[1].AAVE_V3_INCENTIVES_CONTROLLER!,
+    aavePool: networkConfig[1].AAVE_V3_POOL!,
+    aToken: networkConfig[1].tokens['aEthUSDT']!,
+    whaleTokenHolder: '0x18709E89BD403F470088aBDAcEbE86CC60dda12e',
+    forkBlock: 20890018,
+    targetNetwork: 'mainnet',
+    toleranceDivisor: bn('1e8'), // 1 part in 100 million
   }
 )
 
