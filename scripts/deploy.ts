@@ -82,6 +82,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
       'phase2-assets/collaterals/deploy_aave_v3_pyusd.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdc.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdp.ts',
@@ -111,9 +112,14 @@ async function main() {
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/assets/deploy_stg.ts',
-      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
       'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_aero.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_mog_weth.ts',
       'phase2-assets/collaterals/deploy_aerodrome_usdz_usdc.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_cbbtc.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_well.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_degen.ts',
+      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
       'phase2-assets/collaterals/deploy_origin_eth.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {

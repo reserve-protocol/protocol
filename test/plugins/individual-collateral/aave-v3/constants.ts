@@ -16,6 +16,10 @@ export const USDC_ARBITRUM_MAX_TRADE_VOLUME = fp('1e6')
 export const USDC_ARBITRUM_ORACLE_TIMEOUT = bn('86400')
 export const USDC_ARBITRUM_ORACLE_ERROR = fp('0.001')
 
+export const USDT_MAINNET_MAX_TRADE_VOLUME = fp('1e6')
+export const USDT_MAINNET_ORACLE_TIMEOUT = bn('86400')
+export const USDT_MAINNET_ORACLE_ERROR = fp('0.0025')
+
 export const USDT_ARBITRUM_MAX_TRADE_VOLUME = fp('1e6')
 export const USDT_ARBITRUM_ORACLE_TIMEOUT = bn('86400')
 export const USDT_ARBITRUM_ORACLE_ERROR = fp('0.001')

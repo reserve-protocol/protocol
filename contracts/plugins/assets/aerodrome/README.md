@@ -1,12 +1,12 @@
-# Aerodrome Stable Collateral Plugin
+# Aerodrome Collateral Plugins
 
-[Aerodrome Finance](https://aerodrome.finance) is an AMM designed to serve as Base's central liquidity hub. This plugin enables the use of any Aerodrome Stable LP token as collateral within the Reserve Protocol.
+[Aerodrome Finance](https://aerodrome.finance) is an AMM designed to serve as Base's central liquidity hub. This plugin enables the use of any Aerodrome Stable and Volatile LP token as collateral within the Reserve Protocol.
 
 Aerodrome Finance offers two different liquidity pool types based on token pair needs, `Stable Pools` and `Volatile Pools`.
 
-Only `Stable Pools` are currently supported. These pools are designed for tokens which have little to no volatility, and use the current formula for pricing tokens:
+`Stable Pools` are designed for tokens which have little to no volatility, and use the current formula for pricing tokens: `x³y + y³x ≥ k`
 
-`x³y + y³x ≥ k`
+`Volatile Pools` are designed for tokens with high price volatility, and use a generic AMM formula: `x × y ≥ k`
 
 ## Usage
 
@@ -36,10 +36,11 @@ Internally, all `tokensPriceFeeds` are stored as multiple separate immutable var
 
 ### refPerTok
 
-Aerodrome Stable Pools do not appreciate in value over time, so `refPerTok()` will be constant for these plugins and will not change. This also means there are no hard default checks in place.
+Aerodrome Pools do not appreciate in value over time, so `refPerTok()` will be constant for these plugins and will not change. This also means there are no hard default checks in place.
 
 ## Implementation
 
-|        `tok`         |       `ref`       | `target` | `UoA` |
-| :------------------: | :---------------: | :------: | :---: |
-| Aero Staking Wrapper | LP token /w shift |   USD    |  USD  |
+|        `tok`         |       `ref`       |     `target`     | `UoA` |
+| :------------------: | :---------------: | :--------------: | :---: |
+| Aero Staking Wrapper | LP token /w shift |   USD (Stable)   |  USD  |
+| Aero Staking Wrapper | LP token /w shift | cpAMM (Volatile) |  USD  |
