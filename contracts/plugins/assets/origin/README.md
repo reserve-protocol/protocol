@@ -8,7 +8,7 @@ This plugin allows `wsuperOETH` holders on base to use their tokens as collatera
 
 `wsuperOETH` collects the native `superOETH` yield.
 
-`wsuperOETH` contract: <https://etherscan.io/token/https://etherscan.io/address/0x7fcd174e80f264448ebee8c88a7c4476aaf58ea6#code>
+`wsuperOETH` contract: <https://basescan.org/address/0x7fcd174e80f264448ebee8c88a7c4476aaf58ea6#code>
 
 ## Implementation
 

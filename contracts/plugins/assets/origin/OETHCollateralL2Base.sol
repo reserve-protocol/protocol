@@ -40,6 +40,7 @@ contract OETHCollateralL2Base is ERC4626FiatCollateral {
 
         require(address(_targetPerTokChainlinkFeed) != address(0), "targetPerTokFeed missing");
         require(address(_uoaPerTargetChainlinkFeed) != address(0), "uoaPerTargetFeed missing");
+        require(_uoaPerTargetChainlinkTimeout != 0, "uoaPerTargetChainlinkTimeout zero");
 
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
 

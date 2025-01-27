@@ -65,7 +65,7 @@ async function main() {
       oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% + 0.5%
       erc20: networkConfig[chainId].tokens.wsuperOETHb,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: BASE_FEEDS_TIMEOUT.wsuperOETHb_ETH, // ignored
+      oracleTimeout: 1, // to avoid impact in calculations
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: fp('0.02').add(BASE_ORACLE_ERROR).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
