@@ -36,6 +36,17 @@ interface Params {
   proposalid?: string
 }
 
+// NOTE ON NON-CHAINLINK ORACLES: When dealing with non-chainlink Oracles it is required to redeploy
+// that collateral using another equivalent Chainlink Oracle providing an equivalent answer.
+// At the beginning of the process you need to swap the collateral in the AssetRegistry with this
+// newly deployed collateral to be able to push the oracle forwards during the process.
+// e.g:
+//  const newApxETHColl = await hre.ethers.getContractAt('ApxEthCollateral', NEWLY_DEPLOYED_ADDRESS)
+//  const assetRegistry = await hre.ethers.getContractAt('AssetRegistryP1', ASSET_REG_ADDRESS)
+//  await whileImpersonating(hre, TIMELOCK_ADDRESS, async (timelockSigner) => {
+//    await assetRegistry.connect(timelockSigner).swapRegistered(newApxETHColl.address)
+//  })
+
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {

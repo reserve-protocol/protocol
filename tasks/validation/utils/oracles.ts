@@ -166,6 +166,23 @@ export const pushOracleForward = async (
     }
   }
 
+  // Convex ETH+/ETH (Nested RToken)
+  if (asset == '0x05F164E71C46a8f8FB2ba71550a00eeC9FCd85cd') {
+    const feed = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      networkConfig['1'].chainlinkFeeds.ETH!
+    )
+    await updateAnswer(feed)
+    const ethplusAssetRegistry = await hre.ethers.getContractAt(
+      'IAssetRegistry',
+      '0xf526f058858E4cD060cFDD775077999562b31bE0'
+    )
+    const [, ethplusAssets] = await ethplusAssetRegistry.getRegistry()
+    for (const ethplusAsset of ethplusAssets) {
+      addresses = await pushOracleForward(hre, ethplusAsset, addresses) // recursion!
+    }
+  }
+
   return addresses
 }
 
