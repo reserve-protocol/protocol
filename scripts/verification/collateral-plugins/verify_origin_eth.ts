@@ -38,7 +38,7 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: BASE_PRICE_FEEDS.wsuperOETHb_ETH, // ignored
-        oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% + 0.5%
+        oracleError: BASE_ORACLE_ERROR.toString(), // 0.15%
         erc20: networkConfig[chainId].tokens.wsuperOETHb,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: 1, // ignored in practice

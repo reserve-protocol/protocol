@@ -1,6 +1,5 @@
 import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
-import { combinedError } from '../../../../scripts/deployment/utils'
 
 // Mainnet Addresses
 
@@ -17,7 +16,7 @@ export const BASE_FEEDS_TIMEOUT = {
   wsuperOETHb_ETH: bn(86400),
   ETH_USD: bn(1200),
 }
-export const BASE_ORACLE_ERROR = combinedError(fp('0.005'), fp('0.015'))
+export const BASE_ORACLE_ERROR =  fp('0.0015') // only using ETH/USD feed at the moment
 
 // Data
 export const PRICE_TIMEOUT = bn('604800') // 1 week
