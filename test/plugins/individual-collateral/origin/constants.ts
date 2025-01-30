@@ -16,7 +16,7 @@ export const BASE_FEEDS_TIMEOUT = {
   wsuperOETHb_ETH: bn(86400),
   ETH_USD: bn(1200),
 }
-export const BASE_ORACLE_ERROR =  fp('0.0015') // only using ETH/USD feed at the moment
+export const BASE_ORACLE_ERROR = fp('0.0015') // only using ETH/USD feed at the moment
 
 // Data
 export const PRICE_TIMEOUT = bn('604800') // 1 week
