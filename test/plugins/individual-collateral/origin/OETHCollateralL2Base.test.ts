@@ -54,7 +54,7 @@ export const defaultWSUPEROETHBCollateralOpts: WSUPEROETHBCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: BASE_PRICE_FEEDS.wsuperOETHb_ETH, // ignored
+  chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
   oracleTimeout: '1000', // ignored
   oracleError: BASE_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,

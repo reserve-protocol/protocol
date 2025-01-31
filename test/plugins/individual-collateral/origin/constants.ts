@@ -8,12 +8,9 @@ export const BASE_WSUPEROETHB = networkConfig['8453'].tokens.wsuperOETHb as stri
 export const BASE_WSUPEROETHB_WHALE = '0x190e5C6AabB2BeC4eB0B9b2274e9b62cdaEDF356' // Silo
 export const FORK_BLOCK_BASE = 21698000
 export const BASE_PRICE_FEEDS = {
-  // traditional finance notation, opposite of our unit system
-  wsuperOETHb_ETH: networkConfig['8453'].chainlinkFeeds.wsuperOETHb, // {ETH/wsuperOETHb}
   ETH_USD: networkConfig['8453'].chainlinkFeeds.ETHUSD, // {USD/ETH}
 }
 export const BASE_FEEDS_TIMEOUT = {
-  wsuperOETHb_ETH: bn(86400),
   ETH_USD: bn(1200),
 }
 export const BASE_ORACLE_ERROR = fp('0.0015') // only using ETH/USD feed at the moment
