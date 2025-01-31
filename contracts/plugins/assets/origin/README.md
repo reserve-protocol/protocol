@@ -1,5 +1,7 @@
 # Origin Wrapped SuperOETH Collateral Plugin
 
+**NOTE: This version of the SuperOETH plugin assumes the price of `1 superOETH = 1 ETH`. This occurs because there is no reliable oracle feed for `superOETH` on Base. It also implies that depeg checks will not be performed for this plugin, and also that if for some reason this assumption breaks, the collateral will be priced incorrectly. Use with care and understanding the risks and limitations of the current design.**
+
 ## Summary
 
 This plugin allows `wsuperOETH` holders on base to use their tokens as collateral in the Reserve Protocol.
