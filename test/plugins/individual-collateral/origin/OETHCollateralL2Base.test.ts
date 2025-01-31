@@ -35,7 +35,6 @@ import { getResetFork } from '../helpers'
 */
 interface WSUPEROETHBCollateralFixtureContext extends CollateralFixtureContext {
   wsuperoethb: IERC4626
-  targetPerRefChainlinkFeed: MockV3Aggregator
   uoaPerTargetChainlinkFeed: MockV3Aggregator
 }
 
@@ -44,7 +43,6 @@ interface WSUPEROETHBCollateralFixtureContext extends CollateralFixtureContext {
 */
 
 interface WSUPEROETHBCollateralOpts extends CollateralOpts {
-  targetPerTokChainlinkFeed?: string
   uoaPerTargetChainlinkFeed?: string
   uoaPerTargetChainlinkTimeout?: BigNumberish
 }
@@ -123,10 +121,6 @@ const makeCollateralFixtureContext = (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const targetPerRefChainlinkFeed = await MockV3AggregatorFactory.deploy(
-      18,
-      defaultAnswers.targetPerRefChainlinkFeed
-    )
     const uoaPerTargetChainlinkFeed = await MockV3AggregatorFactory.deploy(
       8,
       defaultAnswers.uoaPerTargetChainlinkFeed
@@ -149,7 +143,6 @@ const makeCollateralFixtureContext = (
       tok: wsuperOETHb,
       rewardToken,
       chainlinkFeed: uoaPerTargetChainlinkFeed,
-      targetPerRefChainlinkFeed: targetPerRefChainlinkFeed,
       uoaPerTargetChainlinkFeed,
     }
   }
