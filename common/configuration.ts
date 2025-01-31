@@ -575,7 +575,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       eUSD: '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', // 0.5%, 24h
       USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24h
       AERO: '0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0', // 0.5%, 24h
-      wsuperOETHb: '0x28C964c985fe84736fAdc7Cf0bBd58B54bc7CF93',
       MOG: '0x4aeb6D15769EaD32D0c5Be2940F40c7CFf53801d', // 0.5%, 24h
       cbBTC: '0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D', // 0.3%, 20 min
       WELL: '0xc15d9944dAefE2dB03e53bef8DDA25a56832C5fe', // 0.5%, 24h
