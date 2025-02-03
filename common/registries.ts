@@ -18,11 +18,11 @@ export interface RegistryChainRecord {
 export const registryConfig: Record<string, RegistryChainRecord> = {
   '1': {
     registryControl: {
-      owner: '0x0000000000000000000000000000000000000123',
-      feeRecipient: '0x0000000000000000000000000000000000000123',
+      owner: '0xe8259842e71f4E44F2F68D6bfbC15EDA56E63064',
+      feeRecipient: '',
     },
     registries: {
-      roleRegistry: '',
+      roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
       versionRegistry: '',
       assetPluginRegistry: '',
       daoFeeRegistry: '',
@@ -31,10 +31,10 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
   '8453': {
     registryControl: {
       owner: '0xe8259842e71f4E44F2F68D6bfbC15EDA56E63064',
-      feeRecipient: '0x0000000000000000000000000000000000000123',
+      feeRecipient: '',
     },
     registries: {
-      roleRegistry: '0xBc53d3e1C82F14cf40F69bF58fA4542b55091263',
+      roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
       versionRegistry: '',
       assetPluginRegistry: '',
       daoFeeRegistry: '',
