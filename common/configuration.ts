@@ -90,6 +90,7 @@ export interface ITokens {
   wsgUSDbC?: string
   yvCurveUSDPcrvUSD?: string
   yvCurveUSDCcrvUSD?: string
+  wsuperOETHb?: string
 
   pyUSD?: string
   aEthPyUSD?: string
@@ -551,6 +552,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
       meUSD: '0xbb819D845b573B5D7C538F5b85057160cfb5f313',
       AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+      wsuperOETHb: '0x7FcD174E80f264448ebeE8c88a7C4476AAF58Ea6',
       cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
       WELL: '0xA88594D404727625A9437C3f886C7643872296AE',
       DEGEN: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',

@@ -119,7 +119,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_aerodrome_weth_cbbtc.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_well.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_degen.ts',
-      'phase2-assets/collaterals/deploy_morphoeUSD.ts'
+      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
+      'phase2-assets/collaterals/deploy_origin_eth.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One

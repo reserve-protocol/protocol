@@ -100,7 +100,8 @@ async function main() {
       'collateral-plugins/verify_aerodrome_weth_cbbtc.ts',
       'collateral-plugins/verify_aerodrome_weth_well.ts',
       'collateral-plugins/verify_aerodrome_weth_degen.ts',
-      'collateral-plugins/verify_morphoeUSD.ts'
+      'collateral-plugins/verify_morphoeUSD.ts',
+      'collateral-plugins/verify_origin_eth.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
     // Arbitrum One

@@ -159,7 +159,7 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido,meta-morpho,aerodrome}/*.test.ts
+      - run: yarn hardhat test ./test/plugins/individual-collateral/{cbeth,aave-v3,compoundv3,stargate,lido,meta-morpho,aerodrome,origin}/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=32768'
           TS_NODE_SKIP_IGNORE: true
