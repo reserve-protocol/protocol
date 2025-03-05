@@ -262,8 +262,8 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     sellToken = initialSellToken
 
     for (let i = 0; tradesRemain; i++) {
-      // every other trade, push oracles forward (some oracles have 3600s timeout)
-      if (i % 2 == 1) await pushOraclesForward(hre, rtokenAddress, [])
+      // push oracles forward on every trade
+      await pushOraclesForward(hre, rtokenAddress, [])
       ;[tradesRemain, sellToken] = await runDutchTrade(hre, backingManager, sellToken)
 
       await advanceBlocks(hre, 1)
@@ -276,6 +276,23 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
   }
 
   if (!(await basketHandler.fullyCollateralized())) {
+    // Check if tryPrice() reverting was the issue
+    const assetRegistry = await hre.ethers.getContractAt(
+      'IAssetRegistry',
+      await main.assetRegistry()
+    )
+    const [, assets] = await assetRegistry.getRegistry()
+    for (const assetAddr of assets) {
+      const coll = await hre.ethers.getContractAt('FiatCollateral', assetAddr)
+      if (await coll.isCollateral()) {
+        try {
+          await coll.tryPrice()
+        } catch (e) {
+          console.log(`tryPrice() reverting on collateral ${coll.address}`)
+        }
+      }
+    }
+
     throw new Error(`Basket is not fully collateralized!`)
   }
 

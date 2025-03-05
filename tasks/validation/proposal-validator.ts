@@ -306,7 +306,7 @@ const runCheck_stakeUnstake = async (
   const chainId = await getChainId(hre)
   const whales = getWhalesFile(chainId).tokens
   // get RSR
-  const stakeAmount = fp('4e6')
+  const stakeAmount = fp('3e6')
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
   await whileImpersonating(
     hre,
