@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /**
  * @title IMToken
@@ -19,12 +19,14 @@ interface IMToken is IERC20Upgradeable {
      * @notice Returns the pause operator role for mTBILL tokens
      * @return The bytes32 role for mTBILL pause operator
      */
+    // solhint-disable-next-line func-name-mixedcase
     function M_TBILL_PAUSE_OPERATOR_ROLE() external view returns (bytes32);
 
     /**
      * @notice Returns the pause operator role for mBTC tokens
      * @return The bytes32 role for mBTC pause operator
      */
+    // solhint-disable-next-line func-name-mixedcase
     function M_BTC_PAUSE_OPERATOR_ROLE() external view returns (bytes32);
 
     /**
