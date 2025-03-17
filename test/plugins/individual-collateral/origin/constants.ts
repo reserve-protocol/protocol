@@ -2,6 +2,16 @@ import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
 
 // Mainnet Addresses
+export const WOETH = networkConfig['1'].tokens.wOETH as string
+export const WOETH_WHALE = '0x190e5C6AabB2BeC4eB0B9b2274e9b62cdaEDF356' // Silo
+export const FORK_BLOCK = 22066000
+export const PRICE_FEEDS = {
+  ETH_USD: networkConfig['1'].chainlinkFeeds.ETH, // {USD/ETH}
+  OETH_ETH: networkConfig['1'].chainlinkFeeds.OETHETH, // {ETH/OETH}
+}
+export const FEEDS_TIMEOUT = {
+  ETH_USD: bn(1200),
+}
 
 // Base Addresses
 export const BASE_WSUPEROETHB = networkConfig['8453'].tokens.wsuperOETHb as string
