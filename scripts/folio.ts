@@ -16,9 +16,9 @@ async function main() {
 
   const auctionId = 1
   const sellLimit = 0
-  const buyLimit = bn(29577767234584231083000000)
-  const startPrice = bn(1000000000000000000)
-  const endPrice = bn(1000000000000000000)
+  const buyLimit = bn('33825134838222553606000000')
+  const startPrice = bn('20390832831556446506000000')
+  const endPrice = bn('16516574593560721670000000')
 
   await whileImpersonating(hre, AUCTION_LAUNCHER, async (signer) => {
     const tx = await folio
