@@ -31,7 +31,7 @@ import {
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 
-let chainId: number
+let chainId: string
 
 // Setup test environment
 const setup = async (blockNumber: number) => {

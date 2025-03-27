@@ -49,8 +49,9 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       accounts: {
         mnemonic: MNEMONIC,
-        accountsBalance: '1000000000000000000000000',
+        accountsBalance: '10000000000000000000000000000',
       },
+      gasMultiplier: 2,
     },
     localhost: {
       // network for long-lived mainnet forks
