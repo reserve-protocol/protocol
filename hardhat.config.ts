@@ -52,6 +52,7 @@ const config: HardhatUserConfig = {
         accountsBalance: '10000000000000000000000000000',
       },
       gasMultiplier: 2,
+      initialBaseFeePerGas: 0, // Prevents gas fee issues
     },
     localhost: {
       // network for long-lived mainnet forks
