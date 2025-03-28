@@ -103,6 +103,10 @@ export default function fn<X extends CollateralFixtureContext>(
 
     describe('constructor validation', () => {
       it('validates targetName', async () => {
+        // Mine block - hardhat workaround for known issue
+        // https://github.com/NomicFoundation/hardhat/issues/5511
+        await hre.network.provider.send('evm_mine', [])
+
         await expect(
           deployCollateral({ targetName: ethers.constants.HashZero })
         ).to.be.revertedWith('targetName missing')

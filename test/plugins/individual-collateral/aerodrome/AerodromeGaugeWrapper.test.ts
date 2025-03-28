@@ -52,6 +52,11 @@ for (const curr of allStableTests) {
 
     beforeEach(async () => {
       ;[, bob, charles, don] = await ethers.getSigners()
+
+      // Mine block - hardhat workaround for known issue
+      // https://github.com/NomicFoundation/hardhat/issues/5511
+      await hre.network.provider.send('evm_mine', [])
+
       ;({ wrapper, lpToken } = await loadFixture(curr.fix))
       gauge = await ethers.getContractAt('IAeroGauge', curr.gauge)
     })
