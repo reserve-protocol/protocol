@@ -8,7 +8,7 @@ import { CollateralStatus } from '../../../../common/constants'
 import {
   PRICE_FEEDS,
   ORACLE_ERROR,
-  BASE_FEEDS_TIMEOUT,
+  ORACLE_TIMEOUT,
 } from '../../../../test/plugins/individual-collateral/origin/constants'
 import {
   getDeploymentFile,
@@ -61,7 +61,7 @@ async function main() {
   ).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: PRICE_FEEDS.OETH_ETH, // ETH/OETH
+      chainlinkFeed: PRICE_FEEDS.ETH_USD, // ETH/OETH
       oracleError: ORACLE_ERROR.toString(),
       erc20: networkConfig[chainId].tokens.wOETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
@@ -71,8 +71,8 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
-    PRICE_FEEDS.ETH_USD, // uoaPerTargetChainlinkFeed
-    BASE_FEEDS_TIMEOUT.ETH_USD // uoaPerTarget timeout
+    PRICE_FEEDS.OETH_ETH, // uoaPerTargetChainlinkFeed
+    ORACLE_TIMEOUT // uoaPerTarget timeout
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
