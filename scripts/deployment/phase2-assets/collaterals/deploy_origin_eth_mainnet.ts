@@ -8,6 +8,7 @@ import { CollateralStatus } from '../../../../common/constants'
 import {
   PRICE_FEEDS,
   ORACLE_ERROR,
+  OETH_ORACLE_ERROR,
   ORACLE_TIMEOUT,
 } from '../../../../test/plugins/individual-collateral/origin/constants'
 import {
@@ -62,10 +63,10 @@ async function main() {
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: PRICE_FEEDS.OETH_ETH, // ETH/OETH
-      oracleError: ORACLE_ERROR.toString(),
+      oracleError: (ORACLE_ERROR.add(OETH_ORACLE_ERROR)).toString(),
       erc20: networkConfig[chainId].tokens.wOETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: 1, // to avoid impact in calculations
+      oracleTimeout: ORACLE_TIMEOUT.toString(), // to avoid impact in calculations
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: fp('0.02').add(ORACLE_ERROR).toString(), 
       delayUntilDefault: bn('86400').toString(), // 24h
