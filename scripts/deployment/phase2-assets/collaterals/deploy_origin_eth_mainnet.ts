@@ -10,6 +10,7 @@ import {
   ORACLE_ERROR,
   OETH_ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  OETH_ORACLE_TIMEOUT,
 } from '../../../../test/plugins/individual-collateral/origin/constants'
 import {
   getDeploymentFile,
@@ -66,7 +67,7 @@ async function main() {
       oracleError: (ORACLE_ERROR.add(OETH_ORACLE_ERROR)).toString(),
       erc20: networkConfig[chainId].tokens.wOETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: ORACLE_TIMEOUT.toString(), // to avoid impact in calculations
+      oracleTimeout: OETH_ORACLE_TIMEOUT.toString(), // 24 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       defaultThreshold: fp('0.02').add(ORACLE_ERROR).toString(), 
       delayUntilDefault: bn('86400').toString(), // 24h
