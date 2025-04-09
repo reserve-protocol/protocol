@@ -48,12 +48,6 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy Origin ETH Collateral - wOETH  **************************/
-
-  // Only for Base
-  if (!baseL2Chains.includes(hre.network.name)) {
-    throw new Error(`Unsupported chainId: ${chainId}`)
-  }
-
   const OETHCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'OETHCollateral'
   )
