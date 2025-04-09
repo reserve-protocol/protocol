@@ -98,7 +98,8 @@ async function main() {
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
       'phase2-assets/collaterals/deploy_pyusd.ts',
-      'phase2-assets/collaterals/deploy_sky_susds.ts'
+      'phase2-assets/collaterals/deploy_sky_susds.ts',
+      'deploy_origin_oeth.ts',
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
