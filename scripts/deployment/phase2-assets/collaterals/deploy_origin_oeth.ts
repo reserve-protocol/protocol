@@ -52,10 +52,8 @@ async function main() {
     'OETHCollateral'
   )
 
-  const oracleError = combinedError(ORACLE_ERROR, OETH_ORACLE_ERROR);
-  const collateral = <OETHCollateral>await OETHCollateralFactory.connect(
-    deployer
-  ).deploy(
+  const oracleError = combinedError(ORACLE_ERROR, OETH_ORACLE_ERROR)
+  const collateral = <OETHCollateral>await OETHCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: PRICE_FEEDS.OETH_ETH, // ETH/OETH
@@ -64,7 +62,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: OETH_ORACLE_TIMEOUT.toString(), // 24 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.02').add(ORACLE_ERROR).toString(), 
+      defaultThreshold: fp('0.02').add(ORACLE_ERROR).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%

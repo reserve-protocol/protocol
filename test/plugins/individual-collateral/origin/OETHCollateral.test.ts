@@ -69,9 +69,7 @@ export const deployCollateral = async (
 ): Promise<TestICollateral> => {
   opts = { ...defaultWOETHCollateralOpts, ...opts }
 
-  const WOETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'OETHCollateral'
-  )
+  const WOETHCollateralFactory: ContractFactory = await ethers.getContractFactory('OETHCollateral')
 
   const collateral = <TestICollateral>await WOETHCollateralFactory.deploy(
     {
@@ -187,20 +185,14 @@ const increaseTargetPerRef = async (
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
 }
 
-const reduceRefPerTok = async (
-  ctx: WOETHCollateralFixtureContext,
-  pctDecrease: BigNumberish
-) => {
+const reduceRefPerTok = async (ctx: WOETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const slot = 2
   const storedTotalSupply = BigNumber.from(await getStorageAt(ctx.tok.address, slot))
   const newStoredTotalAssets = storedTotalSupply.add(storedTotalSupply.mul(pctDecrease).div(100))
   await setStorageAt(ctx.tok.address, slot, newStoredTotalAssets)
 }
 
-const increaseRefPerTok = async (
-  ctx: WOETHCollateralFixtureContext,
-  pctIncrease: BigNumberish
-) => {
+const increaseRefPerTok = async (ctx: WOETHCollateralFixtureContext, pctIncrease: BigNumberish) => {
   const slot = 2
   const storedTotalSupply = BigNumber.from(await getStorageAt(ctx.tok.address, slot))
   const newStoredTotalAssets = storedTotalSupply.sub(storedTotalSupply.mul(pctIncrease).div(100))
@@ -224,13 +216,13 @@ const getExpectedPrice = async (ctx: WOETHCollateralFixtureContext): Promise<Big
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => { }
+const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => { }
+const collateralSpecificStatusTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const beforeEachRewardsTest = async () => { }
+const beforeEachRewardsTest = async () => {}
 
 /*
   Run the test suite

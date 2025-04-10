@@ -52,7 +52,7 @@ async function main() {
       },
       fp('1e-4'), // revenueHiding = 0.01%
       PRICE_FEEDS.ETH_USD, // uoaPerTargetChainlinkFeed
-      ORACLE_TIMEOUT // uoaPerTarget timeout
+      ORACLE_TIMEOUT, // uoaPerTarget timeout
     ],
     'contracts/plugins/assets/origin/OETHCollateral.sol:OETHCollateral'
   )
