@@ -152,11 +152,25 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       }
 
       // Set up throttles
-      const issuanceThrottleParams = { amtRate: bn('1e48'), pctRate: issuancePctAmt }
+      const issuanceThrottleParams = {
+        amtRate: bn('1e48').mul(80).div(100),
+        pctRate: issuancePctAmt,
+      }
       const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
 
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      if (
+        issuanceThrottleParams.amtRate.lt(redemptionThrottleParams.amtRate) &&
+        issuancePctAmt.lt(redemptionPctAmt)
+      ) {
+        await rToken
+          .connect(owner)
+          .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+      } else {
+        await expect(
+          rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+        ).to.be.revertedWith('redemption throttle too low')
+        return
+      }
 
       // Recharge throttle
       await advanceTime(3600)
@@ -165,14 +179,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       if (toIssue0.gt(0)) {
-        await rToken.connect(owner).issue(toIssue0)
+        while ((await rToken.balanceOf(owner.address)).lt(toIssue0)) {
+          const remaining = toIssue0.sub(await rToken.balanceOf(owner.address))
+          const avail = await rToken.issuanceAvailable()
+          const amt = remaining.lt(avail) ? remaining : avail
+          await rToken.connect(owner).issue(amt)
+          await advanceTime(3600)
+        }
         expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
       }
 
       // ==== Issue the toIssue supply to addr1
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).issue(toIssue)
+      while ((await rToken.balanceOf(addr1.address)).lt(toIssue)) {
+        const remaining = toIssue.sub(await rToken.balanceOf(addr1.address))
+        const avail = await rToken.issuanceAvailable()
+        const amt = remaining.lt(avail) ? remaining : avail
+        await rToken.connect(addr1).issue(amt)
+        await advanceTime(3600)
+      }
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
@@ -197,7 +223,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     const MAX_WEIGHT = fp(1000)
     const MIN_WEIGHT = fp('1e-6')
     const MIN_ISSUANCE_PCT = fp('1e-6')
-    const MIN_REDEMPTION_PCT = fp('1e-6')
+    const MIN_THROTTLE_DELTA = 25
+    const MIN_REDEMPTION_PCT = MIN_ISSUANCE_PCT.mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100)
     const MIN_RTOKENS = fp('1e-6')
 
     let paramList
@@ -210,8 +237,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [bn(1), bn(3), bn(100)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
-        [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp('1e-2'), fp(1)], // redemptionThrottle.pctRate
+        [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1).mul(100).div(bn(100).add(MIN_THROTTLE_DELTA))], // issuanceThrottle.pctRate
+        [MIN_REDEMPTION_PCT, fp('1e-2').mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100), fp(1)], // redemptionThrottle.pctRate
         [bn(6), bn(18), bn(21), bn(27)], // collateralDecimals
       ]
 
@@ -224,7 +251,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [bn(1), bn(3)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
         [MIN_WEIGHT], // weightRest
-        [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
+        [MIN_ISSUANCE_PCT, fp(1).mul(100).div(bn(100).add(MIN_THROTTLE_DELTA))], // issuanceThrottle.pctRate
         [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
         [bn(6), bn(18), bn(27)], // collateralDecimals
       ]

@@ -144,6 +144,11 @@ interface TestIRToken is IRToken {
 
     function setRedemptionThrottleParams(ThrottleLib.Params calldata) external;
 
+    function setThrottleParams(
+        ThrottleLib.Params calldata issuanceParams,
+        ThrottleLib.Params calldata redemptionParams
+    ) external;
+
     function issuanceThrottleParams() external view returns (ThrottleLib.Params memory);
 
     function redemptionThrottleParams() external view returns (ThrottleLib.Params memory);

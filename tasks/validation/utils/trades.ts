@@ -387,7 +387,7 @@ const getERC20Tokens = async (
 
     // Solutions for wrappers without whales
     if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
-      const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+      const wcUSDCv3 = await hre.ethers.getContractAt('CFiatV3Wrapper', tokAddress)
       await whileImpersonating(
         hre,
         whales[networkConfig['1'].tokens.cUSDCv3!.toLowerCase()],
@@ -462,7 +462,7 @@ const getERC20Tokens = async (
 
     // Solutions for wrappers without whales
     if (tokAddress == wcUSDCv3Address || tokAddress == wcUSDCv3AddressOld) {
-      const wcUSDCv3 = await hre.ethers.getContractAt('CusdcV3Wrapper', tokAddress)
+      const wcUSDCv3 = await hre.ethers.getContractAt('CFiatV3Wrapper', tokAddress)
 
       await whileImpersonating(
         hre,

@@ -53,11 +53,20 @@ export const redeemRTokens = async (
   await assetRegistry.refresh()
   const basketsNeeded = await rToken.basketsNeeded()
   const totalSupply = await rToken.totalSupply()
-  const redeemQuote = await basketHandler.quote(
-    redeemAmount.mul(basketsNeeded).div(totalSupply),
-    false,
-    0
-  )
+  const bhVersion = await basketHandler.version()
+  let redeemQuote
+  if (bhVersion == '4.0.0') {
+    redeemQuote = await basketHandler['quote(uint192,bool,uint8)'](
+      redeemAmount.mul(basketsNeeded).div(totalSupply),
+      false,
+      0
+    )
+  } else {
+    redeemQuote = await basketHandler['quote(uint192,uint8)'](
+      redeemAmount.mul(basketsNeeded).div(totalSupply),
+      0
+    )
+  }
   const expectedTokens = redeemQuote.erc20s
   const expectedBalances: Balances = {}
   let log = ''
@@ -253,8 +262,8 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
     sellToken = initialSellToken
 
     for (let i = 0; tradesRemain; i++) {
-      // every other trade, push oracles forward (some oracles have 3600s timeout)
-      if (i % 2 == 1) await pushOraclesForward(hre, rtokenAddress, [])
+      // push oracles forward on every trade
+      await pushOraclesForward(hre, rtokenAddress, [])
       ;[tradesRemain, sellToken] = await runDutchTrade(hre, backingManager, sellToken)
 
       await advanceBlocks(hre, 1)
@@ -267,6 +276,23 @@ const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
   }
 
   if (!(await basketHandler.fullyCollateralized())) {
+    // Check if tryPrice() reverting was the issue
+    const assetRegistry = await hre.ethers.getContractAt(
+      'IAssetRegistry',
+      await main.assetRegistry()
+    )
+    const [, assets] = await assetRegistry.getRegistry()
+    for (const assetAddr of assets) {
+      const coll = await hre.ethers.getContractAt('FiatCollateral', assetAddr)
+      if (await coll.isCollateral()) {
+        try {
+          await coll.tryPrice()
+        } catch (e) {
+          console.log(`tryPrice() reverting on collateral ${coll.address}`)
+        }
+      }
+    }
+
     throw new Error(`Basket is not fully collateralized!`)
   }
 

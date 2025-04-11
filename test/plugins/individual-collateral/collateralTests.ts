@@ -16,13 +16,7 @@ import {
 } from './fixtures'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { whileImpersonating } from '../../utils/impersonation'
-import {
-  IConfig,
-  IGovParams,
-  IGovRoles,
-  IRTokenSetup,
-  networkConfig,
-} from '../../../common/configuration'
+import { IGovParams, IGovRoles, IRTokenSetup, networkConfig } from '../../../common/configuration'
 import {
   advanceBlocks,
   advanceTime,
@@ -99,6 +93,7 @@ export default function fn<X extends CollateralFixtureContext>(
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
+    amountScaleDivisor,
     toleranceDivisor,
     targetNetwork,
   } = fixtures
@@ -108,6 +103,10 @@ export default function fn<X extends CollateralFixtureContext>(
 
     describe('constructor validation', () => {
       it('validates targetName', async () => {
+        // Mine block - hardhat workaround for known issue
+        // https://github.com/NomicFoundation/hardhat/issues/5511
+        await hre.network.provider.send('evm_mine', [])
+
         await expect(
           deployCollateral({ targetName: ethers.constants.HashZero })
         ).to.be.revertedWith('targetName missing')
@@ -178,7 +177,8 @@ export default function fn<X extends CollateralFixtureContext>(
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
           const decimals = await ctx.tok.decimals()
-          const amount = bn('20').mul(bn(10).pow(decimals))
+          const scaleDivisor = amountScaleDivisor ?? bn(1)
+          const amount = bn('20').mul(bn(10).pow(decimals)).div(scaleDivisor)
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
@@ -201,7 +201,10 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itClaimsRewards('claims rewards (via collateral.claimRewards())', async () => {
-          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
+          const scaleDivisor = amountScaleDivisor ?? bn(1)
+          const amount = bn('20')
+            .mul(bn(10).pow(await ctx.tok.decimals()))
+            .div(scaleDivisor)
           await mintCollateralTo(ctx, amount, alice, ctx.collateral.address)
           await advanceBlocks(1000)
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -669,7 +672,9 @@ export default function fn<X extends CollateralFixtureContext>(
       let govParams: IGovParams
       let govRoles: IGovRoles
 
-      const config: IConfig = {
+      let scaleDivisor: BigNumber
+
+      const config = {
         dist: {
           rTokenDist: bn(0), // 0% RToken
           rsrDist: bn(10000), // 100% RSR
@@ -692,8 +697,8 @@ export default function fn<X extends CollateralFixtureContext>(
           pctRate: fp('0.05'), // 5%
         },
         redemptionThrottle: {
-          amtRate: fp('1e6'), // 1M RToken
-          pctRate: fp('0.05'), // 5%
+          amtRate: fp('2e6'), // 2M RToken
+          pctRate: fp('0.1'), // 10%
         },
         reweightable: false,
         enableIssuancePremium: false,
@@ -723,6 +728,7 @@ export default function fn<X extends CollateralFixtureContext>(
           throw new Error(`Missing network configuration for ${hre.network.name}`)
         }
         ;[, owner, addr1] = await ethers.getSigners()
+        scaleDivisor = amountScaleDivisor ?? bn(1)
       })
 
       beforeEach(async () => {
@@ -743,7 +749,7 @@ export default function fn<X extends CollateralFixtureContext>(
         collateralERC20 = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
         await mintCollateralTo(
           ctx,
-          toBNDecimals(fp('1'), await collateralERC20.decimals()),
+          toBNDecimals(fp('1').div(scaleDivisor), await collateralERC20.decimals()),
           addr1,
           addr1.address
         )
@@ -836,7 +842,10 @@ export default function fn<X extends CollateralFixtureContext>(
       it('redeems', async () => {
         await rToken.connect(addr1).redeem(supply)
         expect(await rToken.totalSupply()).to.equal(0)
-        const initialCollBal = toBNDecimals(fp('1'), await collateralERC20.decimals())
+        const initialCollBal = toBNDecimals(
+          fp('1').div(scaleDivisor),
+          await collateralERC20.decimals()
+        )
         expect(await collateralERC20.balanceOf(addr1.address)).to.be.closeTo(
           initialCollBal,
           initialCollBal.div(bn('1e5')) // 1-part-in-100k
@@ -880,7 +889,7 @@ export default function fn<X extends CollateralFixtureContext>(
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
         await rsr.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
-        let mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
+        let mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals()).div(scaleDivisor)
         mintAmt = mintAmt.gt('100000') ? mintAmt : bn('100000') // fewest tokens distributor will transfer
         await mintCollateralTo(ctx, mintAmt, addr1, backingManager.address)
         await backingManager.forwardRevenue([collateralERC20.address])
