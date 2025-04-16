@@ -205,7 +205,7 @@ const getExpectedPrice = async (ctx: WSUPEROETHBCollateralFixtureContext): Promi
   const uoaPerTargetChainlinkFeedAnswer = await ctx.uoaPerTargetChainlinkFeed.latestAnswer()
   const uoaPerTargetChainlinkFeedDecimals = await ctx.uoaPerTargetChainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const refPerTok = await ctx.collateral.underlyingRefPerTok()
 
   const result = uoaPerTargetChainlinkFeedAnswer
     .mul(bn(10).pow(18 - uoaPerTargetChainlinkFeedDecimals))
@@ -253,7 +253,7 @@ const opts = {
   itIsPricedByPeg: true,
   itHasOracleRefPerTok: true,
   targetNetwork: 'base',
-  toleranceDivisor: bn('1e2'),
+  toleranceDivisor: bn('1e9'),
 }
 
 collateralTests(opts)
