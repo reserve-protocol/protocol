@@ -159,7 +159,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
   }
 
   const getExpectedPrice = async (ctx: AaveV3FiatCollateralFixtureContext): Promise<BigNumber> => {
-    const initRefPerTok = await ctx.collateral.refPerTok()
+    const initRefPerTok = await ctx.collateral.underlyingRefPerTok()
     const decimals = await ctx.chainlinkFeed.decimals()
 
     const initData = await ctx.chainlinkFeed.latestRoundData()

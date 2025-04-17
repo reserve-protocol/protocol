@@ -349,7 +349,7 @@ allStableTests.forEach((curr: AeroStablePoolEnumeration) => {
   }
 
   const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
-    const initRefPerTok = await ctx.collateral.refPerTok()
+    const initRefPerTok = await ctx.collateral.underlyingRefPerTok()
     const coll = await ethers.getContractAt('AerodromeStableCollateral', ctx.collateral.address)
 
     const feed0 = await ethers.getContractAt('MockV3Aggregator', (await coll.tokenFeeds(0))[0])
