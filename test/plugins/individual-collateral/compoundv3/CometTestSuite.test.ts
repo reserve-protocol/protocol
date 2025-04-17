@@ -274,7 +274,7 @@ allTests.forEach((curr: CTokenV3Enumeration) => {
   }
 
   const getExpectedPrice = async (ctx: CometCollateralFixtureContext): Promise<BigNumber> => {
-    const initRefPerTok = await ctx.collateral.refPerTok()
+    const initRefPerTok = await ctx.collateral.underlyingRefPerTok()
 
     const decimals = await ctx.chainlinkFeed.decimals()
 
