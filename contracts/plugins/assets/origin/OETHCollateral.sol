@@ -28,6 +28,7 @@ contract OETHCollateral is ERC4626FiatCollateral {
     ) ERC4626FiatCollateral(config, revenueHiding) {
         require(address(_uoaPerTargetChainlinkFeed) != address(0), "uoaPerTargetFeed missing");
         require(_uoaPerTargetChainlinkTimeout != 0, "uoaPerTargetChainlinkTimeout zero");
+        require(config.defaultThreshold != 0, "defaultThreshold zero");
 
         uoaPerTargetChainlinkFeed = _uoaPerTargetChainlinkFeed;
         uoaPerTargetChainlinkTimeout = _uoaPerTargetChainlinkTimeout;

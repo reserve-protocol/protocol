@@ -245,7 +245,7 @@ const opts = {
   itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it.skip,
+  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK),
   collateralName: 'OETHCollateral',
