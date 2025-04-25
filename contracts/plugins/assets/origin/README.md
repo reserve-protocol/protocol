@@ -5,7 +5,7 @@
 This plugin allows `wOETH` (mainnet) and `wsuperOETH` (base) holders to use their tokens as collateral in the Reserve Protocol.
 
 On mainnet:
-`wOETH` is an ERC4626-wrapper around the `OETH` token.
+`wOETH` is an owned, upgradeable, ERC4626-wrapper around the `OETH` token.
 
 `wOETH` collects the native `OETH` yield.
 
@@ -29,7 +29,7 @@ On base:
 | ---------- | --------- | ------ | --- |
 | wOETH | OETH | ETH | USD |
 
-`wsuperOETH` (mainnet)
+`wsuperOETH` (base)
 | tok | ref | target | UoA |
 | ---------- | --------- | ------ | --- |
 | wsuperOETH | superOETH | ETH | USD |
@@ -37,7 +37,7 @@ On base:
 ### refPerTok()
 
 - Both `wOETH` and `wsuperOETH` are ERC4626 wrappers, the `refPerTok()` is straightforward:
-  - `wOETH.convertToAssets(10 ** OETH.decimals())`
+  - `wOETH.convertToAssets(10 ** wOETH.decimals())`
   - `wsuperOETH.convertToAssets(10 ** wsuperOETH.decimals())`
 
 ### claimRewards()
