@@ -91,6 +91,7 @@ export interface ITokens {
   yvCurveUSDPcrvUSD?: string
   yvCurveUSDCcrvUSD?: string
   wsuperOETHb?: string
+  wOETH?: string
 
   pyUSD?: string
   aEthPyUSD?: string
@@ -145,6 +146,7 @@ export interface IFeeds {
   cbETHETHexr?: string
   ETHUSD?: string
   wstETHstETH?: string
+  OETHETH?: string
 }
 
 export interface IPools {
@@ -288,6 +290,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
       USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
       sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
+      wOETH: '0xDcEe70654261AF21C44c093C300eD3Bb97b78192',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -318,6 +321,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       apxETH: '0x19219BC90F48DeE4d5cF202E09c438FAacFd8Bea', // apxETH/ETH
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
       USDS: '0xfF30586cD0F29eD462364C7e81375FC0C71219b1',
+      OETHETH: '0x703118C4CbccCBF2AB31913e0f8075fbbb15f563', // OETH/ETH
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
