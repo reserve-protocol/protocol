@@ -125,6 +125,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
 
     // Impersonate holder
     await whileImpersonating(altParams.whaleTokenHolder, async (signer) => {
+      await ctx.baseToken.connect(signer).approve(ctx.staticWrapper.address, 0)
       await ctx.baseToken
         .connect(signer)
         .approve(ctx.staticWrapper.address, ethers.constants.MaxUint256)
