@@ -44,19 +44,6 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId})
     ActFacet:  ${actFacet.address}
     Deployment file: ${deploymentFilename}`)
-
-  // ******************** Save to Facade ****************************************/
-
-  console.log('Configuring with Facade...')
-
-  // Save ReadFacet to Facade
-  const facade = await ethers.getContractAt('Facade', deployments.facade)
-  await facade.save(
-    actFacet.address,
-    Object.entries(actFacet.functions).map(([fn]) => actFacet.interface.getSighash(fn))
-  )
-
-  console.log('Finished saving to Facade')
 }
 
 main().catch((error) => {

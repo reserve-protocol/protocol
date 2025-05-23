@@ -8,29 +8,29 @@ import { IComponents, arbitrumL2Chains, baseL2Chains } from '../../common/config
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
+import { networkConfig } from '../../common/configuration'
+
+import Safe from '@safe-global/protocol-kit'
+import SafeApiKit from '@safe-global/api-kit'
+import { HttpNetworkConfig } from 'hardhat/types'
+import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 
 export const priceTimeout = bn('604800') // 1 week
 
 export const revenueHiding = fp('1e-6') // 1 part in a million
 
 export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
-  return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
+  return x.add(y)
 }
 
 export const validatePrerequisites = async (deployments: IDeployments) => {
   // Check prerequisites properly defined
-  if (
-    !deployments.prerequisites.GNOSIS_EASY_AUCTION ||
-    !deployments.prerequisites.RSR ||
-    !deployments.prerequisites.RSR_FEED
-  ) {
+  if (!deployments.prerequisites.RSR || !deployments.prerequisites.RSR_FEED) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR))) {
     throw new Error(`RSR contract not found in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR_FEED))) {
     throw new Error(`RSR_FEED contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.GNOSIS_EASY_AUCTION))) {
-    throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
   }
 }
 
@@ -178,11 +178,16 @@ export const getEmptyDeployment = (): IDeployments => {
     prerequisites: {
       RSR: '',
       RSR_FEED: '',
-      GNOSIS_EASY_AUCTION: '',
     },
     tradingLib: '',
     basketLib: '',
-    facets: { actFacet: '', readFacet: '', maxIssuableFacet: '' },
+    facets: {
+      actFacet: '',
+      readFacet: '',
+      maxIssuableFacet: '',
+      backingBufferFacet: '',
+      revenueFacet: '',
+    },
     facade: '',
     facadeWriteLib: '',
     facadeWrite: '',
@@ -274,4 +279,55 @@ export const getUsdtOracleError = (network: string): BigNumber => {
   } else {
     return fp('0.0025') // 0.25% mainnet
   }
+}
+
+export const initiateMultisigTx = async (
+  chainId: string,
+  tx: MetaTransactionData
+): Promise<void> => {
+  return await initiateMultisigTxs(chainId, [tx])
+}
+
+// Note: may end up with conflicting nonces if used naively
+export const initiateMultisigTxs = async (
+  chainId: string,
+  txs: MetaTransactionData[]
+): Promise<void> => {
+  if (hre.network.name == 'localhost' || hre.network.name == 'hardhat') {
+    console.log('Skipping multisig tx on localhost')
+    return
+  }
+
+  const provider = (hre.config.networks[hre.network.name] as HttpNetworkConfig).url
+  const wallet = hre.ethers.Wallet.fromMnemonic(process.env.MNEMONIC!)
+  const safeAddress = networkConfig[chainId].DEV_MULTISIG!
+
+  const safe = await Safe.init({
+    provider,
+    signer: wallet.privateKey,
+    safeAddress,
+  })
+  const safeApi = new SafeApiKit({
+    chainId: parseInt(chainId) as unknown as bigint,
+  })
+  const safeTx = await safe.createTransaction({ transactions: txs })
+  const safeTxHash = await safe.getTransactionHash(safeTx)
+  const signature = await safe.signHash(safeTxHash)
+
+  // Propose transaction to the service
+  await safeApi.proposeTransaction({
+    safeAddress: await safe.getAddress(),
+    safeTransactionData: safeTx.data,
+    safeTxHash,
+    senderAddress: wallet.address,
+    senderSignature: signature.data,
+  })
+
+  let prefix = 'base'
+  if (hre.network.name == 'mainnet') prefix = 'eth'
+  else if (hre.network.name == 'arbitrum') prefix = 'arb'
+
+  const hyperlink = `https://app.safe.global/transactions/queue?safe=${prefix}:${networkConfig[chainId].DEV_MULTISIG}`
+
+  console.log(`Queued tx, requires confirmation: ${hyperlink}`)
 }

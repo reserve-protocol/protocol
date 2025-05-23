@@ -4,9 +4,9 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
-import { bn, fp, shortString } from '../common/numbers'
+import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
-  ERC20Mock,
+  ERC20MockDecimals,
   FiatCollateral,
   IAssetRegistry,
   MockV3Aggregator,
@@ -53,9 +53,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
     // makeColl: Deploy and register a new constant-price collateral
-    async function makeColl(index: number | string): Promise<ERC20Mock> {
-      const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-      const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
+    async function makeColl(index: number | string, decimals: number): Promise<ERC20MockDecimals> {
+      const ERC20: ContractFactory = await ethers.getContractFactory('ERC20MockDecimals')
+      const erc20: ERC20MockDecimals = <ERC20MockDecimals>(
+        await ERC20.deploy('Token ' + index, 'T' + index, decimals)
+      )
       const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
       await oracle.deployed() // fix extreme value tests failing
@@ -93,6 +95,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       weightRest, // another target amount per asset (weight of second+ assets)
       issuancePctAmt, // range under test: [.000_001 to 1.0]
       redemptionPctAmt, // range under test: [.000_001 to 1.0]
+      collateralDecimals,
     ]: BigNumber[]) {
       // skip nonsense cases
       if (
@@ -106,11 +109,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Deploy and register basket collateral
 
       const N = numBasketAssets.toNumber()
-      const erc20s: ERC20Mock[] = []
+      const erc20s: ERC20MockDecimals[] = []
       const weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
-        const erc20 = await makeColl(i)
+        const erc20 = await makeColl(i, Number(collateralDecimals))
         erc20s.push(erc20)
         const currWeight = i == 0 ? weightFirst : weightRest
         weights.push(currWeight)
@@ -134,24 +137,40 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const toIssue0 = totalSupply.sub(toIssue)
       const e18 = BN_SCALE_FACTOR
       for (let i = 0; i < N; i++) {
-        const erc20: ERC20Mock = erc20s[i]
+        const erc20: ERC20MockDecimals = erc20s[i]
         // user owner starts with enough basket assets to issue (totalSupply - toIssue)
-        const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
+        const toIssue0Scaled: BigNumber = toBNDecimals(toIssue0, Number(collateralDecimals))
+        const toMint0: BigNumber = toIssue0Scaled.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(owner.address, toMint0)
         await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
 
         // user addr1 starts with enough basket assets to issue (toIssue)
-        const toMint: BigNumber = toIssue.mul(weights[i]).add(e18.sub(1)).div(e18)
+        const toIssueScaled: BigNumber = toBNDecimals(toIssue, Number(collateralDecimals))
+        const toMint: BigNumber = toIssueScaled.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(addr1.address, toMint)
         await erc20.connect(addr1).increaseAllowance(rToken.address, toMint)
       }
 
       // Set up throttles
-      const issuanceThrottleParams = { amtRate: bn('1e48'), pctRate: issuancePctAmt }
+      const issuanceThrottleParams = {
+        amtRate: bn('1e48').mul(80).div(100),
+        pctRate: issuancePctAmt,
+      }
       const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
 
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      if (
+        issuanceThrottleParams.amtRate.lt(redemptionThrottleParams.amtRate) &&
+        issuancePctAmt.lt(redemptionPctAmt)
+      ) {
+        await rToken
+          .connect(owner)
+          .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+      } else {
+        await expect(
+          rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
+        ).to.be.revertedWith('redemption throttle too low')
+        return
+      }
 
       // Recharge throttle
       await advanceTime(3600)
@@ -160,14 +179,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       if (toIssue0.gt(0)) {
-        await rToken.connect(owner).issue(toIssue0)
+        while ((await rToken.balanceOf(owner.address)).lt(toIssue0)) {
+          const remaining = toIssue0.sub(await rToken.balanceOf(owner.address))
+          const avail = await rToken.issuanceAvailable()
+          const amt = remaining.lt(avail) ? remaining : avail
+          await rToken.connect(owner).issue(amt)
+          await advanceTime(3600)
+        }
         expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
       }
 
       // ==== Issue the toIssue supply to addr1
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).issue(toIssue)
+      while ((await rToken.balanceOf(addr1.address)).lt(toIssue)) {
+        const remaining = toIssue.sub(await rToken.balanceOf(addr1.address))
+        const avail = await rToken.issuanceAvailable()
+        const amt = remaining.lt(avail) ? remaining : avail
+        await rToken.connect(addr1).issue(amt)
+        await advanceTime(3600)
+      }
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
@@ -192,7 +223,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     const MAX_WEIGHT = fp(1000)
     const MIN_WEIGHT = fp('1e-6')
     const MIN_ISSUANCE_PCT = fp('1e-6')
-    const MIN_REDEMPTION_PCT = fp('1e-6')
+    const MIN_THROTTLE_DELTA = 25
+    const MIN_REDEMPTION_PCT = MIN_ISSUANCE_PCT.mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100)
     const MIN_RTOKENS = fp('1e-6')
 
     let paramList
@@ -205,8 +237,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [bn(1), bn(3), bn(100)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
-        [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp('1e-2'), fp(1)], // redemptionThrottle.pctRate
+        [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1).mul(100).div(bn(100).add(MIN_THROTTLE_DELTA))], // issuanceThrottle.pctRate
+        [MIN_REDEMPTION_PCT, fp('1e-2').mul(bn(100).add(MIN_THROTTLE_DELTA)).div(100), fp(1)], // redemptionThrottle.pctRate
+        [bn(6), bn(18), bn(21), bn(27)], // collateralDecimals
       ]
 
       paramList = cartesianProduct(...bounds)
@@ -215,11 +248,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_RTOKENS, MAX_RTOKENS], // toIssue
         [MIN_RTOKENS, MAX_RTOKENS], // toRedeem
         [MAX_RTOKENS], // totalSupply
-        [bn(1)], // numAssets
+        [bn(1), bn(3)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
         [MIN_WEIGHT], // weightRest
-        [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
+        [MIN_ISSUANCE_PCT, fp(1).mul(100).div(bn(100).add(MIN_THROTTLE_DELTA))], // issuanceThrottle.pctRate
         [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
+        [bn(6), bn(18), bn(27)], // collateralDecimals
       ]
       paramList = cartesianProduct(...bounds)
     }

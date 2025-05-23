@@ -125,9 +125,12 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
 
     // Impersonate holder
     await whileImpersonating(altParams.whaleTokenHolder, async (signer) => {
+      await ctx.baseToken.connect(signer).approve(ctx.staticWrapper.address, 0) // required for usdt
+
       await ctx.baseToken
         .connect(signer)
         .approve(ctx.staticWrapper.address, ethers.constants.MaxUint256)
+
       await ctx.staticWrapper
         .connect(signer)
         ['deposit(uint256,address,uint16,bool)'](requiredCollat, recipient, 0, true)
@@ -156,7 +159,7 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
   }
 
   const getExpectedPrice = async (ctx: AaveV3FiatCollateralFixtureContext): Promise<BigNumber> => {
-    const initRefPerTok = await ctx.collateral.refPerTok()
+    const initRefPerTok = await ctx.collateral.underlyingRefPerTok()
     const decimals = await ctx.chainlinkFeed.decimals()
 
     const initData = await ctx.chainlinkFeed.latestRoundData()

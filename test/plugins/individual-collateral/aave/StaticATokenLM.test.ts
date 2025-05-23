@@ -31,7 +31,7 @@ import {
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 
-let chainId: number
+let chainId: string
 
 // Setup test environment
 const setup = async (blockNumber: number) => {
@@ -1255,8 +1255,8 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
         await waitForTx(
           await incentives
             .connect(emSigner)
-            .setClaimer(user2Signer._address, claimerSigner._address)
-        )
+            .setClaimer(user2Signer._address, claimerSigner._address, { gasLimit: 2_000_000 })
+        ) // HH had trouble estimating gas, so we set it manually as a workaround
       }
     )
 

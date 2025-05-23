@@ -36,6 +36,7 @@ contract EURFiatCollateral is FiatCollateral {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref}

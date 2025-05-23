@@ -221,7 +221,7 @@ all.forEach((curr: FTokenEnumeration) => {
   const collateralSpecificStatusTests = () => {}
 
   const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
-    const initRefPerTok = await ctx.collateral.refPerTok()
+    const initRefPerTok = await ctx.collateral.underlyingRefPerTok()
 
     const decimals = await ctx.chainlinkFeed.decimals()
 

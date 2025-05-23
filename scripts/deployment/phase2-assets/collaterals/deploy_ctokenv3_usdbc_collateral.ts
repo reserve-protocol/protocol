@@ -47,11 +47,14 @@ async function main() {
 
   /********  Deploy CompoundV3 USDC - cUSDbCv3 **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
+  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CFiatV3Wrapper')
   const erc20 = await WrapperFactory.deploy(
     networkConfig[chainId].tokens.cUSDbCv3,
     networkConfig[chainId].COMET_REWARDS,
-    networkConfig[chainId].tokens.COMP
+    networkConfig[chainId].tokens.COMP,
+    'Wrapped cUSDbCv3',
+    'wcUSDbCv3',
+    fp(1).toString()
   )
   await erc20.deployed()
 

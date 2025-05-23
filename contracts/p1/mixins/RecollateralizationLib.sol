@@ -113,7 +113,7 @@ library RecollateralizationLibP1 {
         // tradesOpen will be 0 when called by prepareRecollateralizationTrade()
         // tradesOpen can be > 0 when called by RTokenAsset.basketRange()
 
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(false); // {UoA/BU}
         require(buPriceLow != 0 && buPriceHigh != FIX_MAX, "BUs unpriced");
 
         uint192 basketsNeeded = ctx.rToken.basketsNeeded(); // {BU}
@@ -269,6 +269,8 @@ library RecollateralizationLibP1 {
     // Prefer selling assets in this order: DISABLED -> SOUND -> IFFY.
     // Sell IFFY last because it may recover value in the future.
     // All collateral in the basket have already been guaranteed to be SOUND by upstream checks.
+    // Warning: If the trading algorithm is changed to trade unpriced (0, FIX_MAX) assets it can
+    //          result in losses in GnosisTrade. Unpriced assets should not be sold in rebalancing.
     function nextTradePair(
         TradingContext memory ctx,
         Registry memory reg,

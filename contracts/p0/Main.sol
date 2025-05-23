@@ -47,4 +47,16 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
     {
         return super.hasRole(role, account);
     }
+
+    function assetPluginRegistry() external pure returns (AssetPluginRegistry) {
+        return AssetPluginRegistry(address(0));
+    }
+
+    function versionRegistry() external pure returns (VersionRegistry) {
+        return VersionRegistry(address(0));
+    }
+
+    function daoFeeRegistry() external pure returns (DAOFeeRegistry) {
+        return DAOFeeRegistry(address(0));
+    }
 }

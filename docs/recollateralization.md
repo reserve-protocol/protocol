@@ -77,8 +77,14 @@ This allows the protocol to deterministically select the next trade based on the
 3. Sell `DISABLED` collateral first, `SOUND` next, and `IFFY` last.
    (Non-collateral assets are considered SOUND for these purposes. IFFY assets are sold last since they may recover their value in the future)
 4. Do not double-trade SOUND assets: Capital that is traded from SOUND asset A -> SOUND asset B should not eventually be traded into SOUND asset C.
-   (Caveat: if the protocol gets an unreasonably good trade in excess of what was indicated by an asset's price range, this can happen, but this violates assumption #3)
-5. Large trades first, as determined by comparison in units of `{UoA}`
+   (Caveat: if the protocol gets an unreasonably good trade in excess of what was indicated by an asset's price range, this can happen)
+5. Large trades first, as determined by comparison in the `{UoA}`
+
+If there does not exist a trade that meets these constraints, the protocol considers the RSR balance in StRSR before moving to "take a haircut", which is a colloquial way of saying it reduces `RToken.basketsNeeded()` to its current BU holdings to become by-definition collateralized. This causes a loss for RToken holders (undesirable) but causes the protocol to regain normal function.
+
+#### Trade Sizing
+
+All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `price().high`.
 
 If there does not exist a trade that meets these constraints, then the protocol "takes a haircut", which is a colloquial way of saying it reduces `RToken.basketsNeeded()` to its current BU holdings `basketRange.bottom`. This causes a loss for RToken holders (undesirable) but causes the protocol to become collateralized again, allowing it to resume normal operation.
 

@@ -33,10 +33,14 @@ async function main() {
     throw new Error(`RSR Asset contract not found in network ${hre.network.name}`)
   }
 
+  if (!networkConfig[chainId].DEV_MULTISIG) {
+    throw new Error(`Missing DEV_MULTISIG address in network ${hre.network.name}`)
+  }
+
   // ******************** Deploy Facade ****************************************/
 
   const FacadeFactory = await ethers.getContractFactory('Facade')
-  facade = <Facade>await FacadeFactory.connect(burner).deploy()
+  facade = <Facade>await FacadeFactory.connect(burner).deploy(networkConfig[chainId].DEV_MULTISIG)
   await facade.deployed()
 
   // Write temporary deployments file

@@ -222,8 +222,8 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       const unslippedPrice = fp('1.1')
       const lowSellPrice = fp('1').sub(fp('1').mul(ORACLE_ERROR).div(fp('1')))
       const highBuyPrice = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1')))
-      const worstCasePrice = divCeil(unslippedPrice.mul(lowSellPrice), highBuyPrice).sub(1)
-      expect(await trade.worstCasePrice()).to.equal(worstCasePrice)
+      const worstCasePrice = divCeil(unslippedPrice.mul(bn('1e9')).mul(lowSellPrice), highBuyPrice) // D27
+      expect(await trade.worstCasePrice()).to.be.closeTo(worstCasePrice, bn('1e9'))
     })
   })
 

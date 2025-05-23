@@ -42,17 +42,10 @@ interface IAsset is IRewardable {
   function refresh() external;
 
   /// Should not revert
-  /// low should be nonzero when the asset might be worth selling
+  /// low should be nonzero if the asset could be worth selling
   /// @return low {UoA/tok} The lower end of the price estimate
   /// @return high {UoA/tok} The upper end of the price estimate
   function price() external view returns (uint192 low, uint192 high);
-
-  /// Should not revert
-  /// lotLow should be nonzero when the asset might be worth selling
-  /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-  /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-  /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-  function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
   /// @return {tok} The balance of the ERC20 in whole tokens
   function bal(address account) external view returns (uint192);
@@ -113,6 +106,9 @@ interface ICollateral is IAsset {
 
   /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
   function targetPerRef() external view returns (uint192);
+
+  /// @return {target/ref} The peg price of the token during the last update
+  function savedPegPrice() external view returns (uint192);
 }
 
 ```
@@ -225,6 +221,10 @@ When implementing Revenue Hiding, the `price` function should NOT hide revenue; 
 
 ## Important Properties for Collateral Plugins
 
+### Oracles must not be plausibly manipulable
+
+It must not be possible to manipulate the oracles a collateral relies on, cheaply. In particular (though not limited to): it should not be possible to manipulate price within the block.
+
 ### Reuse of Collateral Plugins
 
 Collateral plugins should be safe to reuse by many different Reserve Protocol instances. So:
@@ -249,6 +249,15 @@ The Reserve Protocol cannot directly hold rebasing tokens. However, the protocol
 To use a rebasing token as collateral backing, the rebasing ERC20 needs to be replaced with an ERC20 that is non-rebasing. This is _not_ a change to the collateral plugin contract itself. Instead, the collateral plugin designer needs to provide a wrapping ERC20 contract that RToken issuers or redeemers will have to deposit into or withdraw from.
 
 There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20Wrapper.sol](../contracts/plugins/assets/erc20/RewardableERC20Wrapper.sol). You may add additional logic by extending `_afterDeposit()` or `_beforeWithdraw()`.
+
+### Token decimals should be <= 21
+
+The protocol currently supports collateral tokens with up to 21 decimals. There are some caveats to know about:
+
+- Tokens with 21 decimals must be worth at least `$1` at-peg
+- Tokens with 18 decimals must be worth at least `$0.001` at-peg
+
+These constraints only apply to pricing when the collateral is SOUND; when the collateral status is IFFY or DISABLED the price is allowed to fall below these thresholds.
 
 ### `refresh()` should never revert
 
@@ -372,13 +381,9 @@ Under no price data, the low estimate shoulddecay downwards and high estimate up
 
 Should return `(0, FIX_MAX)` if pricing data is _completely_ unavailable or stale.
 
+Should NOT return `(>0, FIX_MAX)`: if the high price is FIX_MAX then the low price must be 0.
+
 Should be gas-efficient.
-
-### lotPrice() `{UoA/tok}`
-
-Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility.
-
-Recommend implement `lotPrice()` by calling `price()`. If you are inheriting from any of our existing collateral plugins, this is already done for you. See [Asset.sol](../contracts/plugins/Asset.sol) for the implementation.
 
 ### refPerTok() `{ref/tok}`
 
@@ -410,6 +415,14 @@ The target name is just a bytes32 serialization of the target unit string. Here 
 - BTC: `0x4254430000000000000000000000000000000000000000000000000000000000`
 
 For a collateral plugin that uses a novel target unit, get the targetName with `ethers.utils.formatBytes32String(unitName)`.
+
+### savedPegPrice() `{target/ref}`
+
+A return value of 0 indicates _no_ issuance premium should be applied to this collateral during de-peg. Collateral that return 0 are more dangerous to be used inside RTokens as a result.
+
+Should never revert.
+
+Should be gas-efficient.
 
 ## Practical Advice from Previous Work
 

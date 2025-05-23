@@ -1,4 +1,3 @@
-import { networkConfig } from '#/common/configuration'
 import { bn, fp } from '#/common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'
@@ -15,19 +14,30 @@ import { MAX_UINT192 } from '#/common/constants'
 import {
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
+  STEAKPYUSD,
+  STEAKUSDC,
+  BBUSDT,
+  PYUSD_USD_FEED,
   PYUSD_ORACLE_ERROR,
   PYUSD_ORACLE_TIMEOUT,
+  USDT_USD_FEED,
   USDT_ORACLE_TIMEOUT,
   USDT_ORACLE_ERROR,
+  USDC_USD_FEED,
   USDC_ORACLE_TIMEOUT,
   USDC_ORACLE_ERROR,
+  eUSD_USD_FEED,
+  eUSD_ORACLE_TIMEOUT,
+  eUSD_ORACLE_ERROR,
   PRICE_TIMEOUT,
+  MEUSD,
 } from './constants'
 import { mintCollateralTo } from './mintCollateralTo'
 
 interface MAFiatCollateralOpts extends CollateralOpts {
   defaultPrice?: BigNumberish
   defaultRefPerTok?: BigNumberish
+  forkNetwork?: string
 }
 
 const makeFiatCollateralTestSuite = (
@@ -130,7 +140,7 @@ const makeFiatCollateralTestSuite = (
     const clData = await ctx.chainlinkFeed.latestRoundData()
     const clDecimals = await ctx.chainlinkFeed.decimals()
 
-    const refPerTok = await ctx.collateral.refPerTok()
+    const refPerTok = await ctx.collateral.underlyingRefPerTok()
     return clData.answer
       .mul(bn(10).pow(18 - clDecimals))
       .mul(refPerTok)
@@ -167,6 +177,7 @@ const makeFiatCollateralTestSuite = (
     itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
     resetFork: getResetFork(FORK_BLOCK),
+    targetNetwork: defaultCollateralOpts.forkNetwork,
     collateralName,
     chainlinkDefaultAnswer: defaultCollateralOpts.defaultPrice!,
     itIsPricedByPeg: true,
@@ -180,7 +191,8 @@ const makeOpts = (
   vault: string,
   chainlinkFeed: string,
   oracleTimeout: BigNumber,
-  oracleError: BigNumber
+  oracleError: BigNumber,
+  forkNetwork: string
 ): MAFiatCollateralOpts => {
   return {
     targetName: ethers.utils.formatBytes32String('USD'),
@@ -195,22 +207,28 @@ const makeOpts = (
     defaultRefPerTok: fp('1'),
     erc20: vault,
     chainlinkFeed,
+    forkNetwork,
   }
 }
 
 /*
   Run the test suite
 */
-const { tokens, chainlinkFeeds } = networkConfig[31337]
+
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - steakUSDC',
-  makeOpts(tokens.steakUSDC!, chainlinkFeeds.USDC!, USDC_ORACLE_TIMEOUT, USDC_ORACLE_ERROR)
+  makeOpts(STEAKUSDC, USDC_USD_FEED, USDC_ORACLE_TIMEOUT, USDC_ORACLE_ERROR, 'mainnet')
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - steakPYUSD',
-  makeOpts(tokens.steakPYUSD!, chainlinkFeeds.pyUSD!, PYUSD_ORACLE_TIMEOUT, PYUSD_ORACLE_ERROR)
+  makeOpts(STEAKPYUSD, PYUSD_USD_FEED, PYUSD_ORACLE_TIMEOUT, PYUSD_ORACLE_ERROR, 'mainnet')
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - bbUSDT',
-  makeOpts(tokens.bbUSDT!, chainlinkFeeds.USDT!, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR)
+  makeOpts(BBUSDT, USDT_USD_FEED, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR, 'mainnet')
+)
+
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - meUSD',
+  makeOpts(MEUSD, eUSD_USD_FEED, eUSD_ORACLE_TIMEOUT, eUSD_ORACLE_ERROR, 'base')
 )

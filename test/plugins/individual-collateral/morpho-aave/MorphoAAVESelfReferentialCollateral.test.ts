@@ -174,7 +174,7 @@ const getExpectedPrice = async (ctx: MorphoAaveCollateralFixtureContext): Promis
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const refPerTok = await ctx.collateral.underlyingRefPerTok()
   const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
   return expectedPegPrice.mul(refPerTok).div(fp('1'))
 }

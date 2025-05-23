@@ -102,6 +102,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // stake rate under/over which governance can reset all stakes
     uint192 private constant MAX_SAFE_STAKE_RATE = 1e6 * FIX_ONE; // 1e6
     uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6
+    uint192 private constant MAX_SAFE_DRAFT_RATE = 1e6 * FIX_ONE; // 1e6
+    uint192 private constant MIN_SAFE_DRAFT_RATE = uint192(1e12); // 1e-6
 
     // Withdrawal Leak
     uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
@@ -272,8 +274,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 i = start;
         for (; i < endId; i++) {
             total += queue[i].rsrAmount;
-            queue[i].rsrAmount = 0;
-            queue[i].stakeAmount = 0;
+            delete queue[i];
         }
 
         // Execute accumulated withdrawals
@@ -387,10 +388,15 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @custom:governance
     /// Reset all stakes and advance era
     function resetStakes() external governance {
+        uint256 rsrDrafts = rsrBeingWithdrawn();
+        uint192 draftRate = rsrDrafts > 0 ? divuu(stakeBeingWithdrawn(), rsrDrafts) : FIX_ONE;
         uint192 stakeRate = divuu(totalStaked, rsrBacking);
         require(
-            stakeRate <= MIN_SAFE_STAKE_RATE || stakeRate >= MAX_SAFE_STAKE_RATE,
-            "rate still safe"
+            draftRate <= MIN_SAFE_DRAFT_RATE ||
+                draftRate >= MAX_SAFE_DRAFT_RATE ||
+                stakeRate <= MIN_SAFE_STAKE_RATE ||
+                stakeRate >= MAX_SAFE_STAKE_RATE,
+            "rates still safe"
         );
 
         bankruptStakers();

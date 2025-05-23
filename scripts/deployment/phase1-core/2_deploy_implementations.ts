@@ -129,7 +129,9 @@ async function main() {
   // ******************** Deploy GnosisTrade ********************************/
 
   const GnosisTradeImplFactory = await ethers.getContractFactory('GnosisTrade')
-  gnosisTradeImpl = <GnosisTrade>await GnosisTradeImplFactory.connect(burner).deploy()
+  gnosisTradeImpl = <GnosisTrade>(
+    await GnosisTradeImplFactory.connect(burner).deploy(networkConfig[chainId].GNOSIS_EASY_AUCTION!)
+  )
   await gnosisTradeImpl.deployed()
 
   // Write temporary deployments file

@@ -350,7 +350,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should swap WBTC in for cWBTC
-      const [tokens] = await basketHandler.quote(fp('1'), 2)
+      const [tokens] = await basketHandler.quote(fp('1'), false, 2)
       expect(tokens[0]).to.equal(token0.address)
       expect(tokens[1]).to.equal(wbtc.address)
 

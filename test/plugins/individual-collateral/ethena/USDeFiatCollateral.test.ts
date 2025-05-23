@@ -169,7 +169,7 @@ const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumbe
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const refPerTok = await ctx.collateral.underlyingRefPerTok()
   return clData.answer
     .mul(bn(10).pow(18 - clDecimals))
     .mul(refPerTok)
@@ -216,6 +216,7 @@ const opts = {
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
   resetFork,
+  toleranceDivisor: bn('1e8'),
 }
 
 collateralTests(opts)
