@@ -115,6 +115,10 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  // Anzen
+  USDZ?: string
+  sUSDz?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -256,6 +260,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      USDz: '0xA469B7Ee9ee773642b3e93E842e5D9b5BaA10067',
+      sUSDz: '0x547213367cfB08ab418E7b54d7883b2C2AA27Fd7',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -513,6 +519,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
+      USDz: '0x04D5ddf5f3a8939889F11E97f8c4BB48317F1938',
+      sUSDz: '0xe31eE12bDFDD0573D634124611e85338e2cBF0cF',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -529,6 +537,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
+      USDz: '0xe25969e2Fa633a0C027fAB8F30Fc9C6A90D60B48', // 0.5%, 24hr
+      sUSDzUSDzexr: '0xD89c7fFB39C44b17EAecd8717a75A36c19C07582', // 0.5%, 24hr
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
