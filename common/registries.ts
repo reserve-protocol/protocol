@@ -40,6 +40,18 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
       daoFeeRegistry: '',
     },
   },
+  '56': {
+    registryControl: {
+      owner: '0xe8259842e71f4E44F2F68D6bfbC15EDA56E63064',
+      feeRecipient: '',
+    },
+    registries: {
+      roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
+      versionRegistry: '',
+      assetPluginRegistry: '',
+      daoFeeRegistry: '',
+    },
+  },
 }
 
 registryConfig['31337'] = registryConfig['1']

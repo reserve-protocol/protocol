@@ -84,6 +84,13 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
     },
+    bsc: {
+      chainId: 56,
+      url: 'https://bsc-rpc.publicnode.com',
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
     mainnet: {
       chainId: 1,
       url: MAINNET_RPC_URL,
