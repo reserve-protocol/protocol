@@ -49,10 +49,9 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        // solhint-disable-next-line no-empty-blocks
-        try pairedAssetRegistry.refresh() {} catch {
-            // must allow failure since cannot brick refresh()
-        }
+        // Note: Intentionally not refreshing AssetRegistry as an acceptable trade-off
+        // Issuance throttle becomes worst-case outcome in case of issuance frontruns in
+        // response to picking up bad collateral
 
         CollateralStatus oldStatus = status();
 

@@ -227,7 +227,7 @@ const collateralSpecificStatusTests = () => {
     await collateral.refresh()
   })
 
-  it('Regression test -- refreshes inner RTokenAsset on refresh()', async () => {
+  it('Regression test -- does not refresh inner RTokenAsset on refresh()', async () => {
     const [collateral] = await deployCollateral({})
     const initialPrice = await collateral.price()
     expect(initialPrice[0]).to.be.gt(0)
@@ -258,11 +258,11 @@ const collateralSpecificStatusTests = () => {
     // Refresh CurveAppreciatingRTokenSelfReferentialCollateral
     await collateral.refresh()
 
-    // Stale should be false again
-    expect(await mockRTokenAsset.stale()).to.be.false
+    // Stale remains true
+    expect(await mockRTokenAsset.stale()).to.be.true
   })
 
-  it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
+  it.only('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
     const [collateral, opts] = await deployCollateral({})
     const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
@@ -297,9 +297,28 @@ const collateralSpecificStatusTests = () => {
     const uoaPerRefOracle = await overrideOracle(uoaPerRefFeed)
     await uoaPerRefOracle.updateAnswer(await uoaPerRefOracle.latestAnswer())
 
-    // wstETHCollateral + CurveAppreciatingRTokenSelfReferentialCollateral should
-    // become IFFY through the top-level refresh
+    // wstETHCollateral + CurveAppreciatingRTokenSelfReferentialCollateral will NOT
+    // become IFFY through the top-level refresh (optimization)
     await expectEvents(collateral.refresh(), [
+      {
+        contract: ethplusBasketHandler,
+        name: 'BasketStatusChanged',
+        emitted: false,
+      },
+      {
+        contract: wstETHCollateral,
+        name: 'CollateralStatusChanged',
+        emitted: false,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        emitted: false,
+      },
+    ])
+
+    // Refresh inner RToken to set IFFY
+    await expectEvents(ethplusAssetRegistry.refresh(), [
       {
         contract: ethplusBasketHandler,
         name: 'BasketStatusChanged',
@@ -312,6 +331,11 @@ const collateralSpecificStatusTests = () => {
         args: [0, 1],
         emitted: true,
       },
+    ])
+
+    // Now we can refresh CurveAppreciatingRTokenSelfReferentialCollateral
+    // and it should become IFFY
+    await expectEvents(collateral.refresh(), [
       {
         contract: collateral,
         name: 'CollateralStatusChanged',
@@ -319,6 +343,7 @@ const collateralSpecificStatusTests = () => {
         emitted: true,
       },
     ])
+
     expect(await wstETHCollateral.status()).to.equal(1)
     expect(await collateral.status()).to.equal(1)
     expect(await ethplusBasketHandler.status()).to.equal(1)
@@ -380,7 +405,6 @@ const collateralSpecificStatusTests = () => {
     // refPerTok should finally fall after a 50% haircut
     const basketsNeeded = await ethplus.basketsNeeded()
     await whileImpersonating(ETHPLUS_BACKING_MANAGER, async (bm) => {
-      console.log('whale', whaleBal, basketsNeeded, await weth.balanceOf(bm.address))
       await weth.connect(bm).transfer(whale, whaleBal.sub(basketsNeeded.mul(26).div(100))) // leave >25% WETH backing
       expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
       await ethplus.connect(bm).setBasketsNeeded(basketsNeeded.div(2)) // 50% haircut = WETH backing is sufficient

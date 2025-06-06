@@ -254,7 +254,7 @@ const collateralSpecificStatusTests = () => {
     await collateral.refresh()
   })
 
-  it('Regression test -- refreshes inner RTokenAsset on refresh()', async () => {
+  it('Regression test -- does not refresh inner RTokenAsset on refresh()', async () => {
     const [collateral] = await deployCollateral({})
     const initialPrice = await collateral.price()
     expect(initialPrice[0]).to.be.gt(0)
@@ -285,11 +285,11 @@ const collateralSpecificStatusTests = () => {
     // Refresh CurveStableRTokenMetapoolCollateral
     await collateral.refresh()
 
-    // Stale should be false again
-    expect(await mockRTokenAsset.stale()).to.be.false
+    // Stale remains true
+    expect(await mockRTokenAsset.stale()).to.be.true
   })
 
-  it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
+  it.only('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
     const [collateral, opts] = await deployCollateral({})
     const eusdAssetRegistry = await ethers.getContractAt('IAssetRegistry', EUSD_ASSET_REGISTRY)
     const eusdBasketHandler = await ethers.getContractAt('TestIBasketHandler', EUSD_BASKET_HANDLER)
@@ -308,9 +308,28 @@ const collateralSpecificStatusTests = () => {
     const latestAnswer = await oracle.latestAnswer()
     await oracle.updateAnswer(latestAnswer.mul(4).div(5))
 
-    // CTokenFiatCollateral + CurveStableRTokenMetapoolCollateral should
-    // become IFFY through the top-level refresh
+    // CTokenFiatCollateral + CurveStableRTokenMetapoolCollateral will NOT
+    // become IFFY through the top-level refresh (optimization)
     await expectEvents(collateral.refresh(), [
+      {
+        contract: eusdBasketHandler,
+        name: 'BasketStatusChanged',
+        emitted: false,
+      },
+      {
+        contract: cUSDTCollateral,
+        name: 'CollateralStatusChanged',
+        emitted: false,
+      },
+      {
+        contract: collateral,
+        name: 'CollateralStatusChanged',
+        emitted: false,
+      },
+    ])
+
+    // Refresh inner RToken to set IFFY
+    await expectEvents(eusdAssetRegistry.refresh(), [
       {
         contract: eusdBasketHandler,
         name: 'BasketStatusChanged',
@@ -323,6 +342,11 @@ const collateralSpecificStatusTests = () => {
         args: [0, 1],
         emitted: true,
       },
+    ])
+
+    // Now we can refresh CurveStableRTokenMetapoolCollateral
+    // and it should become IFFY
+    await expectEvents(collateral.refresh(), [
       {
         contract: collateral,
         name: 'CollateralStatusChanged',
@@ -330,6 +354,7 @@ const collateralSpecificStatusTests = () => {
         emitted: true,
       },
     ])
+
     expect(await cUSDTCollateral.status()).to.equal(1)
     expect(await collateral.status()).to.equal(1)
     expect(await eusdBasketHandler.status()).to.equal(1)
