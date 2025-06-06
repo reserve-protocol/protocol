@@ -1,7 +1,7 @@
 import collateralTests from '../collateralTests'
 import { setStorageAt, getStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
-import { mintWSUPEROETHB } from './helpers'
+import { mintWOETH } from './helpers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumber, BigNumberish } from 'ethers'
@@ -21,58 +21,57 @@ import {
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  FORK_BLOCK_BASE,
-  BASE_PRICE_FEEDS,
-  BASE_FEEDS_TIMEOUT,
-  BASE_ORACLE_ERROR,
-  BASE_WSUPEROETHB,
-  BASE_WSUPEROETHB_WHALE,
+  FORK_BLOCK,
+  PRICE_FEEDS,
+  ORACLE_TIMEOUT,
+  ORACLE_ERROR,
+  WOETH,
+  WOETH_WHALE,
 } from './constants'
 import { getResetFork } from '../helpers'
 
 /*
   Define interfaces
 */
-interface WSUPEROETHBCollateralFixtureContext extends CollateralFixtureContext {
-  wsuperoethb: IERC4626
+interface WOETHCollateralFixtureContext extends CollateralFixtureContext {
+  woeth: IERC4626
   uoaPerTargetChainlinkFeed: MockV3Aggregator
+  tok: IERC4626 & any // Override the tok type to match what we're returning
 }
 
 /*
   Define deployment functions
 */
 
-interface WSUPEROETHBCollateralOpts extends CollateralOpts {
+interface WOETHCollateralOpts extends CollateralOpts {
   uoaPerTargetChainlinkFeed?: string
   uoaPerTargetChainlinkTimeout?: BigNumberish
 }
 
-export const defaultWSUPEROETHBCollateralOpts: WSUPEROETHBCollateralOpts = {
-  erc20: BASE_WSUPEROETHB,
+export const defaultWOETHCollateralOpts: WOETHCollateralOpts = {
+  erc20: WOETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: BASE_PRICE_FEEDS.ETH_USD, // ignored
-  oracleTimeout: '1000', // ignored
-  oracleError: BASE_ORACLE_ERROR,
+  chainlinkFeed: PRICE_FEEDS.OETH_ETH,
+  oracleTimeout: '1000',
+  oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  uoaPerTargetChainlinkFeed: BASE_PRICE_FEEDS.ETH_USD,
-  uoaPerTargetChainlinkTimeout: BASE_FEEDS_TIMEOUT.ETH_USD,
+  uoaPerTargetChainlinkFeed: PRICE_FEEDS.ETH_USD,
+  uoaPerTargetChainlinkTimeout: ORACLE_TIMEOUT,
   revenueHiding: fp('1e-4'),
 }
 
 export const deployCollateral = async (
-  opts: WSUPEROETHBCollateralOpts = {}
+  opts: WOETHCollateralOpts = {}
 ): Promise<TestICollateral> => {
-  opts = { ...defaultWSUPEROETHBCollateralOpts, ...opts }
+  opts = { ...defaultWOETHCollateralOpts, ...opts }
 
-  const WSuperOETHbCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'OETHCollateralL2Base'
-  )
+  const WOETHCollateralFactory: ContractFactory = await ethers.getContractFactory('OETHCollateral')
 
-  const collateral = <TestICollateral>await WSuperOETHbCollateralFactory.deploy(
+  const collateral = <TestICollateral>await WOETHCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -86,7 +85,7 @@ export const deployCollateral = async (
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
-    opts.chainlinkFeed ?? opts.uoaPerTargetChainlinkFeed,
+    opts.uoaPerTargetChainlinkFeed,
     opts.uoaPerTargetChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
@@ -104,8 +103,8 @@ export const deployCollateral = async (
 
 const defaultAnswers = {
   targetPerRefChainlinkFeed: bn('1e18'),
-  uoaPerTargetChainlinkFeed: bn('2000e8'),
-  refPerTokenChainlinkFeed: bn('1.1e18'),
+  uoaPerTargetChainlinkFeed: bn('1800e8'),
+  refPerTokenChainlinkFeed: bn('1.12e18'),
 }
 
 type Fixture<T> = () => Promise<T>
@@ -113,25 +112,30 @@ type Fixture<T> = () => Promise<T>
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CollateralOpts = {}
-): Fixture<WSUPEROETHBCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultWSUPEROETHBCollateralOpts, ...opts }
+): Fixture<WOETHCollateralFixtureContext> => {
+  const collateralOpts = { ...defaultWOETHCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const uoaPerTargetChainlinkFeed = await MockV3AggregatorFactory.deploy(
-      8,
+    const uoaPerTargetChainlinkFeedMock = await MockV3AggregatorFactory.deploy(
+      18,
       defaultAnswers.uoaPerTargetChainlinkFeed
     )
 
-    collateralOpts.chainlinkFeed = uoaPerTargetChainlinkFeed.address
-    collateralOpts.uoaPerTargetChainlinkFeed = uoaPerTargetChainlinkFeed.address
+    const chainlinkFeedMock = await MockV3AggregatorFactory.deploy(
+      18,
+      defaultAnswers.targetPerRefChainlinkFeed
+    )
 
-    const wsuperOETHb = (await ethers.getContractAt(
+    collateralOpts.chainlinkFeed = chainlinkFeedMock.address
+    collateralOpts.uoaPerTargetChainlinkFeed = uoaPerTargetChainlinkFeedMock.address
+
+    const woeth = (await ethers.getContractAt(
       '@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626',
-      BASE_WSUPEROETHB
+      WOETH
     )) as IERC4626
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
@@ -139,11 +143,11 @@ const makeCollateralFixtureContext = (
     return {
       alice,
       collateral,
-      wsuperoethb: wsuperOETHb,
-      tok: wsuperOETHb,
+      woeth: woeth,
+      tok: woeth,
       rewardToken,
-      chainlinkFeed: uoaPerTargetChainlinkFeed,
-      uoaPerTargetChainlinkFeed,
+      chainlinkFeed: chainlinkFeedMock,
+      uoaPerTargetChainlinkFeed: uoaPerTargetChainlinkFeedMock,
     }
   }
 
@@ -154,17 +158,17 @@ const makeCollateralFixtureContext = (
   Define helper functions
 */
 
-const mintCollateralTo: MintCollateralFunc<WSUPEROETHBCollateralFixtureContext> = async (
-  ctx: WSUPEROETHBCollateralFixtureContext,
+const mintCollateralTo: MintCollateralFunc<WOETHCollateralFixtureContext> = async (
+  ctx: WOETHCollateralFixtureContext,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWSUPEROETHB(ctx.wsuperoethb, user, amount, recipient, BASE_WSUPEROETHB_WHALE)
+  await mintWOETH(ctx.woeth, user, amount, recipient, WOETH_WHALE)
 }
 
 const reduceTargetPerRef = async (
-  ctx: WSUPEROETHBCollateralFixtureContext,
+  ctx: WOETHCollateralFixtureContext,
   pctDecrease: BigNumberish
 ) => {
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
@@ -173,7 +177,7 @@ const reduceTargetPerRef = async (
 }
 
 const increaseTargetPerRef = async (
-  ctx: WSUPEROETHBCollateralFixtureContext,
+  ctx: WOETHCollateralFixtureContext,
   pctIncrease: BigNumberish
 ) => {
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
@@ -181,36 +185,32 @@ const increaseTargetPerRef = async (
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
 }
 
-const reduceRefPerTok = async (
-  ctx: WSUPEROETHBCollateralFixtureContext,
-  pctDecrease: BigNumberish
-) => {
+const reduceRefPerTok = async (ctx: WOETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const slot = 2
   const storedTotalSupply = BigNumber.from(await getStorageAt(ctx.tok.address, slot))
   const newStoredTotalAssets = storedTotalSupply.add(storedTotalSupply.mul(pctDecrease).div(100))
   await setStorageAt(ctx.tok.address, slot, newStoredTotalAssets)
 }
 
-const increaseRefPerTok = async (
-  ctx: WSUPEROETHBCollateralFixtureContext,
-  pctIncrease: BigNumberish
-) => {
+const increaseRefPerTok = async (ctx: WOETHCollateralFixtureContext, pctIncrease: BigNumberish) => {
   const slot = 2
   const storedTotalSupply = BigNumber.from(await getStorageAt(ctx.tok.address, slot))
   const newStoredTotalAssets = storedTotalSupply.sub(storedTotalSupply.mul(pctIncrease).div(100))
   await setStorageAt(ctx.tok.address, slot, newStoredTotalAssets)
 }
 
-const getExpectedPrice = async (ctx: WSUPEROETHBCollateralFixtureContext): Promise<BigNumber> => {
+const getExpectedPrice = async (ctx: WOETHCollateralFixtureContext): Promise<BigNumber> => {
   const uoaPerTargetChainlinkFeedAnswer = await ctx.uoaPerTargetChainlinkFeed.latestAnswer()
   const uoaPerTargetChainlinkFeedDecimals = await ctx.uoaPerTargetChainlinkFeed.decimals()
+  const targetPerRefChainlinkFeedAnswer = await ctx.chainlinkFeed.latestAnswer()
+  const targetPerRefChainlinkFeedDecimals = await ctx.chainlinkFeed.decimals()
 
   const refPerTok = await ctx.collateral.underlyingRefPerTok()
 
   const result = uoaPerTargetChainlinkFeedAnswer
-    .mul(bn(10).pow(18 - uoaPerTargetChainlinkFeedDecimals))
+    .mul(targetPerRefChainlinkFeedAnswer)
     .mul(refPerTok)
-    .div(fp('1'))
+    .div(bn(10).pow(uoaPerTargetChainlinkFeedDecimals + targetPerRefChainlinkFeedDecimals))
 
   return result
 }
@@ -241,18 +241,18 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
-  itChecksTargetPerRefDefaultUp: it.skip,
+  itChecksTargetPerRefDefault: it,
+  itChecksTargetPerRefDefaultUp: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itChecksNonZeroDefaultThreshold: it.skip,
+  itChecksNonZeroDefaultThreshold: it,
   itHasRevenueHiding: it,
-  resetFork: getResetFork(FORK_BLOCK_BASE),
-  collateralName: 'OETHCollateralL2Base',
-  chainlinkDefaultAnswer: defaultAnswers.uoaPerTargetChainlinkFeed,
+  resetFork: getResetFork(FORK_BLOCK),
+  collateralName: 'OETHCollateral',
+  chainlinkDefaultAnswer: defaultAnswers.targetPerRefChainlinkFeed,
   itIsPricedByPeg: true,
-  itHasOracleRefPerTok: true,
-  targetNetwork: 'base',
+  itHasOracleRefPerTok: false,
+  targetNetwork: 'mainnet',
   toleranceDivisor: bn('1e9'),
 }
 
