@@ -262,7 +262,7 @@ const collateralSpecificStatusTests = () => {
     expect(await mockRTokenAsset.stale()).to.be.true
   })
 
-  it.only('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
+  it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
     const [collateral, opts] = await deployCollateral({})
     const ethplusAssetRegistry = await ethers.getContractAt(
       'IAssetRegistry',
