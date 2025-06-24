@@ -245,7 +245,7 @@ const collateralSpecificStatusTests = () => {
     await collateral.refresh()
   })
 
-  it('Regression test -- refreshes inner RTokenAsset on refresh()', async () => {
+  it('Regression test -- does not refresh inner RTokenAsset on refresh()', async () => {
     const [collateral] = await deployCollateral({})
     const initialPrice = await collateral.price()
     expect(initialPrice[0]).to.be.gt(0)
@@ -276,8 +276,8 @@ const collateralSpecificStatusTests = () => {
     // Refresh CurveStableRTokenMetapoolCollateral
     await collateral.refresh()
 
-    // Stale should be false again
-    expect(await mockRTokenAsset.stale()).to.be.false
+    // Stale remains true
+    expect(await mockRTokenAsset.stale()).to.be.true
   })
 }
 
