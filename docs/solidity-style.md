@@ -242,8 +242,7 @@ When a function is an interaction made reentrancy-safe by the CEI pattern, follo
 
 #### ReentrancyGuard (Global Lock)
 
-Where using the CEI pattern is impractical, every function that is `external`, and can write to the relevant state elements, should use a global lock implemented via `GlobalReentrancyGuard` on `Main`. Every external function on individual components
-that can either modify contract state, or read it when it's inconsistent, should be marked with the `globalNonReentrant` modifier.
+Where using the CEI pattern is impractical, every function that is `external`, and can write to the relevant state elements, should use a global lock implemented via `GlobalReentrancyGuard` on `Main`. Every external function on individual components that can either modify contract state, or read it when it's inconsistent, should be marked with the `globalNonReentrant` modifier.
 
 #### Exceptions
 
