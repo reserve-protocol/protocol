@@ -66,7 +66,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // checks: erc20 in assetRegistry
     // action: set allowance on erc20 for rToken to UINT_MAX
     // Using two safeApprove calls instead of safeIncreaseAllowance to support USDT
-    function grantRTokenAllowance(IERC20 erc20) external notFrozen {
+    function grantRTokenAllowance(IERC20 erc20) external notFrozen globalNonReentrant {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
         IERC20(address(erc20)).safeApprove(address(rToken), 0);
@@ -107,7 +107,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function rebalance(TradeKind kind) external nonReentrant {
+    function rebalance(TradeKind kind) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
 
         // == Refresh ==
@@ -179,7 +179,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function forwardRevenue(IERC20[] calldata erc20s) external nonReentrant {
+    function forwardRevenue(IERC20[] calldata erc20s) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 

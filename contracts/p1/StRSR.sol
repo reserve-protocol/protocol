@@ -226,7 +226,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
-    function stake(uint256 rsrAmount) public {
+    function stake(uint256 rsrAmount) public globalNonReentrant {
         _notZero(rsrAmount);
 
         _payoutRewards();
@@ -258,7 +258,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     //   A draft for (totalDrafts' - totalDrafts) drafts
     //   is freshly appended to the caller's draft record.
-    function unstake(uint256 stakeAmount) external {
+    function unstake(uint256 stakeAmount) external globalNonReentrant {
         _requireNotTradingPausedOrFrozen();
         _notZero(stakeAmount);
 
@@ -303,7 +303,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transfer(account, rsrOut)
-    function withdraw(address account, uint256 endId) external {
+    function withdraw(address account, uint256 endId) external globalNonReentrant {
         _requireNotTradingPausedOrFrozen();
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
@@ -345,7 +345,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Cancel an ongoing unstaking; resume staking
     /// @custom:interaction CEI
-    function cancelUnstake(uint256 endId) external {
+    function cancelUnstake(uint256 endId) external globalNonReentrant {
         _requireNotFrozen();
         address account = _msgSender();
 
