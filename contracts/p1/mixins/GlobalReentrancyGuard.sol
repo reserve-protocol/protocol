@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+// solhint-disable-next-line max-line-length
 // Based on OpenZeppelin Upgradeable Contracts (last updated v5.1.0) (utils/ReentrancyGuardUpgradeable.sol)
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -34,6 +35,7 @@ abstract contract GlobalReentrancyGuard is Initializable {
         uint256 _status;
     }
 
+    // solhint-disable-next-line max-line-length
     // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ReentrancyGuard")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ReentrancyGuardStorageLocation =
         0x9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f00;
@@ -77,8 +79,8 @@ abstract contract GlobalReentrancyGuard is Initializable {
     }
 
     /**
-     * @dev Returns true if the reentrancy guard is currently set to "entered", which indicates there is a
-     * `nonReentrant` function in the call stack.
+     * @dev Returns true if the reentrancy guard is currently set to "entered", which indicates
+     *  there is a `nonReentrant` function in the call stack.
      */
     function _reentrancyGuardEntered() internal view returns (bool) {
         ReentrancyGuardStorage storage $ = _getReentrancyGuardStorage();
