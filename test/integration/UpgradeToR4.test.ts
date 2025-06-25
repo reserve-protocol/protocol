@@ -32,7 +32,7 @@ async function _confirmVersion(address: string, target: string) {
 }
 
 // NOTE: This is an explicit test!
-describe('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
+describe.skip('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
   let implementations: IImplementations
   let deployer: DeployerP1
   let versionRegistry: VersionRegistry

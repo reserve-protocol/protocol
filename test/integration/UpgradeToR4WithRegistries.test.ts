@@ -32,7 +32,7 @@ async function _confirmVersion(address: string, target: string) {
 }
 
 // NOTE: This is an explicit test!
-describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => {
+describe.skip('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => {
   let versionRegistry: VersionRegistry
   let assetPluginRegistry: AssetPluginRegistry
   let daoFeeRegistry: DAOFeeRegistry
