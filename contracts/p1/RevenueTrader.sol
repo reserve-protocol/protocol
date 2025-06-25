@@ -73,7 +73,11 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
     /// @custom:interaction
-    function returnTokens(IERC20[] memory erc20s) external notTradingPausedOrFrozen globalNonReentrant {
+    function returnTokens(IERC20[] memory erc20s)
+        external
+        notTradingPausedOrFrozen
+        globalNonReentrant
+    {
         RevenueTotals memory revTotals = distributor.totals();
         if (tokenToBuy == rsr) {
             require(revTotals.rsrTotal == 0, "rsrTotal > 0");

@@ -20,7 +20,15 @@ import "../interfaces/IBroker.sol";
  * @notice The center of the system around which Components orbit.
  */
 // solhint-disable max-states-count
-contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgradeable, IMain, GlobalReentrancyGuard {
+contract MainP1 is
+    Versioned,
+    Initializable,
+    Auth,
+    ComponentRegistry,
+    UUPSUpgradeable,
+    IMain,
+    GlobalReentrancyGuard
+{
     IERC20 public rsr;
     VersionRegistry public versionRegistry;
     AssetPluginRegistry public assetPluginRegistry;

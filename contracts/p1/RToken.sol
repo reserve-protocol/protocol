@@ -102,7 +102,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction RCEI
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
-    function issueTo(address recipient, uint256 amount) public notIssuancePausedOrFrozen globalNonReentrant {
+    function issueTo(address recipient, uint256 amount)
+        public
+        notIssuancePausedOrFrozen
+        globalNonReentrant
+    {
         require(amount != 0, "Cannot issue zero");
 
         // == Refresh ==
