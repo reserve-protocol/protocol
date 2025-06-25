@@ -59,4 +59,12 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
     function daoFeeRegistry() external pure returns (DAOFeeRegistry) {
         return DAOFeeRegistry(address(0));
     }
+
+    // === Control flow ===
+
+    // solhint-disable-next-line no-empty-blocks
+    function beginTx() external virtual {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function endTx() external virtual {}
 }

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IMain.sol";
+import "./mixins/GlobalReentrancyGuard.sol";
 import "../mixins/ComponentRegistry.sol";
 import "../mixins/Auth.sol";
 import "../mixins/Versioned.sol";
@@ -19,7 +20,7 @@ import "../interfaces/IBroker.sol";
  * @notice The center of the system around which Components orbit.
  */
 // solhint-disable max-states-count
-contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgradeable, IMain {
+contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgradeable, IMain, GlobalReentrancyGuard {
     IERC20 public rsr;
     VersionRegistry public versionRegistry;
     AssetPluginRegistry public assetPluginRegistry;
@@ -39,6 +40,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         require(address(rsr_) != address(0), "invalid RSR address");
         __Auth_init(shortFreeze_, longFreeze_);
         __ComponentRegistry_init(components);
+        __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
         rsr = rsr_;
@@ -147,6 +149,16 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         IExtendedBroker(address(broker)).setDutchTradeImplementation(
             implementation.trading.dutchTrade
         );
+    }
+
+    // === Control Flow ===
+
+    function beginTx() external virtual {
+        _nonReentrantBefore();
+    }
+
+    function endTx() external virtual {
+        _nonReentrantAfter();
     }
 
     // === Upgradeability ===

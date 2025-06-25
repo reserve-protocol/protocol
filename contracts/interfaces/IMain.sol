@@ -183,6 +183,12 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
     function versionRegistry() external view returns (VersionRegistry);
 
     function daoFeeRegistry() external view returns (DAOFeeRegistry);
+
+    // === Control flow ===
+
+    function beginTx() external;
+
+    function endTx() external;
 }
 
 interface TestIMain is IMain {
