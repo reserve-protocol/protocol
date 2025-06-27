@@ -3863,7 +3863,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ]
     })
 
-    it('Should prevent reentrancy (multiple entry points)', async () => {
+    it('Should prevent reentrancy - Basic Ops)', async () => {
       const redeemAmount: BigNumber = fp('10000')
 
       // Enable reentrancy calls
@@ -3934,6 +3934,45 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // Manage Tokens
         await expect(
           rTokenTrader.manageTokens([reentrantToken.address], [TradeKind.DUTCH_AUCTION])
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+      }
+    })
+
+    it('Should prevent reentrancy - Rebalance', async () => {
+      // Enable reentrancy calls
+      await reentrantToken.setReenter(true)
+
+      // Switch basket, remove reentrant token
+      await basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.refreshBasket()
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      // Attempt reentrant calls
+      for (const { target, calldata } of reentryCalls) {
+        await reentrantToken.setReentryCall(target, calldata)
+
+        // Rebalance
+        await expect(
+          backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+      }
+    })
+
+    it('Should prevent reentrancy - Trades ', async () => {
+      // Start revenue auction
+      await rTokenTrader.manageTokens([reentrantToken.address], [TradeKind.DUTCH_AUCTION])
+      await advanceTime(config.dutchAuctionLength.add(100).toString())
+
+      // Enable reentrancy calls
+      await reentrantToken.setReenter(true)
+
+      // Attempt reentrant calls
+      for (const { target, calldata } of reentryCalls) {
+        await reentrantToken.setReentryCall(target, calldata)
+
+        // Settle trade
+        await expect(
+          rTokenTrader.settleTrade(reentrantToken.address)
         ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
       }
     })
