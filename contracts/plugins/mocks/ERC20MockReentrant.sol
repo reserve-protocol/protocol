@@ -47,4 +47,9 @@ contract ERC20MockReentrant is ERC20Mock {
             Address.functionCall(_reentryTarget, _reentryCall); // bubble revert
         }
     }
+
+    // Mock function only used for testing claimRewards
+    function claimRewards() public {
+        reentrancy();
+    }
 }

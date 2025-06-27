@@ -46,6 +46,7 @@ import {
   ERC20MockReentrant,
   FacadeTest,
   FiatCollateral,
+  FiatCollateralMockReentrant,
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
@@ -67,7 +68,6 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
-  GlobalReentrancyGuard,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -3701,12 +3701,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const ERC20ReentrantFactory: ContractFactory = await ethers.getContractFactory(
         'ERC20MockReentrant'
       )
-      const CollFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+      const CollReentrantFactory: ContractFactory = await ethers.getContractFactory(
+        'FiatCollateralMockReentrant'
+      )
 
       reentrantToken = <ERC20MockReentrant>(
         await ERC20ReentrantFactory.deploy('Reentrant Token', 'ReentrantTKN')
       )
-      reentrantColl = <FiatCollateral>await CollFactory.deploy({
+      reentrantColl = <FiatCollateralMockReentrant>await CollReentrantFactory.deploy({
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: daiChainlink.address,
         oracleError: ORACLE_ERROR,
@@ -3935,6 +3937,26 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           rTokenTrader.manageTokens([reentrantToken.address], [TradeKind.DUTCH_AUCTION])
         ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Claim Rewards Single
+        await expect(
+          rTokenTrader.claimRewardsSingle(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        await expect(
+          backingManager.claimRewardsSingle(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Claim Rewards
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWithCustomError(
+          main,
+          'ReentrancyGuardReentrantCall'
+        )
+
+        await expect(backingManager.claimRewards()).to.be.revertedWithCustomError(
+          main,
+          'ReentrancyGuardReentrantCall'
+        )
       }
     })
 
