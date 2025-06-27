@@ -26,8 +26,8 @@ contract MainP1 is
     Auth,
     ComponentRegistry,
     UUPSUpgradeable,
-    IMain,
-    GlobalReentrancyGuard
+    GlobalReentrancyGuard,
+    IMain
 {
     IERC20 public rsr;
     VersionRegistry public versionRegistry;
