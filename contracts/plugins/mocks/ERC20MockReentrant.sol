@@ -28,28 +28,28 @@ contract ERC20MockReentrant is ERC20Mock {
         address to,
         uint256 amount
     ) public override returns (bool) {
-        reentrancy();
+        _reentrancy();
         return super.transferFrom(from, to, amount);
     }
 
     function transfer(address to, uint256 amount) public override returns (bool) {
-        reentrancy();
+        _reentrancy();
         return super.transfer(to, amount);
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
-        reentrancy();
+        _reentrancy();
         return super.approve(spender, amount);
-    }
-
-    function reentrancy() private {
-        if (_reenter && _reentryCall.length > 0 && _reentryTarget != address(0)) {
-            Address.functionCall(_reentryTarget, _reentryCall); // bubble revert
-        }
     }
 
     // Mock function only used for testing claimRewards
     function claimRewards() public {
-        reentrancy();
+        _reentrancy();
+    }
+
+    function _reentrancy() private {
+        if (_reenter && _reentryCall.length > 0 && _reentryTarget != address(0)) {
+            Address.functionCall(_reentryTarget, _reentryCall); // bubble revert
+        }
     }
 }
