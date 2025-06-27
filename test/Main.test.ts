@@ -3863,7 +3863,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ]
     })
 
-    it('Should prevent reentrancy - Basic Ops)', async () => {
+    it('Should prevent reentrancy - Basic Ops', async () => {
       const redeemAmount: BigNumber = fp('10000')
 
       // Enable reentrancy calls
@@ -3958,7 +3958,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       }
     })
 
-    it('Should prevent reentrancy - Trades ', async () => {
+    it('Should prevent reentrancy - Settle Trade', async () => {
       // Start revenue auction
       await rTokenTrader.manageTokens([reentrantToken.address], [TradeKind.DUTCH_AUCTION])
       await advanceTime(config.dutchAuctionLength.add(100).toString())
