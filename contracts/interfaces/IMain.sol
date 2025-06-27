@@ -192,6 +192,8 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
 }
 
 interface TestIMain is IMain {
+    error ReentrancyGuardReentrantCall();
+
     function setVersionRegistry(VersionRegistry) external;
 
     function setAssetPluginRegistry(AssetPluginRegistry) external;
