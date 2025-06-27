@@ -105,8 +105,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction not RCEI; nonReentrant
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function rebalance(TradeKind kind) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
 
@@ -177,8 +175,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Forward revenue to RevenueTraders; reverts if not fully collateralized
     /// @param erc20s The tokens to forward
     /// @custom:interaction not RCEI; nonReentrant
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function forwardRevenue(IERC20[] calldata erc20s) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");

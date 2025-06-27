@@ -108,8 +108,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     // For each ERC20:
     //   if erc20 is tokenToBuy: distribute it
     //   else: sell erc20 for tokenToBuy
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function manageTokens(IERC20[] calldata erc20s, TradeKind[] calldata kinds)
         external
         globalNonReentrant
