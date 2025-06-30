@@ -115,6 +115,9 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  // Morpho
+  mwUSDC?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -256,6 +259,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      mwUSDC: '0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -513,6 +517,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
       wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',
       STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df',
+      mwUSDC: '0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
