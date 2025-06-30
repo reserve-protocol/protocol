@@ -116,7 +116,7 @@ export interface ITokens {
   USDM?: string
   wUSDM?: string
 
-  // Moonwell Morpho
+  // Morpho
   mwUSDC?: string
 }
 
