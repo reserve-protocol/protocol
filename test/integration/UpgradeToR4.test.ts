@@ -24,7 +24,8 @@ const rTokensToTest: RTokenParams[] = [
   },
 ]
 
-const v4VersionHash = '0x81ed76178093786cbe0cb79744f6e7ca3336fbb9fe7d1ddff1f0157b63e09813'
+// 4.1.0
+const v4VersionHash = '0x2b64e9eb005edea481c3384a1a7394d55c9ec0c75304d5daa56aad0d184c7fc3'
 
 async function _confirmVersion(address: string, target: string) {
   const versionedTarget = await ethers.getContractAt('Versioned', address)
@@ -32,7 +33,7 @@ async function _confirmVersion(address: string, target: string) {
 }
 
 // NOTE: This is an explicit test!
-describe.skip('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
+describe('Upgrade from 3.4.0 to 4.1.0 (Mainnet Fork)', () => {
   let implementations: IImplementations
   let deployer: DeployerP1
   let versionRegistry: VersionRegistry
@@ -129,7 +130,7 @@ describe.skip('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
         )
 
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.0.0's Main
+          // Upgrade Main to 4.1.0's Main
           await RTokenMain.connect(signer).upgradeTo(implementations.main)
 
           // Set registries
@@ -168,7 +169,7 @@ describe.skip('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
         ]
 
         for (let j = 0; j < targetsToVerify.length; j++) {
-          await _confirmVersion(targetsToVerify[j], '4.0.0')
+          await _confirmVersion(targetsToVerify[j], '4.1.0')
         }
 
         const broker = await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
@@ -179,7 +180,7 @@ describe.skip('Upgrade from 3.4.0 to 4.0.0 (Mainnet Fork)', () => {
 
         // So, let's upgrade the RToken _again_ to verify the process flow works.
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.0.0's Main
+          // Upgrade Main to 4.1.0's Main
           await RTokenMain.connect(signer).upgradeMainTo(v4VersionHash)
 
           // Upgrade RToken
