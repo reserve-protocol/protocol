@@ -179,6 +179,7 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - stRSR.withdraw()
 - rToken.issue()
 - rToken.redeem()
+- rToken.redeemTo()
 - rToken.redeemCustom()
 - rToken.monetizeDonations()
 - {rsrTrader,rTokenTrader,backingManager}.claimRewards() / .claimRewardsSingle()
@@ -242,7 +243,7 @@ When a function is an interaction made reentrancy-safe by the CEI pattern, follo
 
 #### ReentrancyGuard (Global Lock)
 
-Where using the CEI pattern is impractical, every function that is `external`, and can write to the relevant state elements, should use a global lock implemented via `GlobalReentrancyGuard` on `Main`. Every external function on individual components that can either modify contract state, or read it when it's inconsistent, should be marked with the `globalNonReentrant` modifier.
+Where using the CEI pattern is impractical, every function that is `external`, and can write to the relevant state elements, should use a global lock implemented via `GlobalReentrancyGuard` on `Main`. Every `@custom:interaction` should be market with the `globalNonReentrant` modifier.
 
 #### Exceptions
 
