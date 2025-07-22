@@ -41,7 +41,7 @@ async function main() {
         priceTimeout: PRICE_TIMEOUT.toString(),
         chainlinkFeed: ETH_USD_FEED,
         oracleError: ETH_ORACLE_ERROR.toString(),
-        erc20: networkConfig[chainId].tokens.Re7WETH,
+        erc20: networkConfig[chainId].tokens.AlphaWETH,
         maxTradeVolume: fp('1e6').toString(),
         oracleTimeout: ETH_ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
