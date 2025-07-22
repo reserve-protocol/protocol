@@ -19,7 +19,7 @@ import {
   PRICE_TIMEOUT,
   RE7WETH,
   ALPHAWETH,
-  ETH_USD_FEED
+  ETH_USD_FEED,
 } from './constants'
 import { mintCollateralTo } from './mintCollateralTo'
 
