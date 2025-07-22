@@ -111,6 +111,7 @@ export interface ITokens {
   steakPYUSD?: string
   Re7WETH?: string
   meUSD?: string
+  AlphaWETH?: string
 
   pxETH?: string
   apxETH?: string
@@ -285,6 +286,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
+      AlphaWETH: '0x47fe8Ab9eE47DD65c24df52324181790b9F47EfC',
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
