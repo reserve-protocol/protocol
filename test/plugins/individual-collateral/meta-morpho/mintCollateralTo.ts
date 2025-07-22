@@ -8,8 +8,9 @@ import { whileImpersonating } from '#/utils/impersonation'
 export const whales: { [key: string]: string } = {
   [networkConfig['31337'].tokens.steakUSDC!]: '0xC977d218Fde6A39c7aCE71C8243545c276B48931',
   [networkConfig['31337'].tokens.steakPYUSD!]: '0x7E4B4DC22111B84594d9b7707A8DCFFd793D477A',
-  [networkConfig['31337'].tokens.bbUSDT!]: '0xc8E3C36a72B9AA4Af0a057eb4A11e1AFC16465bB',
-  [networkConfig['31337'].tokens.Re7WETH!]: '0xd553294B42bdFEb49D8f5A64E8B2D3A65fc673A9',
+  [networkConfig['31337'].tokens.bbUSDT!]: '0x99A1a22Cf24C86A8f1cB8583c3de4d9fC4b705C9',
+  [networkConfig['31337'].tokens.Re7WETH!]: '0x310D5C8EE1512D5092ee4377061aE82E48973689',
+  [networkConfig['31337'].tokens.AlphaWETH!]: '0x5E46884a77E0aC5F3126e30720Bd5218814dc5E2',
   [networkConfig['8453'].tokens.meUSD!]: '0xF02ea73c7A3057649f09899aaE1606712758bE8b',
 }
 

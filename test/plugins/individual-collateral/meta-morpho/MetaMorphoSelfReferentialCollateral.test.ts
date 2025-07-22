@@ -18,8 +18,8 @@ import {
   ETH_ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   RE7WETH,
+  ALPHAWETH,
   ETH_USD_FEED,
-  forkNetwork,
 } from './constants'
 import { mintCollateralTo } from './mintCollateralTo'
 
@@ -213,4 +213,9 @@ const makeOpts = (
 makeFiatCollateralTestSuite(
   'MetaMorphoSelfReferentialCollateral - Re7WETH',
   makeOpts(RE7WETH, ETH_USD_FEED, ETH_ORACLE_TIMEOUT, ETH_ORACLE_ERROR, 'mainnet')
+)
+
+makeFiatCollateralTestSuite(
+  'MetaMorphoSelfReferentialCollateral - Alpha WETH Core',
+  makeOpts(ALPHAWETH, ETH_USD_FEED, ETH_ORACLE_TIMEOUT, ETH_ORACLE_ERROR, 'mainnet')
 )

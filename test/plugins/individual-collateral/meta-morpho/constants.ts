@@ -27,6 +27,7 @@ export const STEAKPYUSD = networkConfig[chainId].tokens.steakPYUSD!
 export const BBUSDT = networkConfig[chainId].tokens.bbUSDT!
 export const RE7WETH = networkConfig[chainId].tokens.Re7WETH!
 export const MEUSD = networkConfig[chainId].tokens.meUSD!
+export const ALPHAWETH = networkConfig[chainId].tokens.AlphaWETH!
 
 // USDC
 export const USDC_USD_FEED = networkConfig[chainId].chainlinkFeeds.USDC!
@@ -58,7 +59,7 @@ export const PRICE_TIMEOUT = bn(604800) // 1 week
 export const DELAY_UNTIL_DEFAULT = bn(86400)
 
 const FORK_BLOCKS: { [key: string]: number } = {
-  '1': 19463181,
+  '1': 22974224,
   '8453': 20454200,
   '42161': 193157126, // not used
 }
