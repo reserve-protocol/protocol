@@ -3,18 +3,20 @@ pragma solidity 0.8.19;
 
 import "./CurveStableCollateral.sol";
 
+// No usage currently, solely for inheriting from
+
 /**
  * @title CurveAppreciatingRTokenFiatCollateral
  *  This plugin contract is intended for use with a CurveLP token for a pool between a
- *  USD reference token and an RToken that is appreciating relative to it.
- *  Works for both CurveGaugeWrapper and ConvexStakingWrapper.
+ *  USD reference token and an RToken that is appreciating relative to it,
+ *  as captured by an internal exchange rate oracle. Works for both CurveGaugeWrapper and ConvexStakingWrapper.
  *
  * Warning: Defaults after haircut! After the RToken accepts a devaluation this collateral
  *          plugin will default and the collateral will be removed from the basket.
  *
- * LP Token should be worth 2x the reference token at deployment
+ * LP Token should be worth 1x the reference token at deployment, not 2x like many CryptoSwaps.
  *
- * tok = ConvexStakingWrapper(volatileCryptoPool)
+ * tok = ConvexStakingWrapper(stableSwapNGPool)
  * ref = USDC
  * tar = USD
  * UoA = USD
@@ -30,26 +32,38 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
     IAssetRegistry internal immutable pairedAssetRegistry; // AssetRegistry of paired RToken
     IBasketHandler internal immutable pairedBasketHandler; // BasketHandler of paired RToken
 
+    uint256 public immutable pairedRTokenRefreshInterval; // {s}
+
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
+    /// @param pairedRTokenRefreshInterval_ {s} Refresh interval of the inner RToken
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        PTConfiguration memory ptConfig
+        PTConfiguration memory ptConfig,
+        uint256 pairedRTokenRefreshInterval_
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token0));
         IMain main = rToken.main();
         pairedAssetRegistry = main.assetRegistry();
         pairedBasketHandler = main.basketHandler();
+
+        pairedRTokenRefreshInterval = pairedRTokenRefreshInterval_;
     }
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        // solhint-disable-next-line no-empty-blocks
-        try pairedAssetRegistry.refresh() {} catch {
-            // must allow failure since cannot brick refresh()
+        // refresh paired (inner) RToken lazily
+        if (
+            pairedRTokenRefreshInterval == 0 ||
+            pairedAssetRegistry.lastRefresh() + pairedRTokenRefreshInterval <= block.timestamp
+        ) {
+            // solhint-disable-next-line no-empty-blocks
+            try pairedAssetRegistry.refresh() {} catch {
+                // must allow failure since cannot brick refresh()
+            }
         }
 
         CollateralStatus oldStatus = status();
@@ -128,20 +142,15 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
 
     /// @dev Not up-only! The RToken can devalue its exchange rate peg
     /// @dev Assumption: The RToken BU is intended to equal the reference token in value
+    /// @dev Assumption: The pool's virtual price already embeds the RToken's appreciation/depreciation within it
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         // {ref/tok} = quantity of the reference unit token in the pool per LP token
 
         // {lpToken@t=0/lpToken}
-        uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
-        // this is missing the fact that the RToken has also appreciated in this time
-
-        // {BU/rTok}
-        uint192 rTokenRate = divuu(rToken.basketsNeeded(), rToken.totalSupply());
-        // not worth the gas to protect against div-by-zero
-
-        // {ref/tok} = {ref/lpToken} = {lpToken@t=0/lpToken} * {1} * 2{ref/lpToken@t=0}
-        return virtualPrice.mul(rTokenRate.sqrt()).mulu(2); // LP token worth twice as much
+        return _safeWrap(curvePool.get_virtual_price());
+        // the RToken's BU exchange rate is already embedded in the virtual price
+        //   for StableSwapNG pools with internal oracles
     }
 
     /// @dev Warning: Can revert

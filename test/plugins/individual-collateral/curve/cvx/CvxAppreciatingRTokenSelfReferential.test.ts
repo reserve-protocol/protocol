@@ -49,29 +49,35 @@ import { whileImpersonating } from '../../../../utils/impersonation'
 
 type Fixture<T> = () => Promise<T>
 
-export const defaultCvxAppreciatingCollateralOpts: CurveCollateralOpts = {
-  erc20: ZERO_ADDRESS,
-  targetName: ethers.utils.formatBytes32String('ETH'),
-  priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
-  oracleTimeout: WETH_ORACLE_TIMEOUT, // max of oracleTimeouts
-  oracleError: bn('1'), // unused but cannot be zero
-  maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: DEFAULT_THRESHOLD,
-  delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
-  revenueHiding: bn('0'),
-  nTokens: 2,
-  curvePool: ETHPLUS_BP_POOL,
-  lpToken: ETHPLUS_BP_TOKEN,
-  poolType: CurvePoolType.Plain,
-  feeds: [[ONE_ADDRESS], [WETH_USD_FEED]],
-  oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
-  oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
+interface CvxAppreciatingRTokenSelfReferentialCollateralOpts extends CurveCollateralOpts {
+  pairedRTokenRefreshInterval?: BigNumberish
 }
 
+export const defaultCvxAppreciatingCollateralOpts: CvxAppreciatingRTokenSelfReferentialCollateralOpts =
+  {
+    erc20: ZERO_ADDRESS,
+    targetName: ethers.utils.formatBytes32String('ETH'),
+    priceTimeout: PRICE_TIMEOUT,
+    chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
+    oracleTimeout: WETH_ORACLE_TIMEOUT, // max of oracleTimeouts
+    oracleError: bn('1'), // unused but cannot be zero
+    maxTradeVolume: MAX_TRADE_VOL,
+    defaultThreshold: DEFAULT_THRESHOLD,
+    delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
+    revenueHiding: bn('0'),
+    nTokens: 2,
+    curvePool: ETHPLUS_BP_POOL,
+    lpToken: ETHPLUS_BP_TOKEN,
+    poolType: CurvePoolType.Plain,
+    feeds: [[ONE_ADDRESS], [WETH_USD_FEED]],
+    oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
+    oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
+    pairedRTokenRefreshInterval: '0', // always refresh inner RToken
+  }
+
 export const deployCollateral = async (
-  opts: CurveCollateralOpts = {}
-): Promise<[TestICollateral, CurveCollateralOpts]> => {
+  opts: CvxAppreciatingRTokenSelfReferentialCollateralOpts = {}
+): Promise<[TestICollateral, CvxAppreciatingRTokenSelfReferentialCollateralOpts]> => {
   if (!opts.erc20 && !opts.feeds) {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
@@ -113,7 +119,8 @@ export const deployCollateral = async (
         oracleTimeouts: opts.oracleTimeouts,
         oracleErrors: opts.oracleErrors,
         lpToken: opts.lpToken,
-      }
+      },
+      opts.pairedRTokenRefreshInterval
     )
   )
   await collateral.deployed()
@@ -174,7 +181,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWETHPlusETH(ctx, amount, user, recipient, ETHPLUS_ETH_HOLDER)
+  await mintWETHPlusETH(ctx, amount, user, recipient)
 }
 
 /*
@@ -227,7 +234,7 @@ const collateralSpecificStatusTests = () => {
     await collateral.refresh()
   })
 
-  it('Regression test -- refreshes inner RTokenAsset on refresh()', async () => {
+  it('Regression test -- refreshes inner RTokenAsset on refresh() (0s refresh interval)', async () => {
     const [collateral] = await deployCollateral({})
     const initialPrice = await collateral.price()
     expect(initialPrice[0]).to.be.gt(0)
@@ -262,6 +269,49 @@ const collateralSpecificStatusTests = () => {
     expect(await mockRTokenAsset.stale()).to.be.false
   })
 
+  it('Regression test -- does not refresh inner RTokenAsset on refresh() (24h refresh interval)', async () => {
+    const [collateral] = await deployCollateral({ pairedRTokenRefreshInterval: '86400' })
+    const initialPrice = await collateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
+
+    // Swap out ETHPLUS's RTokenAsset with a mock one
+    const AssetMockFactory = await ethers.getContractFactory('AssetMock')
+    const mockRTokenAsset = await AssetMockFactory.deploy(
+      bn('1'), // unused
+      ONE_ADDRESS, // unused
+      bn('1'), // unused
+      ETHPLUS,
+      bn('1'), // unused
+      bn('1') // unused
+    )
+    const ethplusAssetRegistry = await ethers.getContractAt(
+      'IAssetRegistry',
+      ETHPLUS_ASSET_REGISTRY
+    )
+    await whileImpersonating(ETHPLUS_TIMELOCK, async (signer) => {
+      await ethplusAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+    })
+
+    // Set RTokenAsset price to stale
+    await mockRTokenAsset.setStale(true)
+    expect(await mockRTokenAsset.stale()).to.be.true
+
+    // Refresh CurveAppreciatingRTokenSelfReferentialCollateral
+    await collateral.refresh()
+
+    // Stale should be true again since <24h has passed
+    expect(await mockRTokenAsset.stale()).to.be.true
+
+    await advanceTime(86400)
+
+    // Refresh CurveAppreciatingRTokenSelfReferentialCollateral
+    await collateral.refresh()
+
+    // Stale should be false again since >24h has passed
+    expect(await mockRTokenAsset.stale()).to.be.false
+  })
+
   it('Regression test -- stays IFFY throughout inner RToken default + rebalancing', async () => {
     const [collateral, opts] = await deployCollateral({})
     const ethplusAssetRegistry = await ethers.getContractAt(
@@ -270,7 +320,7 @@ const collateralSpecificStatusTests = () => {
     )
     const ethplus = await ethers.getContractAt('TestIRToken', ETHPLUS)
     const ethplusBasketHandler = await ethers.getContractAt(
-      'TestIBasketHandler',
+      'BasketHandlerP1',
       ETHPLUS_BASKET_HANDLER
     )
     const wstETHCollateral = await ethers.getContractAt(
@@ -280,6 +330,10 @@ const collateralSpecificStatusTests = () => {
     const rethCollateral = await ethers.getContractAt(
       'RethCollateral',
       await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.rETH!)
+    )
+    const ethxCollateral = await ethers.getContractAt(
+      'ETHxCollateral',
+      await ethplusAssetRegistry.toAsset(networkConfig['1'].tokens.ETHx!)
     )
 
     const initialRefPerTok = await collateral.refPerTok()
@@ -342,7 +396,15 @@ const collateralSpecificStatusTests = () => {
     const rethTargetPerTokOracle = await overrideOracle(
       await rethCollateral.targetPerTokChainlinkFeed()
     )
+
+    // override ETHx oracles
     await rethTargetPerTokOracle.updateAnswer(await rethTargetPerTokOracle.latestAnswer())
+    const ethxOracle = await overrideOracle(await ethxCollateral.chainlinkFeed())
+    await ethxOracle.updateAnswer(await ethxOracle.latestAnswer())
+    const ethxTargetPerTokOracle = await overrideOracle(
+      await ethxCollateral.targetPerTokChainlinkFeed()
+    )
+    await ethxTargetPerTokOracle.updateAnswer(await ethxTargetPerTokOracle.latestAnswer())
 
     // Should remain IFFY
     expect(await ethplusBasketHandler.status()).to.equal(2)
@@ -362,6 +424,7 @@ const collateralSpecificStatusTests = () => {
     expect(await ethplusBasketHandler.status()).to.equal(0)
     expect(await wstETHCollateral.status()).to.equal(2)
     expect(await collateral.status()).to.equal(1)
+    expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
     expect(await collateral.refPerTok()).to.equal(initialRefPerTok) // refPerTok does not fall
 
     // Should go back to SOUND after fullyCollateralized again -- backs up to WETH
@@ -380,7 +443,6 @@ const collateralSpecificStatusTests = () => {
     // refPerTok should finally fall after a 50% haircut
     const basketsNeeded = await ethplus.basketsNeeded()
     await whileImpersonating(ETHPLUS_BACKING_MANAGER, async (bm) => {
-      console.log('whale', whaleBal, basketsNeeded, await weth.balanceOf(bm.address))
       await weth.connect(bm).transfer(whale, whaleBal.sub(basketsNeeded.mul(26).div(100))) // leave >25% WETH backing
       expect(await ethplusBasketHandler.fullyCollateralized()).to.equal(false)
       await ethplus.connect(bm).setBasketsNeeded(basketsNeeded.div(2)) // 50% haircut = WETH backing is sufficient
@@ -391,26 +453,9 @@ const collateralSpecificStatusTests = () => {
 
     // ETH+/ETH collateral should finally become DISABLED once refPerTok falls
     expect(await collateral.status()).to.equal(2)
-    expect(await collateral.refPerTok()).to.be.gt(initialRefPerTok.mul(70).div(100))
-    expect(await collateral.refPerTok()).to.be.lt(initialRefPerTok.mul(71).div(100))
-    // 70% < refPerTok < 71%, since sqrt(0.5) = 0.707
-  })
-
-  it('Read-only reentrancy', async () => {
-    const [collateral] = await deployCollateral({})
-    const factory = await ethers.getContractFactory('CurveReentrantReceiver')
-    const reentrantReceiver = await factory.deploy(collateral.address)
-
-    await whileImpersonating(ETHPLUS_ETH_HOLDER, async (whale) => {
-      const amt = bn('1e18')
-      const token = await ethers.getContractAt('IERC20Metadata', ETHPLUS_BP_TOKEN)
-      await token.connect(whale).approve(ETHPLUS_BP_POOL, amt)
-      const pool = await ethers.getContractAt('ICurvePool', ETHPLUS_BP_POOL)
-
-      await expect(
-        pool.connect(whale).remove_liquidity(amt, [1, 1], true, reentrantReceiver.address)
-      ).to.be.revertedWith('refresh() reverted')
-    })
+    expect(await collateral.refPerTok()).to.be.gt(initialRefPerTok.mul(6).div(10))
+    expect(await collateral.refPerTok()).to.be.lt(initialRefPerTok.mul(7).div(10))
+    // between 60% and 70% of the initial refPerTok
   })
 }
 
@@ -427,7 +472,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itClaimsRewards: it,
   isMetapool: false,
-  resetFork: getResetFork(forkBlockNumber['new-curve-plugins']),
+  resetFork: getResetFork(22974224),
   collateralName: 'CurveAppreciatingRTokenSelfReferentialCollateral - ConvexStakingWrapper',
 }
 

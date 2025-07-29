@@ -91,7 +91,8 @@ async function main() {
         oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
         oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
         lpToken: ETHPLUS_BP_TOKEN,
-      }
+      },
+      '86400' // refresh ETH+ every 24h
     )
   )
   await collateral.deployed()
