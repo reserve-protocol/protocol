@@ -9,7 +9,8 @@ import "./CurveStableCollateral.sol";
  * @title CurveAppreciatingRTokenFiatCollateral
  *  This plugin contract is intended for use with a CurveLP token for a pool between a
  *  USD reference token and an RToken that is appreciating relative to it,
- *  as captured by an internal exchange rate oracle. Works for both CurveGaugeWrapper and ConvexStakingWrapper.
+ *  as captured by an internal exchange rate oracle.
+ * Works for both CurveGaugeWrapper and ConvexStakingWrapper.
  *
  * Warning: Defaults after haircut! After the RToken accepts a devaluation this collateral
  *          plugin will default and the collateral will be removed from the basket.
@@ -142,7 +143,7 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
 
     /// @dev Not up-only! The RToken can devalue its exchange rate peg
     /// @dev Assumption: The RToken BU is intended to equal the reference token in value
-    /// @dev Assumption: The pool's virtual price already embeds the RToken's appreciation/depreciation within it
+    /// @dev Assumption: The pool's virtual price already embeds the RToken's appreciation
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         // {ref/tok} = quantity of the reference unit token in the pool per LP token
