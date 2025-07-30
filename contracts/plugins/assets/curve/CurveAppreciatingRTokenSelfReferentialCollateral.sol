@@ -18,8 +18,6 @@ import "./CurveAppreciatingRTokenFiatCollateral.sol";
  * ref = WETH
  * tar = ETH
  * UoA = USD
- *
- * @notice This plugin assumes pure WETH, and does therefore NOT guard against reentrancy.
  */
 contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;

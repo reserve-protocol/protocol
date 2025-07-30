@@ -7,9 +7,8 @@ import "./CurveStableCollateral.sol";
 
 /**
  * @title CurveAppreciatingRTokenFiatCollateral
- *  This plugin contract is intended for use with a CurveLP token for a pool between a
- *  USD reference token and an RToken that is appreciating relative to it,
- *  as captured by an internal exchange rate oracle.
+ *  This plugin contract is intended for use with a v7.0.0 CurveStableSwapNG pool/token
+ *  with an internal exchange rate accounting method for appreciation of one side of the pool.
  * Works for both CurveGaugeWrapper and ConvexStakingWrapper.
  *
  * Warning: Defaults after haircut! After the RToken accepts a devaluation this collateral
@@ -23,7 +22,8 @@ import "./CurveStableCollateral.sol";
  * UoA = USD
  *
  * @notice Curve pools with native ETH or ERC777 should be avoided,
- *  see docs/collateral.md for information
+ *     see docs/collateral.md for information.
+ *   However there are reentrancy checks based on the `totalSupply()` function of the pool.
  */
 contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -56,6 +56,10 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
+        // gas-cheap re-entrancy check, since CurveStableSwapNG v7.0.0
+        // example: https://etherscan.io/token/0x2c683fad51da2cd17793219cc86439c1875c353e
+        IERC20(address(curvePool)).totalSupply();
+
         // refresh paired (inner) RToken lazily
         if (
             pairedRTokenRefreshInterval == 0 ||

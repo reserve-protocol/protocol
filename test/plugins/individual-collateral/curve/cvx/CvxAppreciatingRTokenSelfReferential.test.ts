@@ -1,5 +1,4 @@
 import collateralTests from '../collateralTests'
-import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import {
   CurveCollateralFixtureContext,
   CurveCollateralOpts,
@@ -29,7 +28,6 @@ import {
   PRICE_TIMEOUT,
   ETHPLUS_BP_POOL,
   ETHPLUS_BP_TOKEN,
-  ETHPLUS_ETH_HOLDER,
   CVX,
   WETH_USD_FEED,
   WETH_ORACLE_TIMEOUT,
