@@ -35,19 +35,18 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
 
     uint256 public immutable pairedRTokenRefreshInterval; // {s}
 
-    // appreciation that occurred before the pool was deployed
-    uint192 public immutable refPerTokOffset; // {ref/tok@t=0}
+    uint192 public immutable pairedRTokenInitialRefPerTok; // {ref/tok@t=0}
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
     /// @param pairedRTokenRefreshInterval_ {s} Refresh interval of the inner RToken
-    /// @param pairedRTokenInitialRefPerTok {ref/tok@t=0} stored_rates[0]
+    /// @param pairedRTokenInitialRefPerTok_ {ref/tok@t=0} stored_rates[0]
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
         uint256 pairedRTokenRefreshInterval_,
-        uint192 pairedRTokenInitialRefPerTok
+        uint192 pairedRTokenInitialRefPerTok_
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token0));
         IMain main = rToken.main();
@@ -55,10 +54,7 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
         pairedBasketHandler = main.basketHandler();
 
         pairedRTokenRefreshInterval = pairedRTokenRefreshInterval_;
-
-        // {ref/tok} = ({ref/tok} + {ref/tok}) / {1}
-        refPerTokOffset = pairedRTokenInitialRefPerTok.plus(FIX_ONE).divu(2);
-        // appreciating RToken is only half the pool
+        pairedRTokenInitialRefPerTok = pairedRTokenInitialRefPerTok_;
     }
 
     /// Should not revert
@@ -165,7 +161,8 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
         uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
 
         // {ref/tok} = {tok@t=0/tok} * {ref/tok@t=0}
-        return virtualPrice.mul(refPerTokOffset);
+        return virtualPrice.mul(pairedRTokenInitialRefPerTok.sqrt());
+        // sqrt because the RToken is only half the pool
     }
 
     /// @dev Warning: Can revert
