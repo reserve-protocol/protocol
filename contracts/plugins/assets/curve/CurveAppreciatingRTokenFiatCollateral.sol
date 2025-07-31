@@ -35,14 +35,19 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
 
     uint256 public immutable pairedRTokenRefreshInterval; // {s}
 
+    // appreciation that occurred before the pool was deployed
+    uint192 public immutable refPerTokOffset; // {ref/tok@t=0}
+
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
     /// @param pairedRTokenRefreshInterval_ {s} Refresh interval of the inner RToken
+    /// @param pairedRTokenInitialRefPerTok {ref/tok@t=0} stored_rates[0]
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        uint256 pairedRTokenRefreshInterval_
+        uint256 pairedRTokenRefreshInterval_,
+        uint192 pairedRTokenInitialRefPerTok
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token0));
         IMain main = rToken.main();
@@ -50,6 +55,10 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
         pairedBasketHandler = main.basketHandler();
 
         pairedRTokenRefreshInterval = pairedRTokenRefreshInterval_;
+
+        // {ref/tok} = ({ref/tok} + {ref/tok}) / {1}
+        refPerTokOffset = pairedRTokenInitialRefPerTok.plus(FIX_ONE).divu(2);
+        // appreciating RToken is only half the pool
     }
 
     /// Should not revert
@@ -147,15 +156,16 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
 
     /// @dev Not up-only! The RToken can devalue its exchange rate peg
     /// @dev Assumption: The RToken BU is intended to equal the reference token in value
-    /// @dev Assumption: The pool's virtual price already embeds the RToken's appreciation
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
         // {ref/tok} = quantity of the reference unit token in the pool per LP token
 
-        // {lpToken@t=0/lpToken}
-        return _safeWrap(curvePool.get_virtual_price());
-        // the RToken's BU exchange rate is already embedded in the virtual price
-        //   for StableSwapNG pools with internal oracles
+        // virtual price does not contain appreciation that occurred before pool deployment
+        // {tok/tok@t=0}
+        uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
+
+        // {ref/tok} = {tok@t=0/tok} * {ref/tok@t=0}
+        return virtualPrice.mul(refPerTokOffset);
     }
 
     /// @dev Warning: Can revert

@@ -49,6 +49,7 @@ type Fixture<T> = () => Promise<T>
 
 interface CvxAppreciatingRTokenSelfReferentialCollateralOpts extends CurveCollateralOpts {
   pairedRTokenRefreshInterval?: BigNumberish
+  pairedRTokenInitialRefPerTok?: BigNumberish
 }
 
 export const defaultCvxAppreciatingCollateralOpts: CvxAppreciatingRTokenSelfReferentialCollateralOpts =
@@ -71,6 +72,7 @@ export const defaultCvxAppreciatingCollateralOpts: CvxAppreciatingRTokenSelfRefe
     oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
     oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
     pairedRTokenRefreshInterval: '0', // always refresh inner RToken
+    pairedRTokenInitialRefPerTok: bn('1047468010232128002'), // ETH+ BU exchange rate ratio at block 22619147
   }
 
 export const deployCollateral = async (
@@ -118,7 +120,8 @@ export const deployCollateral = async (
         oracleErrors: opts.oracleErrors,
         lpToken: opts.lpToken,
       },
-      opts.pairedRTokenRefreshInterval
+      opts.pairedRTokenRefreshInterval,
+      opts.pairedRTokenInitialRefPerTok
     )
   )
   await collateral.deployed()

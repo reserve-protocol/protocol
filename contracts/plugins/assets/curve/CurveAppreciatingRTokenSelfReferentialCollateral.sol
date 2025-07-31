@@ -28,17 +28,20 @@ contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRT
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
     /// @param pairedRTokenRefreshInterval_ {s} Refresh interval of the inner RToken
+    /// @param pairedRTokenInitialRefPerTok {ref/tok@t=0} stored_rates[0]
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        uint256 pairedRTokenRefreshInterval_
+        uint256 pairedRTokenRefreshInterval_,
+        uint192 pairedRTokenInitialRefPerTok
     )
         CurveAppreciatingRTokenFiatCollateral(
             config,
             revenueHiding,
             ptConfig,
-            pairedRTokenRefreshInterval_
+            pairedRTokenRefreshInterval_,
+            pairedRTokenInitialRefPerTok
         )
     {}
 

@@ -69,6 +69,8 @@ async function main() {
     `Deployed wrapper for Convex Stable ETH+/ETH on ${hre.network.name} (${chainId}): ${wPool.address} `
   )
 
+  const initialETHPlusRefPerTok = bn('1047468010232128002') // ETH+ BU exchange rate ratio at block 22619147
+
   const collateral = <CurveAppreciatingRTokenSelfReferentialCollateral>(
     await CurveAppreciatingRTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
       {
@@ -92,7 +94,8 @@ async function main() {
         oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
         lpToken: ETHPLUS_BP_TOKEN,
       },
-      '86400' // refresh ETH+ every 24h
+      '86400', // refresh ETH+ every 24h
+      initialETHPlusRefPerTok
     )
   )
   await collateral.deployed()
