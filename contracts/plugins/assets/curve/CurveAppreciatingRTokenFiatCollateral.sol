@@ -35,18 +35,14 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
 
     uint256 public immutable pairedRTokenRefreshInterval; // {s}
 
-    uint192 public immutable pairedRTokenInitialRefPerTok; // {ref/tok@t=0}
-
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
     /// @param pairedRTokenRefreshInterval_ {s} Refresh interval of the inner RToken
-    /// @param pairedRTokenInitialRefPerTok_ {ref/tok@t=0} stored_rates[0]
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        uint256 pairedRTokenRefreshInterval_,
-        uint192 pairedRTokenInitialRefPerTok_
+        uint256 pairedRTokenRefreshInterval_
     ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         rToken = IRToken(address(token0));
         IMain main = rToken.main();
@@ -54,7 +50,6 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
         pairedBasketHandler = main.basketHandler();
 
         pairedRTokenRefreshInterval = pairedRTokenRefreshInterval_;
-        pairedRTokenInitialRefPerTok = pairedRTokenInitialRefPerTok_;
     }
 
     /// Should not revert
@@ -154,15 +149,8 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
     /// @dev Assumption: The RToken BU is intended to equal the reference token in value
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view virtual override returns (uint192) {
-        // {ref/tok} = quantity of the reference unit token in the pool per LP token
-
-        // virtual price does not contain appreciation that occurred before pool deployment
-        // {tok/tok@t=0}
-        uint192 virtualPrice = _safeWrap(curvePool.get_virtual_price());
-
-        // {ref/tok} = {tok@t=0/tok} * {ref/tok@t=0}
-        return virtualPrice.mul(pairedRTokenInitialRefPerTok.sqrt());
-        // sqrt because the RToken is only half the pool
+        // pool already incorporates all prior RToken appreciation into the virtual price
+        return _safeWrap(curvePool.get_virtual_price());
     }
 
     /// @dev Warning: Can revert
