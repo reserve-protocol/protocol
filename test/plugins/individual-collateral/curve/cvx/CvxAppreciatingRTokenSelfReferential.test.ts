@@ -49,7 +49,6 @@ type Fixture<T> = () => Promise<T>
 
 interface CvxAppreciatingRTokenSelfReferentialCollateralOpts extends CurveCollateralOpts {
   pairedRTokenRefreshInterval?: BigNumberish
-  pairedRTokenInitialRefPerTok?: BigNumberish
 }
 
 export const defaultCvxAppreciatingCollateralOpts: CvxAppreciatingRTokenSelfReferentialCollateralOpts =
