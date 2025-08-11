@@ -52,7 +52,7 @@ async function main() {
     'contracts/plugins/assets/curve/cvx/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
   )
 
-  /********  Verify eUSD/fraxBP plugin  **************************/
+  /********  Verify ETH+/ETH plugin  **************************/
   await verifyContract(
     chainId,
     deployments.collateral.cvxETHPlusETH,
@@ -78,6 +78,7 @@ async function main() {
         oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
         lpToken: ETHPLUS_BP_TOKEN,
       },
+      '86400', // refresh ETH+ every 24h
     ],
     'contracts/plugins/assets/curve/CurveAppreciatingRTokenSelfReferentialCollateral.sol:CurveAppreciatingRTokenSelfReferentialCollateral'
   )
