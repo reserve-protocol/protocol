@@ -148,13 +148,15 @@ contract CurveAppreciatingRTokenFiatCollateral is CurveStableCollateral {
         }
     }
 
-    /// @dev Not up-only! The RToken can devalue its exchange rate peg
-    /// @dev Assumption: The RToken BU is intended to equal the reference token in value
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function underlyingRefPerTok() public view virtual override returns (uint192) {
-        // pool already incorporates all prior RToken appreciation into the virtual price
-        return _safeWrap(curvePool.get_virtual_price());
-    }
+    // inherits from CurveStableCollateral, implementation kept as documentation
+    //
+    // /// @dev Not up-only! The RToken can devalue its exchange rate peg
+    // /// @dev Assumption: The RToken BU is intended to equal the reference token in value
+    // /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    // function underlyingRefPerTok() public view virtual override returns (uint192) {
+    //     // pool already incorporates all prior RToken appreciation into the virtual price
+    //     return _safeWrap(curvePool.get_virtual_price());
+    // }
 
     /// @dev Warning: Can revert
     /// @dev Only works when the RToken is the 0th index token
