@@ -18,6 +18,9 @@ import "./CurveAppreciatingRTokenFiatCollateral.sol";
  * ref = WETH
  * tar = ETH
  * UoA = USD
+ * 
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool 
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
