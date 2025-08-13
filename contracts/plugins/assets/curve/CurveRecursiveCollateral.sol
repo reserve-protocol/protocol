@@ -25,8 +25,8 @@ import "../OracleLib.sol";
  * ref = coins(0) in the pool
  * tar = USD
  * UoA = USD
- * 
- * Important: Make sure the Curve pool is compatible with the plugin! This includes pool 
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
  *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveRecursiveCollateral is CurveStableCollateral {

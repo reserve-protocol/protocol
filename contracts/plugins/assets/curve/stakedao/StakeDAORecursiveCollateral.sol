@@ -27,8 +27,8 @@ interface IStakeDAOGauge is IERC20Metadata {
  * ref = USDC
  * tar = USD
  * UoA = USD
- * 
- * Important: Make sure the Curve pool is compatible with the plugin! This includes pool 
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
  *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
