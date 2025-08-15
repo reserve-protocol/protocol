@@ -37,12 +37,18 @@ const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
-      // network for tests/in-process stuff
       forking: useEnv('FORK')
-        ? {
-            url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
-            blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
-          }
+        ? (() => {
+            const forkBlock = useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())
+            const forking: { url: string; blockNumber?: number } = {
+              url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
+            }
+            // Only add blockNumber if it's not "latest"
+            if (forkBlock !== 'latest') {
+              forking.blockNumber = Number(forkBlock)
+            }
+            return forking
+          })()
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,

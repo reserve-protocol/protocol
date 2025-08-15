@@ -12,16 +12,15 @@ import "./CurveAppreciatingRTokenFiatCollateral.sol";
  * Warning: Defaults after haircut! After the RToken accepts a devaluation this collateral
  *          plugin will default and the collateral will be removed from the basket.
  *
- * LP Token should be worth 2x the reference token at deployment
+ * LP Token should be worth 1x the reference token at deployment, not 2x like many CryptoSwaps.
  *
- * tok = ConvexStakingWrapper(volatileCryptoPool)
+ * tok = ConvexStakingWrapper(stableSwapNGPool)
  * ref = WETH
  * tar = ETH
  * UoA = USD
  *
- * @notice This Curve Pool contains WETH, which can be used to intercept execution by providing
- *         `use_eth=true` to remove_liquidity()/remove_liquidity_one_coin(). It is guarded against
- *          by the recommended method of calling `claim_admin_fees()`.
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -31,18 +30,20 @@ contract CurveAppreciatingRTokenSelfReferentialCollateral is CurveAppreciatingRT
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a CurveGaugeWrapper or ConvexStakingWrapper
+    /// @param pairedRTokenRefreshInterval_ {s} Refresh interval of the inner RToken
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        PTConfiguration memory ptConfig
-    ) CurveAppreciatingRTokenFiatCollateral(config, revenueHiding, ptConfig) {}
-
-    /// Should not revert (unless CurvePool is re-entrant!)
-    /// Refresh exchange rates and update default status.
-    function refresh() public virtual override {
-        curvePool.claim_admin_fees(); // revert if curve pool is re-entrant
-        super.refresh();
-    }
+        PTConfiguration memory ptConfig,
+        uint256 pairedRTokenRefreshInterval_
+    )
+        CurveAppreciatingRTokenFiatCollateral(
+            config,
+            revenueHiding,
+            ptConfig,
+            pairedRTokenRefreshInterval_
+        )
+    {}
 
     // === Internal ===
 

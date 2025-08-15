@@ -56,10 +56,10 @@ async function main() {
 
   /********  Deploy Convex Appreciating RToken Collateral for ETH+/ETH  **************************/
 
-  const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
-    'CurveAppreciatingRTokenSelfReferentialCollateral'
-  )
   const ConvexStakingWrapperFactory = await hre.ethers.getContractFactory('ConvexStakingWrapper')
+
+  const CurveAppreciatingRTokenSelfReferentialCollateralFactory =
+    await hre.ethers.getContractFactory('CurveAppreciatingRTokenSelfReferentialCollateral')
 
   const wPool = await ConvexStakingWrapperFactory.deploy()
   await wPool.deployed()
@@ -70,7 +70,7 @@ async function main() {
   )
 
   const collateral = <CurveAppreciatingRTokenSelfReferentialCollateral>(
-    await CurveStableCollateralFactory.connect(deployer).deploy(
+    await CurveAppreciatingRTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
       {
         erc20: wPool.address,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
@@ -91,7 +91,8 @@ async function main() {
         oracleTimeouts: [[bn('1')], [WETH_ORACLE_TIMEOUT]],
         oracleErrors: [[bn('1')], [WETH_ORACLE_ERROR]],
         lpToken: ETHPLUS_BP_TOKEN,
-      }
+      },
+      '86400' // refresh ETH+ every 24h
     )
   )
   await collateral.deployed()
