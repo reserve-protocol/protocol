@@ -115,6 +115,10 @@ export interface ITokens {
   // Mountain
   USDM?: string
   wUSDM?: string
+
+  // Tokemak
+  autoETH?: string
+  autoUSD?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -256,6 +260,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+      autoETH: '0x0A2b94F6871c1D7A32Fe58E1ab5e6deA2f114E56',
+      autoUSD: '0xa7569A44f348d3D70d8ad5889e50F78E33d80D35',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',

@@ -87,6 +87,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_re7weth.ts',
       'phase2-assets/collaterals/deploy_apxeth.ts',
       'phase2-assets/collaterals/deploy_USDe.ts',
+      'phase2-assets/collaterals/deploy_autoETH.ts',
+      'phase2-assets/collaterals/deploy_autoUSD.ts',
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
       'phase2-assets/collaterals/deploy_pyusd.ts'
