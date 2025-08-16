@@ -79,6 +79,8 @@ async function main() {
       'collateral-plugins/verify_re7weth.ts',
       'collateral-plugins/verify_apxeth.ts',
       'collateral-plugins/verify_USDe.ts',
+      'collateral-plugins/verify_autoETH.ts',
+      'collateral-plugins/verify_autoUSD.ts',
       'collateral-plugins/verify_pyusd.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
