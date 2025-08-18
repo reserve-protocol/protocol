@@ -1409,6 +1409,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nomicfoundation/hardhat-verify@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "@nomicfoundation/hardhat-verify@npm:2.1.1"
+  dependencies:
+    "@ethersproject/abi": "npm:^5.1.2"
+    "@ethersproject/address": "npm:^5.0.2"
+    cbor: "npm:^8.1.0"
+    debug: "npm:^4.1.1"
+    lodash.clonedeep: "npm:^4.5.0"
+    picocolors: "npm:^1.1.0"
+    semver: "npm:^6.3.0"
+    table: "npm:^6.8.0"
+    undici: "npm:^5.14.0"
+  peerDependencies:
+    hardhat: ^2.26.0
+  checksum: 10c0/d21ca6db816509972deb6603e087381644ca17c5fb07a02a3fbe2148b483ac26f41b34fce64222b90a52e93de1d2920e9d879a333b96ad33cc8e3f6d16ac4558
+  languageName: node
+  linkType: hard
+
 "@nomicfoundation/solidity-analyzer-darwin-arm64@npm:0.1.1":
   version: 0.1.1
   resolution: "@nomicfoundation/solidity-analyzer-darwin-arm64@npm:0.1.1"
@@ -1525,26 +1544,6 @@ __metadata:
     ethers: ^5.0.0
     hardhat: ^2.0.0
   checksum: 10c0/cae46d1966108ab02b50fabe7945c8987fa1e9d5d0a7a06f79afc274ff1abc312e8a82375191a341b28571b897c22433d3a2826eb30077ed88d5983d01e381d0
-  languageName: node
-  linkType: hard
-
-"@nomiclabs/hardhat-etherscan@npm:^3.1.0":
-  version: 3.1.7
-  resolution: "@nomiclabs/hardhat-etherscan@npm:3.1.7"
-  dependencies:
-    "@ethersproject/abi": "npm:^5.1.2"
-    "@ethersproject/address": "npm:^5.0.2"
-    cbor: "npm:^8.1.0"
-    chalk: "npm:^2.4.2"
-    debug: "npm:^4.1.1"
-    fs-extra: "npm:^7.0.1"
-    lodash: "npm:^4.17.11"
-    semver: "npm:^6.3.0"
-    table: "npm:^6.8.0"
-    undici: "npm:^5.14.0"
-  peerDependencies:
-    hardhat: ^2.0.4
-  checksum: 10c0/3302820ac823fcb07a5ba278f3e2f07a7f6ba5e0679f0694860a2a189e91188993cc51a0001ec38c532381d3367da72dfcc9820c08ed6e5e0337651bf351dd9e
   languageName: node
   linkType: hard
 
@@ -7200,6 +7199,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash.clonedeep@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "lodash.clonedeep@npm:4.5.0"
+  checksum: 10c0/2caf0e4808f319d761d2939ee0642fa6867a4bbf2cfce43276698828380756b99d4c4fa226d881655e6ac298dd453fe12a5ec8ba49861777759494c534936985
+  languageName: node
+  linkType: hard
+
 "lodash.get@npm:^4.4.2":
   version: 4.4.2
   resolution: "lodash.get@npm:4.4.2"
@@ -8829,8 +8835,8 @@ __metadata:
     "@nomicfoundation/hardhat-chai-matchers": "npm:^1.0.6"
     "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.8"
     "@nomicfoundation/hardhat-toolbox": "npm:^2.0.1"
+    "@nomicfoundation/hardhat-verify": "npm:^2.1.1"
     "@nomiclabs/hardhat-ethers": "npm:^2.2.3"
-    "@nomiclabs/hardhat-etherscan": "npm:^3.1.0"
     "@openzeppelin/contracts": "npm:4.9.6"
     "@openzeppelin/contracts-upgradeable": "npm:4.9.6"
     "@openzeppelin/hardhat-upgrades": "npm:^1.23.0"

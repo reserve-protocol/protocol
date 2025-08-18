@@ -1,8 +1,7 @@
 import 'tsconfig-paths/register'
-import '@nomicfoundation/hardhat-toolbox'
 import '@nomicfoundation/hardhat-chai-matchers'
+import '@nomicfoundation/hardhat-verify'
 import '@nomiclabs/hardhat-ethers'
-import '@nomiclabs/hardhat-etherscan'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
@@ -170,12 +169,8 @@ const config: HardhatUserConfig = {
     enabled: !!useEnv('REPORT_GAS'),
   },
   etherscan: {
-    apiKey: {
-      mainnet: useEnv('ETHERSCAN_API_KEY'),
-      base: useEnv('BASESCAN_API_KEY'),
-      arbitrum: useEnv('ARBISCAN_API_KEY'),
-      'arbitrum-sepolia': useEnv('ARBISCAN_API_KEY'),
-    },
+    enabled: true,
+    apiKey: useEnv('ETHERSCAN_API_KEY'),
     customChains: [
       {
         network: 'base',
