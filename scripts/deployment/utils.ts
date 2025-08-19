@@ -128,7 +128,7 @@ export async function verifyContract(
       // Ethereum
       url = `${getVerificationURL(
         chainId
-      )}/api?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+      )}/api?chainid=1&module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
     }
 
     // Check to see if already verified
@@ -163,7 +163,7 @@ export async function verifyContract(
 }
 
 export const getVerificationURL = (chainId: number) => {
-  if (chainId == 1) return 'https://api.etherscan.io'
+  if (chainId == 1) return 'https://api.etherscan.io/v2'
 
   // For Base, get URL from HH config
   const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
