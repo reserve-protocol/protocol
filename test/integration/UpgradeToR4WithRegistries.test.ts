@@ -208,9 +208,6 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
           await RTokenMain.connect(signer).setAssetPluginRegistry(assetPluginRegistry.address)
           await RTokenMain.connect(signer).setDAOFeeRegistry(daoFeeRegistry.address)
 
-          const broker = <BrokerP1>await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
-          await broker.connect(signer).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
-
           // Grant OWNER to Main
           await RTokenMain.connect(signer).grantRole(
             await RTokenMain.OWNER_ROLE(),
@@ -225,6 +222,10 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
             await RTokenMain.OWNER_ROLE(),
             RTokenMain.address
           )
+
+          // Set TrustedFillerRegistry
+          const broker = <BrokerP1>await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
+          await broker.connect(signer).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
         })
 
         const targetsToVerify = [

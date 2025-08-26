@@ -146,9 +146,6 @@ describe('Upgrade from 3.4.0 to 4.2.0 (Mainnet Fork)', () => {
           await RTokenMain.connect(signer).setAssetPluginRegistry(assetPluginRegistry.address)
           await RTokenMain.connect(signer).setDAOFeeRegistry(daoFeeRegistry.address)
 
-          const broker = <BrokerP1>await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
-          await broker.connect(signer).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
-
           // Grant OWNER to Main
           await RTokenMain.connect(signer).grantRole(
             await RTokenMain.OWNER_ROLE(),
@@ -163,6 +160,10 @@ describe('Upgrade from 3.4.0 to 4.2.0 (Mainnet Fork)', () => {
             await RTokenMain.OWNER_ROLE(),
             RTokenMain.address
           )
+
+          // Set TrustedFillerRegistry
+          const broker = <BrokerP1>await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
+          await broker.connect(signer).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
         })
 
         const targetsToVerify = [
@@ -188,6 +189,7 @@ describe('Upgrade from 3.4.0 to 4.2.0 (Mainnet Fork)', () => {
           implementations.trading.gnosisTrade
         )
         expect(await broker.dutchTradeImplementation()).to.equal(implementations.trading.dutchTrade)
+        expect(await broker.trustedFillerRegistry()).to.equal(trustedFillerRegistry.address)
 
         // So, let's upgrade the RToken _again_ to verify the process flow works.
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
