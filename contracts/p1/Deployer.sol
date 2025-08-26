@@ -210,6 +210,7 @@ contract DeployerP1 is IDeployer, Versioned {
         // Init Furnace
         components.furnace.init(main, params.rewardRatio);
 
+        // Init Broker
         components.broker.init(
             main,
             _implementations.trading.gnosisTrade,
@@ -217,6 +218,14 @@ contract DeployerP1 is IDeployer, Versioned {
             _implementations.trading.dutchTrade,
             params.dutchAuctionLength
         );
+
+        // Assign TrustedFillerRegistry
+        if (address(registries.trustedFillerRegistry) != address(0)) {
+            IExtendedBroker(address(components.broker)).setTrustedFillerRegistry(
+                address(registries.trustedFillerRegistry),
+                true
+            );
+        }
 
         // Init StRSR
         {

@@ -15,6 +15,7 @@ import "./IVersioned.sol";
 import "../registry/VersionRegistry.sol";
 import "../registry/AssetPluginRegistry.sol";
 import "../registry/DAOFeeRegistry.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/ITrustedFillerRegistry.sol";
 
 /**
  * @title DeploymentParams
@@ -100,6 +101,7 @@ interface IDeployer is IVersioned {
         VersionRegistry versionRegistry;
         AssetPluginRegistry assetPluginRegistry;
         DAOFeeRegistry daoFeeRegistry;
+        ITrustedFillerRegistry trustedFillerRegistry;
     }
 
     /// Deploys an instance of the entire system

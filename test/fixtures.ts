@@ -624,6 +624,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       assetPluginRegistry: ZERO_ADDRESS,
       daoFeeRegistry: ZERO_ADDRESS,
       versionRegistry: ZERO_ADDRESS,
+      trustedFillerRegistry: ZERO_ADDRESS,
     })
   ).wait()
 

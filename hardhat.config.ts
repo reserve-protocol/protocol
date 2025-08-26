@@ -132,6 +132,13 @@ const config: HardhatUserConfig = {
         settings,
       },
       {
+        version: '0.8.28',
+        settings: {
+          ...settings,
+          evmVersion: 'paris',
+        },
+      },
+      {
         version: '0.6.12',
         settings,
       },
@@ -140,6 +147,13 @@ const config: HardhatUserConfig = {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
         version: '0.6.12',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
+      },
+      'node_modules/@reserve-protocol/trusted-fillers/**/*.sol': {
+        version: '0.8.28',
+        settings: {
+          ...settings,
+          evmVersion: 'paris',
+        },
       },
     },
   },
