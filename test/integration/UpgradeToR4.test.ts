@@ -6,6 +6,8 @@ import { DeployerP1 } from '@typechain/DeployerP1'
 import { AssetPluginRegistry } from '@typechain/AssetPluginRegistry'
 import { whileImpersonating } from '#/utils/impersonation'
 import { DAOFeeRegistry } from '@typechain/DAOFeeRegistry'
+import { TrustedFillerRegistry } from '@typechain/TrustedFillerRegistry'
+import { BrokerP1 } from '@typechain/BrokerP1'
 import { resetFork } from '#/utils/chain'
 import forkBlockNumber from './fork-block-numbers'
 
@@ -24,8 +26,8 @@ const rTokensToTest: RTokenParams[] = [
   },
 ]
 
-// 4.1.0
-const v4VersionHash = '0x2b64e9eb005edea481c3384a1a7394d55c9ec0c75304d5daa56aad0d184c7fc3'
+// 4.2.0
+const v4VersionHash = '0x99b189f6a35f2d8d52cd79b21cabb1eca4a12f69132e253d75b4ee7634d0fef8'
 
 async function _confirmVersion(address: string, target: string) {
   const versionedTarget = await ethers.getContractAt('Versioned', address)
@@ -33,12 +35,13 @@ async function _confirmVersion(address: string, target: string) {
 }
 
 // NOTE: This is an explicit test!
-describe('Upgrade from 3.4.0 to 4.1.0 (Mainnet Fork)', () => {
+describe('Upgrade from 3.4.0 to 4.2.0 (Mainnet Fork)', () => {
   let implementations: IImplementations
   let deployer: DeployerP1
   let versionRegistry: VersionRegistry
   let assetPluginRegistry: AssetPluginRegistry
   let daoFeeRegistry: DAOFeeRegistry
+  let trustedFillerRegistry: TrustedFillerRegistry
 
   before(async () => {
     const [owner] = await ethers.getSigners()
@@ -115,6 +118,11 @@ describe('Upgrade from 3.4.0 to 4.1.0 (Mainnet Fork)', () => {
       mockRoleRegistry.address,
       await owner.getAddress()
     )
+
+    const TrustedFillerRegistryFactory = await ethers.getContractFactory('TrustedFillerRegistry')
+    trustedFillerRegistry = <TrustedFillerRegistry>(
+      await TrustedFillerRegistryFactory.deploy(mockRoleRegistry.address)
+    )
   })
 
   describe('The Upgrade', () => {
@@ -130,13 +138,16 @@ describe('Upgrade from 3.4.0 to 4.1.0 (Mainnet Fork)', () => {
         )
 
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.1.0's Main
+          // Upgrade Main to 4.2.0's Main
           await RTokenMain.connect(signer).upgradeTo(implementations.main)
 
           // Set registries
           await RTokenMain.connect(signer).setVersionRegistry(versionRegistry.address)
           await RTokenMain.connect(signer).setAssetPluginRegistry(assetPluginRegistry.address)
           await RTokenMain.connect(signer).setDAOFeeRegistry(daoFeeRegistry.address)
+
+          const broker = <BrokerP1>await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
+          await broker.connect(signer).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
 
           // Grant OWNER to Main
           await RTokenMain.connect(signer).grantRole(
@@ -169,7 +180,7 @@ describe('Upgrade from 3.4.0 to 4.1.0 (Mainnet Fork)', () => {
         ]
 
         for (let j = 0; j < targetsToVerify.length; j++) {
-          await _confirmVersion(targetsToVerify[j], '4.1.0')
+          await _confirmVersion(targetsToVerify[j], '4.2.0')
         }
 
         const broker = await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
@@ -180,7 +191,7 @@ describe('Upgrade from 3.4.0 to 4.1.0 (Mainnet Fork)', () => {
 
         // So, let's upgrade the RToken _again_ to verify the process flow works.
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.1.0's Main
+          // Upgrade Main to 4.2.0's Main
           await RTokenMain.connect(signer).upgradeMainTo(v4VersionHash)
 
           // Upgrade RToken
