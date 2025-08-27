@@ -171,40 +171,6 @@ const config: HardhatUserConfig = {
   etherscan: {
     enabled: true,
     apiKey: useEnv('ETHERSCAN_API_KEY'),
-    customChains: [
-      {
-        network: 'base',
-        chainId: 8453,
-        urls: {
-          apiURL: 'https://api.basescan.org/api',
-          browserURL: 'https://basescan.org',
-        },
-      },
-      {
-        network: 'base-goerli',
-        chainId: 84531,
-        urls: {
-          apiURL: 'https://api-goerli.basescan.org/api',
-          browserURL: 'https://goerli.basescan.org',
-        },
-      },
-      {
-        network: 'arbitrum',
-        chainId: 42161,
-        urls: {
-          apiURL: 'https://api.arbiscan.io/api',
-          browserURL: 'https://arbiscan.io',
-        },
-      },
-      {
-        network: 'arbitrum-sepolia',
-        chainId: 421614,
-        urls: {
-          apiURL: 'https://api-sepolia.arbiscan.io/api',
-          browserURL: 'https://sepolia.arbiscan.io',
-        },
-      },
-    ],
   },
   // tenderly: {
   //   // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
