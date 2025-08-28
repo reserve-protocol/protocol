@@ -169,7 +169,10 @@ contract DutchTrade is ITrade, Versioned {
         TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         // 60 sec min auction duration
-        require(address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60, "bad trade initialization");
+        require(
+            address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60,
+            "bad trade initialization"
+        );
 
         // Only start dutch auctions under well-defined prices
         require(
