@@ -317,6 +317,7 @@ contract DutchTrade is ITrade, Versioned {
 
         // Create trusted filler
         filler = registry.createTrustedFiller(msg.sender, targetFiller, deploymentSalt);
+        filler.setPartiallyFillable(false); // only supports single lot fills
         sell.safeApprove(address(filler), sellAmt);
 
         // Initialize the filler
@@ -382,7 +383,7 @@ contract DutchTrade is ITrade, Versioned {
         uint192 price = _price(uint48(block.timestamp));
         uint256 amountIn = _bidAmount(price);
         return (bidder != address(0) ||
-            buy.balanceOf(address(activeTrustedFill)) + buy.balanceOf(address(this))  >= amountIn);
+            buy.balanceOf(address(activeTrustedFill)) + buy.balanceOf(address(this)) >= amountIn);
     }
 
     // === Private ===
