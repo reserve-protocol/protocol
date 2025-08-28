@@ -118,7 +118,7 @@
     "@aave/core-v3": "^1.18.0",
     "@aave/periphery-v3": "^2.5.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
-    "@reserve-protocol/trusted-fillers": "github:reserve-protocol/trusted-fillers#6417dfaeb09247f968c66413a85977727458396c",
+    "@reserve-protocol/trusted-fillers": "github:reserve-protocol/trusted-fillers#6ac118cc4a353e17712964d194814efce878363d",
     "@types/isomorphic-fetch": "^0.0.36",
     "axios-retry": "^4.1.0",
     "cheerio": "^1.0.0-rc.12",

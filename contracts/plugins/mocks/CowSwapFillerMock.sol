@@ -43,6 +43,7 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
     uint256 public sellAmount; // {sellTok}
     uint256 public blockInitialized; // {block}
     uint256 public price; // D27{buyTok/sellTok}
+    bool public partiallyFillable;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -63,6 +64,7 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
         buyToken = _buyToken;
         sellAmount = _sellAmount;
         blockInitialized = block.number;
+        partiallyFillable = true;
 
         // D27{buyTok/sellTok} = {buyTok} * D27 / {sellTok}
         // Using Ceil instead of Up for OZ 4.9.6 compatibility
@@ -80,6 +82,7 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
 
         // In a real implementation, we'd decode the full GPv2Order from signature
         // For testing, we just validate that we have the right tokens and amounts
+        // Ignoring partially fillable condition
         if (signature.length > 0) {
             // Mock validation - assume order is valid if we have a signature
             return this.isValidSignature.selector; // 0x1626ba7e
@@ -116,6 +119,13 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
         if (swapActive()) revert BaseTrustedFiller__SwapActive();
         rescueToken(sellToken);
         rescueToken(buyToken);
+    }
+
+    function setPartiallyFillable(bool _partiallyFillable) external {
+        require(msg.sender == fillCreator, CowSwapFiller__Unauthorized());
+        require(block.number == blockInitialized, CowSwapFiller__Unauthorized());
+
+        partiallyFillable = _partiallyFillable;
     }
 
     /// Rescue tokens in case any are left in the contract
