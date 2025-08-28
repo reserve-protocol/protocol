@@ -1186,6 +1186,48 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('Invalid trade state')
       })
 
+      it('Should not initialize DutchTrade with wrong parameters', async () => {
+        // Fund trade
+        await token0.connect(owner).mint(trade.address, amount)
+
+        // Attempt to initialize with bad auction length
+        prices.sellLow = bn('0')
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            bn(50), // too short
+            prices
+          )
+        ).to.be.revertedWith('bad trade initialization')
+
+        // Attempt to initialize with empty sell token
+        await expect(
+          trade.init(
+            backingManager.address,
+            ZERO_ADDRESS,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.be.revertedWith('bad trade initialization')
+
+        // Attempt to initialize with empty buy token
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            ZERO_ADDRESS,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.be.revertedWith('bad trade initialization')
+      })
+
       it('Should not initialize DutchTrade with bad prices', async () => {
         // Fund trade
         await token0.connect(owner).mint(trade.address, amount)
@@ -1216,6 +1258,20 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             prices
           )
         ).to.be.revertedWith('bad buy pricing')
+
+        prices.buyLow = MAX_UINT192.sub(1)
+        prices.buyHigh = fp('1')
+
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.be.revertedWith('invalid pricing')
       })
 
       it('Should apply full maxTradeSlippage to lowPrice at minTradeVolume', async () => {
@@ -1395,6 +1451,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Check balances again - funds sent to origin
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
+      })
+
+      it('Should not allow to bid if trade not open', async () => {
+        // Attempt to bid on unitilized trade
+        await expect(trade.bid()).to.be.revertedWith('trade not open')
+        await expect(trade.bidWithCallback(new Uint8Array(0))).to.be.revertedWith('trade not open')
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.not.be.reverted
+
+        // Advance blocks til trade can be settled
+        const now = await getLatestBlockTimestamp()
+        const tradeLen = (await trade.endTime()) - now
+        await advanceToTimestamp(now + tradeLen + 1)
+
+        // Settle trade
+        expect(await trade.canSettle()).to.equal(true)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        // Attempt to bid on closed trade
+        await expect(trade.bid()).to.be.revertedWith('trade not open')
+        await expect(trade.bidWithCallback(new Uint8Array(0))).to.be.revertedWith('trade not open')
       })
 
       // There is no test here for the reportViolation case; that is in Revenues.test.ts
@@ -1596,7 +1686,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           newTrade
             .connect(addr1)
             .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
-        ).to.be.reverted
+        ).to.be.revertedWith('trade not open')
       })
 
       it('Should allow to settle trade with active trusted fill', async () => {
