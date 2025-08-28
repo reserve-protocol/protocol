@@ -133,6 +133,12 @@ contract DutchTrade is ITrade, Versioned {
         status = end;
     }
 
+    // This modifier closes any active trusted fill and reclaims tokens
+    modifier closeTrustedFiller {
+        _closeTrustedFill();
+        _;
+    }
+
     // === Auction Sizing Views ===
 
     /// @return {qSellTok} The size of the lot being sold, in token quanta
@@ -212,7 +218,7 @@ contract DutchTrade is ITrade, Versioned {
     /// Bid for the auction lot at the current price; settle trade in protocol
     /// @dev Caller must have provided approval
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bid() external returns (uint256 amountIn) {
+    function bid() external closeTrustedFiller returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
         require(status == TradeStatus.OPEN, "trade not open");
 
@@ -248,7 +254,11 @@ contract DutchTrade is ITrade, Versioned {
     /// @dev Caller must implement IDutchTradeCallee
     /// @param data {bytes} The data to pass to the callback
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
+    function bidWithCallback(bytes calldata data)
+        external
+        closeTrustedFiller
+        returns (uint256 amountIn)
+    {
         require(bidder == address(0), "bid already received");
         require(status == TradeStatus.OPEN, "trade not open");
 
@@ -290,6 +300,7 @@ contract DutchTrade is ITrade, Versioned {
     /// @return filler The deployed trusted filler contract
     function createTrustedFill(address targetFiller, bytes32 deploymentSalt)
         external
+        closeTrustedFiller
         returns (IBaseTrustedFiller filler)
     {
         require(status == TradeStatus.OPEN, "trade not open");
@@ -321,18 +332,22 @@ contract DutchTrade is ITrade, Versioned {
     function settle()
         external
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
+        closeTrustedFiller
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == address(origin), "only origin can settle");
-        require(
-            bidder != address(0) ||
-                address(activeTrustedFill) != address(0) ||
-                block.timestamp > endTime,
-            "auction not over"
-        );
 
-        // Close any active trusted fill and reclaim tokens
-        _closeTrustedFill();
+        // If auction has ended -> continue
+        if (block.timestamp <= endTime) {
+            bool filled = false;
+            if (block.timestamp >= startTime) {
+                // Ongoing auction, check if can be settled
+                uint192 price = _price(uint48(block.timestamp));
+                uint256 amountIn = _bidAmount(price);
+                filled = buy.balanceOf(address(this)) >= amountIn;
+            }
+            require(bidder != address(0) || filled, "auction not over");
+        }
 
         if (bidType == BidType.CALLBACK) {
             soldAmt = lot(); // {qSellTok}
@@ -358,11 +373,17 @@ contract DutchTrade is ITrade, Versioned {
     /// @return true iff the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
-        return
-            status == TradeStatus.OPEN &&
-            (bidder != address(0) ||
-                address(activeTrustedFill) != address(0) ||
-                block.timestamp > endTime);
+        // Not OPEN or not started -> false
+        if (status != TradeStatus.OPEN || block.timestamp < startTime) return false;
+        // OPEN and past end time -> true
+        if (block.timestamp > endTime) return true;
+
+        // Ongoing OPEN auction, check if can be settled early
+        uint192 price = _price(uint48(block.timestamp));
+        uint256 amountIn = _bidAmount(price);
+        return (bidder != address(0) ||
+            buy.balanceOf(address(activeTrustedFill)) >= amountIn ||
+            buy.balanceOf(address(this)) >= amountIn);
     }
 
     // === Private ===

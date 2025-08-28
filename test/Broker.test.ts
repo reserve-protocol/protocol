@@ -1637,12 +1637,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         const activeFill = await dutchTrade.activeTrustedFill()
         expect(activeFill).to.not.equal(ZERO_ADDRESS)
 
-        // Try to create second fill - should fail
+        // Try to create second fill - will close previous one
         await expect(
           dutchTrade
             .connect(addr1)
             .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
-        ).to.be.reverted
+        ).to.not.be.reverted
+
+        // TODO: Check new fill is different than previous one, and previous is closed
       })
 
       it('Should not create trusted fill when registry not enabled', async () => {
