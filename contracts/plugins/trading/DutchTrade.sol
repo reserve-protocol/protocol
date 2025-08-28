@@ -129,7 +129,7 @@ contract DutchTrade is ITrade, Versioned {
         require(status == begin, "Invalid trade state");
         status = TradeStatus.PENDING;
         _;
-        assert(status == TradeStatus.PENDING);
+        require(status == TradeStatus.PENDING, "Invalid state transition");
         status = end;
     }
 
@@ -169,7 +169,7 @@ contract DutchTrade is ITrade, Versioned {
         TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         // 60 sec min auction duration
-        assert(address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60);
+        require(address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60, "bad trade initialization");
 
         // Only start dutch auctions under well-defined prices
         require(
@@ -201,7 +201,7 @@ contract DutchTrade is ITrade, Versioned {
             FLOOR
         );
         uint192 _bestPrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
-        assert(_worstPrice <= _bestPrice);
+        require(_worstPrice <= _bestPrice, "invalid pricing");
         worstPrice = _worstPrice; // gas-saver
         bestPrice = _bestPrice; // gas-saver
     }
@@ -211,7 +211,7 @@ contract DutchTrade is ITrade, Versioned {
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid() external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
-        assert(status == TradeStatus.OPEN);
+        require(status == TradeStatus.OPEN, "trade not open");
 
         // {buyTok/sellTok}
         uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
@@ -235,7 +235,7 @@ contract DutchTrade is ITrade, Versioned {
         origin.settleTrade(sell);
 
         // confirm .settleTrade() succeeded and .settle() has been called
-        assert(status == TradeStatus.CLOSED);
+        require(status == TradeStatus.CLOSED, "invalid end state");
     }
 
     /// Bid with callback for the auction lot at the current price; settle trade in protocol
@@ -247,7 +247,7 @@ contract DutchTrade is ITrade, Versioned {
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
-        assert(status == TradeStatus.OPEN);
+        require(status == TradeStatus.OPEN, "trade not open");
 
         // {buyTok/sellTok}
         uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
@@ -278,7 +278,7 @@ contract DutchTrade is ITrade, Versioned {
         origin.settleTrade(sell);
 
         // confirm .settleTrade() succeeded and .settle() has been called
-        assert(status == TradeStatus.CLOSED);
+        require(status == TradeStatus.CLOSED, "invalid end state");
     }
 
     /// Create a trusted fill as an alternative to direct bidding
@@ -289,7 +289,7 @@ contract DutchTrade is ITrade, Versioned {
         external
         returns (IBaseTrustedFiller filler)
     {
-        assert(status == TradeStatus.OPEN);
+        require(status == TradeStatus.OPEN, "trade not open");
 
         // Get trusted filler registry
         ITrustedFillerRegistry registry = IExtendedBroker(address(broker)).trustedFillerRegistry();
