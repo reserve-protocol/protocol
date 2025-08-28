@@ -382,8 +382,7 @@ contract DutchTrade is ITrade, Versioned {
         uint192 price = _price(uint48(block.timestamp));
         uint256 amountIn = _bidAmount(price);
         return (bidder != address(0) ||
-            buy.balanceOf(address(activeTrustedFill)) >= amountIn ||
-            buy.balanceOf(address(this)) >= amountIn);
+            buy.balanceOf(address(activeTrustedFill)) + buy.balanceOf(address(this))  >= amountIn);
     }
 
     // === Private ===
