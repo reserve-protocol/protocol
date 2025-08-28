@@ -317,11 +317,11 @@ contract DutchTrade is ITrade, Versioned {
 
         // Create trusted filler
         filler = registry.createTrustedFiller(msg.sender, targetFiller, deploymentSalt);
-        filler.setPartiallyFillable(false); // only supports single lot fills
         sell.safeApprove(address(filler), sellAmt);
 
         // Initialize the filler
         filler.initialize(address(this), sell, buy, sellAmt, buyAmt);
+        filler.setPartiallyFillable(false); // only supports single lot fills
         activeTrustedFill = filler;
 
         emit TrustedFillCreated(address(filler));
