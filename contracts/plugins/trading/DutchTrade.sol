@@ -308,7 +308,7 @@ contract DutchTrade is ITrade, Versioned {
         // Get trusted filler registry
         ITrustedFillerRegistry registry = IExtendedBroker(address(broker)).trustedFillerRegistry();
         bool enabled = IExtendedBroker(address(broker)).trustedFillerEnabled();
-        require(address(registry) != address(0) && enabled, "trusted filler registry not enabled");
+        require(address(registry) != address(0) && enabled, "trusted fillers not enabled");
 
         // Get current price and amounts
         uint192 price = _price(uint48(block.timestamp));
@@ -321,7 +321,10 @@ contract DutchTrade is ITrade, Versioned {
 
         // Initialize the filler
         filler.initialize(address(this), sell, buy, sellAmt, buyAmt);
-        filler.setPartiallyFillable(false); // only supports single lot fills
+        // only supports single lot fills
+        // this call will revert if the selected filler does not support this capability
+        filler.setPartiallyFillable(false);
+
         activeTrustedFill = filler;
 
         emit TrustedFillCreated(address(filler));
@@ -371,25 +374,28 @@ contract DutchTrade is ITrade, Versioned {
         erc20.safeTransfer(address(origin), erc20.balanceOf(address(this)));
     }
 
-    /// @return true iff the trade can be settled.
+    /// @return true if the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
         // Not OPEN or not started -> false
-        if (status != TradeStatus.OPEN || block.timestamp < startTime) return false;
+        if (status != TradeStatus.OPEN || block.timestamp < startTime) {
+            return false;
+        }
         // OPEN and past end time -> true
-        if (block.timestamp > endTime) return true;
+        if (block.timestamp > endTime) {
+            return true;
+        }
 
         // Ongoing OPEN auction, check if can be settled early
         uint192 price = _price(uint48(block.timestamp));
         uint256 amountIn = _bidAmount(price);
-        return (bidder != address(0) ||
-            (
-                address(activeTrustedFill) != address(0)
-                    ? buy.balanceOf(address(activeTrustedFill))
-                    : 0
-            ) +
-                buy.balanceOf(address(this)) >=
-            amountIn);
+
+        uint256 amountInFiller = address(activeTrustedFill) != address(0)
+            ? buy.balanceOf(address(activeTrustedFill))
+            : 0;
+        uint256 amountInTrade = buy.balanceOf(address(this));
+
+        return (bidder != address(0) || (amountInFiller + amountInTrade >= amountIn));
     }
 
     // === Private ===
