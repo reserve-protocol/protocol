@@ -134,7 +134,7 @@ contract DutchTrade is ITrade, Versioned {
     }
 
     // This modifier closes any active trusted fill and reclaims tokens
-    modifier closeTrustedFiller {
+    modifier closeTrustedFiller() {
         _closeTrustedFill();
         _;
     }
@@ -210,7 +210,7 @@ contract DutchTrade is ITrade, Versioned {
             FLOOR
         );
         uint192 _bestPrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
-        require(_worstPrice <= _bestPrice, "invalid pricing");
+        assert(_worstPrice <= _bestPrice);
         worstPrice = _worstPrice; // gas-saver
         bestPrice = _bestPrice; // gas-saver
     }
@@ -383,7 +383,13 @@ contract DutchTrade is ITrade, Versioned {
         uint192 price = _price(uint48(block.timestamp));
         uint256 amountIn = _bidAmount(price);
         return (bidder != address(0) ||
-            buy.balanceOf(address(activeTrustedFill)) + buy.balanceOf(address(this)) >= amountIn);
+            (
+                address(activeTrustedFill) != address(0)
+                    ? buy.balanceOf(address(activeTrustedFill))
+                    : 0
+            ) +
+                buy.balanceOf(address(this)) >=
+            amountIn);
     }
 
     // === Private ===

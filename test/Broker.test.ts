@@ -1271,7 +1271,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             config.dutchAuctionLength,
             prices
           )
-        ).to.be.revertedWith('invalid pricing')
+        ).to.be.reverted // assertion failure
       })
 
       it('Should apply full maxTradeSlippage to lowPrice at minTradeVolume', async () => {
