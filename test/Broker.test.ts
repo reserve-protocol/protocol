@@ -1595,7 +1595,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           sell: collateral0.address,
           buy: collateral1.address,
           sellAmount: fp('100'),
-          minBuyAmount: fp('90'),
+          minBuyAmount: parseUnits('95.0', 6),
         }
 
         // Setup tokens with balances
@@ -1603,7 +1603,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await token1.mint(addr1.address, fp('10000'))
       })
 
-      it('Should create trusted fill (and only one) during active auction', async () => {
+      it('Should create trusted fill (one at a time) during active auction', async () => {
         // Get Dutch trade address
         const tradeAddress = await getNextTradeAddress(tradeRequest)
 
@@ -1638,13 +1638,16 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(activeFill).to.not.equal(ZERO_ADDRESS)
 
         // Try to create second fill - will close previous one
+        const prevFill = activeFill
         await expect(
           dutchTrade
             .connect(addr1)
             .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
         ).to.not.be.reverted
 
-        // TODO: Check new fill is different than previous one, and previous is closed
+        // Check new trusted fill status
+        expect(await dutchTrade.activeTrustedFill()).to.not.equal(ZERO_ADDRESS)
+        expect(await dutchTrade.activeTrustedFill()).to.not.equal(prevFill)
       })
 
       it('Should not create trusted fill when registry not enabled', async () => {
@@ -1677,7 +1680,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           dutchTrade
             .connect(addr1)
             .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
-        ).to.be.revertedWith('trusted filler registry not enabled')
+        ).to.be.revertedWith('trusted fillers not enabled')
       })
 
       it('Should not create trusted fill when auction is not open', async () => {
@@ -1732,9 +1735,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         const activeFill = await dutchTrade.activeTrustedFill()
         expect(activeFill).to.not.equal(ZERO_ADDRESS)
 
+        // Advance time
+        await advanceToTimestamp((await dutchTrade.endTime()) - 5)
+
         // Perform fill
         await token0.burn(activeFill, tradeRequest.sellAmount)
-        await token1.mint(activeFill, tradeRequest.minBuyAmount)
+        const bidAmount = await dutchTrade.bidAmount(await getLatestBlockTimestamp())
+        await token1.mint(activeFill, bidAmount)
 
         // The trade should be settleable with an active trusted fill
         expect(await dutchTrade.canSettle()).to.equal(true)
@@ -1752,8 +1759,88 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(
           initBal0.sub(tradeRequest.sellAmount)
         )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1.add(bidAmount))
+      })
+
+      it('Should not allow to settle trade if not enough buy tokens', async () => {
+        // Create and setup a Dutch trade
+        const tradeAddress = await getNextTradeAddress(tradeRequest)
+
+        // Get current balances
+        const initBal0 = await token0.balanceOf(backingManager.address)
+        const initBal1 = await token1.balanceOf(backingManager.address)
+
+        // Set automine to false
+        await hre.network.provider.send('evm_setAutomine', [false])
+
+        // Create Dutch trade (need to refresh collaterals in the same timestamp)
+        await assetRegistry.refresh()
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        })
+
+        // Mine block and reset automine
+        await hre.network.provider.send('evm_mine', [])
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Check trade status
+        dutchTrade = await ethers.getContractAt('DutchTrade', tradeAddress)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.OPEN)
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+
+        // Check balances
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1)
+
+        // Create trusted fill
+        await dutchTrade
+          .connect(addr1)
+          .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+
+        const activeFill = await dutchTrade.activeTrustedFill()
+        expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+        // No buy tokens in either trade or filler
+        expect(await token1.balanceOf(dutchTrade.address)).to.equal(0)
+        expect(await token1.balanceOf(activeFill)).to.equal(0)
+
+        // Perform fill
+        await token0.burn(activeFill, tradeRequest.sellAmount)
+        await token1.mint(activeFill, tradeRequest.minBuyAmount.div(2)) // not enough
+
+        // Not enough buy tokens
+        expect(await token1.balanceOf(dutchTrade.address)).to.equal(0)
+        expect(await token1.balanceOf(activeFill)).to.be.lt(tradeRequest.minBuyAmount)
+
+        // The trade should not be settleable
+        expect(await dutchTrade.canSettle()).to.equal(false)
+
+        // Cannot settle the trade
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(dutchTrade.connect(bmSigner).settle()).to.be.revertedWith('auction not over')
+        })
+
+        // Advance time till trade can be settled
+        await advanceToTimestamp((await dutchTrade.endTime()) + 1)
+
+        // After settling, the trusted fill should be closed
+        expect(await dutchTrade.canSettle()).to.equal(true)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(dutchTrade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.CLOSED)
+
+        // Check balances, tokens were transferred
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
         expect(await token1.balanceOf(backingManager.address)).to.equal(
-          initBal1.add(tradeRequest.minBuyAmount)
+          initBal1.add(tradeRequest.minBuyAmount.div(2))
         )
       })
     })
