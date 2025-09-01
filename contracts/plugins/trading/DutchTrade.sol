@@ -381,12 +381,12 @@ contract DutchTrade is ITrade, Versioned {
         if (status != TradeStatus.OPEN || block.timestamp < startTime) {
             return false;
         }
-        // OPEN and past end time -> true
-        if (block.timestamp > endTime) {
+        // Bid complete or past end time -> true
+        if (bidder != address(0) || block.timestamp > endTime) {
             return true;
         }
 
-        // Ongoing OPEN auction, check if can be settled early
+        // Ongoing OPEN auction, check if can be settled
         uint192 price = _price(uint48(block.timestamp));
         uint256 amountIn = _bidAmount(price);
 
@@ -395,7 +395,7 @@ contract DutchTrade is ITrade, Versioned {
             : 0;
         uint256 amountInTrade = buy.balanceOf(address(this));
 
-        return (bidder != address(0) || (amountInFiller + amountInTrade >= amountIn));
+        return (amountInFiller + amountInTrade >= amountIn);
     }
 
     // === Private ===
