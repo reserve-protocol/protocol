@@ -3936,16 +3936,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             const activeFill = await trade.activeTrustedFill()
             expect(activeFill).to.not.equal(ZERO_ADDRESS)
 
+            // Advance time
+            await advanceToTimestamp((await trade.endTime()) - 5)
+
             // Perform fill
             await token0.burn(activeFill, await token0.balanceOf(activeFill))
-            const bidAmount = await trade.bidAmount((await trade.endTime()) - 5)
+            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
             await rsr.mint(activeFill, bidAmount)
 
             // The trade should be settleable
             expect(await trade.canSettle()).to.equal(true)
-
-            // Advance to auction end
-            await advanceToTimestamp((await trade.endTime()) - 5)
 
             // Cannot bid at this point (no tokens available on trade)
             await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
