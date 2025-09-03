@@ -4027,10 +4027,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should only allow components to begin-end txs', async () => {
-      await expect(main.connect(owner).beginTx()).to.be.revertedWith('caller is not a component')
-      await expect(main.connect(owner).endTx()).to.be.revertedWith('caller is not a component')
-      await expect(main.connect(other).beginTx()).to.be.revertedWith('caller is not a component')
-      await expect(main.connect(other).endTx()).to.be.revertedWith('caller is not a component')
+      await expect(main.connect(owner).beginTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(owner).endTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(other).beginTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(other).endTx()).to.be.revertedWith('not a component')
 
       // Try with components
       const components: Parameters<typeof main.init>[0] = {

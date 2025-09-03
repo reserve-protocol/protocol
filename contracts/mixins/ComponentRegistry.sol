@@ -123,6 +123,11 @@ abstract contract ComponentRegistry is Initializable, Auth, IComponentRegistry {
     // 4.1.0 - Required for global lock
     mapping(address => bool) public isComponent;
 
+    modifier onlyComponent() {
+        require(isComponent[_msgSender()], "not a component");
+        _;
+    }
+
     function cacheComponents() external {
         isComponent[address(rToken)] = true;
         isComponent[address(stRSR)] = true;
