@@ -161,11 +161,11 @@ contract MainP1 is
 
     // === Control Flow ===
 
-    function beginTx() external virtual {
+    function beginTx() external virtual onlyComponent {
         _nonReentrantBefore();
     }
 
-    function endTx() external virtual {
+    function endTx() external virtual onlyComponent {
         _nonReentrantAfter();
     }
 
