@@ -259,6 +259,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.rsrTrader()).to.equal(rsrTrader.address)
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
 
+      // Components registered
+      expect(await main.isComponent(rToken.address)).to.equal(true)
+      expect(await main.isComponent(stRSR.address)).to.equal(true)
+      expect(await main.isComponent(assetRegistry.address)).to.equal(true)
+      expect(await main.isComponent(basketHandler.address)).to.equal(true)
+      expect(await main.isComponent(backingManager.address)).to.equal(true)
+      expect(await main.isComponent(distributor.address)).to.equal(true)
+      expect(await main.isComponent(rsrTrader.address)).to.equal(true)
+      expect(await main.isComponent(rTokenTrader.address)).to.equal(true)
+      expect(await main.isComponent(furnace.address)).to.equal(true)
+      expect(await main.isComponent(broker.address)).to.equal(true)
+
       // Configuration
       const [rTokenTotal, rsrTotal] = await distributor.totals()
       expect(rTokenTotal).to.equal(bn(4000))
@@ -3996,6 +4008,50 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           rTokenTrader.settleTrade(reentrantToken.address)
         ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+      }
+    })
+
+    it('Should allow to cache components', async () => {
+      await (await ethers.getContractAt('MainP1', main.address)).cacheComponents()
+
+      expect(await main.isComponent(rToken.address)).to.equal(true)
+      expect(await main.isComponent(stRSR.address)).to.equal(true)
+      expect(await main.isComponent(assetRegistry.address)).to.equal(true)
+      expect(await main.isComponent(basketHandler.address)).to.equal(true)
+      expect(await main.isComponent(backingManager.address)).to.equal(true)
+      expect(await main.isComponent(distributor.address)).to.equal(true)
+      expect(await main.isComponent(rsrTrader.address)).to.equal(true)
+      expect(await main.isComponent(rTokenTrader.address)).to.equal(true)
+      expect(await main.isComponent(furnace.address)).to.equal(true)
+      expect(await main.isComponent(broker.address)).to.equal(true)
+    })
+
+    it('Should only allow components to begin-end txs', async () => {
+      await expect(main.connect(owner).beginTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(owner).endTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(other).beginTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(other).endTx()).to.be.revertedWith('not a component')
+
+      // Try with components
+      const components: Parameters<typeof main.init>[0] = {
+        rToken: rToken.address,
+        stRSR: stRSR.address,
+        assetRegistry: assetRegistry.address,
+        basketHandler: basketHandler.address,
+        backingManager: backingManager.address,
+        distributor: distributor.address,
+        rsrTrader: rsrTrader.address,
+        rTokenTrader: rTokenTrader.address,
+        furnace: furnace.address,
+        broker: broker.address,
+      }
+
+      // Loop through all components
+      for (const comp of Object.values(components)) {
+        await whileImpersonating(comp, async (compSigner) => {
+          await expect(main.connect(compSigner).beginTx()).to.not.be.reverted
+          await expect(main.connect(compSigner).endTx()).to.not.be.reverted
+        })
       }
     })
   })
