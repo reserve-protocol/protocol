@@ -320,14 +320,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// @custom:governance
-    function setTradingDelay(uint48 val) public governance {
+    function setTradingDelay(uint48 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
     /// @custom:governance
-    function setBackingBuffer(uint192 val) public governance {
+    function setBackingBuffer(uint192 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_BACKING_BUFFER, "invalid backingBuffer");
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
