@@ -156,6 +156,8 @@ interface IComponentRegistry {
     event BrokerSet(IBroker oldVal, IBroker newVal);
 
     function broker() external view returns (IBroker);
+
+    function isComponent(address addr) external view returns (bool);
 }
 
 /**
