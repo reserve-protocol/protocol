@@ -38,6 +38,8 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     error SignatureExpired();
     error InvalidNonce();
     error FutureLookup();
+    error NameEmpty();
+    error SymbolEmpty();
 
     /// Emitted when RSR is staked
     /// @param era The era at time of staking
