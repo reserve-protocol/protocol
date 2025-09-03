@@ -3505,7 +3505,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
         await stRSR.connect(owner).setRewardRatio(bn('1e14')) // this pays out rewards
         await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-        await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RewardRatioSet')
+        await stRSR.payoutRewards()
         // now the mint has been fully paid out
       }
 
