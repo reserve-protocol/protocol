@@ -4033,8 +4033,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(other).endTx()).to.be.revertedWith('caller is not a component')
 
       // Try with components
-      let components: Parameters<typeof main.init>[0]
-      components = {
+      const components: Parameters<typeof main.init>[0] = {
         rToken: rToken.address,
         stRSR: stRSR.address,
         assetRegistry: assetRegistry.address,
