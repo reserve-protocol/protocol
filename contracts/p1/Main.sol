@@ -162,10 +162,12 @@ contract MainP1 is
     // === Control Flow ===
 
     function beginTx() external virtual {
+        require(isComponent[_msgSender()], "caller is not a component");
         _nonReentrantBefore();
     }
 
     function endTx() external virtual {
+        require(isComponent[_msgSender()], "caller is not a component");
         _nonReentrantAfter();
     }
 
