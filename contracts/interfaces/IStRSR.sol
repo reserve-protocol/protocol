@@ -7,27 +7,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20P
 import "../libraries/Fixed.sol";
 import "./IComponent.sol";
 
-// Custom errors
-error InsufficientBalance();
-error IndexOutOfBounds();
-error WithdrawalUnavailable();
-error RTokenNotReady();
-error NotBackingManager();
-error SeizeExceedsBalance();
-error RatesStillSafe();
-error DecreaseAllowanceError();
-error InsufficientAllowance();
-error TransferToSelf();
-error ZeroAddress();
-error ZeroAmount();
-error ExpiredDeadline();
-error InvalidUnstakingDelay();
-error InvalidRewardRatio();
-error InvalidWithdrawalLeak();
-error SignatureExpired();
-error InvalidNonce();
-error FutureLookup();
-
 /**
  * @title IStRSR
  * @notice An ERC20 token representing shares of the RSR over-collateralization pool.
@@ -40,6 +19,26 @@ error FutureLookup();
  * StRSR is redeemable for more RSR. It is non-rebasing.
  */
 interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, IComponent {
+    error InsufficientBalance();
+    error IndexOutOfBounds();
+    error WithdrawalUnavailable();
+    error RTokenNotReady();
+    error NotBackingManager();
+    error SeizeExceedsBalance();
+    error RatesStillSafe();
+    error DecreaseAllowanceError();
+    error InsufficientAllowance();
+    error TransferToSelf();
+    error ZeroAddress();
+    error ZeroAmount();
+    error ExpiredDeadline();
+    error InvalidUnstakingDelay();
+    error InvalidRewardRatio();
+    error InvalidWithdrawalLeak();
+    error SignatureExpired();
+    error InvalidNonce();
+    error FutureLookup();
+
     /// Emitted when RSR is staked
     /// @param era The era at time of staking
     /// @param staker The address of the staker
