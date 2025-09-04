@@ -1,8 +1,7 @@
 import 'tsconfig-paths/register'
-import '@nomicfoundation/hardhat-toolbox'
 import '@nomicfoundation/hardhat-chai-matchers'
+import '@nomicfoundation/hardhat-verify'
 import '@nomiclabs/hardhat-ethers'
-import '@nomiclabs/hardhat-etherscan'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
@@ -170,46 +169,8 @@ const config: HardhatUserConfig = {
     enabled: !!useEnv('REPORT_GAS'),
   },
   etherscan: {
-    apiKey: {
-      mainnet: useEnv('ETHERSCAN_API_KEY'),
-      base: useEnv('BASESCAN_API_KEY'),
-      arbitrum: useEnv('ARBISCAN_API_KEY'),
-      'arbitrum-sepolia': useEnv('ARBISCAN_API_KEY'),
-    },
-    customChains: [
-      {
-        network: 'base',
-        chainId: 8453,
-        urls: {
-          apiURL: 'https://api.basescan.org/api',
-          browserURL: 'https://basescan.org',
-        },
-      },
-      {
-        network: 'base-goerli',
-        chainId: 84531,
-        urls: {
-          apiURL: 'https://api-goerli.basescan.org/api',
-          browserURL: 'https://goerli.basescan.org',
-        },
-      },
-      {
-        network: 'arbitrum',
-        chainId: 42161,
-        urls: {
-          apiURL: 'https://api.arbiscan.io/api',
-          browserURL: 'https://arbiscan.io',
-        },
-      },
-      {
-        network: 'arbitrum-sepolia',
-        chainId: 421614,
-        urls: {
-          apiURL: 'https://api-sepolia.arbiscan.io/api',
-          browserURL: 'https://sepolia.arbiscan.io',
-        },
-      },
-    ],
+    enabled: true,
+    apiKey: useEnv('ETHERSCAN_API_KEY'),
   },
   // tenderly: {
   //   // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details

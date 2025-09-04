@@ -109,27 +109,13 @@ export async function verifyContract(
     // Sleep 0.5s to not overwhelm API
     await new Promise((r) => setTimeout(r, 500))
 
+    // Etherscan v2 Multichain API KEY
     const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
 
     let url: string
-    if (baseL2Chains.includes(hre.network.name)) {
-      const BASESCAN_API_KEY = useEnv('BASESCAN_API_KEY')
-      // Base L2
-      url = `${getVerificationURL(
-        chainId
-      )}?module=contract&action=getsourcecode&address=${address}&apikey=${BASESCAN_API_KEY}`
-    } else if (arbitrumL2Chains.includes(hre.network.name)) {
-      const ARBISCAN_API_KEY = useEnv('ARBISCAN_API_KEY')
-      // Arbitrum L2
-      url = `${getVerificationURL(
-        chainId
-      )}?module=contract&action=getsourcecode&address=${address}&apikey=${ARBISCAN_API_KEY}`
-    } else {
-      // Ethereum
-      url = `${getVerificationURL(
-        chainId
-      )}/api?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
-    }
+    url = `${getVerificationURL(
+      chainId
+    )}/api?chainid=${chainId}&module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
 
     // Check to see if already verified
     const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
@@ -153,7 +139,7 @@ export async function verifyContract(
       } catch (e) {
         console.log(
           `IMPORTANT: failed to verify ${contract}. 
-        ${getVerificationURL(chainId)}/address/${address}#code`,
+        ${getExplorerURL(chainId)}/address/${address}#code`,
           e
         )
       }
@@ -163,14 +149,41 @@ export async function verifyContract(
 }
 
 export const getVerificationURL = (chainId: number) => {
-  if (chainId == 1) return 'https://api.etherscan.io'
+  const supportedChains = [1, 56, 8453, 84531, 42161, 421614]
 
-  // For Base, get URL from HH config
+  // Use Etherscan V2 for all supported chains
+  if (supportedChains.includes(Number(chainId))) {
+    return 'https://api.etherscan.io/v2'
+  }
+
+  // For other chains, get URL from HH config (if defined)
   const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
   if (!chainConfig || !chainConfig.urls) {
     throw new Error(`Missing custom chain configuration for ${hre.network.name}`)
   }
   return `${chainConfig.urls.apiURL}`
+}
+
+export const getExplorerURL = (chainId: number) => {
+  const explorers: Record<number, string> = {
+    1: 'https://etherscan.io/', // Ethereum Mainnet
+    56: 'https://bscscan.com/', // BNB Smart Chain Mainnet
+    8453: 'https://basescan.org/', // Base Mainnet
+    84531: 'https://sepolia.basescan.org/', // Base Sepolia Testnet
+    42161: 'https://arbiscan.io/', // Arbitrum One Mainnet
+    421614: 'https://sepolia.arbiscan.io/', // Arbitrum Sepolia Testnet
+  }
+
+  // Return explorer URL if defined
+  const explorer = explorers[chainId]
+  if (explorer) return explorer
+
+  // For other chains, get URL from HH config (if defined)
+  const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
+  if (!chainConfig || !chainConfig.urls) {
+    throw new Error(`Missing custom chain configuration for ${hre.network.name}`)
+  }
+  return `${chainConfig.urls.browserURL}`
 }
 
 export const getEmptyDeployment = (): IDeployments => {
