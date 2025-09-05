@@ -60,7 +60,7 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     await advanceBlocks(warmupPeriod / 12)
   }
 
-    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+  ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
   scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
   main = await ConAt('MainP1Fuzz', await scenario.main())
   comp = await componentsOf(main)

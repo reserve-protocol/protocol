@@ -425,7 +425,6 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - basket switch - covered by RSR [Batch auction]', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })
 
     // Recharge throttle
     await advanceTime(3600)
@@ -615,7 +614,6 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - collateral default - partially covered by RSR [Batch auction]', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('400000'), pctRate: fp('0.05') })
 
     // Recharge throttle
     await advanceTime(3600)
@@ -755,7 +753,6 @@ const scenarioSpecificTests = () => {
       Object.values(BidType)[bidType]
     }`, async () => {
       await warmup()
-      await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })
 
       // Recharge throttle
       await advanceTime(3600)
@@ -951,7 +948,6 @@ const scenarioSpecificTests = () => {
       Object.values(BidType)[bidType]
     }`, async () => {
       await warmup()
-      await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('400000'), pctRate: fp('0.05') })
 
       // Recharge throttle
       await advanceTime(3600)

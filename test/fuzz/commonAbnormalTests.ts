@@ -366,7 +366,6 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     it('can perform a recollateralization', async () => {
       await warmup()
-      await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('150000'), pctRate: fp('0.5') })
 
       // Recharge throttle
       await advanceTime(3600)
