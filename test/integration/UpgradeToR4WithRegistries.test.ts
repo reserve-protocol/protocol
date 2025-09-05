@@ -7,6 +7,8 @@ import { IImplementations } from '#/common/configuration'
 import { AssetPluginRegistry } from '@typechain/AssetPluginRegistry'
 import { whileImpersonating } from '#/utils/impersonation'
 import { DAOFeeRegistry } from '@typechain/DAOFeeRegistry'
+import { TrustedFillerRegistry } from '@typechain/TrustedFillerRegistry'
+import { BrokerP1 } from '@typechain/BrokerP1'
 
 interface RTokenParams {
   name: string
@@ -23,7 +25,8 @@ const rTokensToTest: RTokenParams[] = [
   },
 ]
 
-const v4VersionHash = '0x81ed76178093786cbe0cb79744f6e7ca3336fbb9fe7d1ddff1f0157b63e09813'
+// 4.2.0
+const v4VersionHash = '0x99b189f6a35f2d8d52cd79b21cabb1eca4a12f69132e253d75b4ee7634d0fef8'
 const v2VersionHash = '0xb4bcb154e38601c389396fa918314da42d4626f13ef6d0ceb07e5f5d26b2fbc3'
 
 async function _confirmVersion(address: string, target: string) {
@@ -32,10 +35,11 @@ async function _confirmVersion(address: string, target: string) {
 }
 
 // NOTE: This is an explicit test!
-describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => {
+describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => {
   let versionRegistry: VersionRegistry
   let assetPluginRegistry: AssetPluginRegistry
   let daoFeeRegistry: DAOFeeRegistry
+  let trustedFillerRegistry: TrustedFillerRegistry
 
   let implementationsR4: IImplementations
   let implementationsR2: IImplementations
@@ -57,6 +61,11 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
     daoFeeRegistry = await DAOFeeRegistryFactory.deploy(
       mockRoleRegistry.address,
       await owner.getAddress()
+    )
+
+    const TrustedFillerRegistryFactory = await ethers.getContractFactory('TrustedFillerRegistry')
+    trustedFillerRegistry = <TrustedFillerRegistry>(
+      await TrustedFillerRegistryFactory.deploy(mockRoleRegistry.address)
     )
 
     // Setup Common Dependencies
@@ -103,7 +112,9 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
           stRSR: (await StRSRFactory.deploy()).address,
         },
         trading: {
-          gnosisTrade: (await GnosisTradeFactory.deploy()).address,
+          gnosisTrade: (
+            await GnosisTradeFactory.deploy('0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101')
+          ).address,
           dutchTrade: (await DutchTradeFactory.deploy()).address,
         },
       }
@@ -111,7 +122,6 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
       const DeployerFactory = await ethers.getContractFactory('DeployerP1')
       const deployerR4 = await DeployerFactory.deploy(
         '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
-        '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
         '0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA',
         implementationsR4
       )
@@ -156,7 +166,9 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
           stRSR: (await StRSRFactory.deploy()).address,
         },
         trading: {
-          gnosisTrade: (await GnosisTradeFactory.deploy()).address,
+          gnosisTrade: (
+            await GnosisTradeFactory.deploy('0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101')
+          ).address,
           dutchTrade: (await DutchTradeFactory.deploy()).address,
         },
       }
@@ -164,7 +176,6 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
       const DeployerFactory = await ethers.getContractFactory('DeployerP1V2')
       const deployerR2 = await DeployerFactory.deploy(
         '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
-        '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
         '0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA',
         implementationsR2
       )
@@ -189,7 +200,7 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
         )
 
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.0.0's Main
+          // Upgrade Main to 4.2.0's Main
           await RTokenMain.connect(signer).upgradeTo(implementationsR4.main)
 
           // Set registries
@@ -211,6 +222,10 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
             await RTokenMain.OWNER_ROLE(),
             RTokenMain.address
           )
+
+          // Set TrustedFillerRegistry
+          const broker = <BrokerP1>await ethers.getContractAt('BrokerP1', await RTokenMain.broker())
+          await broker.connect(signer).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
         })
 
         const targetsToVerify = [
@@ -228,7 +243,7 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
         ]
 
         for (let j = 0; j < targetsToVerify.length; j++) {
-          await _confirmVersion(targetsToVerify[j], '4.0.0')
+          await _confirmVersion(targetsToVerify[j], '4.2.0')
         }
 
         const currentAssetRegistry = await RTokenAssetRegistry.getRegistry()
@@ -241,7 +256,7 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
 
         // So, let's upgrade the RToken to a new version now.
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.0.0's Main
+          // Upgrade Main to 4.2.0's Main
           await RTokenMain.connect(signer).upgradeMainTo(v2VersionHash)
 
           // Registry does not have assets yet.
@@ -264,7 +279,7 @@ describe('Upgrade from 4.0.0 to New Version with all Registries Enabled', () => 
 
         // Finish upgrade, with asset validation
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.0.0's Main
+          // Upgrade Main to 4.2.0's Main
           await RTokenMain.connect(signer).upgradeMainTo(v2VersionHash)
 
           // Upgrade RToken, without validating assets

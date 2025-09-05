@@ -15,7 +15,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -32,7 +32,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let mock: SignerWithAddress
 
   // Deployer contract
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Config
   let config: IConfig
@@ -69,7 +69,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     gnosis: string,
     rsrAsset: string,
     implementations?: IImplementations
-  ): Promise<TestIDeployer> => {
+  ): Promise<DeployerP1> => {
     if (IMPLEMENTATION == Implementation.P0) {
       const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
       const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
@@ -77,10 +77,10 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
         libraries: { TradingLibP0: tradingLib.address },
       })
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
+      return <DeployerP1>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset, implementations)
+      return <DeployerP1>await DeployerFactory.deploy(rsr, rsrAsset, implementations)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
@@ -165,10 +165,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address, implementations)
-        ).to.be.revertedWith('invalid address')
-
-        await expect(
           deployNewDeployer(ZERO_ADDRESS, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
@@ -214,9 +210,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
 
   describe('Deployment', () => {
     it('Should setup values correctly', async () => {
-      expect(await deployer.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployer.rsr()).to.equal(rsr.address)
-      expect(await deployer.gnosis()).to.equal(gnosis.address)
       expect(await deployer.rsrAsset()).to.equal(rsrAsset.address)
     })
 
@@ -260,33 +254,65 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
 
     it('Should emit event', async () => {
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
       ).to.emit(deployer, 'RTokenCreated')
     })
 
     it('Should not allow empty name', async () => {
-      await expect(deployer.deploy('', 'RTKN', 'mandate', owner.address, config)).to.be.reverted
+      await expect(
+        deployer.deploy('', 'RTKN', 'mandate', owner.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
+      ).to.be.reverted
     })
 
     it('Should not allow empty symbol', async () => {
       await expect(
-        deployer.deploy('RTKN RToken', '', 'mandate', owner.address, config)
+        deployer.deploy('RTKN RToken', '', 'mandate', owner.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('symbol empty')
     })
 
     it('Should not allow empty mandate', async () => {
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', '', owner.address, config)
+        deployer.deploy('RTKN RToken', 'RTKN', '', owner.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('mandate empty')
     })
 
     it('Should not allow invalid owner address', async () => {
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', ZERO_ADDRESS, config)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', ZERO_ADDRESS, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('invalid owner')
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', deployer.address, config)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', deployer.address, config, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('invalid owner')
     })
 

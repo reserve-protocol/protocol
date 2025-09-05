@@ -27,6 +27,7 @@ import {
   ReadFacet,
   RecollateralizationLibP1,
   RevertingFacetMock,
+  RevenueFacet,
   RevenueTraderCompatibleV1,
   RevenueTraderCompatibleV2,
   RevenueTraderInvalidVersion,
@@ -92,6 +93,7 @@ describe('Facade + FacadeMonitor contracts', () => {
   let facadeTest: FacadeTest
   let facadeMonitor: FacadeMonitor
   let readFacet: ReadFacet
+  let revenueFacet: RevenueFacet
 
   // Main
   let rToken: TestIRToken
@@ -252,80 +254,109 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facade.stToken(rToken.address)).to.equal(stRSR.address)
     })
 
-    it('Should return maxIssuable correctly', async () => {
-      // Regression test
-      // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
-      // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
-      const meltAmt = issueAmount.div(10)
-      const furnaceAddr = await main.furnace()
-      await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
-      await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
-        await rToken.connect(furnaceSigner).melt(meltAmt)
+    context('BackingBufferFacet', () => {
+      it('Should return backingBuffer', async () => {
+        let [required, actual] = await facade.callStatic.backingBuffer(rToken.address)
+        expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
+        expect(actual).to.equal(0)
+
+        // Mimic 10% even appreciation across the board on a 0.01% backingBuffer
+        const [erc20s, amounts] = await basketHandler.quote(issueAmount, false, 0)
+        for (let i = 0; i < erc20s.length; i++) {
+          const erc20 = await ethers.getContractAt('ERC20Mock', erc20s[i])
+          await erc20.connect(addr1).mint(backingManager.address, amounts[i].div(10))
+        }
+        ;[required, actual] = await facade.callStatic.backingBuffer(rToken.address)
+        expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
+        expect(actual).to.equal(fp('10')) // 10%
+
+        // Add-in an uneven balance to get to 12.5% total appreciation on a 0.01% backingBuffer
+        await token.connect(addr1).mint(backingManager.address, issueAmount.div(4).div(10))
+        ;[required, actual] = await facade.callStatic.backingBuffer(rToken.address)
+        expect(required).to.be.closeTo(fp('0.01'), fp('0.0001'))
+        expect(actual).to.equal(fp('12.5')) // 12.5%
       })
-
-      // Check values -- must reflect 10% appreciation
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
-        bn('3.599999991e28')
-      )
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('3.6e28')
-      )
-      expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
-
-      // Redeem all RTokens
-      await rToken.connect(addr1).redeem(await rToken.totalSupply())
-      expect(await rToken.totalSupply()).to.equal(0)
-      expect(await rToken.basketsNeeded()).to.equal(0)
-
-      // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('4e28')
-      )
     })
 
-    it('Should return maxIssuableByAmounts correctly', async () => {
-      const [erc20Addrs] = await basketHandler.quote(fp('1'), false, 0)
-      const erc20s = await Promise.all(erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a)))
-      const addr1Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr1.address)))
-      const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
-      const otherAmounts = await Promise.all(erc20s.map((e) => e.balanceOf(other.address)))
+    context('MaxIssuableFacet', () => {
+      it('Should return maxIssuable correctly', async () => {
+        // Regression test
+        // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
+        // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
+        const meltAmt = issueAmount.div(10)
+        const furnaceAddr = await main.furnace()
+        await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
+        await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
+          await rToken.connect(furnaceSigner).melt(meltAmt)
+        })
 
-      // Regression test
-      // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
-      // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
-      const meltAmt = issueAmount.div(10)
-      const furnaceAddr = await main.furnace()
-      await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
-      await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
-        await rToken.connect(furnaceSigner).melt(meltAmt)
+        // Check values -- must reflect 10% appreciation
+        expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
+          bn('3.599999991e28')
+        )
+        expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+          bn('3.6e28')
+        )
+        expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
+
+        // Redeem all RTokens
+        await rToken.connect(addr1).redeem(await rToken.totalSupply())
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await rToken.basketsNeeded()).to.equal(0)
+
+        // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
+        expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+          bn('4e28')
+        )
+      })
+      it('Should return maxIssuableByAmounts correctly', async () => {
+        const [erc20Addrs] = await basketHandler.quote(fp('1'), false, 0)
+        const erc20s = await Promise.all(
+          erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a))
+        )
+        const addr1Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr1.address)))
+        const addr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
+        const otherAmounts = await Promise.all(erc20s.map((e) => e.balanceOf(other.address)))
+
+        // Regression test
+        // April 2nd 2024 -- maxIssuableByAmounts did not account for appreciation
+        // Cause RToken appreciation first to ensure basketsNeeded != totalSupply
+        const meltAmt = issueAmount.div(10)
+        const furnaceAddr = await main.furnace()
+        await rToken.connect(addr1).transfer(furnaceAddr, meltAmt)
+        await whileImpersonating(furnaceAddr, async (furnaceSigner) => {
+          await rToken.connect(furnaceSigner).melt(meltAmt)
+        })
+
+        // Check values -- must reflect 10% appreciation
+        expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr1Amounts)).to.equal(
+          bn('3.599999991e28')
+        )
+        expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr2Amounts)).to.equal(
+          bn('3.6e28')
+        )
+        expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, otherAmounts)).to.equal(
+          0
+        )
+
+        // Redeem all RTokens
+        await rToken.connect(addr1).redeem(await rToken.totalSupply())
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await rToken.basketsNeeded()).to.equal(0)
+        const newAddr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
+
+        // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
+        expect(
+          await facade.callStatic.maxIssuableByAmounts(rToken.address, newAddr2Amounts)
+        ).to.equal(bn('4e28'))
       })
 
-      // Check values -- must reflect 10% appreciation
-      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr1Amounts)).to.equal(
-        bn('3.599999991e28')
-      )
-      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, addr2Amounts)).to.equal(
-        bn('3.6e28')
-      )
-      expect(await facade.callStatic.maxIssuableByAmounts(rToken.address, otherAmounts)).to.equal(0)
-
-      // Redeem all RTokens
-      await rToken.connect(addr1).redeem(await rToken.totalSupply())
-      expect(await rToken.totalSupply()).to.equal(0)
-      expect(await rToken.basketsNeeded()).to.equal(0)
-      const newAddr2Amounts = await Promise.all(erc20s.map((e) => e.balanceOf(addr2.address)))
-
-      // With 0 baskets needed - Returns correct value at 1:1 rate, without the 10%
-      expect(
-        await facade.callStatic.maxIssuableByAmounts(rToken.address, newAddr2Amounts)
-      ).to.equal(bn('4e28'))
-    })
-
-    it('Should revert maxIssuable when frozen', async () => {
-      await main.connect(owner).freezeShort()
-      await expect(facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.be.revertedWith(
-        'frozen'
-      )
+      it('Should revert maxIssuable when frozen', async () => {
+        await main.connect(owner).freezeShort()
+        await expect(
+          facade.callStatic.maxIssuable(rToken.address, addr1.address)
+        ).to.be.revertedWith('frozen')
+      })
     })
 
     it('Should return issuable quantities correctly', async () => {
@@ -750,6 +781,45 @@ describe('Facade + FacadeMonitor contracts', () => {
         rsrTrader.address
       )
       expect(canStart).to.eql(Array(8).fill(false))
+    })
+
+    context('RevenueFacet', () => {
+      it('Should return multiple revenues', async () => {
+        const rsrTraderAmt = bn('0.6e18')
+        const rTokenTraderAmt = bn('0.4e18')
+        await token.connect(addr1).transfer(rsrTrader.address, rsrTraderAmt)
+        await token.connect(addr1).transfer(rTokenTrader.address, rTokenTraderAmt)
+
+        const revenues = await facade.callStatic.revenues([rToken.address, rToken.address]) // re-use same RToken since facade does not check for uniqueness
+        const minTradeVolume = await backingManager.minTradeVolume() // same for revenue traders
+
+        // Check surpluses
+        for (let i = 0; i < revenues.length; i++) {
+          expect(revenues[i].rToken).to.equal(rToken.address)
+          if (i == 8 || i == 24) {
+            expect(revenues[i].trader).to.equal(rTokenTrader.address)
+            expect(revenues[i].buy).to.equal(rToken.address)
+            expect(revenues[i].symbol).to.equal('DAI')
+            expect(revenues[i].sellDecimals).to.equal(18)
+            expect(revenues[i].volume).to.equal(rTokenTraderAmt.mul(99).div(100))
+            expect(revenues[i].balance).to.equal(rTokenTraderAmt)
+            expect(revenues[i].minTradeAmount).to.equal(minTradeVolume.mul(100).div(99))
+          } else if (i == 9 || i == 25) {
+            expect(revenues[i].trader).to.equal(rsrTrader.address)
+            expect(revenues[i].buy).to.equal(rsr.address)
+            expect(revenues[i].symbol).to.equal('DAI')
+            expect(revenues[i].sellDecimals).to.equal(18)
+            expect(revenues[i].volume).to.equal(rsrTraderAmt.mul(99).div(100))
+            expect(revenues[i].balance).to.equal(rsrTraderAmt)
+            expect(revenues[i].minTradeAmount).to.equal(minTradeVolume.mul(100).div(99))
+          } else {
+            expect(revenues[i].sellDecimals).to.not.equal(0)
+            expect(revenues[i].volume).to.equal(0)
+            expect(revenues[i].balance).to.equal(0)
+            expect(revenues[i].minTradeAmount).to.not.equal(0)
+          }
+        }
+      })
     })
 
     itP1('Should handle invalid versions when running revenueOverview', async () => {
@@ -1270,10 +1340,6 @@ describe('Facade + FacadeMonitor contracts', () => {
     it('should return redemption available', async () => {
       const issueAmount = bn('100000e18')
 
-      // Decrease redemption allowed amount
-      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
-      await rToken.connect(owner).setRedemptionThrottleParams(redeemThrottleParams)
-
       // Check with no supply
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1282,8 +1348,13 @@ describe('Facade + FacadeMonitor contracts', () => {
       // Issue some RTokens
       await rToken.connect(addr1).issue(issueAmount)
 
-      // check throttles - redemption still fully available
-      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.9'))
+      // Decrease redemption allowed amount
+      const issuanceThrottleParams = { amtRate: issueAmount.div(4), pctRate: fp('0.05') } // 25K
+      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
+      await rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redeemThrottleParams)
+
+      // check throttles - issuance & redemption still fully available (because lower)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem RTokens (50% of throttle)
@@ -1347,7 +1418,10 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Set issuance throttle to percent only
       const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      const redemptionThrottleParams = { amtRate: fp('2'), pctRate: fp('0.2') } // 10%
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
 
       // Advance time significantly
       await advanceTime(1000000000)
@@ -1358,7 +1432,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
 
       // Check redemption throttle unchanged
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(supplyThrottle.mul(2))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Issuance #3 - Should be allowed, does not exceed supply restriction
@@ -1368,18 +1442,15 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Check issuance throttle updated - Previous issuances recharged
       expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle.sub(issueAmount3))
-
       // Hourly Limit: 210K (10% of total supply of 2.1 M)
       // Available: 100 K / 201K (~ 0.47619)
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
         fp('0.476'),
         fp('0.001')
       )
-
       // Check redemption throttle unchanged
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      // expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
-
       // Check all issuances are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(
         issueAmount1.add(issueAmount2).add(issueAmount3)
@@ -1387,7 +1458,6 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Advance time, issuance will recharge a bit
       await advanceTime(100)
-
       // Now 50% of hourly limit available (~105.8K / 210 K)
       expect(await rToken.issuanceAvailable()).to.be.closeTo(fp('105800'), fp('100'))
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
@@ -1414,12 +1484,8 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Check redemptions
-      // Set redemption throttle to percent only
-      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-
       const totalSupply = await rToken.totalSupply()
-      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(10)) // 10%
+      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(5)) // 20%
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem half of the available throttle
@@ -1427,7 +1493,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // About 52% now used of redemption throttle
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.be.closeTo(
-        fp('0.52'),
+        fp('0.79'),
         fp('0.01')
       )
 

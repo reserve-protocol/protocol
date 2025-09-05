@@ -14,6 +14,7 @@ import {
   ONE_PERIOD,
   STRSR_DEST,
   TradeKind,
+  TradeStatus,
   ZERO_ADDRESS,
   BidType,
 } from '../common/constants'
@@ -25,6 +26,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ComptrollerMock,
+  CowSwapFillerMock,
   ERC20Mock,
   FacadeTest,
   FiatCollateral,
@@ -32,6 +34,7 @@ import {
   IAssetRegistry,
   InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
+  MockRoleRegistry,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -43,6 +46,7 @@ import {
   TestIRToken,
   TestIRevenueTrader,
   TestIStRSR,
+  TrustedFillerRegistry,
   USDCMock,
 } from '../typechain'
 import {
@@ -66,6 +70,8 @@ import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
+
+const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
@@ -151,8 +157,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
       )
     } else {
-      const slot = await getStorageAt(broker.address, 56)
-      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+      const slot = await getStorageAt(broker.address, 55)
+      await setStorageAt(broker.address, 55, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
     }
     expect(await broker.batchTradeDisabled()).to.equal(true)
   }
@@ -361,14 +367,38 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         distributor
           .connect(owner)
           .setDistribution(furnace.address, { rTokenDist: bn(5), rsrDist: bn(5) })
-      ).to.be.revertedWith('destination can not be furnace or strsr directly')
+      ).to.be.revertedWith('destination cannot be furnace or strsr directly')
 
       // Cannot set StRSR as beneficiary
       await expect(
         distributor
           .connect(owner)
           .setDistribution(stRSR.address, { rTokenDist: bn(5), rsrDist: bn(5) })
-      ).to.be.revertedWith('destination can not be furnace or strsr directly')
+      ).to.be.revertedWith('destination cannot be furnace or strsr directly')
+
+      // Cannot set RSR as beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(rsr.address, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('destination cannot be rsr or rToken')
+
+      // Cannot set RToken as beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(rToken.address, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('destination cannot be rsr or rToken')
+    })
+
+    itP1('Should not allow to set Dao fee explicitly', async () => {
+      // Cannot set DAO fee explicitly
+      await main.connect(owner).setDAOFeeRegistry(other.address)
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(other.address, { rTokenDist: bn(10000), rsrDist: bn(0) })
+      ).to.be.revertedWith('destination cannot be daoFeeRegistry')
     })
 
     itP1('Should not allow to set Dao fee explicitly', async () => {
@@ -3855,6 +3885,202 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           // Run it down
           await expect(exploiter.connect(addr1).start(trade.address, rTokenTrader.address)).to.be
             .reverted
+        })
+
+        describeP1('Trusted Fillers', () => {
+          let trustedFillerRegistry: TrustedFillerRegistry
+          let cowSwapFillerMock: CowSwapFillerMock
+
+          beforeEach(async () => {
+            // Setup trusted filler registry and enable on Broker
+            const MockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+            const mockRoleRegistry = <MockRoleRegistry>await MockRoleRegistryFactory.deploy()
+
+            const TrustedFillerRegistryFactory = await ethers.getContractFactory(
+              'TrustedFillerRegistry'
+            )
+            trustedFillerRegistry = <TrustedFillerRegistry>(
+              await TrustedFillerRegistryFactory.deploy(mockRoleRegistry.address)
+            )
+
+            const CowSwapFillerMockFactory = await ethers.getContractFactory('CowSwapFillerMock')
+            cowSwapFillerMock = <CowSwapFillerMock>await CowSwapFillerMockFactory.deploy()
+
+            await trustedFillerRegistry.addTrustedFiller(cowSwapFillerMock.address)
+
+            await broker
+              .connect(owner)
+              .setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+          })
+
+          it('Should support trusted fills', async () => {
+            expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+
+            await token0.connect(addr1).transfer(rsrTrader.address, issueAmount.div(2000))
+            await rsrTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await rsrTrader.trades(token0.address)
+            )
+
+            expect(await trade.status()).to.equal(TradeStatus.OPEN)
+            expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+            expect(await rsrTrader.tradesOpen()).to.equal(1)
+
+            // check balances
+            expect(await token0.balanceOf(trade.address)).to.equal(issueAmount.div(2000))
+            expect(await rsr.balanceOf(trade.address)).to.equal(0)
+
+            // Create trusted fill
+            await expect(
+              trade
+                .connect(addr1)
+                .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+            ).to.emit(trade, 'TrustedFillCreated')
+
+            // Funds moved to filler
+            expect(await token0.balanceOf(trade.address)).to.equal(0)
+
+            // Verify active trusted fill is set
+            const activeFill = await trade.activeTrustedFill()
+            expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+            // Advance time
+            await advanceToTimestamp((await trade.endTime()) - 5)
+
+            // Perform fill
+            await token0.burn(activeFill, await token0.balanceOf(activeFill))
+            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
+            await rsr.mint(activeFill, bidAmount)
+
+            // The trade should be settleable
+            expect(await trade.canSettle()).to.equal(true)
+
+            // Cannot bid at this point (no tokens available on trade)
+            await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+              .connect(addr1)
+              .approve(trade.address, constants.MaxUint256)
+            await expect(trade.connect(addr1).bid()).to.be.revertedWith(
+              'ERC20: transfer amount exceeds balance'
+            )
+
+            // No sell tokens left on trade
+            expect(await token0.balanceOf(trade.address)).to.equal(0)
+            expect(await trade.status()).to.equal(TradeStatus.OPEN)
+
+            // Settle trade
+            await rsrTrader.settleTrade(token0.address)
+            expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+            expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+            expect(await rsrTrader.tradesOpen()).to.equal(0)
+
+            // All funds moved to origin
+            expect(await token0.balanceOf(rsrTrader.address)).to.equal(0)
+            expect(await rsr.balanceOf(rsrTrader.address)).to.be.closeTo(0, 5000)
+            expect(await token0.balanceOf(trade.address)).to.equal(0)
+            expect(await rsr.balanceOf(trade.address)).to.equal(0)
+            expect(await token0.balanceOf(activeFill)).to.equal(0)
+            expect(await rsr.balanceOf(activeFill)).to.equal(0)
+          })
+
+          const bidTypes = [BidType.CALLBACK, BidType.TRANSFER]
+          bidTypes.forEach((bidType) => {
+            it(`Should allow to bid closing trusted filler - Bid Type: ${
+              Object.values(BidType)[bidType]
+            }`, async () => {
+              const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
+
+              expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+
+              await token0.connect(addr1).transfer(rsrTrader.address, issueAmount.div(2000))
+              await rsrTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+              const trade = await ethers.getContractAt(
+                'DutchTrade',
+                await rsrTrader.trades(token0.address)
+              )
+
+              expect(await trade.status()).to.equal(TradeStatus.OPEN)
+              expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+              expect(await rsrTrader.tradesOpen()).to.equal(1)
+
+              // check balances
+              expect(await token0.balanceOf(trade.address)).to.equal(issueAmount.div(2000))
+              expect(await rsr.balanceOf(trade.address)).to.equal(0)
+
+              // Create trusted fill
+              await expect(
+                trade
+                  .connect(addr1)
+                  .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+              ).to.emit(trade, 'TrustedFillCreated')
+
+              // Funds moved to filler
+              expect(await token0.balanceOf(trade.address)).to.equal(0)
+
+              // Verify active trusted fill is set
+              const activeFill = await trade.activeTrustedFill()
+              expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+              // Advance time
+              await advanceToTimestamp((await trade.endTime()) - 5)
+
+              // The trade cannot be settled yet
+              expect(await trade.canSettle()).to.equal(false)
+
+              // Bid
+              if (bidType == BidType.CALLBACK) {
+                await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+                  .connect(addr1)
+                  .approve(router.address, constants.MaxUint256)
+
+                await router.connect(addr1).bid(trade.address, addr1.address)
+                expect(await trade.bidder()).to.equal(router.address)
+
+                // Noone can bid again on the trade directly
+                await expect(
+                  trade.connect(addr1).bidWithCallback(new Uint8Array(0))
+                ).to.be.revertedWith('bid already received')
+
+                // Cannot bid once is settled via router
+                await expect(
+                  router.connect(addr1).bid(trade.address, addr1.address)
+                ).to.be.revertedWith('trade not open')
+              }
+
+              if (bidType == BidType.TRANSFER) {
+                await (await ethers.getContractAt('ERC20Mock', await trade.buy()))
+                  .connect(addr1)
+                  .approve(trade.address, constants.MaxUint256)
+
+                await trade.connect(addr1).bid()
+                expect(await trade.bidder()).to.equal(addr1.address)
+              }
+
+              // Verify active trusted fill and trade are closed
+              expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+              expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+              expect(await rsrTrader.tradesOpen()).to.equal(0)
+
+              // No sell tokens left on trade
+              expect(await token0.balanceOf(trade.address)).to.equal(0)
+
+              // Cannot settle trade, already settled
+              expect(await trade.canSettle()).to.equal(false)
+              await expect(rsrTrader.settleTrade(token0.address)).to.be.revertedWith(
+                'no trade open'
+              )
+
+              // All funds moved to origin
+              expect(await token0.balanceOf(rsrTrader.address)).to.equal(0)
+              expect(await rsr.balanceOf(rsrTrader.address)).to.be.closeTo(0, 5000)
+              expect(await token0.balanceOf(trade.address)).to.equal(0)
+              expect(await rsr.balanceOf(trade.address)).to.equal(0)
+              expect(await token0.balanceOf(activeFill)).to.equal(0)
+              expect(await rsr.balanceOf(activeFill)).to.equal(0)
+            })
+          })
         })
       })
     })

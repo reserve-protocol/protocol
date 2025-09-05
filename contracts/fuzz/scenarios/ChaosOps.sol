@@ -813,6 +813,10 @@ contract ChaosOpsScenario {
         TestIRToken(address(main.rToken())).setIssuanceThrottleParams(params);
     }
 
+    function setRedemptionThrottleParamsDirect(ThrottleLib.Params calldata params) public {
+        TestIRToken(address(main.rToken())).setRedemptionThrottleParams(params);
+    }
+
     // ==== governance changes ====
     function setIssuanceThrottleParams(uint256 amtRateSeed, uint256 pctRateSeed) public {
         RTokenP1Fuzz rToken = RTokenP1Fuzz(address(main.rToken()));

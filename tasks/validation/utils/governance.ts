@@ -175,7 +175,17 @@ export const executeProposal = async (
      ** Executing proposals requires that the oracles aren't stale.
      ** Make sure to specify any extra assets that may have been registered.
      */
-    await pushOraclesForward(hre, rtokenAddress, [])
+
+    // gather any unregistered assets from the proposal, push them forward as well
+    const extraOracles: Array<string> = []
+    proposal.calldatas.forEach((data: string) => {
+      const funcSig = data.slice(0, 10)
+      if (funcSig === '0x4420e486' || funcSig === '0x3ba3712a') {
+        extraOracles.push('0x' + data.slice(34))
+      }
+    })
+
+    await pushOraclesForward(hre, rtokenAddress, extraOracles)
 
     console.log('Executing now...')
 

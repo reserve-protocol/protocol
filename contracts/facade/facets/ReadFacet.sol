@@ -11,7 +11,6 @@ import "../../libraries/Fixed.sol";
 import "../../p1/BasketHandler.sol";
 import "../../p1/RToken.sol";
 import "../../p1/StRSRVotes.sol";
-import "./MaxIssuableFacet.sol";
 
 /**
  * @title ReadFacet

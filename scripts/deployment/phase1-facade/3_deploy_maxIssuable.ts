@@ -44,21 +44,6 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId})
     MaxIssuableFacet:  ${maxIssuableFacet.address}
     Deployment file: ${deploymentFilename}`)
-
-  // ******************** Save to Facade ****************************************/
-
-  console.log('Configuring with Facade...')
-
-  // Save MaxIssuableFacet functions to Facade
-  const facade = await ethers.getContractAt('Facade', deployments.facade)
-  await facade.save(
-    maxIssuableFacet.address,
-    Object.entries(maxIssuableFacet.functions).map(([fn]) =>
-      maxIssuableFacet.interface.getSighash(fn)
-    )
-  )
-
-  console.log('Finished saving to Facade')
 }
 
 main().catch((error) => {

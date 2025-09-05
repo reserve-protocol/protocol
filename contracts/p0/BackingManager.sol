@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./mixins/TradingLib.sol";
 import "./mixins/Trading.sol";
 import "../interfaces/IAsset.sol";
@@ -65,6 +66,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         trade = super.settleTrade(sell);
         delete tokensOut[trade.sell()];
 
+        tradeEnd[trade.KIND()] = uint48(Math.min(tradeEnd[trade.KIND()], block.timestamp));
+
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
             // solhint-disable-next-line no-empty-blocks
@@ -97,7 +100,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         );
         require(!main.basketHandler().fullyCollateralized(), "already collateralized");
 
-        // First dissolve any held RToken balance above Distributor-dust
+        // First dissolve any held RToken balance
         // gas-optimization: 1 whole RToken must be worth 100 trillion dollars for this to skip $1
         uint256 balance = main.rToken().balanceOf(address(this));
         if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) main.rToken().dissolve(balance);
@@ -246,16 +249,16 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         assert(main.basketHandler().fullyCollateralized());
     }
 
-    /// Require that all tokens in this array are unique
-    function requireUnique(IERC20[] calldata erc20s) internal pure {
-        for (uint256 i = 1; i < erc20s.length; i++) {
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
-        }
-    }
+    // === Governance ===
 
-    // === Setters ===
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public override(TradingP0, ITrading) governance {
+        super.forceSettleTrade(trade);
+        delete tokensOut[trade.sell()];
+    }
 
     /// @custom:governance
     function setTradingDelay(uint48 val) public governance {

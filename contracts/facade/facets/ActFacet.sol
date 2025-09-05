@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../../plugins/trading/DutchTrade.sol";
 import "../../plugins/trading/GnosisTrade.sol";
 import "../../interfaces/IBackingManager.sol";
+import "../lib/FacetLib.sol";
 
 /**
  * @title ActFacet
@@ -45,7 +46,7 @@ contract ActFacet is Multicall {
     ) external {
         // Settle auctions
         for (uint256 i = 0; i < toSettle.length; ++i) {
-            _settleTrade(revenueTrader, toSettle[i]);
+            FacetLib.settleTrade(revenueTrader, toSettle[i]);
         }
 
         // if 2.1.0, distribute tokenToBuy
@@ -59,10 +60,10 @@ contract ActFacet is Multicall {
         if (toStart.length == 0) return;
 
         // Transfer revenue backingManager -> revenueTrader
-        _forwardRevenue(revenueTrader.main().backingManager(), toStart);
+        FacetLib.forwardRevenue(revenueTrader.main().backingManager(), toStart);
 
         // Start RevenueTrader auctions
-        _runRevenueAuctions(revenueTrader, toStart, kinds);
+        FacetLib.runRevenueAuctions(revenueTrader, toStart, kinds);
     }
 
     // === Static Calls ===
@@ -93,7 +94,7 @@ contract ActFacet is Multicall {
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
         // Forward ALL revenue
-        _forwardRevenue(bm, reg.erc20s);
+        FacetLib.forwardRevenue(bm, reg.erc20s);
 
         erc20s = new IERC20[](reg.erc20s.length);
         canStart = new bool[](reg.erc20s.length);
@@ -109,7 +110,7 @@ contract ActFacet is Multicall {
             // Settle first if possible. Required so we can assess full available balance
             ITrade trade = revenueTrader.trades(erc20s[i]);
             if (address(trade) != address(0) && trade.canSettle()) {
-                _settleTrade(revenueTrader, erc20s[i]);
+                FacetLib.settleTrade(revenueTrader, erc20s[i]);
             }
 
             surpluses[i] = erc20s[i].balanceOf(address(revenueTrader));
@@ -133,18 +134,16 @@ contract ActFacet is Multicall {
         // Reward counts are disjoint with `surpluses` and `canStart`
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             bmRewards[i] = reg.erc20s[i].balanceOf(address(bm));
-        }
-        // solhint-disable-next-line no-empty-blocks
-        try bm.claimRewards() {} catch {} // same between 2.1.0 and 3.0.0
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            bmRewards[i] = reg.erc20s[i].balanceOf(address(bm)) - bmRewards[i];
-        }
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             revTraderRewards[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
         }
-        // solhint-disable-next-line no-empty-blocks
-        try revenueTrader.claimRewards() {} catch {} // same between 2.1.0 and 3.0.0
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            // solhint-disable-next-line no-empty-blocks
+            try bm.claimRewardsSingle(reg.erc20s[i]) {} catch {} // same between 2.1.0 and 3.0.0
+            // solhint-disable-next-line no-empty-blocks
+            try revenueTrader.claimRewardsSingle(reg.erc20s[i]) {} catch {}
+        }
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            bmRewards[i] = reg.erc20s[i].balanceOf(address(bm)) - bmRewards[i];
             revTraderRewards[i] =
                 reg.erc20s[i].balanceOf(address(revenueTrader)) -
                 revTraderRewards[i];
@@ -175,7 +174,7 @@ contract ActFacet is Multicall {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 ITrade trade = bm.trades(erc20s[i]);
                 if (address(trade) != address(0) && trade.canSettle()) {
-                    _settleTrade(bm, erc20s[i]);
+                    FacetLib.settleTrade(bm, erc20s[i]);
                     break; // backingManager can only have 1 trade open at a time
                 }
             }
@@ -183,7 +182,7 @@ contract ActFacet is Multicall {
 
         // If no auctions ongoing, to find a new auction to start
         if (bm.tradesOpen() == 0) {
-            _rebalance(bm, kind);
+            FacetLib.rebalance(bm, kind);
 
             // Find the started auction
             for (uint256 i = 0; i < erc20s.length; ++i) {
@@ -192,95 +191,10 @@ contract ActFacet is Multicall {
                     canStart = true;
                     sell = trade.sell();
                     buy = trade.buy();
-                    sellAmount = _getSellAmount(trade);
+                    sellAmount = FacetLib.getSellAmount(trade);
                 }
             }
         }
-    }
-
-    // === Private ===
-    function _getSellAmount(ITrade trade) private view returns (uint256) {
-        if (trade.KIND() == TradeKind.DUTCH_AUCTION) {
-            return
-                DutchTrade(address(trade)).sellAmount().shiftl_toUint(
-                    int8(trade.sell().decimals())
-                );
-        } else if (trade.KIND() == TradeKind.BATCH_AUCTION) {
-            return GnosisTrade(address(trade)).initBal();
-        } else {
-            revert("invalid trade type");
-        }
-    }
-
-    function _settleTrade(ITrading trader, IERC20 toSettle) private {
-        bytes1 majorVersion = bytes(trader.version())[0];
-        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
-            // Settle auctions
-            trader.settleTrade(toSettle);
-        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
-            address(trader).functionCall(abi.encodeWithSignature("settleTrade(address)", toSettle));
-        } else {
-            _revertUnrecognizedVersion();
-        }
-    }
-
-    function _forwardRevenue(IBackingManager bm, IERC20[] memory toStart) private {
-        bytes1 majorVersion = bytes(bm.version())[0];
-        // Need to use try-catch here in order to still show revenueOverview when basket not ready
-        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
-            // solhint-disable-next-line no-empty-blocks
-            try bm.forwardRevenue(toStart) {} catch {}
-        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(bm).call{ value: 0 }(
-                abi.encodeWithSignature("manageTokens(address[])", toStart)
-            );
-            success = success; // hush warning
-        } else {
-            _revertUnrecognizedVersion();
-        }
-    }
-
-    function _runRevenueAuctions(
-        IRevenueTrader revenueTrader,
-        IERC20[] memory toStart,
-        TradeKind[] memory kinds
-    ) private {
-        bytes1 majorVersion = bytes(revenueTrader.version())[0];
-
-        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
-            revenueTrader.manageTokens(toStart, kinds);
-        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
-            for (uint256 i = 0; i < toStart.length; ++i) {
-                address(revenueTrader).functionCall(
-                    abi.encodeWithSignature("manageToken(address)", toStart[i])
-                );
-            }
-        } else {
-            _revertUnrecognizedVersion();
-        }
-    }
-
-    function _rebalance(IBackingManager bm, TradeKind kind) private {
-        bytes1 majorVersion = bytes(bm.version())[0];
-
-        if (majorVersion == bytes1("3") || majorVersion == bytes1("4")) {
-            // solhint-disable-next-line no-empty-blocks
-            try bm.rebalance(kind) {} catch {}
-        } else if (majorVersion == bytes1("2") || majorVersion == bytes1("1")) {
-            IERC20[] memory emptyERC20s = new IERC20[](0);
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(bm).call{ value: 0 }(
-                abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
-            );
-            success = success; // hush warning
-        } else {
-            _revertUnrecognizedVersion();
-        }
-    }
-
-    function _revertUnrecognizedVersion() private pure {
-        revert("unrecognized version");
     }
 }
 // slither-disable-end

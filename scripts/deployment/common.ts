@@ -6,7 +6,15 @@ import { ITokens, IComponents, IImplementations, IPools } from '../../common/con
 export interface IPrerequisites {
   RSR: string
   RSR_FEED: string
-  GNOSIS_EASY_AUCTION: string
+}
+
+export interface IFacets {
+  actFacet: string
+  readFacet: string
+  // individiual function facets
+  maxIssuableFacet: string
+  backingBufferFacet: string
+  revenueFacet: string
 }
 
 export interface IFacets {
@@ -48,15 +56,18 @@ const pathToFolder = './scripts/addresses/'
 const tempFileSuffix = '-tmp-deployments.json'
 const tempAssetCollFileSuffix = '-tmp-assets-collateral.json'
 
-export const getDeploymentFilename = (chainId: number, version?: string): string => {
+export const getDeploymentFilename = (chainId: number | string, version?: string): string => {
   return `${pathToFolder}${version ? `/${version}/` : ''}${chainId}${tempFileSuffix}`
 }
 
-export const getAssetCollDeploymentFilename = (chainId: number, version?: string): string => {
+export const getAssetCollDeploymentFilename = (
+  chainId: number | string,
+  version?: string
+): string => {
   return `${pathToFolder}${version ? `/${version}/` : ''}${chainId}${tempAssetCollFileSuffix}`
 }
 
-export const getRTokenDeploymentFilename = (chainId: number, name: string): string => {
+export const getRTokenDeploymentFilename = (chainId: number | string, name: string): string => {
   return `${pathToFolder}${chainId}-${name}${tempFileSuffix}`
 }
 

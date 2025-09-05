@@ -46,7 +46,12 @@ async function main() {
     'SFraxEthCollateral'
   )
 
+<<<<<<< HEAD
   const oracleError = combinedError(fp('0.005'), fp('0.0002')) // 0.5% & 0.02%
+=======
+  const SFRAXETH_ORACLE_ERROR = fp('0.0002')
+  const oracleError = combinedError(fp('0.005'), SFRAXETH_ORACLE_ERROR) // 0.5% + 0.02%
+>>>>>>> 4.2.0
 
   const collateral = <SFraxEthCollateral>await SFraxEthCollateralFactory.connect(deployer).deploy(
     {
@@ -57,7 +62,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~2.5%
+      defaultThreshold: fp('0.02').add(SFRAXETH_ORACLE_ERROR).toString(), // 2.02%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%

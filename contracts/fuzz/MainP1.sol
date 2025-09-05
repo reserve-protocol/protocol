@@ -146,6 +146,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         furnace = new FurnaceP1Fuzz();
         broker = new BrokerP1Fuzz();
 
+        cacheComponents();
+
         // Deploy dutch trade router
         dutchRouter = new DutchTradeRouter();
 
@@ -243,7 +245,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         // `tradeImplmentation` and `gnosis` are unused in BrokerP1Fuzz
         broker.init(
             this,
-            IGnosis(address(1)),
             ITrade(address(1)),
             params.batchAuctionLength,
             ITrade(address(3)),

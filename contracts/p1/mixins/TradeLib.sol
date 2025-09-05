@@ -59,7 +59,7 @@ library TradeLib {
         );
 
         // Cap sell amount using the high price
-        // Under price decay trade.prices.sellHigh can become up to 3x the savedHighPrice before
+        // Under price decay trade.prices.sellHigh can become up to 2x the savedHighPrice before
         // becoming FIX_MAX after the full price timeout
         uint192 s = trade.sellAmount;
         if (trade.prices.sellHigh != FIX_MAX) {

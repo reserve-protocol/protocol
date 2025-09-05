@@ -3,6 +3,8 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/ITrustedFillerRegistry.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/IBaseTrustedFiller.sol";
 import "../../libraries/Fixed.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IBroker.sol";
@@ -92,6 +94,8 @@ contract DutchTrade is ITrade, Versioned {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
+    event TrustedFillCreated(address indexed filler);
+
     TradeKind public constant KIND = TradeKind.DUTCH_AUCTION;
 
     BidType public bidType; // = BidType.NONE
@@ -117,13 +121,22 @@ contract DutchTrade is ITrade, Versioned {
     address public bidder;
     // the bid amount is just whatever token balance is in the contract at settlement time
 
+    // === Trusted Fillers ===
+    IBaseTrustedFiller public activeTrustedFill;
+
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
         require(status == begin, "Invalid trade state");
         status = TradeStatus.PENDING;
         _;
-        assert(status == TradeStatus.PENDING);
+        require(status == TradeStatus.PENDING, "Invalid state transition");
         status = end;
+    }
+
+    // This modifier closes any active trusted fill and reclaims tokens
+    modifier closeTrustedFiller() {
+        _closeTrustedFill();
+        _;
     }
 
     // === Auction Sizing Views ===
@@ -162,11 +175,20 @@ contract DutchTrade is ITrade, Versioned {
         TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         // 60 sec min auction duration
-        assert(address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60);
+        require(
+            address(sell_) != address(0) && address(buy_) != address(0) && auctionLength >= 60,
+            "bad trade initialization"
+        );
 
         // Only start dutch auctions under well-defined prices
-        require(prices.sellLow != 0 && prices.sellHigh < FIX_MAX / 1000, "bad sell pricing");
-        require(prices.buyLow != 0 && prices.buyHigh < FIX_MAX / 1000, "bad buy pricing");
+        require(
+            prices.sellLow != 0 && prices.sellHigh != 0 && prices.sellHigh < FIX_MAX / 1000,
+            "bad sell pricing"
+        );
+        require(
+            prices.buyLow != 0 && prices.buyHigh != 0 && prices.buyHigh < FIX_MAX / 1000,
+            "bad buy pricing"
+        );
 
         broker = IBroker(msg.sender);
         origin = origin_;
@@ -196,9 +218,9 @@ contract DutchTrade is ITrade, Versioned {
     /// Bid for the auction lot at the current price; settle trade in protocol
     /// @dev Caller must have provided approval
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bid() external returns (uint256 amountIn) {
+    function bid() external closeTrustedFiller returns (uint256 amountIn) {
         require(bidder == address(0), "bid already received");
-        assert(status == TradeStatus.OPEN);
+        require(status == TradeStatus.OPEN, "trade not open");
 
         // {buyTok/sellTok}
         uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
@@ -222,7 +244,7 @@ contract DutchTrade is ITrade, Versioned {
         origin.settleTrade(sell);
 
         // confirm .settleTrade() succeeded and .settle() has been called
-        assert(status == TradeStatus.CLOSED);
+        require(status == TradeStatus.CLOSED, "invalid end state");
     }
 
     /// Bid with callback for the auction lot at the current price; settle trade in protocol
@@ -232,9 +254,13 @@ contract DutchTrade is ITrade, Versioned {
     /// @dev Caller must implement IDutchTradeCallee
     /// @param data {bytes} The data to pass to the callback
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
-    function bidWithCallback(bytes calldata data) external returns (uint256 amountIn) {
+    function bidWithCallback(bytes calldata data)
+        external
+        closeTrustedFiller
+        returns (uint256 amountIn)
+    {
         require(bidder == address(0), "bid already received");
-        assert(status == TradeStatus.OPEN);
+        require(status == TradeStatus.OPEN, "trade not open");
 
         // {buyTok/sellTok}
         uint192 price = _price(uint48(block.timestamp)); // enforces auction ongoing
@@ -265,7 +291,43 @@ contract DutchTrade is ITrade, Versioned {
         origin.settleTrade(sell);
 
         // confirm .settleTrade() succeeded and .settle() has been called
-        assert(status == TradeStatus.CLOSED);
+        require(status == TradeStatus.CLOSED, "invalid end state");
+    }
+
+    /// Create a trusted fill as an alternative to direct bidding
+    /// @param targetFiller The trusted filler implementation to use (e.g., CowSwapFiller)
+    /// @param deploymentSalt Unique salt for deterministic deployment
+    /// @return filler The deployed trusted filler contract
+    function createTrustedFill(address targetFiller, bytes32 deploymentSalt)
+        external
+        closeTrustedFiller
+        returns (IBaseTrustedFiller filler)
+    {
+        require(status == TradeStatus.OPEN, "trade not open");
+
+        // Get trusted filler registry
+        ITrustedFillerRegistry registry = IExtendedBroker(address(broker)).trustedFillerRegistry();
+        bool enabled = IExtendedBroker(address(broker)).trustedFillerEnabled();
+        require(address(registry) != address(0) && enabled, "trusted fillers not enabled");
+
+        // Get current price and amounts
+        uint192 price = _price(uint48(block.timestamp));
+        uint256 sellAmt = lot(); // {qSellTok}
+        uint256 buyAmt = _bidAmount(price); // {qBuyTok}
+
+        // Create trusted filler
+        filler = registry.createTrustedFiller(msg.sender, targetFiller, deploymentSalt);
+        sell.safeApprove(address(filler), sellAmt);
+
+        // Initialize the filler
+        filler.initialize(address(this), sell, buy, sellAmt, buyAmt);
+        // only supports single lot fills
+        // this call will revert if the selected filler does not support this capability
+        filler.setPartiallyFillable(false);
+
+        activeTrustedFill = filler;
+
+        emit TrustedFillCreated(address(filler));
     }
 
     /// Settle the auction, emptying the contract of balances
@@ -274,10 +336,23 @@ contract DutchTrade is ITrade, Versioned {
     function settle()
         external
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
+        closeTrustedFiller
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == address(origin), "only origin can settle");
         require(bidder != address(0) || block.timestamp > endTime, "auction not over");
+
+        // If auction has ended -> continue
+        if (block.timestamp <= endTime) {
+            bool filled = false;
+            if (block.timestamp >= startTime) {
+                // Ongoing auction, check if can be settled
+                uint192 price = _price(uint48(block.timestamp));
+                uint256 amountIn = _bidAmount(price);
+                filled = buy.balanceOf(address(this)) >= amountIn;
+            }
+            require(bidder != address(0) || filled, "auction not over");
+        }
 
         if (bidType == BidType.CALLBACK) {
             soldAmt = lot(); // {qSellTok}
@@ -300,10 +375,28 @@ contract DutchTrade is ITrade, Versioned {
         erc20.safeTransfer(address(origin), erc20.balanceOf(address(this)));
     }
 
-    /// @return true iff the trade can be settled.
+    /// @return true if the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
-        return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
+        // Not OPEN or not started -> false
+        if (status != TradeStatus.OPEN || block.timestamp < startTime) {
+            return false;
+        }
+        // OPEN and past end time -> true
+        if (block.timestamp > endTime) {
+            return true;
+        }
+
+        // Ongoing OPEN auction, check if can be settled
+        uint192 price = _price(uint48(block.timestamp));
+        uint256 amountIn = _bidAmount(price);
+
+        uint256 amountInFiller = address(activeTrustedFill) != address(0)
+            ? buy.balanceOf(address(activeTrustedFill))
+            : 0;
+        uint256 amountInTrade = buy.balanceOf(address(this));
+
+        return (bidder != address(0) || amountInFiller + amountInTrade >= amountIn);
     }
 
     // === Private ===
@@ -365,5 +458,13 @@ contract DutchTrade is ITrade, Versioned {
     function _bidAmount(uint192 price) public view returns (uint256) {
         // {qBuyTok} = {sellTok} * {buyTok/sellTok} * {qBuyTok/buyTok}
         return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
+    }
+
+    /// Close any active trusted fill and reclaim tokens
+    function _closeTrustedFill() private {
+        if (address(activeTrustedFill) != address(0)) {
+            activeTrustedFill.closeFiller();
+            delete activeTrustedFill;
+        }
     }
 }

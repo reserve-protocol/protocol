@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers'
 import { ethers, network } from 'hardhat'
 import { expect } from 'chai'
 import { fp, bn, divCeil } from '../../common/numbers'
-import { MAX_UINT192 } from '../../common/constants'
+import { MAX_UINT192, ONE_ADDRESS } from '../../common/constants'
 import { getLatestBlockTimestamp } from './time'
 import { whileImpersonating } from './impersonation'
 
@@ -156,7 +156,14 @@ export const overrideOracle = async (oracleAddress: string): Promise<EACAggregat
     oracleAddress
   )
   const aggregator = await oracle.aggregator()
-  const accessController = await oracle.accessController()
+
+  let accessController
+  try {
+    accessController = await oracle.accessController()
+  } catch {
+    accessController = ONE_ADDRESS // mock for Redstone oracles
+  }
+
   let initPrice
   try {
     initPrice = await oracle.latestAnswer()
