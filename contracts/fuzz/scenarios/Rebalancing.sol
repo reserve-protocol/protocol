@@ -422,6 +422,10 @@ contract RebalancingScenario {
     {
         _saveRTokenRate();
         main.rToken().issue(amount);
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     // do issuance without doing allowances first
@@ -434,6 +438,10 @@ contract RebalancingScenario {
         address recipient = main.someAddr(recipientID);
 
         main.rToken().issueTo(recipient, amount);
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     // do allowances as needed, and *then* do issuance
@@ -452,8 +460,14 @@ contract RebalancingScenario {
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
+
         main.rToken().issue(amount);
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
+
 
     // do allowances as needed, and *then* do issuance
     function issueTo(uint256 amount, uint8 recipientID)
@@ -473,6 +487,10 @@ contract RebalancingScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issueTo(recipient, amount);
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     function redeem(uint256 amount)
