@@ -3929,6 +3929,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
                 .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
             ).to.emit(trade, 'TrustedFillCreated')
 
+            // Use cached price at creation
+            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
+
             // Funds moved to filler
             expect(await token0.balanceOf(trade.address)).to.equal(0)
 
@@ -3941,7 +3944,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
             // Perform fill
             await token0.burn(activeFill, await token0.balanceOf(activeFill))
-            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
             await rsr.mint(activeFill, bidAmount)
 
             // The trade should be settleable

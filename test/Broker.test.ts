@@ -1732,6 +1732,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .connect(addr1)
           .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
 
+        // Use cached price at creation
+        const bidAmount = await dutchTrade.bidAmount(await getLatestBlockTimestamp())
+
         const activeFill = await dutchTrade.activeTrustedFill()
         expect(activeFill).to.not.equal(ZERO_ADDRESS)
 
@@ -1740,7 +1743,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
         // Perform fill
         await token0.burn(activeFill, tradeRequest.sellAmount)
-        const bidAmount = await dutchTrade.bidAmount(await getLatestBlockTimestamp())
         await token1.mint(activeFill, bidAmount)
 
         // The trade should be settleable with an active trusted fill
