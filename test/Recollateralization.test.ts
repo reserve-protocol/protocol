@@ -9,6 +9,7 @@ import {
   BN_SCALE_FACTOR,
   CollateralStatus,
   TradeKind,
+  TradeStatus,
   MAX_UINT256,
   ZERO_ADDRESS,
 } from '../common/constants'
@@ -17,6 +18,7 @@ import { bn, fp, pow10, toBNDecimals, divCeil } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
+  CowSwapFillerMock,
   CTokenMock,
   DutchTrade,
   ERC20Mock,
@@ -24,6 +26,7 @@ import {
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
+  MockRoleRegistry,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
@@ -34,6 +37,7 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
+  TrustedFillerRegistry,
   USDCMock,
   DutchTradeRouter,
 } from '../typechain'
@@ -57,6 +61,8 @@ import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
+
+const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -3477,6 +3483,102 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               backingManager,
               'TradeStarted'
             )
+          })
+        })
+
+        describeP1('Trusted Fillers', () => {
+          let trustedFillerRegistry: TrustedFillerRegistry
+          let cowSwapFillerMock: CowSwapFillerMock
+
+          beforeEach(async () => {
+            // Setup trusted filler registry and enable on Broker
+            const MockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+            const mockRoleRegistry = <MockRoleRegistry>await MockRoleRegistryFactory.deploy()
+
+            const TrustedFillerRegistryFactory = await ethers.getContractFactory(
+              'TrustedFillerRegistry'
+            )
+            trustedFillerRegistry = <TrustedFillerRegistry>(
+              await TrustedFillerRegistryFactory.deploy(mockRoleRegistry.address)
+            )
+
+            const CowSwapFillerMockFactory = await ethers.getContractFactory('CowSwapFillerMock')
+            cowSwapFillerMock = <CowSwapFillerMock>await CowSwapFillerMockFactory.deploy()
+
+            await trustedFillerRegistry.addTrustedFiller(cowSwapFillerMock.address)
+
+            await broker
+              .connect(owner)
+              .setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+          })
+
+          it('Should disable dutch trades with reportViolation', async () => {
+            await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await backingManager.trades(token0.address)
+            )
+
+            expect(await trade.status()).to.equal(TradeStatus.OPEN)
+            expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+            expect(await backingManager.tradesOpen()).to.equal(1)
+
+            // Check broker not disabled
+            expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+
+            // check balances
+            expect(await token0.balanceOf(trade.address)).to.equal(issueAmount)
+            expect(await token1.balanceOf(trade.address)).to.equal(0)
+
+            // Create trusted fill on geometric phase
+            await expect(
+              trade
+                .connect(addr1)
+                .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+            ).to.emit(trade, 'TrustedFillCreated')
+
+            // Use cached price at creation
+            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
+
+            // Funds moved to filler
+            expect(await token0.balanceOf(trade.address)).to.equal(0)
+
+            // Verify active trusted fill is set
+            const activeFill = await trade.activeTrustedFill()
+            expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+            // Perform fill during geometric phase
+            await token0.burn(activeFill, await token0.balanceOf(activeFill))
+            await token1.mint(activeFill, bidAmount)
+
+            // The trade should be settleable
+            expect(await trade.canSettle()).to.equal(true)
+
+            // No sell tokens left on trade
+            expect(await token0.balanceOf(trade.address)).to.equal(0)
+            expect(await trade.status()).to.equal(TradeStatus.OPEN)
+
+            // Settle trade
+            await expect(backingManager.settleTrade(token0.address)).to.emit(
+              backingManager,
+              'TradeSettled'
+            )
+
+            expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+            expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+            expect(await backingManager.tradesOpen()).to.equal(0)
+
+            // Broker disabled, violation reported
+            expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
+            expect(await broker.dutchTradeDisabled(token1.address)).to.equal(true)
+
+            // All funds moved to origin
+            expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+            expect(await rsr.balanceOf(backingManager.address)).to.be.closeTo(0, 5000)
+            expect(await token0.balanceOf(trade.address)).to.equal(0)
+            expect(await rsr.balanceOf(trade.address)).to.equal(0)
+            expect(await token0.balanceOf(activeFill)).to.equal(0)
+            expect(await rsr.balanceOf(activeFill)).to.equal(0)
           })
         })
       })
