@@ -3580,6 +3580,52 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             expect(await token0.balanceOf(activeFill)).to.equal(0)
             expect(await rsr.balanceOf(activeFill)).to.equal(0)
           })
+
+          it('Should not reportViolation if not filled', async () => {
+            await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+            const trade = await ethers.getContractAt(
+              'DutchTrade',
+              await backingManager.trades(token0.address)
+            )
+
+            expect(await trade.status()).to.equal(TradeStatus.OPEN)
+            expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+            expect(await backingManager.tradesOpen()).to.equal(1)
+
+            // Check broker not disabled
+            expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+
+            // Create trusted fill on geometric phase
+            await expect(
+              trade
+                .connect(addr1)
+                .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+            ).to.emit(trade, 'TrustedFillCreated')
+
+            // Use cached price at creation
+            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
+
+            // Verify active trusted fill is set
+            const activeFill = await trade.activeTrustedFill()
+            expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+            // Advance time until auction ended, no fill nor bid
+            await advanceTime(config.dutchAuctionLength.add(100).toString())
+
+            // Settle trade
+            await expect(backingManager.settleTrade(token0.address)).to.emit(
+              backingManager,
+              'TradeSettled'
+            )
+
+            expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+            expect(await trade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+            expect(await backingManager.tradesOpen()).to.equal(0)
+
+            // Broker not disabled
+            expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+            expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
+          })
         })
       })
     })

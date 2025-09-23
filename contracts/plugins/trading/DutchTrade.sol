@@ -353,7 +353,7 @@ contract DutchTrade is ITrade, Versioned {
             filled = buy.balanceOf(address(this)) >= amountIn;
 
             // reportViolation if filled in geometric phase
-            if (savedFillPrice > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
+            if (filled && savedFillPrice > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
                 broker.reportViolation();
             }
         }
