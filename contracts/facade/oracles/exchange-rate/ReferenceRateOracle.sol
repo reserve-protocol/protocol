@@ -18,9 +18,8 @@ import { IAsset } from "../../../interfaces/IAsset.sol";
  *
  * ::Notice::
  * The oracle does not call refresh() on the RToken or the underlying assets, so the price can be
- * stale underlying oracles. This is generally not an issue for active RTokens as they are
- * refreshed often by other protocol operations, however do keep this in mind when using this
- * oracle for low-activity RTokens.
+ * stale. This is generally not an issue for active RTokens as they are refreshed often by other
+ * protocol operations, however do keep this in mind when using this for low-activity RTokens.
  *
  * If you need the freshest possible price, consider using RTokenAsset.latestPrice() instead,
  * however it is a mutator function instead of a view-only function hence not compatible with
