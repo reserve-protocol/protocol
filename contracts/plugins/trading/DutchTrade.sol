@@ -400,19 +400,17 @@ contract DutchTrade is ITrade, Versioned {
         }
 
         // Ongoing OPEN auction, no active fill, check if can be settled
-        uint256 amountIn;
+        bool filled = false;
         if (bidType == BidType.FILL) {
-            amountIn = _bidAmount(savedFillPrice);
-        } else {
-            uint192 price = _price(uint48(block.timestamp));
-            amountIn = _bidAmount(price);
+            uint256 amountIn = _bidAmount(savedFillPrice);
+            uint256 amountInFiller = address(activeTrustedFill) != address(0)
+                ? buy.balanceOf(address(activeTrustedFill))
+                : 0;
+            uint256 amountInTrade = buy.balanceOf(address(this));
+            filled = amountInFiller + amountInTrade >= amountIn;
         }
 
-        uint256 amountInFiller = address(activeTrustedFill) != address(0)
-            ? buy.balanceOf(address(activeTrustedFill))
-            : 0;
-        uint256 amountInTrade = buy.balanceOf(address(this));
-        return (bidder != address(0) || amountInFiller + amountInTrade >= amountIn);
+        return (bidder != address(0) || filled);
     }
 
     // === Private ===
