@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../libraries/Fixed.sol";
 import "../libraries/Throttle.sol";
 import "./IComponent.sol";
 

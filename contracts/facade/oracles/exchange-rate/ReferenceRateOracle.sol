@@ -2,14 +2,16 @@
 pragma solidity 0.8.19;
 
 import { FIX_ONE, divuu } from "../../../libraries/Fixed.sol";
-import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IExchangeRateOracle } from "./IExchangeRateOracle.sol";
-import { IAsset } from "../../../interfaces/IAsset.sol";
 import { IRToken } from "../../../interfaces/IRToken.sol";
+import { IMain } from "../../../interfaces/IMain.sol";
+import { IAssetRegistry } from "../../../interfaces/IAssetRegistry.sol";
+import { IAsset } from "../../../interfaces/IAsset.sol";
 
 /**
- * @title ExchangeRateOracle
- * @notice An immutable Exchange Rate Oracle for an RToken (eg: ETH+/ETH)
+ * @title ReferenceRateOracle
+ * @notice An immutable Reference Rate Oracle for an RToken (eg: ETH+/USD)
  *
  * ::Warning:: In the event of an RToken taking a loss in excess of the StRSR overcollateralization
  * layer, the devaluation will not be reflected until the RToken is done trading. This causes
@@ -22,7 +24,7 @@ import { IRToken } from "../../../interfaces/IRToken.sol";
  * However, note that `fullyCollateralized()` is extremely gas-costly. We recommend executing
  * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.
  */
-contract ExchangeRateOracle is IExchangeRateOracle {
+contract ReferenceRateOracle is IExchangeRateOracle {
     error MissingRToken();
 
     IRToken public immutable rToken;
@@ -33,12 +35,12 @@ contract ExchangeRateOracle is IExchangeRateOracle {
         rToken = IRToken(_rToken);
     }
 
-    function decimals() external pure override returns (uint8) {
-        return 18;
+    function decimals() external view override returns (uint8) {
+        return rToken.decimals();
     }
 
     function description() external view override returns (string memory) {
-        return string.concat(rToken.symbol(), " Exchange Rate Oracle");
+        return string.concat(rToken.symbol(), " Reference Rate Oracle");
     }
 
     function exchangeRate() public view returns (uint256) {
@@ -46,12 +48,14 @@ contract ExchangeRateOracle is IExchangeRateOracle {
             revert MissingRToken();
         }
 
-        uint256 supply = IRToken(rToken).totalSupply();
-        if (supply == 0) {
-            return FIX_ONE;
-        }
+        IMain main = rToken.main();
+        IAssetRegistry assetRegistry = main.assetRegistry();
+        IAsset rTokenAsset = assetRegistry.toAsset(IERC20(address(rToken)));
 
-        return divuu(uint256(IRToken(rToken).basketsNeeded()), supply);
+        (uint256 lower, uint256 upper) = rTokenAsset.price();
+        require(lower > 0 && upper < type(uint192).max, "invalid price");
+
+        return (lower + upper) / 2;
     }
 
     function getRoundData(uint80)
