@@ -23,6 +23,9 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
  *
  * @notice Curve pools with native ETH or ERC777 should be avoided,
  *  see docs/collateral.md for information
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveStableMetapoolCollateral is CurveStableCollateral {
     using OracleLib for AggregatorV3Interface;

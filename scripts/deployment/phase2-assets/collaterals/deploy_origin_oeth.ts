@@ -6,19 +6,22 @@ import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
+  PRICE_FEEDS,
+  ORACLE_ERROR,
+  OETH_ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  OETH_ORACLE_TIMEOUT,
+} from '../../../../test/plugins/individual-collateral/origin/constants'
+import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout } from '../../utils'
-import { YearnV2CurveFiatCollateral } from '../../../../typechain'
+import { priceTimeout, combinedError } from '../../utils'
+import { OETHCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
-import {
-  PRICE_PER_SHARE_HELPER,
-  YVUSDP_LP_TOKEN,
-} from '../../../../test/plugins/individual-collateral/yearnv2/constants'
 
 async function main() {
   // ==== Read Configuration ====
@@ -26,7 +29,7 @@ async function main() {
 
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying Collateral to network ${hre.network.name} (${chainId})
+  console.log(`Deploying Origin ETH to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
 
   if (!networkConfig[chainId]) {
@@ -44,51 +47,36 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Yearn V2 Curve Fiat Collateral - yvCurveUSDPcrvUSD  **************************/
-
-  const YearnV2CurveCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'YearnV2CurveFiatCollateral'
+  /********  Deploy Origin ETH Collateral - wOETH  **************************/
+  const OETHCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'OETHCollateral'
   )
 
-  const collateral = <YearnV2CurveFiatCollateral>await YearnV2CurveCollateralFactory.connect(
-    deployer
-  ).deploy(
+  const oracleError = combinedError(ORACLE_ERROR, OETH_ORACLE_ERROR)
+  const collateral = <OETHCollateral>await OETHCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDP, // not used but can't be empty
-      oracleError: fp('0.0025').toString(), // not used but can't be empty
-      erc20: networkConfig[chainId].tokens.yvCurveUSDPcrvUSD,
+      chainlinkFeed: PRICE_FEEDS.OETH_ETH, // ETH/OETH
+      oracleError: oracleError.toString(),
+      erc20: networkConfig[chainId].tokens.wOETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24hr -- max of all oracleTimeouts
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.02').toString(), // 2% = max oracleError + 1%
+      oracleTimeout: OETH_ORACLE_TIMEOUT.toString(), // 24 hr,
+      targetName: hre.ethers.utils.formatBytes32String('ETH'),
+      defaultThreshold: fp('0.02').add(OETH_ORACLE_ERROR).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    fp('1e-6').toString(), // revenueHiding = 0.0001%, low since underlying curve pool should be up-only
-    {
-      nTokens: '2',
-      curvePool: YVUSDP_LP_TOKEN,
-      poolType: '0',
-      feeds: [
-        [networkConfig[chainId].chainlinkFeeds.USDP],
-        [networkConfig[chainId].chainlinkFeeds.crvUSD],
-      ],
-      oracleTimeouts: [['86400'], ['86400']],
-      oracleErrors: [[fp('0.01').toString()], [fp('0.005').toString()]],
-      lpToken: YVUSDP_LP_TOKEN,
-    },
-    PRICE_PER_SHARE_HELPER
+    fp('1e-4').toString(), // revenueHiding = 0.01%
+    PRICE_FEEDS.ETH_USD, // uoaPerTargetChainlinkFeed
+    ORACLE_TIMEOUT // uoaPerTarget timeout
   )
   await collateral.deployed()
-
-  console.log(
-    `Deployed Yearn Curve yvUSDPcrvUSD to ${hre.network.name} (${chainId}): ${collateral.address}`
-  )
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  assetCollDeployments.collateral.yvCurveUSDPcrvUSD = collateral.address
-  assetCollDeployments.erc20s.yvCurveUSDPcrvUSD = networkConfig[chainId].tokens.yvCurveUSDPcrvUSD
+  console.log(`Deployed Origin ETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
+
+  assetCollDeployments.collateral.wOETH = collateral.address
+  assetCollDeployments.erc20s.wOETH = networkConfig[chainId].tokens.wOETH
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

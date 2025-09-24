@@ -75,6 +75,7 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_aave_v3_usdt.ts',
       'collateral-plugins/verify_yearn_v2_curve_usdc.ts',
+      'collateral-plugins/verify_yearn_v2_curve_usdp.ts',
       'collateral-plugins/verify_sfrax.ts',
       'collateral-plugins/verify_sfrax_eth.ts',
       'collateral-plugins/verify_steakusdc.ts',
@@ -83,7 +84,8 @@ async function main() {
       'collateral-plugins/verify_apxeth.ts',
       'collateral-plugins/verify_USDe.ts',
       'collateral-plugins/verify_pyusd.ts',
-      'collateral-plugins/verify_susds.ts'
+      'collateral-plugins/verify_susds.ts',
+      'collateral-plugins/verify_oeth.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
