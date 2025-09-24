@@ -18,7 +18,7 @@ import { IAsset } from "../../../interfaces/IAsset.sol";
  *
  * ::Notice::
  * The oracle does not call refresh() on the RToken or the underlying assets, so the price can be
- * stale underlying oracles. This is generally not an issue for  * active RTokens as they are
+ * stale underlying oracles. This is generally not an issue for active RTokens as they are
  * refreshed often by other protocol operations, however do keep this in mind when using this
  * oracle for low-activity RTokens.
  *
