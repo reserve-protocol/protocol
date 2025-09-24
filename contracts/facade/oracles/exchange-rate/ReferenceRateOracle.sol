@@ -13,7 +13,21 @@ import { IAsset } from "../../../interfaces/IAsset.sol";
  * @title ReferenceRateOracle
  * @notice An immutable Reference Rate Oracle for an RToken (eg: ETH+/USD)
  *
- * ::Warning:: In the event of an RToken taking a loss in excess of the StRSR overcollateralization
+ * Composes oracles used by the protocol internally to calculate the reference price of an RToken,
+ * in UoA terms, usually USD.
+ *
+ * ::Notice::
+ * The oracle does not call refresh() on the RToken or the underlying assets, so the price can be
+ * stale underlying oracles. This is generally not an issue for  * active RTokens as they are
+ * refreshed often by other protocol operations, however do keep this in mind when using this
+ * oracle for low-activity RTokens.
+ *
+ * If you need the freshest possible price, consider using RTokenAsset.latestPrice() instead,
+ * however it is a mutator function instead of a view-only function hence not compatible with
+ * Chainlink style interfaces.
+ *
+ * ::Warning::
+ * In the event of an RToken taking a loss in excess of the StRSR over-collateralization
  * layer, the devaluation will not be reflected until the RToken is done trading. This causes
  * the exchange rate to be too high during the rebalancing phase. If the exchange rate is relied
  * upon naively, then it could be misleading.
@@ -53,11 +67,14 @@ contract ReferenceRateOracle is IExchangeRateOracle {
         IAsset rTokenAsset = assetRegistry.toAsset(IERC20(address(rToken)));
 
         (uint256 lower, uint256 upper) = rTokenAsset.price();
-        require(lower > 0 && upper < type(uint192).max, "invalid price");
+        require(lower != 0 && upper < type(uint192).max, "invalid price");
 
         return (lower + upper) / 2;
     }
 
+    /**
+     * @dev Ignores roundId completely, prefer using latestRoundData()
+     */
     function getRoundData(uint80)
         external
         view
@@ -70,7 +87,6 @@ contract ReferenceRateOracle is IExchangeRateOracle {
             uint80 answeredInRound
         )
     {
-        // NOTE: Ignores roundId completely, prefer using latestRoundData()
         return this.latestRoundData();
     }
 
