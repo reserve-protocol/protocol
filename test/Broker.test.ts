@@ -1574,9 +1574,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       const getNextTradeAddress = async (tradeRequest: ITradeRequest): Promise<string> => {
         let tradeAddress = ''
+        const sellColl = await ethers.getContractAt('ICollateral', tradeRequest.sell)
+        const sellToken = await ethers.getContractAt('ERC20Mock', await sellColl.erc20())
+
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           // set approval for broker
-          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await sellToken.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
           tradeAddress = await broker.connect(bmSigner).callStatic.openTrade(
             TradeKind.BATCH_AUCTION, // workaround to by-pass price checks
             tradeRequest,
