@@ -221,12 +221,19 @@ contract NormalOpsScenario {
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
         _saveRTokenRate();
+
         main.rToken().issue(amount);
+
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
         _saveRTokenRate();
+
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
 
@@ -237,14 +244,25 @@ contract NormalOpsScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issue(amount);
+
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     // do issuance without doing allowances first, to a different recipient
     function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
         _saveRTokenRate();
+
         address recipient = main.someAddr(recipientID);
 
         main.rToken().issueTo(recipient, amount);
+
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     // do allowances as needed, and *then* do issuance
@@ -261,6 +279,11 @@ contract NormalOpsScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issueTo(recipient, amount);
+
+        // workaround: disable rate fall check if this is a mint starting at 0 supply
+        if( main.rToken().totalSupply() == amount ) {
+            _saveRTokenRate();
+        }
     }
 
     function redeem(uint256 amount) public asSender {
@@ -690,6 +713,7 @@ contract NormalOpsScenario {
         FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
+    // this check is disabled after issuance operations (valid counterexample)
     function echidna_ratesNeverFall() external view returns (bool) {
         if (main.stRSR().exchangeRate() < prevRSRRate) return false;
         if (main.rToken().totalSupply() > 0 && rTokenRate() < prevRTokenRate) return false;

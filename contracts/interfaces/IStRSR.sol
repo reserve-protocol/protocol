@@ -19,6 +19,28 @@ import "./IComponent.sol";
  * StRSR is redeemable for more RSR. It is non-rebasing.
  */
 interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, IComponent {
+    error InsufficientBalance();
+    error IndexOutOfBounds();
+    error WithdrawalUnavailable();
+    error RTokenNotReady();
+    error NotBackingManager();
+    error SeizeExceedsBalance();
+    error RatesStillSafe();
+    error DecreaseAllowanceError();
+    error InsufficientAllowance();
+    error TransferToSelf();
+    error ZeroAddress();
+    error ZeroAmount();
+    error ExpiredDeadline();
+    error InvalidUnstakingDelay();
+    error InvalidRewardRatio();
+    error InvalidWithdrawalLeak();
+    error SignatureExpired();
+    error InvalidNonce();
+    error FutureLookup();
+    error NameEmpty();
+    error SymbolEmpty();
+
     /// Emitted when RSR is staked
     /// @param era The era at time of staking
     /// @param staker The address of the staker

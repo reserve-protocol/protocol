@@ -61,7 +61,7 @@ import {
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
-  TestIDeployer,
+  DeployerP1,
   TestIFacade,
   TestIMain,
   TestIRToken,
@@ -123,7 +123,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let basketHandler: IBasketHandler
   let chainlinkFeed: AggregatorInterface
 
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
@@ -154,11 +154,12 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       pctRate: fp('0.05'), // 5%
     },
     redemptionThrottle: {
-      amtRate: fp('1e6'), // 1M RToken
-      pctRate: fp('0.05'), // 5%
+      amtRate: fp('2e6'), // 2M RToken
+      pctRate: fp('0.1'), // 10%
     },
     warmupPeriod: bn('60'),
     reweightable: false,
+    enableIssuancePremium: false,
   }
 
   const defaultThreshold = fp('0.01') // 1%
@@ -166,7 +167,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let initialBal: BigNumber
 
-  let chainId: number
+  let chainId: string
 
   let ATokenFiatCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
@@ -284,7 +285,12 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     // Deploy RToken via FacadeWrite
     const receipt = await (
-      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
+      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).wait()
 
     // Get Main

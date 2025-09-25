@@ -63,6 +63,19 @@ abstract contract ComponentP1 is
         _;
     }
 
+    // === Control Flow ===
+
+    /**
+     * @dev Prevents reentrancy by implementing a global lock shared by all components
+     * Calling a `globalNonReentrant` function from another `globalNonReentrant`
+     * function is not supported.
+     */
+    modifier globalNonReentrant() {
+        main.beginTx();
+        _;
+        main.endTx();
+    }
+
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal view override onlyMain {}
 

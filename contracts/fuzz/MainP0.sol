@@ -239,7 +239,6 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         // `tradeImplmentation` and `gnosis` are unused in BrokerP0Fuzz
         broker.init(
             this,
-            IGnosis(address(1)),
             ITrade(address(1)),
             params.batchAuctionLength,
             ITrade(address(3)),

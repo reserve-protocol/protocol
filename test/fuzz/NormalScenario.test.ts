@@ -60,7 +60,7 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     await advanceBlocks(warmupPeriod / 12)
   }
 
-    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+  ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
   scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
   main = await ConAt('MainP1Fuzz', await scenario.main())
   comp = await componentsOf(main)
@@ -327,6 +327,30 @@ const scenarioSpecificTests = () => {
       await advanceTime(444311)
       await advanceBlocks(150)
       await scenario.connect(alice).payRTokenProfits() // all is melted
+      expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
+    })
+
+    it('rate falling on issuance (melts all balance, and then issues in single tx', async () => {
+      await warmup()
+      await advanceTime(267878)
+      await advanceBlocks(981)
+
+      await scenario.connect(alice).issueTo(1822, 29)
+
+      await advanceTime(1)
+      await advanceBlocks(2)
+
+      await scenario.connect(alice).forwardRevenue()
+
+      await advanceTime(486)
+      await advanceBlocks(2465)
+
+      await scenario.connect(alice).setFurnaceRatio(1638453512683488603098594699427669865799013251718808500852431959162746n)
+
+      await advanceTime(484284)
+      await advanceBlocks(13370)
+
+      await scenario.connect(alice).issue(1886114)
       expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
     })
   })

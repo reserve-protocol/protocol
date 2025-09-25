@@ -28,7 +28,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
 
-    uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
+    uint192 public constant MIN_TARGET_AMT = FIX_ONE / 1e6; // {target/BU} min basket weight: 1e-6
+    uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight: 1e3
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
     uint48 public constant MAX_WARMUP_PERIOD = 60 * 60 * 24 * 365; // {s} 1 year
     uint256 internal constant MAX_BACKUP_ERC20S = 64;
@@ -211,7 +212,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param disableTargetAmountCheck If true, skips the `requireConstantConfigTargets()` check
+    /// @param disableTargetAmountCheck For reweightable RTokens, if true
+    ///                                 skips the `requireConstantConfigTargets()` check
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -261,7 +263,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
-            require(0 < targetAmts[i] && targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
+            require(
+                MIN_TARGET_AMT <= targetAmts[i] && targetAmts[i] <= MAX_TARGET_AMT,
+                "invalid target amount"
+            );
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
