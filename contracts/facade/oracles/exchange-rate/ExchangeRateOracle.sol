@@ -9,13 +9,23 @@ import { IRToken } from "../../../interfaces/IRToken.sol";
  * @title ExchangeRateOracle
  * @notice An immutable Exchange Rate Oracle for an RToken (eg: ETH+/ETH)
  *
+ * ::Notice::
+ * The oracle does not call refresh() on the RToken or the underlying assets, so the price can be
+ * stale. This is generally not an issue for active RTokens as they are refreshed often by other
+ * protocol operations, however do keep this in mind when using this for low-activity RTokens.
+ *
+ * If you need the freshest possible price, consider using RTokenAsset.latestPrice() instead,
+ * however it is a mutator function instead of a view-only function hence not compatible with
+ * Chainlink style interfaces.
+ *
  * ::Warning:: In the event of an RToken taking a loss in excess of the StRSR overcollateralization
  * layer, the devaluation will not be reflected until the RToken is done trading. This causes
  * the exchange rate to be too high during the rebalancing phase. If the exchange rate is relied
  * upon naively, then it could be misleading.
  *
  * As a consumer of this oracle, you may want to guard against this case by monitoring:
- *     `rToken.status() == 0 && rToken.fullyCollateralized()`
+ *     `basketHandler.status() == 0 && basketHandler.fullyCollateralized()`
+ * where `basketHandler` can be safely cached from `rToken.main().basketHandler()`.
  *
  * However, note that `fullyCollateralized()` is extremely gas-costly. We recommend executing
  * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.

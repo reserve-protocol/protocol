@@ -31,7 +31,8 @@ import { IAsset } from "../../../interfaces/IAsset.sol";
  * upon naively, then it could be misleading.
  *
  * As a consumer of this oracle, you may want to guard against this case by monitoring:
- *     `rToken.status() == 0 && rToken.fullyCollateralized()`
+ *     `basketHandler.status() == 0 && basketHandler.fullyCollateralized()`
+ * where `basketHandler` can be safely cached from `rToken.main().basketHandler()`.
  *
  * However, note that `fullyCollateralized()` is extremely gas-costly. We recommend executing
  * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.
