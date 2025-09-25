@@ -16,8 +16,8 @@ interface ICurveStableSwapNG {
  * @title CurveOracle
  * @notice An immutable Exchange Rate Oracle for a StableSwapNG Curve LP Token,
  *         with one or more appreciating assets. Only for 2-asset Curve LP Tokens.
- * @dev Does not account for native asset appreciation, only accounts for the
- *      appreciation in the Curve LP via trading volume.
+ 
+ * @dev Includes native asset appreciation. 
  *
  *      The oracles specified for the pool MUST be for the base unit, for example
  *      if the paired token is sDAI, you'd specify the oracle for DAI/USD.

@@ -11,6 +11,11 @@ interface YearnVault {
  * @title YearnCurveOracle
  * @notice An immutable Exchange Rate Oracle for a Yearn Vault containing a Curve LP Token,
  *         with one or more appreciating assets. Only for 2-asset Curve LP Tokens.
+ *
+ * @dev Includes native asset appreciation.
+ *
+ *      The oracles specified for the pool MUST be for the base unit, for example
+ *      if the paired token is sDAI, you'd specify the oracle for DAI/USD.
  */
 contract YearnCurveOracle is CurveOracle {
     YearnVault public immutable yearnVault;
