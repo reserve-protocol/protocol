@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import { FIX_ONE, divuu } from "../../../libraries/Fixed.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IExchangeRateOracle } from "./IExchangeRateOracle.sol";
 import { IRToken } from "../../../interfaces/IRToken.sol";

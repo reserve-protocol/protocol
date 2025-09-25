@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import { FIX_ONE, divuu } from "../../../libraries/Fixed.sol";
 import { IExchangeRateOracle } from "./IExchangeRateOracle.sol";
-import { IAsset } from "../../../interfaces/IAsset.sol";
 import { IRToken } from "../../../interfaces/IRToken.sol";
 
 /**
