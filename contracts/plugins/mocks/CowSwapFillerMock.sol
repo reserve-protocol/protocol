@@ -45,6 +45,9 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
     uint256 public price; // D27{buyTok/sellTok}
     bool public partiallyFillable;
 
+    // mock: allow to force swapActive on tests
+    bool public forceSwapActive;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -93,6 +96,11 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
 
     /// @return true if the contract is mid-swap and funds have not yet settled
     function swapActive() public view returns (bool) {
+        // mock: used for testing
+        if (forceSwapActive) {
+            return true;
+        }
+
         if (block.number != blockInitialized) {
             return false;
         }
@@ -134,5 +142,10 @@ contract CowSwapFillerMock is Initializable, IBaseTrustedFiller {
         if (tokenBalance != 0) {
             token.safeTransfer(fillCreator, tokenBalance);
         }
+    }
+
+    /// Mock: Setter for forceSwapActive
+    function setForceSwapActive(bool _forceSwapActive) external {
+        forceSwapActive = _forceSwapActive;
     }
 }

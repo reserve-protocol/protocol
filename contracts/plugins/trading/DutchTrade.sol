@@ -23,7 +23,8 @@ interface IDutchTradeCallee {
 enum BidType {
     NONE,
     CALLBACK,
-    TRANSFER
+    TRANSFER,
+    FILL
 }
 
 // A dutch auction in 4 parts:
@@ -123,6 +124,7 @@ contract DutchTrade is ITrade, Versioned {
 
     // === Trusted Fillers ===
     IBaseTrustedFiller public activeTrustedFill;
+    uint192 public savedFillPrice; // cached trusted fill price
 
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
@@ -303,6 +305,7 @@ contract DutchTrade is ITrade, Versioned {
         closeTrustedFiller
         returns (IBaseTrustedFiller filler)
     {
+        require(bidder == address(0), "bid already received");
         require(status == TradeStatus.OPEN, "trade not open");
 
         // Get trusted filler registry
@@ -311,9 +314,12 @@ contract DutchTrade is ITrade, Versioned {
         require(address(registry) != address(0) && enabled, "trusted fillers not enabled");
 
         // Get current price and amounts
-        uint192 price = _price(uint48(block.timestamp));
+        savedFillPrice = _price(uint48(block.timestamp));
         uint256 sellAmt = lot(); // {qSellTok}
-        uint256 buyAmt = _bidAmount(price); // {qBuyTok}
+        uint256 buyAmt = _bidAmount(savedFillPrice); // {qBuyTok}
+
+        // Mark bid type
+        bidType = BidType.FILL;
 
         // Create trusted filler
         filler = registry.createTrustedFiller(msg.sender, targetFiller, deploymentSalt);
@@ -341,23 +347,26 @@ contract DutchTrade is ITrade, Versioned {
     {
         require(msg.sender == address(origin), "only origin can settle");
 
-        // If auction has ended -> continue
-        if (block.timestamp <= endTime) {
-            bool filled = false;
-            if (block.timestamp >= startTime) {
-                // Ongoing auction, check if can be settled
-                uint192 price = _price(uint48(block.timestamp));
-                uint256 amountIn = _bidAmount(price);
-                filled = buy.balanceOf(address(this)) >= amountIn;
+        bool filled = false;
+        if (bidType == BidType.FILL) {
+            uint256 amountIn = _bidAmount(savedFillPrice);
+            filled = buy.balanceOf(address(this)) >= amountIn;
+
+            // reportViolation if filled in geometric phase
+            if (filled && savedFillPrice > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
+                broker.reportViolation();
             }
-            require(bidder != address(0) || filled, "auction not over");
         }
+
+        require(bidder != address(0) || filled || block.timestamp > endTime, "auction not over");
 
         if (bidType == BidType.CALLBACK) {
             soldAmt = lot(); // {qSellTok}
         } else if (bidType == BidType.TRANSFER) {
             soldAmt = lot(); // {qSellTok}
             sell.safeTransfer(bidder, soldAmt); // {qSellTok}
+        } else if (bidType == BidType.FILL && filled) {
+            soldAmt = lot(); // {qSellTok}
         }
 
         // Transfer remaining balances back to origin
@@ -385,17 +394,23 @@ contract DutchTrade is ITrade, Versioned {
         if (block.timestamp > endTime) {
             return true;
         }
+        // OPEN with active fill -> false
+        if (address(activeTrustedFill) != address(0) && activeTrustedFill.swapActive()) {
+            return false;
+        }
 
-        // Ongoing OPEN auction, check if can be settled
-        uint192 price = _price(uint48(block.timestamp));
-        uint256 amountIn = _bidAmount(price);
+        // Ongoing OPEN auction, no active fill, check if can be settled
+        bool filled = false;
+        if (bidType == BidType.FILL) {
+            uint256 amountIn = _bidAmount(savedFillPrice);
+            uint256 amountInFiller = address(activeTrustedFill) != address(0)
+                ? buy.balanceOf(address(activeTrustedFill))
+                : 0;
+            uint256 amountInTrade = buy.balanceOf(address(this));
+            filled = amountInFiller + amountInTrade >= amountIn;
+        }
 
-        uint256 amountInFiller = address(activeTrustedFill) != address(0)
-            ? buy.balanceOf(address(activeTrustedFill))
-            : 0;
-        uint256 amountInTrade = buy.balanceOf(address(this));
-
-        return (bidder != address(0) || amountInFiller + amountInTrade >= amountIn);
+        return (bidder != address(0) || filled);
     }
 
     // === Private ===
