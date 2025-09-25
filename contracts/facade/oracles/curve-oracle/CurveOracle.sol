@@ -69,7 +69,7 @@ contract CurveOracle {
             uint8 decimals = oracle.decimals();
             (, int256 price, , uint256 updateTime, ) = oracle.latestRoundData();
 
-            if (price < 0) {
+            if (price <= 0) {
                 revert BadOracleValue();
             }
 

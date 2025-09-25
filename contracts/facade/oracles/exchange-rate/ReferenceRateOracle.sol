@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import { FIX_MAX } from "../../../libraries/Fixed.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IExchangeRateOracle } from "./IExchangeRateOracle.sol";
 import { IRToken } from "../../../interfaces/IRToken.sol";
-import { IMain } from "../../../interfaces/IMain.sol";
 import { IAssetRegistry } from "../../../interfaces/IAssetRegistry.sol";
 import { IAsset } from "../../../interfaces/IAsset.sol";
 
@@ -40,12 +40,18 @@ import { IAsset } from "../../../interfaces/IAsset.sol";
 contract ReferenceRateOracle is IExchangeRateOracle {
     error MissingRToken();
 
-    IRToken public immutable rToken;
     uint256 public constant override version = 1;
+
+    IRToken public immutable rToken;
+    IAssetRegistry public immutable assetRegistry;
 
     constructor(address _rToken) {
         // allow address(0)
         rToken = IRToken(_rToken);
+
+        if (_rToken != address(0)) {
+            assetRegistry = IRToken(_rToken).main().assetRegistry();
+        }
     }
 
     function decimals() external view override returns (uint8) {
@@ -56,23 +62,26 @@ contract ReferenceRateOracle is IExchangeRateOracle {
         return string.concat(rToken.symbol(), " Reference Rate Oracle");
     }
 
+    /**
+     * @dev Can revert
+     */
     function exchangeRate() public view returns (uint256) {
         if (address(rToken) == address(0)) {
             revert MissingRToken();
         }
 
-        IMain main = rToken.main();
-        IAssetRegistry assetRegistry = main.assetRegistry();
+        // cannot cache RTokenAsset
         IAsset rTokenAsset = assetRegistry.toAsset(IERC20(address(rToken)));
 
         (uint256 lower, uint256 upper) = rTokenAsset.price();
-        require(lower != 0 && upper < type(uint192).max, "invalid price");
+        require(lower != 0 && upper < FIX_MAX, "invalid price");
 
         return (lower + upper) / 2;
     }
 
     /**
      * @dev Ignores roundId completely, prefer using latestRoundData()
+     *      Can revert
      */
     function getRoundData(uint80)
         external
@@ -89,6 +98,9 @@ contract ReferenceRateOracle is IExchangeRateOracle {
         return this.latestRoundData();
     }
 
+    /**
+     * @dev Can revert
+     */
     function latestRoundData()
         external
         view
