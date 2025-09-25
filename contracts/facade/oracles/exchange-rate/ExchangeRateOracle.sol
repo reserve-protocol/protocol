@@ -62,6 +62,9 @@ contract ExchangeRateOracle is IExchangeRateOracle {
         return divuu(uint256(IRToken(rToken).basketsNeeded()), supply);
     }
 
+    /**
+     * @dev Ignores roundId completely, prefer using latestRoundData()
+     */
     function getRoundData(uint80)
         external
         view
@@ -74,7 +77,6 @@ contract ExchangeRateOracle is IExchangeRateOracle {
             uint80 answeredInRound
         )
     {
-        // NOTE: Ignores roundId completely, prefer using latestRoundData()
         return this.latestRoundData();
     }
 

@@ -21,6 +21,7 @@ contract OracleFactory {
     // {rtoken} => {oracle}
     mapping(address => Oracles) public oracleRegistry;
 
+    /// @param rToken The RToken to deploy oracles for; supports address(0) for easy verification
     function deployOracle(address rToken) external returns (Oracles memory oracles) {
         if (address(oracleRegistry[rToken].exchangeRateOracle) != address(0)) {
             revert OracleAlreadyDeployed(rToken);
