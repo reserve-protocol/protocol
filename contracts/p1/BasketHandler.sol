@@ -75,6 +75,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     CollateralStatus private lastStatus;
 
     // === Historical basket nonces ===
+    // Added in 3.0.0
 
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
