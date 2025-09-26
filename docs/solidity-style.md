@@ -161,7 +161,7 @@ The protocol functions best when whole RSR is worth `>= $0.001`. This constraint
 
 All core functions that can be called from outside our system are classified into one of the following 3 categories:
 
-1. `@custom:interaction` - An action. Disallowed while paused. Per-contract reentrancy-safety is needed.
+1. `@custom:interaction` - An action. Disallowed while paused. Global reentrancy-safety is needed.
 2. `@custom:governance` - Governance change. Allowed while paused.
 3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `refresh()`.
 
@@ -179,12 +179,17 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - stRSR.withdraw()
 - rToken.issue()
 - rToken.redeem()
-- {rsrTrader,rTokenTrader,backingManager}.claimRewards()
+- rToken.redeemTo()
+- rToken.redeemCustom()
+- rToken.monetizeDonations()
+- {rsrTrader,rTokenTrader,backingManager}.claimRewards() / .claimRewardsSingle()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.rebalance\*()
-- backingManager.forwardRevenue\*()
+- backingManager.rebalance()
+- backingManager.forwardRevenue()
 - {rsrTrader,rTokenTrader}.manageTokens()
+- {rsrTrader,rTokenTrader}.distributeTokenToBuy()
+- {rsrTrader,rTokenTrader}.returnTokens()
 
 ### `@custom:governance`
 
@@ -236,9 +241,9 @@ At the start of the Interactions block in a CEI-pattern function, set them off v
 
 When a function is an interaction made reentrancy-safe by the CEI pattern, follow its `@custom:interaction` mark with `CEI`, or with `RCEI` (R is for "Refresh") if it starts by calling `AssetRegistry.refresh()`.
 
-#### ReentrancyGuard
+#### ReentrancyGuard (Global Lock)
 
-Where using the CEI pattern is impractical, every function on that contract that is `external`, and can write to the relevant state elements, should use `reentrancyGuard`. That is, the contract should inherit from either `ReentrancyGuard` (or `ReentrancyGuardUpgradable` as needed), and every external function that can either modify contract state, or read it when it's inconsistent, should be marked with the `nonReentrant` modifier.
+Where using the CEI pattern is impractical, every function that is `external`, and can write to the relevant state elements, should use a global lock implemented via `GlobalReentrancyGuard` on `Main`. Every `@custom:interaction` should be market with the `globalNonReentrant` modifier.
 
 #### Exceptions
 

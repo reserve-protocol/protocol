@@ -44,4 +44,13 @@ abstract contract ComponentP0 is Versioned, Initializable, ContextUpgradeable, I
         require(main.hasRole(OWNER, _msgSender()), "governance only");
         _;
     }
+
+    // === Control Flow ===
+    // In P0 we do not apply locks
+
+    modifier globalNonReentrant() {
+        main.beginTx();
+        _;
+        main.endTx();
+    }
 }

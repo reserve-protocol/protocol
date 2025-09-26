@@ -18,6 +18,7 @@ import {
 import {
   CollateralStatus,
   RoundingMode,
+  TradeKind,
   ZERO_ADDRESS,
   ONE_ADDRESS,
   MAX_UINT256,
@@ -26,6 +27,8 @@ import {
   LONG_FREEZER,
   PAUSER,
   MAX_UINT192,
+  FURNACE_DEST,
+  STRSR_DEST,
 } from '../common/constants'
 import { expectEqualArrays } from './utils/matchers'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -40,8 +43,10 @@ import {
   DutchTrade,
   CTokenMock,
   ERC20Mock,
+  ERC20MockReentrant,
   FacadeTest,
   FiatCollateral,
+  FiatCollateralMockReentrant,
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
@@ -253,6 +258,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.broker()).to.equal(broker.address)
       expect(await main.rsrTrader()).to.equal(rsrTrader.address)
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
+
+      // Components registered
+      expect(await main.isComponent(rToken.address)).to.equal(true)
+      expect(await main.isComponent(stRSR.address)).to.equal(true)
+      expect(await main.isComponent(assetRegistry.address)).to.equal(true)
+      expect(await main.isComponent(basketHandler.address)).to.equal(true)
+      expect(await main.isComponent(backingManager.address)).to.equal(true)
+      expect(await main.isComponent(distributor.address)).to.equal(true)
+      expect(await main.isComponent(rsrTrader.address)).to.equal(true)
+      expect(await main.isComponent(rTokenTrader.address)).to.equal(true)
+      expect(await main.isComponent(furnace.address)).to.equal(true)
+      expect(await main.isComponent(broker.address)).to.equal(true)
 
       // Configuration
       const [rTokenTotal, rsrTotal] = await distributor.totals()
@@ -3675,6 +3692,367 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await main.rsrTrader()
       )
       await expect(rsrTrader.cacheComponents()).to.not.be.reverted
+    })
+  })
+
+  describeP1('Global Lock (Non-reentrancy)', () => {
+    const issueAmount = fp('10000')
+    const amount: BigNumber = fp('10')
+    let daiChainlink: MockV3Aggregator
+    let reentrantToken: ERC20MockReentrant
+    let reentrantColl: FiatCollateral
+    let reentryCalls: Array<{ target: string; calldata: string }>
+
+    beforeEach(async () => {
+      daiChainlink = await ethers.getContractAt(
+        'MockV3Aggregator',
+        await collateral0.chainlinkFeed()
+      )
+
+      // Setup reentrant token/collateral
+      const ERC20ReentrantFactory: ContractFactory = await ethers.getContractFactory(
+        'ERC20MockReentrant'
+      )
+      const CollReentrantFactory: ContractFactory = await ethers.getContractFactory(
+        'FiatCollateralMockReentrant'
+      )
+
+      reentrantToken = <ERC20MockReentrant>(
+        await ERC20ReentrantFactory.deploy('Reentrant Token', 'ReentrantTKN')
+      )
+      reentrantColl = <FiatCollateralMockReentrant>await CollReentrantFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: daiChainlink.address,
+        oracleError: ORACLE_ERROR,
+        erc20: reentrantToken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: await ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).register(reentrantColl.address)
+      await reentrantToken.mint(addr1.address, issueAmount.mul(2))
+
+      // Setup reentrant basket
+      await basketHandler
+        .connect(owner)
+        .forceSetPrimeBasket([token0.address, reentrantToken.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.refreshBasket()
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      // register backups
+      await assetRegistry.connect(owner).register(backupCollateral1.address)
+      await basketHandler
+        .connect(owner)
+        .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+
+      // issue rTokens
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await reentrantToken.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Perform donation
+      await reentrantToken.connect(owner).mint(rToken.address, fp(100))
+
+      // Set revenue on BM and Traders
+      await reentrantToken.connect(owner).mint(backingManager.address, fp(100))
+      await reentrantToken.connect(owner).mint(rsrTrader.address, fp(100))
+      await reentrantToken.connect(owner).mint(rTokenTrader.address, fp(100))
+
+      // Set RSR distribution to zero
+      await distributor.setDistributions(
+        [FURNACE_DEST, STRSR_DEST],
+        [
+          { rTokenDist: bn(10000), rsrDist: bn(0) },
+          { rTokenDist: bn('0'), rsrDist: bn('0') },
+        ]
+      )
+
+      // turn on reentrancy
+      await reentrantToken.setReenter(true)
+
+      // Set reentrancy calls to test
+      reentryCalls = [
+        {
+          target: backingManager.address,
+          calldata: backingManager.interface.encodeFunctionData('forwardRevenue', [
+            [reentrantToken.address],
+          ]),
+        },
+        {
+          target: backingManager.address,
+          calldata: backingManager.interface.encodeFunctionData('grantRTokenAllowance', [
+            token0.address,
+          ]),
+        },
+        {
+          target: backingManager.address,
+          calldata: backingManager.interface.encodeFunctionData('rebalance', [
+            TradeKind.DUTCH_AUCTION,
+          ]),
+        },
+        {
+          target: backingManager.address,
+          calldata: backingManager.interface.encodeFunctionData('claimRewards'),
+        },
+        {
+          target: backingManager.address,
+          calldata: backingManager.interface.encodeFunctionData('claimRewardsSingle', [
+            token0.address,
+          ]),
+        },
+        {
+          target: backingManager.address,
+          calldata: backingManager.interface.encodeFunctionData('settleTrade', [token0.address]),
+        },
+        {
+          target: stRSR.address,
+          calldata: stRSR.interface.encodeFunctionData('stake', [amount]),
+        },
+        {
+          target: stRSR.address,
+          calldata: stRSR.interface.encodeFunctionData('unstake', [amount]),
+        },
+        {
+          target: stRSR.address,
+          calldata: stRSR.interface.encodeFunctionData('cancelUnstake', [0]),
+        },
+        {
+          target: stRSR.address,
+          calldata: stRSR.interface.encodeFunctionData('withdraw', [addr1.address, 0]),
+        },
+        {
+          target: rToken.address,
+          calldata: rToken.interface.encodeFunctionData('issue', [amount]),
+        },
+        {
+          target: rToken.address,
+          calldata: rToken.interface.encodeFunctionData('redeem', [amount]),
+        },
+        {
+          target: rToken.address,
+          calldata: rToken.interface.encodeFunctionData('redeemCustom', [
+            addr1.address,
+            amount,
+            [],
+            [],
+            [],
+            [],
+          ]),
+        },
+        {
+          target: rToken.address,
+          calldata: rToken.interface.encodeFunctionData('monetizeDonations', [token0.address]),
+        },
+        {
+          target: rsrTrader.address,
+          calldata: rsrTrader.interface.encodeFunctionData('manageTokens', [
+            [token0.address],
+            [TradeKind.DUTCH_AUCTION],
+          ]),
+        },
+        {
+          target: rsrTrader.address,
+          calldata: rsrTrader.interface.encodeFunctionData('distributeTokenToBuy'),
+        },
+        {
+          target: rsrTrader.address,
+          calldata: rsrTrader.interface.encodeFunctionData('returnTokens', [[token0.address]]),
+        },
+        {
+          target: rTokenTrader.address,
+          calldata: rTokenTrader.interface.encodeFunctionData('claimRewards'),
+        },
+        {
+          target: rTokenTrader.address,
+          calldata: rTokenTrader.interface.encodeFunctionData('claimRewardsSingle', [
+            token0.address,
+          ]),
+        },
+        {
+          target: rTokenTrader.address,
+          calldata: rTokenTrader.interface.encodeFunctionData('settleTrade', [token0.address]),
+        },
+      ]
+    })
+
+    it('Should prevent reentrancy - Basic Ops', async () => {
+      const redeemAmount: BigNumber = fp('10000')
+
+      // Enable reentrancy calls
+      await reentrantToken.setReenter(true)
+
+      // Attempt reentrant calls
+      for (const { target, calldata } of reentryCalls) {
+        await reentrantToken.setReentryCall(target, calldata)
+
+        // Redeem
+        await expect(rToken.connect(addr1).redeem(redeemAmount)).to.be.revertedWithCustomError(
+          main,
+          'ReentrancyGuardReentrantCall'
+        )
+
+        // Custom Redeem
+        const basketNonces = [2]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteCustomRedemption(
+          basketNonces,
+          portions,
+          redeemAmount
+        )
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              redeemAmount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Issue
+        await token0.connect(addr1).approve(rToken.address, issueAmount)
+        await reentrantToken.setReenter(false)
+        await reentrantToken.connect(addr1).approve(rToken.address, issueAmount)
+        await reentrantToken.setReenter(true)
+
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWithCustomError(
+          main,
+          'ReentrancyGuardReentrantCall'
+        )
+
+        // Monetize donations
+        await expect(
+          rToken.monetizeDonations(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Grant RToken allowance
+        await expect(
+          backingManager.connect(addr1).grantRTokenAllowance(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Forward Revenue
+        await expect(
+          backingManager.forwardRevenue([reentrantToken.address])
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Return Tokens
+        await expect(
+          rsrTrader.returnTokens([reentrantToken.address])
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Manage Tokens
+        await expect(
+          rTokenTrader.manageTokens([reentrantToken.address], [TradeKind.DUTCH_AUCTION])
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Claim Rewards Single
+        await expect(
+          rTokenTrader.claimRewardsSingle(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        await expect(
+          backingManager.claimRewardsSingle(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+
+        // Claim Rewards
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWithCustomError(
+          main,
+          'ReentrancyGuardReentrantCall'
+        )
+
+        await expect(backingManager.claimRewards()).to.be.revertedWithCustomError(
+          main,
+          'ReentrancyGuardReentrantCall'
+        )
+      }
+    })
+
+    it('Should prevent reentrancy - Rebalance', async () => {
+      // Enable reentrancy calls
+      await reentrantToken.setReenter(true)
+
+      // Switch basket, remove reentrant token
+      await basketHandler.connect(owner).forceSetPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.refreshBasket()
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      // Attempt reentrant calls
+      for (const { target, calldata } of reentryCalls) {
+        await reentrantToken.setReentryCall(target, calldata)
+
+        // Rebalance
+        await expect(
+          backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+      }
+    })
+
+    it('Should prevent reentrancy - Settle Trade', async () => {
+      // Start revenue auction
+      await rTokenTrader.manageTokens([reentrantToken.address], [TradeKind.DUTCH_AUCTION])
+      await advanceTime(config.dutchAuctionLength.add(100).toString())
+
+      // Enable reentrancy calls
+      await reentrantToken.setReenter(true)
+
+      // Attempt reentrant calls
+      for (const { target, calldata } of reentryCalls) {
+        await reentrantToken.setReentryCall(target, calldata)
+
+        // Settle trade
+        await expect(
+          rTokenTrader.settleTrade(reentrantToken.address)
+        ).to.be.revertedWithCustomError(main, 'ReentrancyGuardReentrantCall')
+      }
+    })
+
+    it('Should allow to cache components', async () => {
+      await (await ethers.getContractAt('MainP1', main.address)).cacheComponents()
+
+      expect(await main.isComponent(rToken.address)).to.equal(true)
+      expect(await main.isComponent(stRSR.address)).to.equal(true)
+      expect(await main.isComponent(assetRegistry.address)).to.equal(true)
+      expect(await main.isComponent(basketHandler.address)).to.equal(true)
+      expect(await main.isComponent(backingManager.address)).to.equal(true)
+      expect(await main.isComponent(distributor.address)).to.equal(true)
+      expect(await main.isComponent(rsrTrader.address)).to.equal(true)
+      expect(await main.isComponent(rTokenTrader.address)).to.equal(true)
+      expect(await main.isComponent(furnace.address)).to.equal(true)
+      expect(await main.isComponent(broker.address)).to.equal(true)
+    })
+
+    it('Should only allow components to begin-end txs', async () => {
+      await expect(main.connect(owner).beginTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(owner).endTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(other).beginTx()).to.be.revertedWith('not a component')
+      await expect(main.connect(other).endTx()).to.be.revertedWith('not a component')
+
+      // Try with components
+      const components: Parameters<typeof main.init>[0] = {
+        rToken: rToken.address,
+        stRSR: stRSR.address,
+        assetRegistry: assetRegistry.address,
+        basketHandler: basketHandler.address,
+        backingManager: backingManager.address,
+        distributor: distributor.address,
+        rsrTrader: rsrTrader.address,
+        rTokenTrader: rTokenTrader.address,
+        furnace: furnace.address,
+        broker: broker.address,
+      }
+
+      // Loop through all components
+      for (const comp of Object.values(components)) {
+        await whileImpersonating(comp, async (compSigner) => {
+          await expect(main.connect(compSigner).beginTx()).to.not.be.reverted
+          await expect(main.connect(compSigner).endTx()).to.not.be.reverted
+        })
+      }
     })
   })
 
