@@ -160,6 +160,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     warmupPeriod: bn('60'),
     reweightable: false,
     enableIssuancePremium: false,
+    enablePermissionlessRefresh: true,
   }
 
   const defaultThreshold = fp('0.01') // 1%

@@ -2,7 +2,8 @@
 
 # 4.2.0
 
-- **Trusted Fillers**: Rtokens are now integrated with [Trusted Fillers](https://github.com/reserve-protocol/trusted-fillers/) and can be enabled by governance to allow async fillers to compete in auctions to provide better prices. All auction limitations still apply to these fillers. Currently, the only supported async filler is CoW Swap.
+- **Trusted Fillers**: RTokens are now integrated with [Trusted Fillers](https://github.com/reserve-protocol/trusted-fillers/) and can be enabled by governance to allow async fillers to compete in auctions to provide better prices. All auction limitations still apply to these fillers. Currently, the only supported async filler is CoW Swap.
+- **Permissionless Refresh**: RTokens can now be configured to disable permissionless refresh of the basket. This is useful for RTokens that reach such size and success that emergency rebalances need to be handled by governance. RTokens with this setting turned off will not permissionlessly rotate into backup baskets in the event of a default. Default monitoring still works as normal to pause issuance and trading.
 
 # 4.1.0
 

@@ -647,6 +647,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     reweightable: false,
     enableIssuancePremium: true,
+    enablePermissionlessRefresh: true,
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     batchAuctionLength: bn('900'), // 15 minutes
     dutchAuctionLength: bn('1800'), // 30 minutes

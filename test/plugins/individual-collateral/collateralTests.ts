@@ -702,6 +702,7 @@ export default function fn<X extends CollateralFixtureContext>(
         },
         reweightable: false,
         enableIssuancePremium: false,
+        enablePermissionlessRefresh: true,
       }
 
       interface IntegrationFixture {

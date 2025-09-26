@@ -855,6 +855,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         },
         reweightable: false,
         enableIssuancePremium: false,
+        enablePermissionlessRefresh: true,
       }
 
       interface IntegrationFixture {

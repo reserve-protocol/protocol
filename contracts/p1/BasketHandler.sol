@@ -75,7 +75,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     CollateralStatus private lastStatus;
 
     // === Historical basket nonces ===
-    // Added in 3.0.0
 
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
@@ -96,6 +95,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     bool public enableIssuancePremium;
 
+    // ===
+    // Added in 4.2.0
+
+    bool public enablePermissionlessRefresh;
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -105,12 +109,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   for b in vals(backups), b.erc20s is a valid collateral array.
     // if basket.erc20s is empty then disabled == true
 
-    // BasketHandler.init() just leaves the BasketHandler state zeroed
     function init(
         IMain main_,
         uint48 warmupPeriod_,
         bool reweightable_,
-        bool enableIssuancePremium_
+        bool enableIssuancePremium_,
+        bool enablePermissionlessRefresh_
     ) external initializer {
         __Component_init(main_);
 
@@ -123,6 +127,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         setWarmupPeriod(warmupPeriod_);
         reweightable = reweightable_; // immutable thereafter
         enableIssuancePremium = enableIssuancePremium_;
+        enablePermissionlessRefresh = enablePermissionlessRefresh_;
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -150,7 +155,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Switch the basket, only callable directly by governance or after a default
     /// @custom:interaction OR @custom:governance
     // checks: either caller has OWNER,
-    //         or (basket is disabled after refresh and we're unpaused and unfrozen)
+    //         or (anyone can refresh, basket is disabled, and we're unpaused and unfrozen)
     // actions: calls assetRegistry.refresh(), then _switchBasket()
     // effects:
     //   Either: (basket' is a valid nonempty basket, without DISABLED collateral,
@@ -161,7 +166,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         require(
             main.hasRole(OWNER, _msgSender()) ||
-                (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
+                (enablePermissionlessRefresh &&
+                    lastStatus == CollateralStatus.DISABLED &&
+                    !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );
         _switchBasket();
@@ -647,6 +654,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         requireGovernanceOnly();
         emit EnableIssuancePremiumSet(enableIssuancePremium, val);
         enableIssuancePremium = val;
+    }
+
+    /// @custom:governance
+    function setPermissionlessRefreshEnabled(bool val) public {
+        requireGovernanceOnly();
+        emit EnablePermissionlessRefreshSet(enablePermissionlessRefresh, val);
+        enablePermissionlessRefresh = val;
     }
 
     // === Private ===

@@ -158,6 +158,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     },
     reweightable: false,
     enableIssuancePremium: false,
+    enablePermissionlessRefresh: true,
   }
 
   const defaultThreshold = fp('0.01') // 1%

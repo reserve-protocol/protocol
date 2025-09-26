@@ -48,6 +48,11 @@ interface IBasketHandler is IComponent {
     /// @param newVal The new value of enableIssuancePremium
     event EnableIssuancePremiumSet(bool oldVal, bool newVal);
 
+    /// Emitted when the permissionless refresh logic is changed
+    /// @param oldVal The old value of enablePermissionlessRefresh
+    /// @param newVal The new value of enablePermissionlessRefresh
+    event EnablePermissionlessRefreshSet(bool oldVal, bool newVal);
+
     /// Emitted when the status of a basket has changed
     /// @param oldStatus The previous basket status
     /// @param newStatus The new basket status
@@ -63,7 +68,8 @@ interface IBasketHandler is IComponent {
         IMain main_,
         uint48 warmupPeriod_,
         bool reweightable_,
-        bool enableIssuancePremium_
+        bool enableIssuancePremium_,
+        bool enablePermissionlessRefresh_
     ) external;
 
     /// Set the prime basket, checking target amounts are constant

@@ -407,7 +407,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           main.address,
           config.warmupPeriod,
           config.reweightable,
-          config.enableIssuancePremium
+          config.enableIssuancePremium,
+          config.enablePermissionlessRefresh
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
@@ -1783,7 +1784,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     beforeEach(async () => {
       indexBH = await newBasketHandler()
-      await indexBH.init(main.address, config.warmupPeriod, true, config.enableIssuancePremium)
+      await indexBH.init(
+        main.address,
+        config.warmupPeriod,
+        true,
+        config.enableIssuancePremium,
+        config.enablePermissionlessRefresh
+      )
 
       eurToken = await (await ethers.getContractFactory('ERC20Mock')).deploy('EURO Token', 'EUR')
       const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -1905,7 +1912,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         // for non-reweightable baskets, also try setting a zero amount as the *original* basket
         const newBH = await newBasketHandler()
-        await newBH.init(main.address, config.warmupPeriod, false, config.enableIssuancePremium)
+        await newBH.init(
+          main.address,
+          config.warmupPeriod,
+          false,
+          config.enableIssuancePremium,
+          config.enablePermissionlessRefresh
+        )
         await expect(newBH.connect(owner).setPrimeBasket([token0.address], [0])).to.be.revertedWith(
           'invalid target amount'
         )

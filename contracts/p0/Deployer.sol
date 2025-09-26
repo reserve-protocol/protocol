@@ -98,7 +98,8 @@ contract DeployerP0 is IDeployer, Versioned {
             main,
             params.warmupPeriod,
             params.reweightable,
-            params.enableIssuancePremium
+            params.enableIssuancePremium,
+            params.enablePermissionlessRefresh
         );
 
         // Init Revenue Traders
