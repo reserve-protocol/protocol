@@ -140,7 +140,7 @@ async function main() {
       oracleError: fp('0.01').toString(), // 1%
       tokenAddress: networkConfig[chainId].tokens.USDP,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr
+      oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.02').toString(), // 2%
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -409,7 +409,7 @@ async function main() {
       oracleError: fp('0.01').toString(), // 1%
       staticAToken: ausdpStaticToken.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr
+      oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.02').toString(), // 2%
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -508,7 +508,7 @@ async function main() {
       oracleError: fp('0.01').toString(), // 1%
       cToken: networkConfig[chainId].tokens.cUSDP,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '3600', // 1 hr
+      oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.02').toString(), // 2%
       delayUntilDefault: bn('86400').toString(), // 24h

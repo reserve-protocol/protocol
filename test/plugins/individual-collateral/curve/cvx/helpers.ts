@@ -38,9 +38,10 @@ import {
   MIM_THREE_POOL_POOL_ID,
   MIM_THREE_POOL_HOLDER,
   ETHPLUS,
+  ETHPLUS_ASSET_REGISTRY,
   ETHPLUS_BP_POOL,
   ETHPLUS_BP_POOL_ID,
-  ETHPLUS_ASSET_REGISTRY,
+  ETHPLUS_ETH_HOLDER,
   ETHPLUS_TIMELOCK,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
@@ -416,8 +417,7 @@ export const mintWETHPlusETH = async (
   ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,
-  recipient: string,
-  holder: string
+  recipient: string
 ) => {
   const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
   const lpToken = await ethers.getContractAt(
@@ -425,7 +425,7 @@ export const mintWETHPlusETH = async (
     await cvxWrapper.curveToken()
   )
 
-  await whileImpersonating(holder, async (signer) => {
+  await whileImpersonating(ETHPLUS_ETH_HOLDER, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
   })
 

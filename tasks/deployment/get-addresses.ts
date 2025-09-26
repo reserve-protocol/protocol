@@ -34,15 +34,14 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     const chainId = await getChainId(hre)
     const network: Network = hre.network.name as Network
     let scannerUrl: string
-    let scannerApiUrl: string
+    let scannerApiUrl = `https://api.etherscan.io/v2/api?chainid=${chainId}`
+
     switch (network) {
       case 'mainnet':
         scannerUrl = 'https://etherscan.io/address/'
-        scannerApiUrl = `https://api.etherscan.io/api`
         break
       case 'base':
         scannerUrl = 'https://basescan.org/address/'
-        scannerApiUrl = `https://api.basescan.org/api`
         break
       default:
         throw new Error(`Unsupported network: ${network}`)
@@ -57,7 +56,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     }
 
     const createRTokenTableRow = async (name: string, address: string) => {
-      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}&module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       await delay(200)
       const response = await fetch(url)
       const data = await response.json()
@@ -73,7 +72,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     }
 
     const createComponentTableRow = async (name: string, address: string) => {
-      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}&module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       await delay(200)
       const response = await fetch(url)
       const data = await response.json()

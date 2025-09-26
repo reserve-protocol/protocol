@@ -46,6 +46,10 @@ contract CurvePoolMock is ICurvePool {
         uint256,
         uint256
     ) external {}
+
+    function totalSupply() public view virtual returns (uint256) {
+        return 0;
+    }
 }
 
 interface ICurvePoolVariantInt {

@@ -10,7 +10,6 @@ import { useEnv } from '#/utils/env'
 
 // set to true to force a refresh of all whales
 const FORCE_REFRESH = useEnv('FORCE_WHALE_REFRESH')
-const BASESCAN_API_KEY = useEnv('BASESCAN_API_KEY')
 const FORK_NETWORK = useEnv('FORK_NETWORK')
 
 const SCANNER_URLS: { [key: string]: string } = {

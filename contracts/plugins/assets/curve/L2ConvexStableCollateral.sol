@@ -31,6 +31,9 @@ interface IConvexRewardPool is IERC20Metadata {
  *
  * @notice Pools with native ETH or ERC777 should be avoided,
  *  see docs/collateral.md for information
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract L2ConvexStableCollateral is CurveStableCollateral {
     using OracleLib for AggregatorV3Interface;
