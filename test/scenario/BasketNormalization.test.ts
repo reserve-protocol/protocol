@@ -115,7 +115,7 @@ describeP1(`Basket Normalization Test (Spell)`, () => {
         (
           await upgrades.deployProxy(
             BasketHandlerFactory,
-            [main.address, config.warmupPeriod, true, false],
+            [main.address, config.warmupPeriod, true, false, true],
             {
               initializer: 'init',
               kind: 'uups',
