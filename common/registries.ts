@@ -3,6 +3,7 @@ interface IRegistries {
   versionRegistry: string
   assetPluginRegistry: string
   daoFeeRegistry: string
+  trustedFillerRegistry: string
 }
 
 interface IRegistryControl {
@@ -26,6 +27,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
       versionRegistry: '',
       assetPluginRegistry: '',
       daoFeeRegistry: '',
+      trustedFillerRegistry: '0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A',
     },
   },
   '8453': {
@@ -38,6 +40,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
       versionRegistry: '',
       assetPluginRegistry: '',
       daoFeeRegistry: '',
+      trustedFillerRegistry: '0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18',
     },
   },
   '56': {
@@ -50,6 +53,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
       versionRegistry: '',
       assetPluginRegistry: '',
       daoFeeRegistry: '',
+      trustedFillerRegistry: '0x08424d7C52bf9edd4070701591Ea3FE6dca6449B',
     },
   },
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+# 4.2.0
+
+- **Trusted Fillers**: Rtokens are now integrated with [Trusted Fillers](https://github.com/reserve-protocol/trusted-fillers/) and can be enabled by governance to allow async fillers to compete in auctions to provide better prices. All auction limitations still apply to these fillers. Currently, the only supported async filler is CoW Swap.
+
 # 4.1.0
 
 This release implements a global lock on `Main` (by inherinting from `GlobalReentrancyGuard.sol`), which can be used by individual components to define the `globalNonReentrant` modifier and allow global reentrancy checks accross core protocol functions. See [docs/solidity-style.md](./docs/solidity-style.md#Reentrancy-safety)

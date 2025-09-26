@@ -62,6 +62,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // solhint-disable-next-line no-empty-blocks
     function requireNotTradingPausedOrFrozen() internal view notTradingPausedOrFrozen {}
 
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireGovernanceOnly() internal view governance {}
+
     /// Claim all rewards
     /// Collective Action
     /// @custom:interaction CEI (marked `nonReentrant`)
@@ -147,7 +151,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Should only be called in case of censorship
     /// @param trade The trade address itself
     /// @custom:governance
-    function forceSettleTrade(ITrade trade) public virtual governance {
+    function forceSettleTrade(ITrade trade) public virtual {
+        requireGovernanceOnly();
         // should not call any ERC20 functions, in case bricked
 
         IERC20Metadata sell = trade.sell();
@@ -157,14 +162,16 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     }
 
     /// @custom:governance
-    function setMaxTradeSlippage(uint192 val) public governance {
+    function setMaxTradeSlippage(uint192 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
     /// @custom:governance
-    function setMinTradeVolume(uint192 val) public governance {
+    function setMinTradeVolume(uint192 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;

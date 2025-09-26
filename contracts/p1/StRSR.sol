@@ -263,7 +263,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _notZero(stakeAmount);
 
         address account = _msgSender();
-        require(stakes[era][account] >= stakeAmount, "insufficient balance");
+        if (stakes[era][account] < stakeAmount) {
+            revert InsufficientBalance();
+        }
 
         _payoutRewards();
 
@@ -311,8 +313,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (endId == 0 || firstId >= endId) return;
 
         // == Checks + Effects ==
-        require(endId <= queue.length, "index out-of-bounds");
-        require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+        if (endId > queue.length) {
+            revert IndexOutOfBounds();
+        }
+        if (queue[endId - 1].availableAt > block.timestamp) {
+            revert WithdrawalUnavailable();
+        }
 
         // untestable:
         //      firstId will never be zero, due to previous checks against endId
@@ -340,7 +346,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit UnstakingCompleted(firstId, endId, draftEra, account, rsrAmount);
 
         // == Checks ==
-        require(basketHandler.isReady() && basketHandler.fullyCollateralized(), "RToken readying");
+        if (!(basketHandler.isReady() && basketHandler.fullyCollateralized())) {
+            revert RTokenNotReady();
+        }
     }
 
     /// Cancel an ongoing unstaking; resume staking
@@ -356,7 +364,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         if (endId == 0 || firstId >= endId) return;
 
-        require(endId <= queue.length, "index out-of-bounds");
+        if (endId > queue.length) {
+            revert IndexOutOfBounds();
+        }
 
         // Cancelling unstake does not require checking if the unstaking was available
         // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
@@ -428,10 +438,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _notZero(rsrAmount);
 
         address caller = _msgSender();
-        require(caller == address(backingManager), "!bm");
+        if (caller != address(backingManager)) {
+            revert NotBackingManager();
+        }
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
-        require(rsrAmount <= rsrBalance, "seize exceeds balance");
+        if (rsrAmount > rsrBalance) {
+            revert SeizeExceedsBalance();
+        }
 
         _payoutRewards();
 
@@ -493,13 +507,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ///     resetStakes() should be called by governance anyway.
     function resetStakes() external {
         _requireGovernanceOnly();
-        require(
-            draftRate <= MIN_SAFE_DRAFT_RATE ||
+        if (
+            !(draftRate <= MIN_SAFE_DRAFT_RATE ||
                 draftRate >= MAX_SAFE_DRAFT_RATE ||
                 stakeRate <= MIN_SAFE_STAKE_RATE ||
-                stakeRate >= MAX_SAFE_STAKE_RATE,
-            "rates still safe"
-        );
+                stakeRate >= MAX_SAFE_STAKE_RATE)
+        ) {
+            revert RatesStillSafe();
+        }
 
         beginEra();
         beginDraftEra();
@@ -815,7 +830,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
         address owner = _msgSender();
         uint256 currentAllowance = _allowances[era][owner][spender];
-        require(currentAllowance >= subtractedValue, "decrease allowance");
+        if (currentAllowance < subtractedValue) {
+            revert DecreaseAllowanceError();
+        }
+
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
@@ -835,7 +853,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 fromBalance = eraStakes[from];
-        require(fromBalance >= amount, "insufficient balance");
+        if (fromBalance < amount) {
+            revert InsufficientBalance();
+        }
+
         unchecked {
             eraStakes[from] = fromBalance - amount;
         }
@@ -871,7 +892,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 accountBalance = eraStakes[account];
         // untestable:
         //      _burn is only called from unstake(), which already checks this
-        require(accountBalance >= amount, "insufficient balances");
+        if (accountBalance < amount) {
+            revert InsufficientBalance();
+        }
+
         unchecked {
             eraStakes[account] = accountBalance - amount;
         }
@@ -900,7 +924,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) internal {
         uint256 currentAllowance = _allowances[era][owner][spender];
         if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "insufficient allowance");
+            if (currentAllowance < amount) {
+                revert InsufficientAllowance();
+            }
+
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
             }
@@ -914,15 +941,21 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256
     ) internal virtual {
-        require(to != address(this), "transfer to self");
+        if (to == address(this)) {
+            revert TransferToSelf();
+        }
     }
 
     function _notZero(address addr) internal pure {
-        require(addr != address(0), "zero address");
+        if (addr == address(0)) {
+            revert ZeroAddress();
+        }
     }
 
     function _notZero(uint256 val) internal pure {
-        require(val != 0, "zero amount");
+        if (val == 0) {
+            revert ZeroAmount();
+        }
     }
 
     // === ERC20Permit ===
@@ -937,7 +970,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         bytes32 r,
         bytes32 s
     ) public {
-        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
+        if (block.timestamp > deadline) {
+            revert ExpiredDeadline();
+        }
 
         bytes32 structHash = keccak256(
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
@@ -978,7 +1013,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:governance
     function setUnstakingDelay(uint48 val) public {
         _requireGovernanceOnly();
-        require(val > MIN_UNSTAKING_DELAY && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
+        if (val <= MIN_UNSTAKING_DELAY || val > MAX_UNSTAKING_DELAY) {
+            revert InvalidUnstakingDelay();
+        }
+
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
     }
@@ -987,7 +1025,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function setRewardRatio(uint192 val) public {
         _requireGovernanceOnly();
         _payoutRewards();
-        require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
+        if (val > MAX_REWARD_RATIO) {
+            revert InvalidRewardRatio();
+        }
+
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }
@@ -995,7 +1036,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:governance
     function setWithdrawalLeak(uint192 val) public {
         _requireGovernanceOnly();
-        require(val <= MAX_WITHDRAWAL_LEAK, "invalid withdrawalLeak");
+        if (val > MAX_WITHDRAWAL_LEAK) {
+            revert InvalidWithdrawalLeak();
+        }
+
         emit WithdrawalLeakSet(withdrawalLeak, val);
         withdrawalLeak = val;
     }

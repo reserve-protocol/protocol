@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/ITrustedFillerRegistry.sol";
 import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
@@ -66,6 +67,11 @@ contract BrokerP1 is ComponentP1, IBroker {
     // === 3.1.0 ===
 
     IRToken private rToken;
+
+    // === 4.2.0 ===
+
+    ITrustedFillerRegistry public trustedFillerRegistry;
+    bool public trustedFillerEnabled;
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
@@ -171,6 +177,16 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     // === Setters ===
+
+    /// @dev _newFillerRegistry must be the already set registry if already set. This is to ensure
+    ///      correctness and in order to be explicit what registry is being enabled/disabled.
+    /// @custom:governance
+    function setTrustedFillerRegistry(address _newFillerRegistry, bool _enabled)
+        external
+        governance
+    {
+        _setTrustedFillerRegistry(_newFillerRegistry, _enabled);
+    }
 
     /// @custom:main
     function setBatchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
@@ -289,10 +305,26 @@ contract BrokerP1 is ComponentP1, IBroker {
         return asset.lastSave() == block.timestamp || address(asset.erc20()) == address(rToken);
     }
 
+    function _setTrustedFillerRegistry(address _newFillerRegistry, bool _enabled) internal {
+        if (address(trustedFillerRegistry) != _newFillerRegistry) {
+            require(
+                address(trustedFillerRegistry) == address(0),
+                "trusted filler registry already set"
+            );
+            trustedFillerRegistry = ITrustedFillerRegistry(_newFillerRegistry);
+        }
+
+        if (trustedFillerEnabled != _enabled) {
+            trustedFillerEnabled = _enabled;
+        }
+
+        emit TrustedFillerRegistrySet(address(trustedFillerRegistry), trustedFillerEnabled);
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 }
