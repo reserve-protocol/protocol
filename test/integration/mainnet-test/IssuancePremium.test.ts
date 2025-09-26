@@ -186,6 +186,7 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
       await assetRegistry.connect(timelockSigner).swapRegistered(newRETH.address)
       await assetRegistry.connect(timelockSigner).swapRegistered(rTokenAsset.address)
       await basketHandler.connect(timelockSigner).setIssuancePremiumEnabled(true)
+      await basketHandler.connect(timelockSigner).setPermissionlessRefreshEnabled(true)
     })
     await basketHandler.refreshBasket()
     expect(await basketHandler.status()).to.equal(0)

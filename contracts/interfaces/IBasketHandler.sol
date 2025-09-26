@@ -204,4 +204,8 @@ interface TestIBasketHandler is IBasketHandler {
     function enableIssuancePremium() external view returns (bool);
 
     function setIssuancePremiumEnabled(bool val) external;
+
+    function enablePermissionlessRefresh() external view returns (bool);
+
+    function setPermissionlessRefreshEnabled(bool val) external;
 }
