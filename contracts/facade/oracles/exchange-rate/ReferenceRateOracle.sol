@@ -49,9 +49,9 @@ contract ReferenceRateOracle is IExchangeRateOracle {
         // allow address(0)
         rToken = IRToken(_rToken);
 
-        if (_rToken != address(0)) {
-            assetRegistry = IRToken(_rToken).main().assetRegistry();
-        }
+        assetRegistry = _rToken != address(0)
+            ? IRToken(_rToken).main().assetRegistry()
+            : IAssetRegistry(address(0));
     }
 
     function decimals() external view override returns (uint8) {
