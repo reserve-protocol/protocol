@@ -67,7 +67,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', daiCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.DAI = daiCollateral
@@ -94,7 +94,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdcCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.USDC = usdcCollateral
@@ -121,37 +121,12 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdtCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.USDT = usdtCollateral
     assetCollDeployments.erc20s.USDT = networkConfig[chainId].tokens.USDT
     deployedCollateral.push(usdtCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-  }
-
-  /********  Deploy Fiat Collateral - USDP  **************************/
-
-  if (networkConfig[chainId].tokens.USDP && networkConfig[chainId].chainlinkFeeds.USDP) {
-    const { collateral: usdpCollateral } = await hre.run('deploy-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
-      oracleError: fp('0.01').toString(), // 1%
-      tokenAddress: networkConfig[chainId].tokens.USDP,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.02').toString(), // 2%
-      delayUntilDefault: bn('86400').toString(), // 24h
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdpCollateral)
-    await (await collateral.refresh()).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.USDP = usdpCollateral
-    assetCollDeployments.erc20s.USDP = networkConfig[chainId].tokens.USDP
-    deployedCollateral.push(usdpCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
@@ -170,7 +145,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', busdCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.BUSD = busdCollateral
@@ -194,7 +169,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdcCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.USDbC = usdcCollateral
@@ -204,35 +179,41 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
+  const StaticATokenFactory = await ethers.getContractFactory('StaticATokenLM')
+
   /*** AAVE V2 not available in Base or Arbitrum L2s */
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     /********  Deploy AToken Fiat Collateral - aDAI  **************************/
 
-    // Get AToken to retrieve name and symbol
-    let aToken: ATokenMock = <ATokenMock>(
-      await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aDAI as string)
-    )
+    let erc20 = networkConfig[chainId].tokens.saDAI
 
-    // Wrap in StaticAToken
-    const StaticATokenFactory = await ethers.getContractFactory('StaticATokenLM')
-    const adaiStaticToken: StaticATokenLM = <StaticATokenLM>(
-      await StaticATokenFactory.connect(burner).deploy(
-        networkConfig[chainId].AAVE_LENDING_POOL as string,
-        aToken.address,
-        'Static ' + (await aToken.name()),
-        's' + (await aToken.symbol())
+    if (!erc20) {
+      // Get AToken to retrieve name and symbol
+      const aToken: ATokenMock = <ATokenMock>(
+        await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aDAI as string)
       )
-    )
-    await adaiStaticToken.deployed()
-    console.log(
-      `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
-    )
+
+      // Wrap in StaticAToken
+      const adaiStaticToken: StaticATokenLM = <StaticATokenLM>(
+        await StaticATokenFactory.connect(burner).deploy(
+          networkConfig[chainId].AAVE_LENDING_POOL as string,
+          aToken.address,
+          'Static ' + (await aToken.name()),
+          's' + (await aToken.symbol())
+        )
+      )
+      await adaiStaticToken.deployed()
+      console.log(
+        `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
+      )
+      erc20 = adaiStaticToken.address
+    }
 
     const { collateral: aDaiCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
       oracleError: fp('0.0025').toString(), // 0.25%
-      staticAToken: adaiStaticToken.address,
+      staticAToken: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -241,42 +222,47 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', aDaiCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.aDAI = aDaiCollateral
-    assetCollDeployments.erc20s.aDAI = adaiStaticToken.address
+    assetCollDeployments.erc20s.aDAI = erc20
     deployedCollateral.push(aDaiCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy AToken Fiat Collateral - aUSDC  **************************/
 
-    // Get AToken to retrieve name and symbol
-    aToken = <ATokenMock>(
-      await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aUSDC as string)
-    )
+    erc20 = networkConfig[chainId].tokens.saUSDC
 
-    // Wrap in StaticAToken
-    const ausdcStaticToken: StaticATokenLM = <StaticATokenLM>(
-      await StaticATokenFactory.connect(burner).deploy(
-        networkConfig[chainId].AAVE_LENDING_POOL as string,
-        aToken.address,
-        'Static ' + (await aToken.name()),
-        's' + (await aToken.symbol())
+    if (!erc20) {
+      // Get AToken to retrieve name and symbol
+      const aToken = <ATokenMock>(
+        await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aUSDC as string)
       )
-    )
-    await ausdcStaticToken.deployed()
 
-    console.log(
-      `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
-    )
+      // Wrap in StaticAToken
+      const ausdcStaticToken: StaticATokenLM = <StaticATokenLM>(
+        await StaticATokenFactory.connect(burner).deploy(
+          networkConfig[chainId].AAVE_LENDING_POOL as string,
+          aToken.address,
+          'Static ' + (await aToken.name()),
+          's' + (await aToken.symbol())
+        )
+      )
+      await ausdcStaticToken.deployed()
+
+      console.log(
+        `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
+      )
+      erc20 = ausdcStaticToken.address
+    }
 
     const { collateral: aUsdcCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
       oracleError: fp('0.0025').toString(), // 0.25%
-      staticAToken: ausdcStaticToken.address,
+      staticAToken: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -285,42 +271,47 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', aUsdcCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.aUSDC = aUsdcCollateral
-    assetCollDeployments.erc20s.aUSDC = ausdcStaticToken.address
+    assetCollDeployments.erc20s.aUSDC = erc20
     deployedCollateral.push(aUsdcCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
     /********  Deploy AToken Fiat Collateral - aUSDT  **************************/
 
-    // Get AToken to retrieve name and symbol
-    aToken = <ATokenMock>(
-      await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aUSDT as string)
-    )
+    erc20 = networkConfig[chainId].tokens.saUSDT
 
-    // Wrap in StaticAToken
-    const ausdtStaticToken: StaticATokenLM = <StaticATokenLM>(
-      await StaticATokenFactory.connect(burner).deploy(
-        networkConfig[chainId].AAVE_LENDING_POOL as string,
-        aToken.address,
-        'Static ' + (await aToken.name()),
-        's' + (await aToken.symbol())
+    if (!erc20) {
+      // Get AToken to retrieve name and symbol
+      const aToken = <ATokenMock>(
+        await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aUSDT as string)
       )
-    )
-    await ausdtStaticToken.deployed()
 
-    console.log(
-      `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
-    )
+      // Wrap in StaticAToken
+      const ausdtStaticToken: StaticATokenLM = <StaticATokenLM>(
+        await StaticATokenFactory.connect(burner).deploy(
+          networkConfig[chainId].AAVE_LENDING_POOL as string,
+          aToken.address,
+          'Static ' + (await aToken.name()),
+          's' + (await aToken.symbol())
+        )
+      )
+      await ausdtStaticToken.deployed()
+
+      console.log(
+        `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
+      )
+      erc20 = ausdtStaticToken.address
+    }
 
     const { collateral: aUsdtCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
       oracleError: fp('0.0025').toString(), // 0.25%
-      staticAToken: ausdtStaticToken.address,
+      staticAToken: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -329,11 +320,11 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', aUsdtCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.aUSDT = aUsdtCollateral
-    assetCollDeployments.erc20s.aUSDT = ausdtStaticToken.address
+    assetCollDeployments.erc20s.aUSDT = erc20
     deployedCollateral.push(aUsdtCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -341,29 +332,35 @@ async function main() {
     /********  Deploy AToken Fiat Collateral - aBUSD  **************************/
 
     // Get AToken to retrieve name and symbol
-    aToken = <ATokenMock>(
-      await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aBUSD as string)
-    )
+    erc20 = networkConfig[chainId].tokens.saBUSD
 
-    const abusdStaticToken: StaticATokenLM = <StaticATokenLM>(
-      await StaticATokenFactory.connect(burner).deploy(
-        networkConfig[chainId].AAVE_LENDING_POOL as string,
-        aToken.address,
-        'Static ' + (await aToken.name()),
-        's' + (await aToken.symbol())
+    if (!erc20) {
+      // Get AToken to retrieve name and symbol
+      const aToken = <ATokenMock>(
+        await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aBUSD as string)
       )
-    )
-    await abusdStaticToken.deployed()
 
-    console.log(
-      `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
-    )
+      const abusdStaticToken: StaticATokenLM = <StaticATokenLM>(
+        await StaticATokenFactory.connect(burner).deploy(
+          networkConfig[chainId].AAVE_LENDING_POOL as string,
+          aToken.address,
+          'Static ' + (await aToken.name()),
+          's' + (await aToken.symbol())
+        )
+      )
+      await abusdStaticToken.deployed()
+
+      console.log(
+        `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
+      )
+      erc20 = abusdStaticToken.address
+    }
 
     const { collateral: aBusdCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
       oracleError: fp('0.005').toString(), // 0.5%
-      staticAToken: abusdStaticToken.address,
+      staticAToken: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '86400', // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -372,56 +369,12 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', aBusdCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.aBUSD = aBusdCollateral
-    assetCollDeployments.erc20s.aBUSD = abusdStaticToken.address
+    assetCollDeployments.erc20s.aBUSD = erc20
     deployedCollateral.push(aBusdCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
-    /********  Deploy AToken Fiat Collateral - aUSDP  **************************/
-
-    // Get AToken to retrieve name and symbol
-    aToken = <ATokenMock>(
-      await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aUSDP as string)
-    )
-
-    // Wrap in StaticAToken
-    const ausdpStaticToken: StaticATokenLM = <StaticATokenLM>(
-      await StaticATokenFactory.connect(burner).deploy(
-        networkConfig[chainId].AAVE_LENDING_POOL as string,
-        aToken.address,
-        'Static ' + (await aToken.name()),
-        's' + (await aToken.symbol())
-      )
-    )
-    await ausdpStaticToken.deployed()
-
-    console.log(
-      `Deployed StaticAToken for aUSDP on ${hre.network.name} (${chainId}): ${ausdpStaticToken.address} `
-    )
-
-    const { collateral: aUsdpCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
-      oracleError: fp('0.01').toString(), // 1%
-      staticAToken: ausdpStaticToken.address,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.02').toString(), // 2%
-      delayUntilDefault: bn('86400').toString(), // 24h
-      revenueHiding: revenueHiding.toString(),
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', aUsdpCollateral)
-    await (await collateral.refresh()).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.aUSDP = aUsdpCollateral
-    assetCollDeployments.erc20s.aUSDP = ausdpStaticToken.address
-    deployedCollateral.push(aUsdpCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
@@ -446,7 +399,7 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', cDaiCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cDAI = cDaiCollateral
@@ -469,7 +422,7 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdcCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cUSDC = cUsdcCollateral
@@ -492,35 +445,12 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdtCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cUSDT = cUsdtCollateral
     assetCollDeployments.erc20s.cUSDT = networkConfig[chainId].tokens.cUSDT
     deployedCollateral.push(cUsdtCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
-    /********  Deploy CToken Fiat Collateral - cUSDP  **************************/
-    const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
-      oracleError: fp('0.01').toString(), // 1%
-      cToken: networkConfig[chainId].tokens.cUSDP,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.02').toString(), // 2%
-      delayUntilDefault: bn('86400').toString(), // 24h
-      revenueHiding: revenueHiding.toString(),
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdpCollateral)
-    await (await collateral.refresh()).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.cUSDP = cUsdpCollateral
-    assetCollDeployments.erc20s.cUSDP = networkConfig[chainId].tokens.cUSDP
-    deployedCollateral.push(cUsdpCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -540,7 +470,7 @@ async function main() {
       revenueHiding: revenueHiding.toString(),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', cWBTCCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cWBTC = cWBTCCollateral
@@ -565,7 +495,7 @@ async function main() {
       }
     )
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', cETHCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.cETH = cETHCollateral
@@ -595,7 +525,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', wBTCCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.WBTC = wBTCCollateral
@@ -620,7 +550,7 @@ async function main() {
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', wETHCollateral)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.WETH = wETHCollateral

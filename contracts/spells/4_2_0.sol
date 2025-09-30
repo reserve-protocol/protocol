@@ -1,0 +1,379 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
+pragma solidity 0.8.19;
+
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/governance/TimelockController.sol";
+import "../interfaces/IDeployer.sol";
+import "../mixins/Versioned.sol";
+import "../facade/lib/FacadeWriteLib.sol";
+import "../plugins/governance/Governance.sol";
+import "../p1/BasketHandler.sol";
+import "../p1/Main.sol";
+
+bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
+bytes32 constant TIMELOCK_ADMIN_ROLE = keccak256("TIMELOCK_ADMIN_ROLE");
+bytes32 constant PROPOSER_ROLE = keccak256("PROPOSER_ROLE");
+bytes32 constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
+bytes32 constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
+
+/**
+ * The upgrade spell for the 4.2.0 release. Upgrading RToken must be on 3.4.0.
+ *
+ * The spell can only be cast once.
+ * Before casting the spell this contract must have MAIN_OWNER_ROLE of Main.
+ * MAIN_OWNER_ROLE is automatically revoked after casting.
+ *
+ * The spell function should be called by the timelock owning Main.
+ */
+contract Upgrade4_2_0 is Versioned {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    bytes32 public constant VERSION_HASH = keccak256(abi.encodePacked("4.2.0"));
+
+    // ======================================================================================
+
+    // 4.2.0 Assets (mainnet)
+    IAsset[58] MAINNET_ASSETS = [
+        IAsset(0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA), // RSR
+        // TODO replace with real RSRAsset address after 4.2.0 deployment
+
+        IAsset(0xFb56B651f882f8f90d35DD7ca181A7F4D889ECac), // stkAAVE
+        IAsset(0x70C8611F5e34266c09c896f3547D1f7Fccf44D54), // COMP
+        IAsset(0x1942270ac94E6C6041C7F7c87562Ba8dDB1bDFFc), // CRV
+        IAsset(0x2362A9B237e4f06491B7E3827eE179b77f2B22c6), // CVX
+        IAsset(0xb90FE39CB47c4401A941528769f107dEe8e49488), // DAI
+        IAsset(0x3A078799a9823cBda084a79c7cAF47f499c6EA09), // USDC
+        IAsset(0xD8A1b8e73DC025C527493436057f0d8Fc01E1973), // USDT
+        IAsset(0x70792567E6ddF6e2314bcC6541AC0e9B188cf25F), // BUSD
+        IAsset(0x3A395c1bC233D43d126a971b15D8c2b6eB803ca6), // aDAI
+        IAsset(0xD1A2a985a18ddf30299cF2bDd0592B29e0AA3e84), // aUSDC
+        IAsset(0x723e269D178E887E1691f3cEe71c840B5C5b9F76), // aUSDT
+        IAsset(0x431a19b1F331be3EBf32eA5ACC11AabE3DA422D6), // aBUSD
+        IAsset(0x8487278d9262B9Dcca4beC85B125A45608d0067A), // cDAI
+        IAsset(0x9A84c6F204209957ddA0064EaeAAf6138fDb8cea), // cUSDC
+        IAsset(0xf35FbE1576E9D52c20B7ef8626477DcFb939d9Ef), // cUSDT
+        IAsset(0x3484EFB04a54bF376da091f4364F4961F7a01B74), // cWBTC
+        IAsset(0xe3dA655331649B86BfE3356beD99258083599543), // cETH
+        IAsset(0xcC07EF5FDafa6298b276f14A6F4198317D0d20c3), // WBTC
+        IAsset(0x868dbBD8B7d1AED1fEc4c13cc4a15f50965E2FB9), // WETH
+        IAsset(0xc915f28D1Cd97703cF0940ABB192EE50dD882f8c), // wstETH
+        IAsset(0x02D960943E1dD3B2c4d621dD8b72489FA4d7cE49), // rETH
+        IAsset(0x8CfB48b594D54C5BC122f3c4374E16Fcf1050a43), // fUSDC
+        IAsset(0x097b09fd6932cEC8cf47d5Ec0b0b7DeFb0C97b02), // fUSDT
+        IAsset(0x0c82eFbbd9B0f47fDa04b83226dbFBC04EC728b8), // fDAI
+        IAsset(0xCC0c0c376cebd701D9126228510f31F9096b836a), // fFRAX
+        IAsset(0x8E24283eF5F6FE85fed48AC3A3d4248B5ba29668), // cUSDCv3
+        IAsset(0x4aDf4c9b985A743D9fEF14ae4b3e79661F73C78b), // cUSDTv3
+        IAsset(0xA9f37b188d71b66C3e1ea876F61e00377174508a), // cvx3Pool
+        IAsset(0x7e80B2f7b6abb98028cC8A66aE6f7ea5302fA904), // cvxPayPool
+        IAsset(0x1E98A442F917aA8e0e1f6e18687e58D954b8FfC2), // cvxCrvUSDUSDC
+        IAsset(0x738C191F95C053602e272AfAF67A638519fA4B2F), // cvxCrvUSDUSDT
+        IAsset(0x875af0Bab943b7416c6D2142546cAb61F1Ad964a), // cvxeUSDFRAXBP
+        IAsset(0xfa025df685BA0A09B2C767f4Cc1a1972F140d421), // cvxETHPlusETH
+        IAsset(0x2fe50f96Cd61a3056D497FE88CEA8441244D5d5E), // sDAI
+        IAsset(0xdCEe056a2fEB893EB1a1C3e3F103Ac8AB098CE2e), // cbETH
+        IAsset(0x3ca3359006c55164753Ae475D995163adAB5432d), // maUSDT
+        IAsset(0x30789B6A26735c83774cD49e22C6f68dD4533A73), // maUSDC
+        IAsset(0x14CEF4f11bD1f2A9E6416b812F7D45481c9dD896), // maDAI
+        IAsset(0x65fF9Cf2fE6A28F5fd7fAF5Fd0E54EF9B85DF4E8), // maWBTC
+        IAsset(0x3Cb9DD76AEf20d97C0314ad5Cae6D3d54D87f6eE), // maWETH
+        IAsset(0xc8F9C28880797cF241D4241395f9Bf14c9E7135C), // maStETH
+        IAsset(0xFB80E9A48493ac5C3c401Aa713146825d3bB9CA6), // saEthUSDC
+        IAsset(0x3E2D5CF862c959F5A4046558Bec90C02dD5472eD), // saEthUSDT
+        IAsset(0x8B13ac47E0bF142630eAc3e838A0c0AcE8E81c35), // saEthPyUSD
+        IAsset(0x3B8bb1153C6b4331AC5eE50d59437A244Ed8Cf57), // yvCurveUSDCcrvUSD
+        IAsset(0x661335963a4e84A5e3Fb58a9110f635bbf116201), // sFRAX
+        IAsset(0xa514214E14d64822EE70dfF2d5E15f9a2772aD20), // sfrxETH
+        IAsset(0xd9Da5527B077d81b0289eae2745EaF48f0bC433f), // steakUSDC
+        IAsset(0x46eE78397ab4E334A85Bbc7B7C3A2935f175D4d9), // steakPYUSD
+        IAsset(0xC2b73b106cCb4D2Cf937bFfCD629f3e636773567), // bbUSDT
+        IAsset(0x2E22d688CF3846e5303f6E4eaD0a7455801813E2), // Re7WETH
+        IAsset(0x1c0a14A44C4a6834FE23632dA2f493cC4cf87DbA), // ETHx
+        IAsset(0x6F7eDae52dD7e45f470C327788249a2812A259d8), // apxETH
+        IAsset(0x4f30165072351923A1A4BC3926050986318f9B34), // sUSDe
+        IAsset(0xe0941A6e0DFC823CF44e95664a5B151041C13D42), // pyUSD
+        IAsset(0x8a1a3B46749b81Cf91d56dF6042E12CE50E1b08A), // sUSDS
+        IAsset(0xa4D38731434e875d7E30e13d8b65BEfEd7d47Ac2) // wOETH
+    ];
+
+    // 4.2.0 Assets (base)
+    IAsset[21] BASE_ASSETS = [
+        IAsset(0x02062c16c28A169D1f2F5EfA7eEDc42c3311ec23), // RSR
+        // TODO replace with real RSRAsset address after 4.2.0 deployment
+
+        IAsset(0xf535Cab96457558eE3eeAF1402fCA6441E832f08), // COMP
+        IAsset(0x0e8439a17bA5cBb2D9823c03a02566B9dd5d96Ac), // STG
+        IAsset(0xf7d1C6eE4C0D84C6B530D53A897daa1E9eB56833), // AERO
+        IAsset(0xBe70970a10C186185b1bc1bE980eA09BD68fD97A), // DAI
+        IAsset(0xeaCaF85eA2df99e56053FD0250330C148D582547), // USDC
+        IAsset(0x39e19d88F3D5C25B5A684e8A500dBEC2E2c46327), // USDbC
+        IAsset(0x98f292e6Bb4722664fEffb81448cCFB5B7211469), // WETH
+        IAsset(0xA87e9DAe6E9EA5B2Be858686CC6c21B953BfE0B8), // cbETH
+        IAsset(0xF5366f67FF66A3CefcB18809a762D5b5931FebF8), // cUSDCv3
+        IAsset(0x773cf50adCF1730964D4A9b664BaEd4b9FFC2450), // saBasUSDC
+        IAsset(0x5ccca36CbB66a4E4033B08b4F6D7bAc96bA55cDc), // wstETH
+        IAsset(0x1cCa3FBB11C4b734183f997679d52DeFA74b613A), // aeroUSDCeUSD
+        IAsset(0xC98eaFc9F249D90e3E35E729e3679DD75A899c10), // aeroWETHAERO
+        IAsset(0x339c1509b980D80A0b50858518531eDbe2940dA1), // aeroMOGWETH
+        IAsset(0x1BD20253c49515D348dad1Af70ff2c0473FEa358), // aeroUSDzUSDC
+        IAsset(0xDAacEE75C863a79f07699b094DB07793D3A52D6D), // aeroWETHcbBTC
+        IAsset(0x6647c880Eb8F57948AF50aB45fca8FE86C154D24), // aeroWETHWELL
+        IAsset(0xCFA67f42A0fDe4F0Fb612ea5e66170B0465B84c1), // aeroWETHDEGEN
+        IAsset(0x45B950AF443281c5F67c2c7A1d9bBc325ECb8eEA), // meUSD
+        IAsset(0x4024c00bBD0C420E719527D88781bc1543e63dd5) // wsuperOETHb
+    ];
+
+    // ======================================================================================
+
+    // ======================================================================================
+
+    IDeployer.Registries public registries;
+
+    IDeployer public deployer;
+
+    // 4.2.0 ERC20 => 4.2.0 Asset
+    mapping(IERC20 => IAsset) public assets; // ALL 4.2.0 assets
+
+    // RToken => bool
+    mapping(IRToken => bool) public cast;
+
+    bool public mainnet; // !mainnet | base
+
+    // empty at-rest
+    EnumerableSet.Bytes32Set private uniqueTargetNames;
+
+    // =======================================================================================
+
+    constructor(bool _mainnet) {
+        // we have to pass-in `_mainnet` because chainid is not reliable during testing
+        require(
+            block.chainid == 1 || block.chainid == 31337 || block.chainid == 8453,
+            "unsupported chain"
+        );
+        mainnet = _mainnet;
+
+        if (_mainnet) {
+            // TODO remove after deployment of 4.2.0
+            // Setup `deployer`
+            deployer = IDeployer(0xc2f865CFd8Cd357BB2Ce919afF62B7858572ba1c);
+
+            // TODO replace with canonical addresses after deployment of 4.2.0
+            // these are test registries
+            registries = IDeployer.Registries(
+                VersionRegistry(0x5e9CfceeAf12241B5707E9B36a603FaACbDd1286),
+                AssetPluginRegistry(0xA403A341812C8E412967841Fad67c21Ac09413E0),
+                DAOFeeRegistry(0x6f477a92929c4f062b3A90B79045Bd4C34d48208),
+                ITrustedFillerRegistry(0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A)
+            );
+
+            // Setup `assets`
+            for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
+                IERC20 erc20 = MAINNET_ASSETS[i].erc20();
+                require(address(assets[erc20]) == address(0), "duplicate asset");
+                assets[erc20] = MAINNET_ASSETS[i];
+            }
+        } else {
+            // TODO remove after deployment of 4.2.0
+            // Setup `deployer`
+            deployer = IDeployer(0xA6e159b274e00848322B9Fa89F0783876884CeDD);
+
+            // TODO replace with canonical addresses after deployment of 4.2.0
+            // these are test registries
+            registries = IDeployer.Registries(
+                VersionRegistry(0x2f98bA77a8ca1c630255c4517b1b3878f6e60C89),
+                AssetPluginRegistry(0x66a3b432F77123E418cDbeD35fBaDdB0Eb9576B0),
+                DAOFeeRegistry(0x7F9999B2C9D310a5f48dfD070eb5129e1e8565E2),
+                ITrustedFillerRegistry(0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18)
+            );
+
+            // Setup `assets`
+            for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
+                IERC20 erc20 = BASE_ASSETS[i].erc20();
+                require(address(assets[erc20]) == address(0), "duplicate asset");
+                assets[erc20] = BASE_ASSETS[i];
+            }
+        }
+    }
+
+    // Cast once-per-rToken. Caller MUST be the timelock owning Main.
+    /// @dev Requirement: this contract has admin of RToken via MAIN_OWNER_ROLE
+    /// @param rToken The RToken to upgrade
+    /// @param oldGovernor The old governor contract in charge of the timelock
+    /// @param guardians The guardians to use for the new governance, MUST be a subset of old guardians
+    function castSpell(
+        IRToken rToken,
+        Governance oldGovernor,
+        address[] calldata guardians
+    ) external returns (address newGovernor, address newTimelock) {
+        // Can only be cast once per RToken
+        require(!cast[rToken], "repeat cast");
+        cast[rToken] = true;
+
+        MainP1 main = MainP1(address(rToken.main()));
+        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "US: 1"); // crux
+        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "US: 2");
+
+        Components memory proxy;
+        proxy.assetRegistry = main.assetRegistry();
+        proxy.basketHandler = main.basketHandler();
+        proxy.backingManager = main.backingManager();
+        proxy.broker = main.broker();
+        proxy.distributor = main.distributor();
+        proxy.furnace = main.furnace();
+        proxy.rToken = rToken;
+        proxy.rTokenTrader = main.rTokenTrader();
+        proxy.rsrTrader = main.rsrTrader();
+        proxy.stRSR = main.stRSR();
+
+        // Preconditions
+        {
+            // Distributor table must sum to >=10000
+            RevenueTotals memory revTotals = proxy.distributor.totals();
+            require(revTotals.rTokenTotal + revTotals.rsrTotal >= 10000, "US: -1");
+        }
+
+        // Upgrades
+        {
+            // Upgrade Main
+            main.upgradeMainTo(VERSION_HASH);
+            require(keccak256(abi.encodePacked(main.version())) == VERSION_HASH, "US: 3");
+
+            // Set registries
+            // reverts on zero address
+            main.setVersionRegistry(VersionRegistry(registries.versionRegistry));
+            main.setAssetPluginRegistry(AssetPluginRegistry(registries.assetPluginRegistry));
+            main.setDAOFeeRegistry(DAOFeeRegistry(registries.daoFeeRegistry));
+
+            // Turn on trusted fills
+            if (address(registries.trustedFillerRegistry) != address(0)) {
+                // does not revert on zero address
+                TestIBroker(address(proxy.broker)).setTrustedFillerRegistry(
+                    address(registries.trustedFillerRegistry),
+                    true
+                );
+            }
+
+            // Grant OWNER to Main -- needed to upgrade components
+            main.grantRole(MAIN_OWNER_ROLE, address(main));
+
+            // Upgrade components
+            main.upgradeRTokenTo(VERSION_HASH, false, false);
+
+            // Revoke OWNER from Main
+            main.revokeRole(MAIN_OWNER_ROLE, address(main));
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), "US: 4");
+
+            // Keep issuance premium off
+            // BasketHandlerP1(address(proxy.basketHandler)).setIssuancePremiumEnabled(false);
+        }
+
+        // Rotate assets, erc20s should not change
+        {
+            {
+                IERC20[] memory erc20s = proxy.assetRegistry.erc20s();
+                for (uint256 i = 0; i < erc20s.length; i++) {
+                    IERC20 erc20 = erc20s[i];
+                    if (address(erc20) == address(rToken)) continue;
+                    if (assets[erc20] != IAsset(address(0))) {
+                        // if we have a new asset with that erc20, swapRegistered()
+                        proxy.assetRegistry.swapRegistered(assets[erc20]);
+                    }
+
+                    // assets for old ERC20s will be skipped and left in baskets
+                    // TODO are there any?
+                }
+            }
+
+            // RTokenAsset
+            proxy.assetRegistry.swapRegistered(
+                deployer.deployRTokenAsset(
+                    rToken,
+                    proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
+                )
+            );
+        }
+
+        // Deploy new governance, preserving all values
+        {
+            // reverse-engineer proposalThresholdAsMicroPercent
+            uint256 proposalThresholdAsMicroPercent;
+            {
+                IStRSRVotes stRSR = IStRSRVotes(address(oldGovernor.token()));
+                uint256 pastSupply = stRSR.getPastTotalSupply(stRSR.clock() - 1);
+                require(pastSupply != 0, "US: 7");
+
+                proposalThresholdAsMicroPercent =
+                    (oldGovernor.proposalThreshold() * 1e18 + pastSupply - 1) /
+                    pastSupply;
+
+                require(
+                    proposalThresholdAsMicroPercent >= 1e4 &&
+                        proposalThresholdAsMicroPercent <= 1e7,
+                    "US: 8"
+                );
+            }
+
+            // Deploy new timelock
+            newTimelock = address(
+                new TimelockController(
+                    TimelockController(payable(msg.sender)).getMinDelay(),
+                    new address[](0),
+                    new address[](0),
+                    address(this)
+                )
+            );
+
+            // Deploy new governor
+            newGovernor = FacadeWriteLib.deployGovernance(
+                IStRSRVotes(address(oldGovernor.token())),
+                TimelockController(payable(newTimelock)),
+                oldGovernor.votingDelay(),
+                oldGovernor.votingPeriod(),
+                proposalThresholdAsMicroPercent,
+                oldGovernor.quorumNumerator()
+            );
+            assert(Governance(payable(newGovernor)).timelock() == newTimelock);
+
+            TimelockController _newTimelock = TimelockController(payable(newTimelock));
+
+            // timelock roles
+            _newTimelock.grantRole(CANCELLER_ROLE, newGovernor); // Gov can cancel
+            _newTimelock.grantRole(PROPOSER_ROLE, newGovernor); // Gov only proposer
+            _newTimelock.grantRole(EXECUTOR_ROLE, newGovernor); // Gov only executor
+
+            for (uint256 i = 0; i < guardians.length; i++) {
+                _newTimelock.grantRole(CANCELLER_ROLE, guardians[i]); // Guardian can cancel
+            }
+            _newTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, address(this)); // Revoke admin role
+
+            // post validation
+            require(_newTimelock.hasRole(PROPOSER_ROLE, newGovernor), "US: 10");
+            require(_newTimelock.hasRole(EXECUTOR_ROLE, newGovernor), "US: 11");
+            require(_newTimelock.hasRole(CANCELLER_ROLE, newGovernor), "US: 12");
+
+            require(!_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)), "US: 13");
+            require(!_newTimelock.hasRole(EXECUTOR_ROLE, address(oldGovernor)), "US: 14");
+            require(!_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)), "US: 15");
+
+            require(!_newTimelock.hasRole(PROPOSER_ROLE, address(0)), "US: 16");
+            require(!_newTimelock.hasRole(EXECUTOR_ROLE, address(0)), "US: 17");
+            require(!_newTimelock.hasRole(CANCELLER_ROLE, address(0)), "US: 18");
+        }
+
+        // Renounce adminships and validate final state
+        {
+            assert(oldGovernor.timelock() == msg.sender);
+
+            main.grantRole(MAIN_OWNER_ROLE, newTimelock);
+            main.revokeRole(MAIN_OWNER_ROLE, msg.sender);
+            main.renounceRole(MAIN_OWNER_ROLE, address(this));
+
+            require(main.hasRole(MAIN_OWNER_ROLE, newTimelock), "US: 19");
+            require(!main.hasRole(MAIN_OWNER_ROLE, msg.sender), "US: 20");
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(this)), "US: 21");
+
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)), "US: 22");
+            require(!main.hasRole(MAIN_OWNER_ROLE, newGovernor), "US: 23");
+        }
+    }
+}
