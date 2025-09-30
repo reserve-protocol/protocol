@@ -3423,6 +3423,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
       expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
+      // Prices should still work
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR, true)
+      await expectPrice(rTokenAsset.address, fp('0.75'), ORACLE_ERROR, true)
+
       // Set basket config
       await expect(
         basketHandler
