@@ -199,7 +199,7 @@ contract Upgrade4_2_0 is Versioned {
     /// @dev Requirement: this contract has admin of RToken via MAIN_OWNER_ROLE
     /// @param rToken The RToken to upgrade
     /// @param oldGovernor The old governor contract in charge of the timelock
-    /// @param guardians The guardians to use for the new governance, MUST be a subset of old guardians
+    /// @param guardians Guardians to use for the new governance, MUST be a subset of old guardians
     function castSpell(
         IRToken rToken,
         Governance oldGovernor,
