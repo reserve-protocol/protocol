@@ -60,6 +60,8 @@ async function main() {
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
     scripts.push(
       'phase2-assets/0_setup_deployments.ts',
+      'phase2-assets/1_deploy_assets.ts',
+      'phase2-assets/2_deploy_collateral.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
       'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
