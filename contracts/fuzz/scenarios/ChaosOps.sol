@@ -13,6 +13,7 @@ import "contracts/fuzz/CollateralMock.sol";
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
+import "contracts/fuzz/ERC20ReentrantFuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/Trades.sol";
 import "contracts/fuzz/Utils.sol";
@@ -26,7 +27,8 @@ import "contracts/fuzz/MainP1.sol";
 // - Tokens may default
 // - The basket may change after initialization
 // - Significant governance changes occur
-contract ChaosOpsScenario {
+// - Reentrancy attacks are attempted
+contract ChaosOpsScenario is IReentrantScenario {
     using FixLib for uint192;
 
     // Assertion-failure event
@@ -60,6 +62,13 @@ contract ChaosOpsScenario {
     PriceModel[] public priceModels;
     uint256 internal priceModelIndex;
 
+    // ========== Reentrancy Testing State ==========
+    // Reentrancy target function
+    uint8 public reentrancyTarget;
+
+    // Reentrant tokens
+    ERC20ReentrantFuzz[] public reentrantTokens;
+
     // Once constructed, everything is set up for random echidna runs to happen:
     // - main and its components are up
     // - standard tokens, and their Assets and Collateral, exist
@@ -88,24 +97,28 @@ contract ChaosOpsScenario {
             for (uint256 k = 0; k < 3; k++) {
                 string memory num = Strings.toString(k);
 
-                ERC20Fuzz token = new ERC20Fuzz(
+                ERC20ReentrantFuzz token = new ERC20ReentrantFuzz(
                     concat(concat(concat("Collateral", targetNameStr), " "), num),
                     concat(concat("C", targetNameStr), num),
-                    main
+                    main,
+                    this
                 );
                 targetNameByToken[address(token)] = targetName;
                 main.addToken(token);
+                reentrantTokens.push(token);
 
                 if (k < 2) {
-                    ERC20Fuzz reward = new ERC20Fuzz(
+                    ERC20ReentrantFuzz reward = new ERC20ReentrantFuzz(
                         concat(concat(concat("Reward", targetNameStr), " "), num),
                         concat(concat("R", targetNameStr), num),
-                        main
+                        main,
+                        this
                     );
                     main.addToken(reward);
                     token.setRewardToken(reward);
                     main.assetRegistry().register(createAsset(reward));
                     targetNameByToken[address(reward)] = targetName;
+                    reentrantTokens.push(reward);
                 }
 
                 // Register Collateral
@@ -131,12 +144,14 @@ contract ChaosOpsScenario {
             // Create three stable backup tokens for each target name
             for (uint256 j = 0; j < 3; j++) {
                 string memory num = Strings.toString(j);
-                ERC20Fuzz token = new ERC20Fuzz(
+                ERC20ReentrantFuzz token = new ERC20ReentrantFuzz(
                     concat(concat("Stable", targetNameStr), num),
                     concat(concat("S", targetNameStr), num),
-                    main
+                    main,
+                    this
                 );
                 main.addToken(token);
+                reentrantTokens.push(token);
                 main.assetRegistry().register(
                     new CollateralMock({
                         erc20_: IERC20Metadata(address(token)),
@@ -994,6 +1009,22 @@ contract ChaosOpsScenario {
         main.stRSR().resetStakes();
     }
 
+     // ====  Reentrancy Attack ====
+
+    function setReentrancyAttack(uint8 tokenID, uint256 reentrancySeed) public {
+        ERC20ReentrantFuzz token = ERC20ReentrantFuzz(address(main.someToken(tokenID)));
+        bool shouldAttack = (reentrancySeed % 100) < 25; // 25% chance of attack enabled
+        if (shouldAttack) {
+            token.enableAttack();
+        } else {
+            token.disableAttack();
+        }
+    }
+
+    function setReentrancyTarget(uint256 seed) public {
+        reentrancyTarget = uint8(seed % 14); // 0-13 valid target functions
+    }
+
     // ================ Internal functions / Helpers ================
 
     function someTargetName(uint256 seed) public view returns (bytes32) {
@@ -1006,16 +1037,18 @@ contract ChaosOpsScenario {
         uint8 targetNameID,
         string memory namePrefix,
         string memory symbolPrefix
-    ) public returns (ERC20Fuzz) {
+    ) public returns (ERC20ReentrantFuzz) {
         string memory targetStr = bytes32ToString(someTargetName(targetNameID));
         string memory idStr = Strings.toString(main.numTokens());
 
-        ERC20Fuzz token = new ERC20Fuzz(
+        ERC20ReentrantFuzz token = new ERC20ReentrantFuzz(
             concat(namePrefix, targetStr, " ", idStr),
             concat(symbolPrefix, targetStr, idStr),
-            main
+            main,
+            this
         );
         main.addToken(token);
+        reentrantTokens.push(token);
         return token;
     }
 
@@ -1092,6 +1125,35 @@ contract ChaosOpsScenario {
     //     return true;
     // }
 
+
+    // Reentrancy helpers
+    function attemptedReentrancies() public view returns (uint256 total) {
+        for (uint256 i = 0; i < reentrantTokens.length; i++) {
+            total += reentrantTokens[i].attemptedReentrancies();
+        }
+    }
+
+    function blockedByGuardReentrancies() public view returns (uint256 total) {
+        for (uint256 i = 0; i < reentrantTokens.length; i++) {
+            total += reentrantTokens[i].blockedByGuardReentrancies();
+        }
+    }
+
+    function failedReentrancies() public view returns (uint256 total) {
+        for (uint256 i = 0; i < reentrantTokens.length; i++) {
+            total += reentrantTokens[i].failedReentrancies();
+        }
+    }
+
+    function reentrancySucceeded() public view returns (bool) {
+        for (uint256 i = 0; i < reentrantTokens.length; i++) {
+            if (reentrantTokens[i].reentrancySucceeded()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function echidna_mainInvariants() external view returns (bool) {
         return main.invariantsHold();
     }
@@ -1147,5 +1209,15 @@ contract ChaosOpsScenario {
 
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
+    }
+
+    // ==== Reentrancy  ====
+
+    function echidna_no_reentrancy_succeeded() external view returns (bool) {
+        return !reentrancySucceeded();
+    }
+
+    function echidna_all_reentrancies_failed() external view returns (bool) {
+        return attemptedReentrancies() == failedReentrancies();
     }
 }

@@ -77,4 +77,12 @@ abstract contract GlobalReentrancyGuard is Initializable {
         // https://eips.ethereum.org/EIPS/eip-2200)
         $._status = NOT_ENTERED;
     }
+
+    /**
+     * @dev Returns true if the reentrancy guard is currently set (i.e., in a protected call)
+     */
+    function reentrancyGuardEntered() public view returns (bool) {
+        ReentrancyGuardStorage storage $ = _getReentrancyGuardStorage();
+        return $._status == ENTERED;
+    }
 }

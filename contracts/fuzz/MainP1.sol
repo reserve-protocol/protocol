@@ -84,6 +84,12 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         tokensBySymbol[symbol] = token;
     }
 
+    // Test-only function to register mock components
+    function registerTestComponent(address component) external {
+        require(component != address(0), "invalid component address");
+        isComponent[component] = true;
+    }
+
     function tokenBySymbol(string calldata symbol) public view returns (IERC20) {
         return tokensBySymbol[bytes32(bytes(symbol))];
     }
