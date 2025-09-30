@@ -56,9 +56,8 @@ async function main() {
 
   /********  Deploy Convex Appreciating RToken Collateral for ETH+/ETH  **************************/
 
-  const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
-    'CurveAppreciatingRTokenSelfReferentialCollateral'
-  )
+  const CurveAppreciatingRTokenSelfReferentialCollateralFactory =
+    await hre.ethers.getContractFactory('CurveAppreciatingRTokenSelfReferentialCollateral')
 
   let erc20 = networkConfig[chainId].tokens.wcvxETHPlusETH
 
