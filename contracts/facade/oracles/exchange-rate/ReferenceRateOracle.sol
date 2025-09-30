@@ -22,13 +22,7 @@ import { IAsset } from "../../../interfaces/IAsset.sol";
  *
  * If you need the freshest possible price, consider using RTokenAsset.latestPrice() instead,
  * however it is a mutator function instead of a view-only function hence not compatible with
- * Chainlink style interfaces.
- *
- * ::Warning::
- * In the event of an RToken taking a loss in excess of the StRSR over-collateralization
- * layer, the devaluation will not be reflected until the RToken is done trading. This causes
- * the exchange rate to be too high during the rebalancing phase. If the exchange rate is relied
- * upon naively, then it could be misleading.
+ * Chainlink style interfaces, and additionally can revert.
  *
  * As a consumer of this oracle, you may want to guard against this case by monitoring:
  *     `basketHandler.status() == 0 && basketHandler.fullyCollateralized()`
@@ -75,6 +69,21 @@ contract ReferenceRateOracle is IExchangeRateOracle {
 
         (uint256 lower, uint256 upper) = rTokenAsset.price();
         require(lower != 0 && upper < FIX_MAX, "invalid price");
+
+        /**
+         * In >=4.2.0 (not yet deployed) there is a feature called the "issuance premium",
+         * which if enabled, will cause the high price to remain relatively static,
+         * even when an RToken collateral is under peg.
+         *
+         * This is because the RToken increases issuance costs to account for the de-peg,
+         * which increases the size of the price band the RToken can trade on in secondary markets.
+         *
+         * Using the average of the issuance redemption cost in this case can result in a quantity
+         * biased upwards.
+         *
+         * If you need the *lowest* possible price the RToken can have, do not use this approach.
+         * Instead, use the lower price directly.
+         */
 
         return (lower + upper) / 2;
     }
