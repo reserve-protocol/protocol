@@ -1154,6 +1154,10 @@ contract ChaosOpsScenario is IReentrantScenario {
         return false;
     }
 
+    function getReentrantTokens() public view returns (ERC20ReentrantFuzz[] memory) {
+        return reentrantTokens;
+    }
+
     function echidna_mainInvariants() external view returns (bool) {
         return main.invariantsHold();
     }
@@ -1217,7 +1221,7 @@ contract ChaosOpsScenario is IReentrantScenario {
         return !reentrancySucceeded();
     }
 
-    function echidna_all_reentrancies_failed() external view returns (bool) {
+    function echidna_all_reentrancies_revert() external view returns (bool) {
         return attemptedReentrancies() == failedReentrancies();
     }
 }
