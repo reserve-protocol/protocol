@@ -32,13 +32,16 @@ import { IRToken } from "../../interfaces/IRToken.sol";
  * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.
  */
 contract ExchangeRateOracle is IExchangeRateOracle {
-    error MissingRToken();
+    error ZeroAddress();
 
     IRToken public immutable rToken;
     uint256 public constant override version = 1;
 
     constructor(address _rToken) {
-        // allow address(0)
+        if (_rToken == address(0)) {
+            revert ZeroAddress();
+        }
+
         rToken = IRToken(_rToken);
     }
 
@@ -51,10 +54,6 @@ contract ExchangeRateOracle is IExchangeRateOracle {
     }
 
     function exchangeRate() public view returns (uint256) {
-        if (address(rToken) == address(0)) {
-            revert MissingRToken();
-        }
-
         uint256 supply = IRToken(rToken).totalSupply();
         if (supply == 0) {
             return FIX_ONE;

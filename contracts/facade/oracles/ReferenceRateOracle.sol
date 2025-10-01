@@ -32,7 +32,7 @@ import { IAsset } from "../../interfaces/IAsset.sol";
  * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.
  */
 contract ReferenceRateOracle is IExchangeRateOracle {
-    error MissingRToken();
+    error ZeroAddress();
 
     uint256 public constant override version = 1;
 
@@ -40,12 +40,12 @@ contract ReferenceRateOracle is IExchangeRateOracle {
     IAssetRegistry public immutable assetRegistry;
 
     constructor(address _rToken) {
-        // allow address(0)
-        rToken = IRToken(_rToken);
+        if (_rToken == address(0)) {
+            revert ZeroAddress();
+        }
 
-        assetRegistry = _rToken != address(0)
-            ? IRToken(_rToken).main().assetRegistry()
-            : IAssetRegistry(address(0));
+        rToken = IRToken(_rToken);
+        assetRegistry = IRToken(_rToken).main().assetRegistry();
     }
 
     function decimals() external view override returns (uint8) {
@@ -60,10 +60,6 @@ contract ReferenceRateOracle is IExchangeRateOracle {
      * @dev Can revert
      */
     function exchangeRate() public view returns (uint256) {
-        if (address(rToken) == address(0)) {
-            revert MissingRToken();
-        }
-
         // cannot cache RTokenAsset
         IAsset rTokenAsset = assetRegistry.toAsset(IERC20(address(rToken)));
 
@@ -82,7 +78,7 @@ contract ReferenceRateOracle is IExchangeRateOracle {
          * biased upwards.
          *
          * If you need the *lowest* possible price the RToken can have, do not use this approach.
-         * Instead, use the lower price directly.
+         * Instead, use the `lower` price directly. Include our check above that `low > 0`.
          */
 
         return (lower + upper) / 2;

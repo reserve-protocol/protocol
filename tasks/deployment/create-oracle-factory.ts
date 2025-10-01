@@ -1,6 +1,20 @@
 import { getChainId } from '../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
 import { OracleFactory } from '../../typechain'
+import { networkConfig } from '../../common/configuration'
+
+const getRTokenAddr = (chainId: string): string => {
+  if (chainId == '1' || chainId == '31337') {
+    return networkConfig[chainId].tokens.eUSD!
+  }
+  if (chainId == '8453') {
+    return networkConfig[chainId].tokens.bsdETH!
+  }
+  if (chainId == '42161') {
+    return networkConfig[chainId].tokens.KNOX!
+  }
+  throw new Error(`invalid chainId: ${chainId}`)
+}
 
 task('create-oracle-factory', 'Deploys an OracleFactory')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
@@ -28,9 +42,10 @@ task('create-oracle-factory', 'Deploys an OracleFactory')
       )
     }
 
-    // Deploy dummy zero address oracle
-    const addr = await oracleFactory.callStatic.deployOracle(hre.ethers.constants.AddressZero)
-    await (await oracleFactory.deployOracle(hre.ethers.constants.AddressZero)).wait()
+    const rTokenAddr = getRTokenAddr(chainId)
+
+    const addr = await oracleFactory.callStatic.deployOracle(rTokenAddr)
+    await (await oracleFactory.deployOracle(rTokenAddr)).wait()
 
     if (!params.noOutput) {
       console.log(`Deployed dummy ExchangeRateOracle to ${hre.network.name} (${chainId}): ${addr}`)
@@ -60,7 +75,7 @@ task('create-oracle-factory', 'Deploys an OracleFactory')
     console.time('Verifying ExchangeRateOracle')
     await hre.run('verify:verify', {
       address: addr,
-      constructorArguments: [hre.ethers.constants.AddressZero],
+      constructorArguments: [rTokenAddr],
       contract: 'contracts/facade/oracles/ExchangeRateOracle.sol:ExchangeRateOracle',
     })
     console.timeEnd('Verifying ExchangeRateOracle')
