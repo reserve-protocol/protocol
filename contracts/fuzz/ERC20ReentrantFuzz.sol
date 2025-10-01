@@ -72,14 +72,14 @@ contract ERC20ReentrantFuzz is ERC20Fuzz {
 
 
     function transfer(address to, uint256 amount) public override returns (bool) {
-        if (attackEnabled && amount > 0) {
+        if (attackEnabled) {
             attemptReentrancy();
         }
         return super.transfer(to, amount);
     }
 
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
-        if (attackEnabled && amount > 0) {
+        if (attackEnabled) {
             attemptReentrancy();
         }
         return super.transferFrom(from, to, amount);
