@@ -21,8 +21,11 @@ contract OracleFactory {
     // {rtoken} => {oracle}
     mapping(address => Oracles) public oracleRegistry;
 
+    /// @param rToken The RToken to deploy oracles for
     function deployOracle(address rToken) external returns (Oracles memory oracles) {
-        if (address(oracleRegistry[rToken].exchangeRateOracle) != address(0)) {
+        if (
+            rToken == address(0) || address(oracleRegistry[rToken].exchangeRateOracle) != address(0)
+        ) {
             revert OracleAlreadyDeployed(rToken);
         }
 
@@ -31,10 +34,8 @@ contract OracleFactory {
 
         oracles = Oracles({ exchangeRateOracle: eOracle, referenceRateOracle: rOracle });
 
-        if (rToken != address(0)) {
-            eOracle.latestRoundData();
-            rOracle.latestRoundData();
-        }
+        eOracle.latestRoundData();
+        rOracle.latestRoundData();
 
         oracleRegistry[rToken] = oracles;
         emit OracleDeployed(rToken, oracles);

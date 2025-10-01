@@ -17,7 +17,6 @@ export interface ITokens {
   sUSD?: string
   FRAX?: string
   MIM?: string
-  eUSD?: string
   crvUSD?: string
   aDAI?: string
   aUSDC?: string
@@ -61,7 +60,6 @@ export interface ITokens {
   CVX?: string
   SDT?: string
   USDCPLUS?: string
-  ETHPLUS?: string
   ankrETH?: string
   frxETH?: string
   sfrxETH?: string
@@ -135,6 +133,12 @@ export interface ITokens {
   // Sky
   USDS?: string
   sUSDS?: string
+
+  // RTokens
+  eUSD?: string
+  ETHPLUS?: string
+  bsdETH?: string
+  KNOX?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -560,6 +564,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
       WELL: '0xA88594D404727625A9437C3f886C7643872296AE',
       DEGEN: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',
+      bsdETH: '0xcb327b99ff831bf8223cced12b1338ff3aa322ff',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -616,6 +621,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       saArbUSDT: '', // TODO our wrapper. remove from deployment script after placing here
       USDM: '0x59d9356e565ab3a36dd77763fc0d87feaf85508c',
       wUSDM: '0x57f5e098cad7a3d1eed53991d4d66c45c9af7812',
+      KNOX: '0x0bbf664d46becc28593368c97236faa0fb397595',
     },
     chainlinkFeeds: {
       ARB: '0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6',
