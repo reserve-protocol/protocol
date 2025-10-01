@@ -25,6 +25,7 @@ import {
   exa,
   user,
 } from './common'
+import { RoundingMode } from '#/common/constants'
 
 type Fixture<T> = () => Promise<T>
 
@@ -61,7 +62,7 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     await advanceBlocks(warmupPeriod / 12)
   }
 
-  ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
   scenario = await (await F('ChaosOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
   main = await ConAt('MainP1Fuzz', await scenario.main())
   comp = await componentsOf(main)
@@ -329,6 +330,10 @@ const scenarioSpecificTests = () => {
     // expect(await scenario.echidna_rTokenInvariants()).to.be.true
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.be.true
+
+    // Reentrancy properties
+    expect(await scenario.echidna_no_reentrancy_succeeded()).to.be.true
+    expect(await scenario.echidna_all_reentrancies_revert()).to.be.true
   })
 
   it('does not fail on refreshBasket after just one call to updatePrice', async () => {
@@ -393,6 +398,143 @@ const scenarioSpecificTests = () => {
   //   await scenario.connect(alice).manageBackingTokens()
   //   expect(await scenario.echidna_ratesNeverFall()).equal(true)
   // })
+
+  it('allows to set attack target', async () => {
+    await scenario.setReentrancyTarget(5) // STRSR_UNSTAKE
+    expect(await scenario.reentrancyTarget()).to.equal(5)
+  })
+
+  it('accepts all valid attack target values', async () => {
+    // Test all valid enum values (0-13)
+    for (let i = 0; i <= 13; i++) {
+      await scenario.setReentrancyTarget(i)
+      expect(await scenario.reentrancyTarget()).to.equal(i)
+    }
+  })
+
+  it('all tokens in basket are reentrant', async () => {
+
+    // Check current basket, all tokens should be registered as reentrant
+    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
+    const reentrantTokens = await scenario.getReentrantTokens()
+    for (let i = 0; i < tokenAddrs.length; i++) {
+      expect(reentrantTokens.includes(tokenAddrs[i])).to.equal(true)
+    }
+  })
+
+  it('tracks reentrancy attempts on issuance', async () => {
+    await warmup()
+
+    // Initially no reentrancy attempts
+    expect(await scenario.attemptedReentrancies()).to.equal(0)
+    expect(await scenario.failedReentrancies()).to.equal(0)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(0)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // Enable reentrancy attack on first collateral token CA0
+    const tokenIndex = 2 // CA0 token index
+    await scenario.setReentrancyAttack(tokenIndex, 5) // Enable attack
+
+    // Set reentrancy target to RToken redeem
+    await scenario.setReentrancyTarget(1) // RTOKEN_REDEEM
+
+    // Issue RTokens - this will trigger transfers of collateral tokens
+    const issueAmount = fp('100')
+    await scenario.connect(alice).issueTo(issueAmount, 0)
+
+    // Check that reentrancy was attempted but failed
+    expect(await scenario.attemptedReentrancies()).to.equal(1)
+    expect(await scenario.failedReentrancies()).to.equal(1)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(1)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // Verify reentrancy properties still hold
+    expect(await scenario.echidna_no_reentrancy_succeeded()).to.be.true
+    expect(await scenario.echidna_all_reentrancies_revert()).to.be.true
+
+    // Disable attacks and issue again (no attempt should be registered)
+    await scenario.setReentrancyAttack(tokenIndex, 30) // Enable attack
+    await scenario.connect(alice).issueTo(issueAmount, 0)
+
+
+    // No new attempt registered
+    expect(await scenario.attemptedReentrancies()).to.equal(1)
+    expect(await scenario.failedReentrancies()).to.equal(1)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(1)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // Reentrancy properties still hold
+    expect(await scenario.echidna_no_reentrancy_succeeded()).to.be.true
+    expect(await scenario.echidna_all_reentrancies_revert()).to.be.true
+
+  })
+
+  it('tracks reentrancy attempts during redemption', async () => {
+    await warmup()
+
+    // Initially no reentrancy attempts
+    expect(await scenario.attemptedReentrancies()).to.equal(0)
+    expect(await scenario.failedReentrancies()).to.equal(0)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(0)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // First issue some RTokens to Alice so she can redeem
+    await scenario.connect(alice).issueTo(fp('1000'), 0)
+
+    // Enable attack on multiple collateral tokens
+    await scenario.setReentrancyAttack(2, 5)
+    await scenario.setReentrancyAttack(3, 8)
+    await scenario.setReentrancyAttack(4, 35) // CA2 - Should disable
+
+    // Set target to StRSR stake (try to re-enter during redemption)
+    await scenario.setReentrancyTarget(4) // STRSR_STAKE
+
+    // Redeem RTokens - this will transfer collateral tokens out
+    await scenario.connect(alice).redeem(fp('100'))
+
+    // Should have one attempt from enabled tokens (CA0 and CA1)
+    expect(await scenario.attemptedReentrancies()).to.equal(1)
+    expect(await scenario.failedReentrancies()).to.equal(1)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(1)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // All attempts should fail
+    expect(await scenario.attemptedReentrancies()).to.equal(await scenario.failedReentrancies())
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+  })
+
+  it('tracks reentrancy attempts during monetizeDonations', async () => {
+    await warmup()
+
+    // Initially no reentrancy attempts
+    expect(await scenario.attemptedReentrancies()).to.equal(0)
+    expect(await scenario.failedReentrancies()).to.equal(0)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(0)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // Enable attack on a collateral token
+    const tokenIndex = 2 // CA0
+    await scenario.setReentrancyAttack(tokenIndex, 7)
+    await scenario.setReentrancyTarget(8) // BACKING_REBALANCE
+
+    const token = await ConAt('ERC20ReentrantFuzz', await main.someToken(tokenIndex))
+
+    // Send tokens to RToken as donation
+    await token.mint(comp.rToken.address, fp('100'))
+
+    // Monetize donations - this triggers transfer with globalNonReentrant
+    await scenario.monetizeDonations(tokenIndex)
+
+    // Should have one attempt
+    expect(await scenario.attemptedReentrancies()).to.equal(1)
+    expect(await scenario.failedReentrancies()).to.equal(1)
+    expect(await scenario.blockedByGuardReentrancies()).to.equal(1)
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+
+    // All attempts should fail
+    expect(await scenario.attemptedReentrancies()).to.equal(await scenario.failedReentrancies())
+    expect(await scenario.reentrancySucceeded()).to.equal(false)
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
