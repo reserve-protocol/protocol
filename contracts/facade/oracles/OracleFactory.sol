@@ -8,7 +8,7 @@ import { ReferenceRateOracle } from "./ReferenceRateOracle.sol";
  * @title OracleFactory
  * @notice An immutable factory for RToken Exchange Rate Oracles
  */
-contract OracleFactory {
+contract e {
     struct Oracles {
         ExchangeRateOracle exchangeRateOracle;
         ReferenceRateOracle referenceRateOracle;

@@ -1,8 +1,8 @@
 import { getChainId } from '../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
-import { ExchangeRateOracleFactory } from '../../typechain'
+import { OracleFactory } from '../../typechain'
 
-task('create-exchange-rate-oracle-factory', 'Deploys an ExchangeRateOracleFactory')
+task('create-oracle-factory', 'Deploys an OracleFactory')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [wallet] = await hre.ethers.getSigners()
@@ -11,21 +11,17 @@ task('create-exchange-rate-oracle-factory', 'Deploys an ExchangeRateOracleFactor
 
     if (!params.noOutput) {
       console.log(
-        `Deploying ExchangeRateOracleFactory to ${hre.network.name} (${chainId}) with burner account ${wallet.address}`
+        `Deploying OracleFactory to ${hre.network.name} (${chainId}) with burner account ${wallet.address}`
       )
     }
 
-    const CurveOracleFactoryFactory = await hre.ethers.getContractFactory(
-      'ExchangeRateOracleFactory'
-    )
-    const oracleFactory = <ExchangeRateOracleFactory>(
-      await CurveOracleFactoryFactory.connect(wallet).deploy()
-    )
+    const ExchangeRateFactoryFactory = await hre.ethers.getContractFactory('OracleFactory')
+    const oracleFactory = <OracleFactory>await ExchangeRateFactoryFactory.connect(wallet).deploy()
     await oracleFactory.deployed()
 
     if (!params.noOutput) {
       console.log(
-        `Deployed ExchangeRateOracleFactory to ${hre.network.name} (${chainId}): ${oracleFactory.address}`
+        `Deployed OracleFactory to ${hre.network.name} (${chainId}): ${oracleFactory.address}`
       )
       console.log(
         `Deploying dummy ExchangeRateOracle to ${hre.network.name} (${chainId}): ${oracleFactory.address}`
@@ -52,21 +48,20 @@ task('create-exchange-rate-oracle-factory', 'Deploys an ExchangeRateOracleFactor
       console.log('verifying')
     }
 
-    /** ******************** Verify ExchangeRateOracleFactory ****************************************/
-    console.time('Verifying ExchangeRateOracleFactory')
+    /** ******************** Verify OracleFactory ****************************************/
+    console.time('Verifying OracleFactory')
     await hre.run('verify:verify', {
       address: oracleFactory.address,
       constructorArguments: [],
-      contract:
-        'contracts/facade/factories/ExchangeRateOracleFactory.sol:ExchangeRateOracleFactory',
+      contract: 'contracts/facade/oracles/OracleFactory.sol:OracleFactory',
     })
-    console.timeEnd('Verifying ExchangeRateOracleFactory')
+    console.timeEnd('Verifying OracleFactory')
 
     console.time('Verifying ExchangeRateOracle')
     await hre.run('verify:verify', {
       address: addr,
       constructorArguments: [hre.ethers.constants.AddressZero],
-      contract: 'contracts/facade/factories/ExchangeRateOracleFactory.sol:ExchangeRateOracle',
+      contract: 'contracts/facade/oracles/ExchangeRateOracle.sol:ExchangeRateOracle',
     })
     console.timeEnd('Verifying ExchangeRateOracle')
 
