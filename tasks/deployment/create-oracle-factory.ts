@@ -5,7 +5,7 @@ import { networkConfig } from '../../common/configuration'
 
 export const getRTokenAddr = (chainId: string): string => {
   if (chainId == '1' || chainId == '31337') {
-    return networkConfig[chainId].tokens.eUSD!
+    return networkConfig[chainId].tokens.ETHPLUS!
   }
   if (chainId == '8453') {
     return networkConfig[chainId].tokens.bsdETH!
