@@ -3,7 +3,7 @@ import { task, types } from 'hardhat/config'
 import { OracleFactory } from '../../typechain'
 import { networkConfig } from '../../common/configuration'
 
-const getRTokenAddr = (chainId: string): string => {
+export const getRTokenAddr = (chainId: string): string => {
   if (chainId == '1' || chainId == '31337') {
     return networkConfig[chainId].tokens.eUSD!
   }
