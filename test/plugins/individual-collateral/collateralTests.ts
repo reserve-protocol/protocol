@@ -777,6 +777,7 @@ export default function fn<X extends CollateralFixtureContext>(
               assetPluginRegistry: ZERO_ADDRESS,
               daoFeeRegistry: ZERO_ADDRESS,
               versionRegistry: ZERO_ADDRESS,
+              trustedFillerRegistry: ZERO_ADDRESS,
             }
           )
         ).wait()

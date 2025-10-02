@@ -66,7 +66,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // checks: erc20 in assetRegistry
     // action: set allowance on erc20 for rToken to UINT_MAX
     // Using two safeApprove calls instead of safeIncreaseAllowance to support USDT
-    function grantRTokenAllowance(IERC20 erc20) external notFrozen {
+    function grantRTokenAllowance(IERC20 erc20) external notFrozen globalNonReentrant {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
         IERC20(address(erc20)).safeApprove(address(rToken), 0);
@@ -105,9 +105,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction not RCEI; nonReentrant
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function rebalance(TradeKind kind) external nonReentrant {
+    function rebalance(TradeKind kind) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
 
         // == Refresh ==
@@ -177,9 +175,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Forward revenue to RevenueTraders; reverts if not fully collateralized
     /// @param erc20s The tokens to forward
     /// @custom:interaction not RCEI; nonReentrant
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function forwardRevenue(IERC20[] calldata erc20s) external nonReentrant {
+    function forwardRevenue(IERC20[] calldata erc20s) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
@@ -324,14 +320,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// @custom:governance
-    function setTradingDelay(uint48 val) public governance {
+    function setTradingDelay(uint48 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
     /// @custom:governance
-    function setBackingBuffer(uint192 val) public governance {
+    function setBackingBuffer(uint192 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_BACKING_BUFFER, "invalid backingBuffer");
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;

@@ -102,7 +102,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction RCEI
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
-    function issueTo(address recipient, uint256 amount) public notIssuancePausedOrFrozen {
+    function issueTo(address recipient, uint256 amount)
+        public
+        notIssuancePausedOrFrozen
+        globalNonReentrant
+    {
         require(amount != 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -180,7 +184,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction RCEI
-    function redeemTo(address recipient, uint256 amount) public notFrozen {
+    function redeemTo(address recipient, uint256 amount) public notFrozen globalNonReentrant {
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -258,7 +262,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen {
+    ) external notFrozen globalNonReentrant {
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -427,7 +431,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
     /// @custom:interaction
-    function monetizeDonations(IERC20 erc20) external notTradingPausedOrFrozen {
+    function monetizeDonations(IERC20 erc20) external notTradingPausedOrFrozen globalNonReentrant {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         IERC20Upgradeable(address(erc20)).safeTransfer(
             address(backingManager),

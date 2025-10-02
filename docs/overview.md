@@ -48,6 +48,10 @@ Tokens are transferred out into (our deployment) of Gnosis' EasyAuction platform
 
 However, batch trades should be always available, making them a reliable foundation for trading liveness in the overall model of the protocol. This comes with one caveat, which is that GnosisTrade tries to detect if the EasyAuction platform adheres to the provided slippage constraints; if it does not, then the trading method is disabled. This is similar to observing the outcome of a Uniswap trade and halting trading if the min amount out constraints you set were not met (which should not happen!).
 
+### Trusted Fillers (only for Dutch Auctions)
+
+As an alternative to bidding on **Dutch Auctions**, Rtokens >=4.2.0 are integrated with [Trusted Fillers](https://github.com/reserve-protocol/trusted-fillers/) and can be enabled by governance to allow async fillers to compete in auctions to provide better prices. All auction limitations still apply to these fillers. Currently, the only supported async filler is CoW Swap.
+
 ### Assets
 
 The protocol requires an asset in order to handle an ERC20. Some assets are `collateral` assets, meaning they enable the ERC20 to be used as a backing collateral for RTokens.

@@ -156,6 +156,8 @@ interface IComponentRegistry {
     event BrokerSet(IBroker oldVal, IBroker newVal);
 
     function broker() external view returns (IBroker);
+
+    function isComponent(address addr) external view returns (bool);
 }
 
 /**
@@ -183,9 +185,17 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
     function versionRegistry() external view returns (VersionRegistry);
 
     function daoFeeRegistry() external view returns (DAOFeeRegistry);
+
+    // === Control flow ===
+
+    function beginTx() external;
+
+    function endTx() external;
 }
 
 interface TestIMain is IMain {
+    error ReentrancyGuardReentrantCall();
+
     function setVersionRegistry(VersionRegistry) external;
 
     function setAssetPluginRegistry(AssetPluginRegistry) external;

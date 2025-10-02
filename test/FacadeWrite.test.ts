@@ -233,6 +233,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('duplicate collateral')
 
@@ -243,6 +244,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('duplicate asset')
 
@@ -253,6 +255,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('beneficiary revShare mismatch')
 
@@ -265,6 +268,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('beneficiary revShare mismatch')
 
@@ -275,6 +279,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('no backup collateral')
 
@@ -285,6 +290,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('invalid length')
 
@@ -295,6 +301,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).to.be.revertedWith('no collateral')
   })
@@ -309,6 +316,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).wait()
 
@@ -326,6 +334,7 @@ describe('FacadeWrite contract', () => {
         assetPluginRegistry: ZERO_ADDRESS,
         daoFeeRegistry: ZERO_ADDRESS,
         versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
       })
     ).wait()
 
@@ -341,6 +350,7 @@ describe('FacadeWrite contract', () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).wait()
 
@@ -865,6 +875,7 @@ describe('FacadeWrite contract', () => {
             assetPluginRegistry: ZERO_ADDRESS,
             daoFeeRegistry: ZERO_ADDRESS,
             versionRegistry: ZERO_ADDRESS,
+            trustedFillerRegistry: ZERO_ADDRESS,
           })
         )
       })

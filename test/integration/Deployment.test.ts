@@ -91,6 +91,7 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).wait()
 

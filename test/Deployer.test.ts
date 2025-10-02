@@ -258,6 +258,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).to.emit(deployer, 'RTokenCreated')
     })
@@ -268,6 +269,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).to.be.reverted
     })
@@ -278,6 +280,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).to.be.revertedWith('symbol empty')
     })
@@ -288,6 +291,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).to.be.revertedWith('mandate empty')
     })
@@ -298,6 +302,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).to.be.revertedWith('invalid owner')
 
@@ -306,6 +311,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
           assetPluginRegistry: ZERO_ADDRESS,
           daoFeeRegistry: ZERO_ADDRESS,
           versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
         })
       ).to.be.revertedWith('invalid owner')
     })

@@ -95,7 +95,7 @@ export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 // This will have to be updated on each release
-export const VERSION = '4.0.0'
+export const VERSION = '4.2.0'
 
 export type Collateral =
   | FiatCollateral
@@ -624,6 +624,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       assetPluginRegistry: ZERO_ADDRESS,
       daoFeeRegistry: ZERO_ADDRESS,
       versionRegistry: ZERO_ADDRESS,
+      trustedFillerRegistry: ZERO_ADDRESS,
     })
   ).wait()
 

@@ -67,13 +67,17 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// Distribute tokenToBuy to its destinations
     /// @dev Special-case of manageTokens([tokenToBuy], *)
     /// @custom:interaction
-    function distributeTokenToBuy() external notTradingPausedOrFrozen {
+    function distributeTokenToBuy() external notTradingPausedOrFrozen globalNonReentrant {
         _distributeTokenToBuy();
     }
 
     /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
     /// @custom:interaction
-    function returnTokens(IERC20[] memory erc20s) external notTradingPausedOrFrozen {
+    function returnTokens(IERC20[] memory erc20s)
+        external
+        notTradingPausedOrFrozen
+        globalNonReentrant
+    {
         RevenueTotals memory revTotals = distributor.totals();
         if (tokenToBuy == rsr) {
             require(revTotals.rsrTotal == 0, "rsrTotal > 0");
@@ -104,11 +108,9 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     // For each ERC20:
     //   if erc20 is tokenToBuy: distribute it
     //   else: sell erc20 for tokenToBuy
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function manageTokens(IERC20[] calldata erc20s, TradeKind[] calldata kinds)
         external
-        nonReentrant
+        globalNonReentrant
         notTradingPausedOrFrozen
     {
         uint256 len = erc20s.length;
