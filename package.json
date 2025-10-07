@@ -22,6 +22,7 @@
     "test:fast": "bash tools/fast-test.sh",
     "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts",
     "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts ",
+    "test:oracles": "FORK=1 hardhat test test/oracles/*.test.ts",
     "test:registries": "PROTO_IMPL=1 hardhat test test/registries/*.test.ts",
     "test:plugins": "hardhat test test/{libraries,plugins}/*.test.ts",
     "test:plugins:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/plugins/individual-collateral/**/*.test.ts",
