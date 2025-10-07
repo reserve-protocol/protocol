@@ -20,7 +20,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
   '1': {
     registryControl: {
       owner: '0xe8259842e71f4E44F2F68D6bfbC15EDA56E63064',
-      feeRecipient: '',
+      feeRecipient: '0xcBCa96091f43C024730a020E57515A18b5dC633B',
     },
     registries: {
       roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
@@ -33,7 +33,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
   '8453': {
     registryControl: {
       owner: '0xe8259842e71f4E44F2F68D6bfbC15EDA56E63064',
-      feeRecipient: '',
+      feeRecipient: '0xcBCa96091f43C024730a020E57515A18b5dC633B',
     },
     registries: {
       roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
