@@ -134,6 +134,10 @@ export interface ITokens {
   USDS?: string
   sUSDS?: string
 
+  // Ether.fi
+  weETH?: string
+  eETH?: string
+
   // RTokens
   eUSD?: string
   ETHPLUS?: string
@@ -295,6 +299,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
       sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
       wOETH: '0xDcEe70654261AF21C44c093C300eD3Bb97b78192',
+      weETH: '0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee',
+      eETH: '0x35fA164735182de50811E8e2E824cFb9B6118ac2',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -326,6 +332,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
       USDS: '0xfF30586cD0F29eD462364C7e81375FC0C71219b1',
       OETHETH: '0x703118C4CbccCBF2AB31913e0f8075fbbb15f563', // OETH/ETH
+      weETH: '0x5c9C449BbC9a6075A2c061dF312a35fd1E05fF22', // weETH/ETH
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
