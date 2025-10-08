@@ -45,7 +45,7 @@ contract Upgrade4_2_0 is Versioned {
     // ======================================================================================
 
     // 4.2.0 Assets (mainnet)
-    IAsset[58] MAINNET_ASSETS = [
+    IAsset[56] MAINNET_ASSETS = [
         IAsset(0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3), // RSR
         IAsset(0xFb56B651f882f8f90d35DD7ca181A7F4D889ECac), // stkAAVE
         IAsset(0x70C8611F5e34266c09c896f3547D1f7Fccf44D54), // COMP
@@ -54,11 +54,9 @@ contract Upgrade4_2_0 is Versioned {
         IAsset(0xb90FE39CB47c4401A941528769f107dEe8e49488), // DAI
         IAsset(0x3A078799a9823cBda084a79c7cAF47f499c6EA09), // USDC
         IAsset(0xD8A1b8e73DC025C527493436057f0d8Fc01E1973), // USDT
-        IAsset(0x70792567E6ddF6e2314bcC6541AC0e9B188cf25F), // BUSD
         IAsset(0x3A395c1bC233D43d126a971b15D8c2b6eB803ca6), // aDAI
         IAsset(0xD1A2a985a18ddf30299cF2bDd0592B29e0AA3e84), // aUSDC
         IAsset(0x723e269D178E887E1691f3cEe71c840B5C5b9F76), // aUSDT
-        IAsset(0x431a19b1F331be3EBf32eA5ACC11AabE3DA422D6), // aBUSD
         IAsset(0x8487278d9262B9Dcca4beC85B125A45608d0067A), // cDAI
         IAsset(0x9A84c6F204209957ddA0064EaeAAf6138fDb8cea), // cUSDC
         IAsset(0xf35FbE1576E9D52c20B7ef8626477DcFb939d9Ef), // cUSDT

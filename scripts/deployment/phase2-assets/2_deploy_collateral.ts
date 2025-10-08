@@ -131,30 +131,6 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
-  /********  Deploy Fiat Collateral - BUSD  **************************/
-  if (networkConfig[chainId].tokens.BUSD && networkConfig[chainId].chainlinkFeeds.BUSD) {
-    const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
-      oracleError: fp('0.005').toString(), // 0.5%
-      tokenAddress: networkConfig[chainId].tokens.BUSD,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.015').toString(), // 1.5%
-      delayUntilDefault: bn('86400').toString(), // 24h
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', busdCollateral)
-    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.BUSD = busdCollateral
-    assetCollDeployments.erc20s.BUSD = networkConfig[chainId].tokens.BUSD
-    deployedCollateral.push(busdCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-  }
-
   /********  Base L2 - Deploy Fiat Collateral - USDbC  **************************/
   if (networkConfig[chainId].tokens.USDbC && networkConfig[chainId].chainlinkFeeds.USDC) {
     const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
@@ -328,60 +304,6 @@ async function main() {
     deployedCollateral.push(aUsdtCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
-    /********  Deploy AToken Fiat Collateral - aBUSD  **************************/
-
-    // Get AToken to retrieve name and symbol
-    erc20 = networkConfig[chainId].tokens.saBUSD
-
-    if (!erc20) {
-      // Get AToken to retrieve name and symbol
-      const aToken = <ATokenMock>(
-        await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aBUSD as string)
-      )
-
-      const abusdStaticToken: StaticATokenLM = <StaticATokenLM>(
-        await StaticATokenFactory.connect(burner).deploy(
-          networkConfig[chainId].AAVE_LENDING_POOL as string,
-          aToken.address,
-          'Static ' + (await aToken.name()),
-          's' + (await aToken.symbol())
-        )
-      )
-      await abusdStaticToken.deployed()
-
-      console.log(
-        `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
-      )
-      erc20 = abusdStaticToken.address
-    }
-
-    const { collateral: aBusdCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-      priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
-      oracleError: fp('0.005').toString(), // 0.5%
-      staticAToken: erc20,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.015').toString(), // 1.5%
-      delayUntilDefault: bn('86400').toString(), // 24h
-      revenueHiding: revenueHiding.toString(),
-    })
-    collateral = <ICollateral>await ethers.getContractAt('ICollateral', aBusdCollateral)
-    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-    assetCollDeployments.collateral.aBUSD = aBusdCollateral
-    assetCollDeployments.erc20s.aBUSD = erc20
-    deployedCollateral.push(aBusdCollateral.toString())
-
-    fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-  }
-
-  const wbtcOracleError = fp('0.02') // 2%
-  const btcOracleError = fp('0.005') // 0.5%
-  const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
   /*** Compound V2 not available in Base or Arbitrum L2s */
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
