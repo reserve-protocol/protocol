@@ -304,6 +304,11 @@ async function main() {
     deployedCollateral.push(aUsdtCollateral.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+  }
+
+  const wbtcOracleError = fp('0.02') // 2%
+  const btcOracleError = fp('0.005') // 0.5%
+  const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
   /*** Compound V2 not available in Base or Arbitrum L2s */
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
