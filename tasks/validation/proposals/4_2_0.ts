@@ -18,7 +18,10 @@ export const proposal_4_2_0 = async (
 ): Promise<Proposal> => {
   // Confirm old governor is Anastasius
   const anastasius = await hre.ethers.getContractAt('Governance', governorAddress)
-  if ((await anastasius.name()) != 'Governor Anastasius') {
+  const name = await anastasius.name()
+  console.log('name', name)
+
+  if (name !== 'Governor Anastasius') {
     throw new Error('Governor Anastasius only')
   }
 
@@ -38,7 +41,7 @@ export const proposal_4_2_0 = async (
   // Build proposal
   const txs = [
     await main.populateTransaction.grantRole(MAIN_OWNER_ROLE, spell.address),
-    await spell.populateTransaction.castSpell1(rTokenAddress),
+    await spell.populateTransaction.castSpell(rTokenAddress, anastasius.address, []),
   ]
 
   const description = '4.2.0 Upgrade - Core Contracts + Plugins'

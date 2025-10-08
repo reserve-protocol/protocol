@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
 import "../interfaces/IDeployer.sol";
+import "../interfaces/IDistributor.sol";
 import "../mixins/Versioned.sol";
 import "../facade/lib/FacadeWriteLib.sol";
 import "../plugins/governance/Governance.sol";
@@ -23,20 +24,29 @@ bytes32 constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
  * Before casting the spell this contract must have MAIN_OWNER_ROLE of Main.
  * MAIN_OWNER_ROLE is automatically revoked after casting.
  *
- * The spell function should be called by the timelock owning Main.
+ * The spell() function should be called by the timelock owning Main.
+ *
+ * RTokens targeted:
+ *   Mainnet:
+ *    - eUSD
+ *    - ETH+
+ *    - hyUSD
+ *    - USD3
+ *   Base:
+ *    - hyUSD
+ *    - bsdETH
  */
 contract Upgrade4_2_0 is Versioned {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    bytes32 public constant VERSION_HASH = keccak256(abi.encodePacked("4.2.0"));
+    bytes32 public constant PRIOR_VERSION_HASH = keccak256(abi.encodePacked("3.4.0"));
+    bytes32 public constant NEW_VERSION_HASH = keccak256(abi.encodePacked("4.2.0"));
 
     // ======================================================================================
 
     // 4.2.0 Assets (mainnet)
     IAsset[58] MAINNET_ASSETS = [
-        IAsset(0x591529f039Ba48C3bEAc5090e30ceDDcb41D0EaA), // RSR
-        // TODO replace with real RSRAsset address after 4.2.0 deployment
-
+        IAsset(0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3), // RSR
         IAsset(0xFb56B651f882f8f90d35DD7ca181A7F4D889ECac), // stkAAVE
         IAsset(0x70C8611F5e34266c09c896f3547D1f7Fccf44D54), // COMP
         IAsset(0x1942270ac94E6C6041C7F7c87562Ba8dDB1bDFFc), // CRV
@@ -98,9 +108,7 @@ contract Upgrade4_2_0 is Versioned {
 
     // 4.2.0 Assets (base)
     IAsset[21] BASE_ASSETS = [
-        IAsset(0x02062c16c28A169D1f2F5EfA7eEDc42c3311ec23), // RSR
-        // TODO replace with real RSRAsset address after 4.2.0 deployment
-
+        IAsset(0x22018D85BFdA9e2673FB4101e957562a1e952Cdf), // RSR
         IAsset(0xf535Cab96457558eE3eeAF1402fCA6441E832f08), // COMP
         IAsset(0x0e8439a17bA5cBb2D9823c03a02566B9dd5d96Ac), // STG
         IAsset(0xf7d1C6eE4C0D84C6B530D53A897daa1E9eB56833), // AERO
@@ -139,9 +147,6 @@ contract Upgrade4_2_0 is Versioned {
 
     bool public mainnet; // !mainnet | base
 
-    // empty at-rest
-    EnumerableSet.Bytes32Set private uniqueTargetNames;
-
     // =======================================================================================
 
     constructor(bool _mainnet) {
@@ -153,16 +158,14 @@ contract Upgrade4_2_0 is Versioned {
         mainnet = _mainnet;
 
         if (_mainnet) {
-            // TODO remove after deployment of 4.2.0
-            // Setup `deployer`
-            deployer = IDeployer(0xc2f865CFd8Cd357BB2Ce919afF62B7858572ba1c);
+            // 4.2.0 deployer (mainnet)
+            deployer = IDeployer(0xd01D00c99A750329412909c02CD9C9e45ffe34ee);
 
-            // TODO replace with canonical addresses after deployment of 4.2.0
-            // these are test registries
+            // DAO registries (mainnet)
             registries = IDeployer.Registries(
-                VersionRegistry(0x5e9CfceeAf12241B5707E9B36a603FaACbDd1286),
-                AssetPluginRegistry(0xA403A341812C8E412967841Fad67c21Ac09413E0),
-                DAOFeeRegistry(0x6f477a92929c4f062b3A90B79045Bd4C34d48208),
+                VersionRegistry(0x37c8646139Cf69863cA8C6F09BE09300d4Dc10bf),
+                AssetPluginRegistry(0x6cf05Ea2A94a101CE6A44Ec2a2995b43F1b0958f),
+                DAOFeeRegistry(0xec716deD4eABa060937D1a915F166E237039342B),
                 ITrustedFillerRegistry(0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A)
             );
 
@@ -173,16 +176,14 @@ contract Upgrade4_2_0 is Versioned {
                 assets[erc20] = MAINNET_ASSETS[i];
             }
         } else {
-            // TODO remove after deployment of 4.2.0
-            // Setup `deployer`
-            deployer = IDeployer(0xA6e159b274e00848322B9Fa89F0783876884CeDD);
+            // 4.2.0 deployer (base)
+            deployer = IDeployer(0x1142Ad5E5A082077A7d79d211726c1bd39b0D5FA);
 
-            // TODO replace with canonical addresses after deployment of 4.2.0
-            // these are test registries
+            // DAO registries (base)
             registries = IDeployer.Registries(
-                VersionRegistry(0x2f98bA77a8ca1c630255c4517b1b3878f6e60C89),
-                AssetPluginRegistry(0x66a3b432F77123E418cDbeD35fBaDdB0Eb9576B0),
-                DAOFeeRegistry(0x7F9999B2C9D310a5f48dfD070eb5129e1e8565E2),
+                VersionRegistry(0x35E6756B92daf6aE2CF2156d479e8a806898971B),
+                AssetPluginRegistry(0x87A959e0377C68A50b08a91ae5ab3aFA7F41ACA4),
+                DAOFeeRegistry(0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD),
                 ITrustedFillerRegistry(0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18)
             );
 
@@ -205,13 +206,15 @@ contract Upgrade4_2_0 is Versioned {
         Governance oldGovernor,
         address[] calldata guardians
     ) external returns (address newGovernor, address newTimelock) {
+        require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, "US: 1");
+
         // Can only be cast once per RToken
         require(!cast[rToken], "repeat cast");
         cast[rToken] = true;
 
         MainP1 main = MainP1(address(rToken.main()));
-        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "US: 1"); // crux
-        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "US: 2");
+        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), "US: 2"); // crux
+        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), "US: 3");
 
         Components memory proxy;
         proxy.assetRegistry = main.assetRegistry();
@@ -225,18 +228,11 @@ contract Upgrade4_2_0 is Versioned {
         proxy.rsrTrader = main.rsrTrader();
         proxy.stRSR = main.stRSR();
 
-        // Preconditions
-        {
-            // Distributor table must sum to >=10000
-            RevenueTotals memory revTotals = proxy.distributor.totals();
-            require(revTotals.rTokenTotal + revTotals.rsrTotal >= 10000, "US: -1");
-        }
-
         // Upgrades
         {
             // Upgrade Main
-            main.upgradeMainTo(VERSION_HASH);
-            require(keccak256(abi.encodePacked(main.version())) == VERSION_HASH, "US: 3");
+            main.upgradeMainTo(NEW_VERSION_HASH);
+            require(keccak256(abi.encodePacked(main.version())) == NEW_VERSION_HASH, "US: 4");
 
             // Set registries
             // reverts on zero address
@@ -257,31 +253,61 @@ contract Upgrade4_2_0 is Versioned {
             main.grantRole(MAIN_OWNER_ROLE, address(main));
 
             // Upgrade components
-            main.upgradeRTokenTo(VERSION_HASH, false, false);
+            main.upgradeRTokenTo(NEW_VERSION_HASH, false, false);
+            require(keccak256(abi.encodePacked(rToken.version())) == NEW_VERSION_HASH, "US: 5");
 
             // Revoke OWNER from Main
             main.revokeRole(MAIN_OWNER_ROLE, address(main));
-            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), "US: 4");
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), "US: 6");
 
-            // Keep issuance premium off
-            // BasketHandlerP1(address(proxy.basketHandler)).setIssuancePremiumEnabled(false);
+            // Keep issuance premium off, should be off by default
+            require(
+                !TestIBasketHandler(address(proxy.basketHandler)).enableIssuancePremium(),
+                "US: 7"
+            );
+        }
+
+        // Make distributor table sum to 10000, adding 1 to StRSR destination if necessary
+        // Context: frontend rounded down during early deployments and created tables summing to 9,999
+        {
+            RevenueTotals memory revTotals = proxy.distributor.totals();
+            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION - 1, "US: 8");
+
+            // add 1 to StRSR destination if necessary
+            if (revTotals.rTokenTotal + revTotals.rsrTotal < MAX_DISTRIBUTION) {
+                TestIDistributor distributor = TestIDistributor(address(proxy.distributor));
+
+                (uint16 rTokenDist, uint16 rsrDist) = distributor.distribution(address(2));
+                // address(2) is the special-cased key for StRSR
+
+                assert(rsrDist > 0); // sanity check; all RTokens direct _some_ RSR to StRSR
+
+                distributor.setDistribution(
+                    address(proxy.stRSR),
+                    RevenueShare(rTokenDist, rsrDist + 1)
+                );
+
+                revTotals = proxy.distributor.totals();
+            }
+
+            // Distributor invariant: table must sum to >=10000
+            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION, "US: 9");
         }
 
         // Rotate assets, erc20s should not change
         {
-            {
-                IERC20[] memory erc20s = proxy.assetRegistry.erc20s();
-                for (uint256 i = 0; i < erc20s.length; i++) {
-                    IERC20 erc20 = erc20s[i];
-                    if (address(erc20) == address(rToken)) continue;
-                    if (assets[erc20] != IAsset(address(0))) {
-                        // if we have a new asset with that erc20, swapRegistered()
-                        proxy.assetRegistry.swapRegistered(assets[erc20]);
-                    }
-
-                    // assets for old ERC20s will be skipped and left in baskets
-                    // TODO are there any?
+            IERC20[] memory erc20s = proxy.assetRegistry.erc20s();
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IERC20 erc20 = erc20s[i];
+                if (address(erc20) == address(rToken)) continue;
+                if (assets[erc20] != IAsset(address(0))) {
+                    // if we have a new asset with that erc20, swapRegistered()
+                    proxy.assetRegistry.swapRegistered(assets[erc20]);
                 }
+
+                // assets for old ERC20s will be skipped and left in baskets
+                //
+                // TODO do a pass on non-updated assets
             }
 
             // RTokenAsset
@@ -300,7 +326,7 @@ contract Upgrade4_2_0 is Versioned {
             {
                 IStRSRVotes stRSR = IStRSRVotes(address(oldGovernor.token()));
                 uint256 pastSupply = stRSR.getPastTotalSupply(stRSR.clock() - 1);
-                require(pastSupply != 0, "US: 7");
+                require(pastSupply != 0, "US: 10");
 
                 proposalThresholdAsMicroPercent =
                     (oldGovernor.proposalThreshold() * 1e18 + pastSupply - 1) /
@@ -309,7 +335,7 @@ contract Upgrade4_2_0 is Versioned {
                 require(
                     proposalThresholdAsMicroPercent >= 1e4 &&
                         proposalThresholdAsMicroPercent <= 1e7,
-                    "US: 8"
+                    "US: 11"
                 );
             }
 
@@ -347,17 +373,17 @@ contract Upgrade4_2_0 is Versioned {
             _newTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, address(this)); // Revoke admin role
 
             // post validation
-            require(_newTimelock.hasRole(PROPOSER_ROLE, newGovernor), "US: 10");
-            require(_newTimelock.hasRole(EXECUTOR_ROLE, newGovernor), "US: 11");
-            require(_newTimelock.hasRole(CANCELLER_ROLE, newGovernor), "US: 12");
+            require(_newTimelock.hasRole(PROPOSER_ROLE, newGovernor), "US: 12");
+            require(_newTimelock.hasRole(EXECUTOR_ROLE, newGovernor), "US: 13");
+            require(_newTimelock.hasRole(CANCELLER_ROLE, newGovernor), "US: 14");
 
-            require(!_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)), "US: 13");
-            require(!_newTimelock.hasRole(EXECUTOR_ROLE, address(oldGovernor)), "US: 14");
-            require(!_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)), "US: 15");
+            require(!_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)), "US: 15");
+            require(!_newTimelock.hasRole(EXECUTOR_ROLE, address(oldGovernor)), "US: 16");
+            require(!_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)), "US: 17");
 
-            require(!_newTimelock.hasRole(PROPOSER_ROLE, address(0)), "US: 16");
-            require(!_newTimelock.hasRole(EXECUTOR_ROLE, address(0)), "US: 17");
-            require(!_newTimelock.hasRole(CANCELLER_ROLE, address(0)), "US: 18");
+            require(!_newTimelock.hasRole(PROPOSER_ROLE, address(0)), "US: 18");
+            require(!_newTimelock.hasRole(EXECUTOR_ROLE, address(0)), "US: 19");
+            require(!_newTimelock.hasRole(CANCELLER_ROLE, address(0)), "US: 20");
         }
 
         // Renounce adminships and validate final state
@@ -368,12 +394,12 @@ contract Upgrade4_2_0 is Versioned {
             main.revokeRole(MAIN_OWNER_ROLE, msg.sender);
             main.renounceRole(MAIN_OWNER_ROLE, address(this));
 
-            require(main.hasRole(MAIN_OWNER_ROLE, newTimelock), "US: 19");
-            require(!main.hasRole(MAIN_OWNER_ROLE, msg.sender), "US: 20");
-            require(!main.hasRole(MAIN_OWNER_ROLE, address(this)), "US: 21");
+            require(main.hasRole(MAIN_OWNER_ROLE, newTimelock), "US: 21");
+            require(!main.hasRole(MAIN_OWNER_ROLE, msg.sender), "US: 22");
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(this)), "US: 23");
 
-            require(!main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)), "US: 22");
-            require(!main.hasRole(MAIN_OWNER_ROLE, newGovernor), "US: 23");
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)), "US: 24");
+            require(!main.hasRole(MAIN_OWNER_ROLE, newGovernor), "US: 25");
         }
     }
 }
