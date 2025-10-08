@@ -268,7 +268,7 @@ contract Upgrade4_2_0 is Versioned {
         }
 
         // Make distributor table sum to 10000, adding 1 to StRSR destination if necessary
-        // Context: frontend rounded down during early deployments and created tables summing to 9,999
+        // Context: frontend rounded down during early deployments and tables sum to 9,999
         {
             RevenueTotals memory revTotals = proxy.distributor.totals();
             require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION - 1, "US: 8");
