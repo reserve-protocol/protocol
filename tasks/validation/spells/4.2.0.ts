@@ -21,7 +21,7 @@ task('4.2.0', 'Upgrade to 4.2.0').setAction(async (_, hre) => {
   const deployments = network === 'base' ? BASE_DEPLOYMENTS : MAINNET_DEPLOYMENTS
   for (const deployment of deployments) {
     // reset fork
-    await resetFork(hre, Number(block ? block : process.env.FORK_BLOCK))
+    await resetFork(hre, Number(block))
 
     const rToken = await hre.ethers.getContractAt('RTokenP1', deployment.rToken)
     console.log(

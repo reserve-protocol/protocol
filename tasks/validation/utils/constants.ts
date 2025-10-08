@@ -72,6 +72,11 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
     governor: '0x441808e20E625e0094b01B40F84af89436229279',
     timelock: '0x12e4F043c6464984A45173E0444105058b6C3c7B',
   },
+  {
+    rToken: '0x005f893ecd7bf9667195642f7649da8163e23658', // dgnETH
+    governor: '0xb7cB3880564A1F8698018ECDc78972F93b2615e6',
+    timelock: '0x05623fcEe6FB48b7C8058022C48A72dbce09878e',
+  },
 ]
 
 export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
