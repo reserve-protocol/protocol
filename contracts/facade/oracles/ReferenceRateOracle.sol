@@ -13,23 +13,18 @@ import { IAsset } from "../../interfaces/IAsset.sol";
  * @notice An immutable Reference Rate Oracle for an RToken (eg: ETH+/USD)
  *
  * Composes oracles used by the protocol internally to calculate the reference price of an RToken,
- * in UoA terms, usually USD.
+ * in UoA terms, usually USD. Inherits the deviations of the underlying oracles in proportion to
+ * their presence in the basket by value.
  *
  * ::Notice::
  * The oracle does not call refresh() on the RToken or the underlying assets, so the price can be
  * stale. This is generally not an issue for active RTokens as they are refreshed often by other
  * protocol operations, however do keep this in mind when using this for low-activity RTokens.
  *
- * If you need the freshest possible price, consider using RTokenAsset.latestPrice() instead,
- * however it is a mutator function instead of a view-only function hence not compatible with
- * Chainlink style interfaces, and additionally can revert.
- *
- * As a consumer of this oracle, you may want to guard against this case by monitoring:
- *     `basketHandler.status() == 0 && basketHandler.fullyCollateralized()`
- * where `basketHandler` can be safely cached from `rToken.main().basketHandler()`.
- *
- * However, note that `fullyCollateralized()` is extremely gas-costly. We recommend executing
- * the function off-chain. `status()` is cheap and more reasonable to be called on-chain.
+ * If you need a fresher price, consider using `RTokenAsset.latestPrice()` instead. Precede with a
+ * call to `RTokenAsset.forceUpdatePrice()` if a 15-minute caching period is not acceptable.
+ * However, note both these functions are mutators, and hence not compatible with
+ * Chainlink style interfaces (and can revert).
  */
 contract ReferenceRateOracle is IExchangeRateOracle {
     error ZeroAddress();
@@ -49,7 +44,7 @@ contract ReferenceRateOracle is IExchangeRateOracle {
     }
 
     function decimals() external view override returns (uint8) {
-        return rToken.decimals();
+        return 18;
     }
 
     function description() external view override returns (string memory) {
@@ -67,7 +62,7 @@ contract ReferenceRateOracle is IExchangeRateOracle {
         require(lower != 0 && upper < FIX_MAX, "invalid price");
 
         /**
-         * In >=4.2.0 (not yet deployed) there is a feature called the "issuance premium",
+         * In >=4.0.0 there is a feature called the "issuance premium",
          * which if enabled, will cause the high price to remain relatively static,
          * even when an RToken collateral is under peg.
          *
@@ -77,8 +72,8 @@ contract ReferenceRateOracle is IExchangeRateOracle {
          * Using the average of the issuance redemption cost in this case can result in a quantity
          * biased upwards.
          *
-         * If you need the *lowest* possible price the RToken can have, do not use this approach.
-         * Instead, use the `lower` price directly. Include our check above that `low > 0`.
+         * If you need the redemption value of the RToken, do not use this approach.
+         * Instead, use the `lower` price directly. Include our check above that `lower != 0`.
          */
 
         return (lower + upper) / 2;
