@@ -11,7 +11,6 @@ import {
   ComponentReentrantMock,
   ComponentReentrantMock__factory,
 } from '@typechain/index'
-import { exp } from '../plugins/individual-collateral/curve/crv/helpers'
 
 describe('ERC20ReentrantFuzz', () => {
   let owner: SignerWithAddress
