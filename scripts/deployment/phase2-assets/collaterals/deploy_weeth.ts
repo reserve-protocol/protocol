@@ -49,12 +49,12 @@ async function main() {
 
   /********  Deploy EtherFI weETH Collateral - weETH  **************************/
 
-  const WeEthCollateralFactoryCollateralFactory: ContractFactory =
+  const WeEthCollateralFactory: ContractFactory =
     await hre.ethers.getContractFactory('WeEthCollateral')
 
   const oracleError = combinedError(ETH_ORACLE_ERROR, WEETH_ORACLE_ERROR) // 0.5% & 0.5%
 
-  const collateral = <WeEthCollateral>await WeEthCollateralFactoryCollateralFactory.connect(
+  const collateral = <WeEthCollateral>await WeEthCollateralFactory.connect(
     deployer
   ).deploy(
     {
