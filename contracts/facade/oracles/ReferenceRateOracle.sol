@@ -14,7 +14,8 @@ import { IAsset } from "../../interfaces/IAsset.sol";
  *
  * Composes oracles used by the protocol internally to calculate the reference price of an RToken,
  * in UoA terms, usually USD. Inherits the deviations of the underlying oracles in proportion to
- * their presence in the basket by value.
+ * their presence in the basket by value. Refer to `RTokenAsset.tryPrice()` for more detailed
+ * information about the pricing method.
  *
  * ::Notice::
  * The oracle does not call refresh() on the RToken or the underlying assets, so the price can be
