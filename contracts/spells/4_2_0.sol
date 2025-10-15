@@ -364,32 +364,12 @@ contract Upgrade4_2_0 is Versioned {
 
         // Deploy new governance, preserving all values
         {
-            // reverse-engineer proposalThresholdAsMicroPercent
-            uint256 proposalThresholdAsMicroPercent;
-            {
-                IStRSRVotes stRSR = IStRSRVotes(address(oldGovernor.token()));
-                uint256 pastSupply = stRSR.getPastTotalSupply(stRSR.clock() - 1);
-                require(pastSupply != 0, "US: 13");
-
-                proposalThresholdAsMicroPercent =
-                    (oldGovernor.proposalThreshold() * 1e18 + pastSupply - 1) /
-                    pastSupply;
-
-                require(
-                    proposalThresholdAsMicroPercent >= 1e4 &&
-                        proposalThresholdAsMicroPercent <= 1e7,
-                    "US: 14"
-                );
-            }
+            uint256 minDelay = TimelockController(payable(msg.sender)).getMinDelay();
+            require(minDelay != 0, "US: 13");
 
             // Deploy new timelock
             newTimelock = address(
-                new TimelockController(
-                    TimelockController(payable(msg.sender)).getMinDelay(),
-                    new address[](0),
-                    new address[](0),
-                    address(this)
-                )
+                new TimelockController(minDelay, new address[](0), new address[](0), address(this))
             );
 
             // Deploy new governor
@@ -398,10 +378,10 @@ contract Upgrade4_2_0 is Versioned {
                 TimelockController(payable(newTimelock)),
                 oldGovernor.votingDelay(),
                 oldGovernor.votingPeriod(),
-                proposalThresholdAsMicroPercent,
+                1e4, // all previous governors are set to 0.01%
                 oldGovernor.quorumNumerator()
             );
-            assert(Governance(payable(newGovernor)).timelock() == newTimelock);
+            require(Governance(payable(newGovernor)).timelock() == newTimelock, "US: 14");
 
             TimelockController _newTimelock = TimelockController(payable(newTimelock));
 
