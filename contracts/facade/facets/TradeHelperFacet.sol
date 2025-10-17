@@ -71,20 +71,12 @@ contract TradeHelperFacet {
         for (uint256 i = 0; i < numOpenTrades; i++) {
             DutchTrade trade = DutchTrade(openTradeAddresses[i]);
 
-            IERC20 sellToken = trade.sell();
-            IERC20 buyToken = trade.buy();
-
-            uint256 sellAmount = trade.sellAmount(); // {qTok}
-            uint256 minBuyAmount = trade.bidAmount(
-                timestamp == 0 ? uint48(block.timestamp) : timestamp
-            ); // {qTok}
-
             openTrades[i] = SingleBid({
                 tradeAddress: address(trade),
-                sellToken: address(sellToken),
-                buyToken: address(buyToken),
-                sellAmount: sellAmount,
-                bidAmount: minBuyAmount
+                sellToken: address(trade.sell()),
+                buyToken: address(trade.buy()),
+                sellAmount: trade.sellAmount(),
+                bidAmount: trade.bidAmount(timestamp == 0 ? uint48(block.timestamp) : timestamp)
             });
         }
     }
