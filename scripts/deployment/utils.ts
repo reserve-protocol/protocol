@@ -1,4 +1,4 @@
-import hre, { tenderly } from 'hardhat'
+import hre from 'hardhat'
 import * as readline from 'readline'
 import axios from 'axios'
 import { exec } from 'child_process'
@@ -90,7 +90,7 @@ export async function sh(cmd: string) {
 }
 
 export async function verifyContract(
-  chainId: number,
+  chainId: number | string,
   address: string | undefined,
   constructorArguments: unknown[],
   contract: string,
@@ -100,11 +100,12 @@ export async function verifyContract(
   console.log(`Verifying ${contract}`)
 
   if (hre.network.name == 'tenderly') {
-    await tenderly.verify({
-      name: contract,
-      address: address!,
-      libraries,
-    })
+    // Tenderly was removed
+    // await tenderly.verify({
+    //   name: contract,
+    //   address: address!,
+    //   libraries,
+    // })
   } else {
     // Sleep 0.5s to not overwhelm API
     await new Promise((r) => setTimeout(r, 500))
@@ -112,9 +113,8 @@ export async function verifyContract(
     // Etherscan v2 Multichain API KEY
     const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
 
-    let url: string
-    url = `${getVerificationURL(
-      chainId
+    const url = `${getVerificationURL(
+      Number(chainId)
     )}/api?chainid=${chainId}&module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
 
     // Check to see if already verified
@@ -139,7 +139,7 @@ export async function verifyContract(
       } catch (e) {
         console.log(
           `IMPORTANT: failed to verify ${contract}. 
-        ${getExplorerURL(chainId)}/address/${address}#code`,
+        ${getExplorerURL(Number(chainId))}/address/${address}#code`,
           e
         )
       }
@@ -197,6 +197,7 @@ export const getEmptyDeployment = (): IDeployments => {
     facets: {
       actFacet: '',
       readFacet: '',
+      tradeHelperFacet: '',
       maxIssuableFacet: '',
       backingBufferFacet: '',
       revenueFacet: '',
