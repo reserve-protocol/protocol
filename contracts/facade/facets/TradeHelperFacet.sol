@@ -30,7 +30,7 @@ contract TradeHelperFacet {
         uint256 bidAmount;
     }
 
-    function getAllOpenTradesForRToken(RTokenP1 rToken)
+    function getAllOpenTradesForRToken(RTokenP1 rToken, uint48 timestamp)
         external
         view
         returns (SingleBid[] memory openTrades)
@@ -41,10 +41,11 @@ contract TradeHelperFacet {
 
         IRevenueTrader rsrTrader = main.rsrTrader();
         IRevenueTrader rTokenTrader = main.rTokenTrader();
+        IBackingManager backingTrader = main.backingManager();
 
         IERC20[] memory erc20s = assetRegistry.erc20s();
 
-        address[] memory openTradeAddresses = new address[](erc20s.length * 2);
+        address[] memory openTradeAddresses = new address[](erc20s.length * 3);
         uint256 numOpenTrades = 0;
 
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -52,12 +53,16 @@ contract TradeHelperFacet {
 
             ITrade trade1 = rsrTrader.trades(erc20);
             ITrade trade2 = rTokenTrader.trades(erc20);
+            ITrade trade3 = backingTrader.trades(erc20);
 
             if (address(trade1) != address(0) && trade1.KIND() == TradeKind.DUTCH_AUCTION) {
                 openTradeAddresses[numOpenTrades++] = address(trade1);
             }
             if (address(trade2) != address(0) && trade2.KIND() == TradeKind.DUTCH_AUCTION) {
                 openTradeAddresses[numOpenTrades++] = address(trade2);
+            }
+            if (address(trade3) != address(0) && trade3.KIND() == TradeKind.DUTCH_AUCTION) {
+                openTradeAddresses[numOpenTrades++] = address(trade3);
             }
         }
 
@@ -70,7 +75,9 @@ contract TradeHelperFacet {
             IERC20 buyToken = trade.buy();
 
             uint256 sellAmount = trade.sellAmount(); // {qTok}
-            uint256 minBuyAmount = trade.bidAmount(uint48(block.timestamp)); // {qTok}
+            uint256 minBuyAmount = trade.bidAmount(
+                timestamp == 0 ? uint48(block.timestamp) : timestamp
+            ); // {qTok}
 
             openTrades[i] = SingleBid({
                 tradeAddress: address(trade),
