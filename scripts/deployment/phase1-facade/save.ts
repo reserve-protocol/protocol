@@ -38,6 +38,7 @@ async function main() {
     await ethers.getContractAt('MaxIssuableFacet', deployments.facets.maxIssuableFacet),
     await ethers.getContractAt('BackingBufferFacet', deployments.facets.backingBufferFacet),
     await ethers.getContractAt('RevenueFacet', deployments.facets.revenueFacet),
+    await ethers.getContractAt('TradeHelperFacet', deployments.facets.tradeHelperFacet),
   ]
 
   const txs = facets.map((facet): MetaTransactionData => {
