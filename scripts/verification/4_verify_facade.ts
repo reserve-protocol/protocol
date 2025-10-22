@@ -36,6 +36,14 @@ async function main() {
     'contracts/facade/facets/ReadFacet.sol:ReadFacet'
   )
 
+  /** ******************** Verify TradeHelperFacet ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facets.tradeHelperFacet,
+    [],
+    'contracts/facade/facets/TradeHelperFacet.sol:TradeHelperFacet'
+  )
+
   /** ******************** Verify ActFacet ****************************************/
   await verifyContract(
     chainId,
