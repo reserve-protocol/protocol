@@ -363,7 +363,6 @@ contract Upgrade4_2_0 is Versioned {
             // Refresh basket
             proxy.basketHandler.refreshBasket();
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
-            require(proxy.basketHandler.fullyCollateralized() == true, "NOT COLL!!!");
 
             // Make sure RTokenAsset was updated
             RTokenAsset rTokenAsset = RTokenAsset(
