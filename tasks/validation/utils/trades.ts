@@ -49,14 +49,12 @@ export const runBatchTrade = async (
 
   // GnosisTrade stores worstCasePrice in D27 format (27 decimals), convert to D18
   const worstPrice = worstCasePrice.div(bn('1e9'))
-
   let buyAmount = bidExact
     ? sellAmount
     : sellAmount
         .mul(worstPrice)
         .mul(pow10(buyDecimals - sellDecimals))
         .div(fp('1'))
-
   if (buyDecimals > sellDecimals) {
     buyAmount = buyAmount.mul(pow10(buyDecimals - sellDecimals))
   } else if (sellDecimals > buyDecimals) {
