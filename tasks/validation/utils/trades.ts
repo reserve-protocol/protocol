@@ -38,7 +38,7 @@ export const runBatchTrade = async (
     `Running batch trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`
   )
   const endTime = await trade.endTime()
-  const worstPrice = await trade.worstCasePrice() // trade.buy() per trade.sell(), qTok
+  const worstCasePrice = await trade.worstCasePrice() // D27{qBuyTok/qSellTok}
   const auctionId = await trade.auctionId()
   const sellAmount = await trade.initBal()
 
@@ -46,12 +46,12 @@ export const runBatchTrade = async (
   const sellDecimals = await sellToken.decimals()
   const buytoken = await hre.ethers.getContractAt('ERC20Mock', await buyTokenAddress)
   const buyDecimals = await buytoken.decimals()
-  let buyAmount = bidExact
-    ? sellAmount
-    : sellAmount
-        .mul(worstPrice)
-        .mul(pow10(buyDecimals - sellDecimals))
-        .div(fp('1'))
+
+  // GnosisTrade stores worstCasePrice in D27 format (27 decimals), convert to D18
+  const worstPrice = worstCasePrice.div(bn('1e9'))
+
+  let buyAmount = bidExact ? sellAmount : sellAmount.mul(worstPrice).div(fp('1'))
+
   if (buyDecimals > sellDecimals) {
     buyAmount = buyAmount.mul(pow10(buyDecimals - sellDecimals))
   } else if (sellDecimals > buyDecimals) {

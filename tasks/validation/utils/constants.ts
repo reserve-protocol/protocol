@@ -62,11 +62,11 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
     governor: '0x868Fe81C276d730A1995Dc84b642E795dFb8F753',
     timelock: '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556',
   },
-  {
+  /*{
     rToken: '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be', // hyUSD (mainnet)
     governor: '0x3F26EF1460D21A99425569Ef3148Ca6059a7eEAe',
     timelock: '0x788Fd297B4d497e44e4BF25d642fbecA3018B5d2',
-  },
+  },*/
   {
     rToken: '0x0d86883FAf4FfD7aEb116390af37746F45b6f378', // USD3
     governor: '0x441808e20E625e0094b01B40F84af89436229279',
