@@ -150,6 +150,14 @@ contract Upgrade4_2_0 is Versioned {
 
     IDeployer public deployer;
 
+    struct NewGovernance {
+        IGovernor anastasius;
+        TimelockController timelock;
+    }
+
+    // RToken => [IGovernor, TimelockController]
+    mapping(IRToken => NewGovernance) public newGovs;
+
     // ERC20 => 4.2.0 Asset
     mapping(IERC20 => Asset) public assets;
 
@@ -352,6 +360,10 @@ contract Upgrade4_2_0 is Versioned {
                 // TODO do a manual pass over all non-updated assets so we know what these are
             }
 
+            // Refresh basket
+            proxy.basketHandler.refreshBasket();
+            require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
+
             // Make sure RTokenAsset was updated
             RTokenAsset rTokenAsset = RTokenAsset(
                 address(proxy.assetRegistry.toAsset(IERC20(address(rToken))))
@@ -415,6 +427,12 @@ contract Upgrade4_2_0 is Versioned {
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(0)) &&
                     !_newTimelock.hasRole(CANCELLER_ROLE, address(0)),
                 "US: 21"
+            );
+
+            // setup `newGovs` for rToken
+            newGovs[rToken] = NewGovernance(
+                IGovernor(payable(newGovernor)),
+                TimelockController(payable(newTimelock))
             );
         }
 

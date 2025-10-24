@@ -1,6 +1,7 @@
 /* eslint-disable no-empty */
 import { networkConfig } from '../../../common/configuration'
 import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
+import { GenericOracleMock } from '@typechain/GenericOracleMock'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { BigNumber } from 'ethers'
 import { AggregatorV3Interface } from '@typechain/index'
@@ -25,6 +26,28 @@ export const overrideOracle = async (
     params: [oracleAddress, bytecode],
   })
   return hre.ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
+}
+
+export const overrideGenericOracle = async (
+  hre: HardhatRuntimeEnvironment,
+  oracleAddress: string
+): Promise<GenericOracleMock> => {
+  const oracle = await hre.ethers.getContractAt('AggregatorV3Interface', oracleAddress)
+  const decimals = await oracle.decimals()
+  const initPrice = await oracle.latestRoundData()
+  const mockOracleFactory = await hre.ethers.getContractFactory('GenericOracleMock')
+  const mockOracle = await mockOracleFactory.deploy(decimals, initPrice.answer)
+  const bytecode = await hre.network.provider.send('eth_getCode', [mockOracle.address, 'latest'])
+  await hre.network.provider.request({
+    method: 'hardhat_setCode',
+    params: [oracleAddress, bytecode],
+  })
+
+  // Initialize mock oracle
+  const genericOracle = await hre.ethers.getContractAt('GenericOracleMock', oracleAddress)
+  await genericOracle.initialize(decimals, initPrice.answer)
+
+  return genericOracle
 }
 
 export const pushOraclesForward = async (
@@ -59,10 +82,20 @@ export const pushOracleForward = async (
   // Need to handle all oracle cases, ie targetUnitChainlinkFeed, PoolTokens, etc
   const updateAnswer = async (chainlinkFeed: AggregatorV3Interface) => {
     if (addresses.indexOf(chainlinkFeed.address) != -1) return
-    const initPrice = await chainlinkFeed.latestRoundData()
-    const oracle = await overrideOracle(hre, chainlinkFeed.address)
-    await oracle.updateAnswer(initPrice.answer)
 
+    const initPrice = await chainlinkFeed.latestRoundData()
+    let oracle: EACAggregatorProxyMock | GenericOracleMock
+
+    try {
+      // Try Chainlink (EACAggregatorProxy) first
+      oracle = await overrideOracle(hre, chainlinkFeed.address)
+    } catch (e) {
+      // If Chainlink fails, try Generic oracle (works for Redstone)
+      console.log(`⚠️  Chainlink mock failed for ${chainlinkFeed.address}, trying generic...`)
+      oracle = await overrideGenericOracle(hre, chainlinkFeed.address)
+    }
+
+    await oracle.updateAnswer(initPrice.answer)
     addresses.push(chainlinkFeed.address)
     console.log('✅ Feed Updated:', chainlinkFeed.address)
   }
@@ -149,7 +182,8 @@ export const pushOracleForward = async (
   if (
     asset == '0x890FAa00C16EAD6AA76F18A1A7fe9C40838F9122' ||
     asset == '0x5cD176b58a6FdBAa1aEFD0921935a730C62f03Ac' ||
-    asset == '0x994455cE66Fd984e2A0A0aca453e637810a8f032'
+    asset == '0x994455cE66Fd984e2A0A0aca453e637810a8f032' ||
+    asset == '0x875af0Bab943b7416c6D2142546cAb61F1Ad964a'
   ) {
     const feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
@@ -167,7 +201,10 @@ export const pushOracleForward = async (
   }
 
   // Convex ETH+/ETH (Nested RToken)
-  if (asset == '0x05F164E71C46a8f8FB2ba71550a00eeC9FCd85cd') {
+  if (
+    asset == '0x05F164E71C46a8f8FB2ba71550a00eeC9FCd85cd' ||
+    asset == '0xfa025df685BA0A09B2C767f4Cc1a1972F140d421'
+  ) {
     const feed = await hre.ethers.getContractAt(
       'AggregatorV3Interface',
       networkConfig['1'].chainlinkFeeds.ETH!
@@ -183,6 +220,29 @@ export const pushOracleForward = async (
     }
   }
 
+  // Aerodrome Pools (Base)
+  if (
+    asset == '0x9216CD5cA133aBBd23cc6F873bB4a95A78032db0' ||
+    asset == '0x1cCa3FBB11C4b734183f997679d52DeFA74b613A'
+  ) {
+    const aeroPoolTokens = await hre.ethers.getContractAt('AerodromePoolTokens', asset)
+    const feed0 = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      (
+        await aeroPoolTokens.tokenFeeds(0)
+      )[0]
+    )
+    await updateAnswer(feed0)
+
+    const feed1 = await hre.ethers.getContractAt(
+      'AggregatorV3Interface',
+      (
+        await aeroPoolTokens.tokenFeeds(1)
+      )[0]
+    )
+    await updateAnswer(feed1)
+  }
+
   return addresses
 }
 
@@ -196,6 +256,15 @@ export const setOraclePrice = async (
     'AggregatorV3Interface',
     await assetContract.chainlinkFeed()
   )
-  const oracle = await overrideOracle(hre, realChainlinkFeed.address)
+
+  let oracle: EACAggregatorProxyMock | GenericOracleMock
+  try {
+    // Try Chainlink (EACAggregatorProxy) first
+    oracle = await overrideOracle(hre, realChainlinkFeed.address)
+  } catch (e) {
+    // If Chainlink fails, try generic oracle (compatible with Redstone)
+    oracle = await overrideGenericOracle(hre, realChainlinkFeed.address)
+  }
+
   await oracle.updateAnswer(value)
 }

@@ -75,12 +75,11 @@ task('4.2.0', 'Upgrade to 4.2.0').setAction(async (_, hre) => {
     console.log(`New governor: ${newAnastasiusAddr}, new timelock: ${newTimelockAddr}`)
 
     const newTimelock = await hre.ethers.getContractAt('TimelockController', newTimelockAddr)
-    const newAnastasius = await hre.ethers.getContractAt('Governance', newAnastasiusAddr)
 
     if (
-      (await newTimelock.hasRole(PROPOSER_ROLE, newAnastasius.address)) ||
-      (await newTimelock.hasRole(EXECUTOR_ROLE, newAnastasius.address)) ||
-      (await newTimelock.hasRole(CANCELLER_ROLE, newAnastasius.address))
+      (await newTimelock.hasRole(PROPOSER_ROLE, anastasius.address)) ||
+      (await newTimelock.hasRole(EXECUTOR_ROLE, anastasius.address)) ||
+      (await newTimelock.hasRole(CANCELLER_ROLE, anastasius.address))
     ) {
       throw new Error('governor rekt')
     }
@@ -107,8 +106,5 @@ task('4.2.0', 'Upgrade to 4.2.0').setAction(async (_, hre) => {
         throw new Error(`coll ${coll.address} is not SOUND: ${await coll.status()}`)
       }
     }
-
-    // TODO remove
-    break
   }
 })
