@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "../plugins/assets/RTokenAsset.sol";
 import "../interfaces/IMain.sol";
 import "./mixins/Component.sol";
 
@@ -42,10 +43,23 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         lastRefresh = uint48(block.timestamp);
     }
 
+    /// Register a new JIT-deployed RTokenAsset instance
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function registerRTokenAsset(uint192 maxTradeVolume)
+        external
+        governance
+        returns (bool swapped)
+    {
+        return _registerIgnoringCollisions(new RTokenAsset(main.rToken(), maxTradeVolume));
+    }
+
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     /// @custom:governance
     function register(IAsset asset) external governance returns (bool) {
+        require(address(asset.erc20()) != address(main.rToken()), "cannot register RToken");
         return _register(asset);
     }
 
@@ -54,6 +68,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// @return swapped If the asset was swapped for a previously-registered asset
     /// @custom:governance
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
+        require(address(asset.erc20()) != address(main.rToken()), "cannot swap RToken");
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
 
@@ -70,6 +85,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// Unregister an asset, requiring that it is already registered
     /// @custom:governance
     function unregister(IAsset asset) external governance {
+        require(address(asset.erc20()) != address(main.rToken()), "cannot unregister RToken");
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
 

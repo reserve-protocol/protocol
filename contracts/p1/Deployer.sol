@@ -17,7 +17,6 @@ import "../interfaces/IRToken.sol";
 import "../interfaces/IStRSR.sol";
 import "../mixins/Versioned.sol";
 import "../plugins/assets/Asset.sol";
-import "../plugins/assets/RTokenAsset.sol";
 import "./Main.sol";
 import "../libraries/String.sol";
 import "../plugins/trading/GnosisTrade.sol";
@@ -251,14 +250,6 @@ contract DeployerP1 is IDeployer, Versioned {
             params.redemptionThrottle
         );
 
-        // Deploy RToken/RSR Assets
-        IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
-        assets[1] = rsrAsset;
-
-        // Init Asset Registry
-        components.assetRegistry.init(main, assets);
-
         // Assign DAO Registries
         if (address(registries.versionRegistry) != address(0)) {
             main.setVersionRegistry(registries.versionRegistry);
@@ -270,6 +261,17 @@ contract DeployerP1 is IDeployer, Versioned {
             main.setDAOFeeRegistry(registries.daoFeeRegistry);
         }
 
+        // Register RSR Asset
+        IAsset[] memory assets = new IAsset[](1);
+        assets[0] = rsrAsset;
+        components.assetRegistry.init(main, assets);
+
+        // Register RToken Asset
+        require(
+            components.assetRegistry.registerRTokenAsset(params.rTokenMaxTradeVolume),
+            "RTokenAsset already registered"
+        );
+
         // Transfer Ownership
         main.grantRole(OWNER, owner);
         main.renounceRole(OWNER, address(this));
@@ -277,16 +279,5 @@ contract DeployerP1 is IDeployer, Versioned {
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
 
         return (address(components.rToken));
-    }
-
-    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
-    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
-    /// @return rTokenAsset The address of the newly deployed RTokenAsset
-    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume)
-        external
-        returns (IAsset rTokenAsset)
-    {
-        rTokenAsset = new RTokenAsset(rToken, maxTradeVolume);
-        emit RTokenAssetCreated(rToken, rTokenAsset);
     }
 }

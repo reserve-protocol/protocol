@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "../plugins/assets/RTokenAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IMain.sol";
 import "./mixins/Component.sol";
@@ -68,6 +69,18 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         lastRefresh = uint48(block.timestamp); // safer to do this at end than start, actually
     }
 
+    /// Register a new JIT-deployed RTokenAsset instance
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function registerRTokenAsset(uint192 maxTradeVolume)
+        external
+        governance
+        returns (bool swapped)
+    {
+        swapped = _registerIgnoringCollisions(new RTokenAsset(main.rToken(), maxTradeVolume));
+    }
+
     /// Register `asset`
     /// If either the erc20 address or the asset was already registered, fail
     /// @return true if the erc20 address was not already registered.
@@ -76,6 +89,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: (asset.erc20 not in keys(assets))
     function register(IAsset asset) external governance returns (bool) {
+        if (address(asset.erc20()) == address(main.rToken())) {
+            revert IAssetRegistry__CannotRegisterRToken();
+        }
+
         return _register(asset);
     }
 
@@ -88,7 +105,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets + {asset.erc20(): asset}
     // actions: if asset.erc20() is in basketHandler's basket then basketHandler.disableBasket()
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
-        require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
+        if (address(asset.erc20()) == address(main.rToken())) {
+            revert IAssetRegistry__CannotSwapRToken();
+        }
+
+        if (!_erc20s.contains(address(asset.erc20()))) {
+            revert IAssetRegistry__NoERC20Collision();
+        }
 
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
             if (quantity != 0) basketHandler.disableBasket(); // not an interaction
@@ -106,8 +129,17 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // checks: assets[asset.erc20()] == asset
     // effects: assets' = assets - {asset.erc20():_} + {asset.erc20(), asset}
     function unregister(IAsset asset) external governance {
-        require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
-        require(assets[asset.erc20()] == asset, "asset not found");
+        if (address(asset.erc20()) == address(main.rToken())) {
+            revert IAssetRegistry__CannotUnregisterRToken();
+        }
+
+        if (!_erc20s.contains(address(asset.erc20()))) {
+            revert IAssetRegistry__NoAssetToUnregister();
+        }
+
+        if (assets[asset.erc20()] != asset) {
+            revert IAssetRegistry__AssetNotFound();
+        }
 
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
             if (quantity != 0) basketHandler.disableBasket(); // not an interaction
@@ -124,7 +156,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // checks: erc20 in assets
     // returns: assets[erc20]
     function toAsset(IERC20 erc20) external view returns (IAsset) {
-        require(_erc20s.contains(address(erc20)), "erc20 unregistered");
+        if (!_erc20s.contains(address(erc20))) {
+            revert IAssetRegistry__ERC20Unregistered();
+        }
+
         return assets[erc20];
     }
 
@@ -132,8 +167,14 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // checks: erc20 in assets, assets[erc20].isCollateral()
     // returns: assets[erc20]
     function toColl(IERC20 erc20) external view returns (ICollateral) {
-        require(_erc20s.contains(address(erc20)), "erc20 unregistered");
-        require(assets[erc20].isCollateral(), "erc20 is not collateral");
+        if (!_erc20s.contains(address(erc20))) {
+            revert IAssetRegistry__ERC20Unregistered();
+        }
+
+        if (!assets[erc20].isCollateral()) {
+            revert IAssetRegistry__ERC20NotCollateral();
+        }
+
         return ICollateral(address(assets[erc20]));
     }
 
@@ -175,14 +216,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             uint256 assetLen = registry.assets.length;
             for (uint256 i = 0; i < assetLen; ++i) {
                 IAsset asset = registry.assets[i];
+                bytes32 versionHash = keccak256(abi.encodePacked(this.version()));
 
-                require(
-                    assetPluginRegistry.isValidAsset(
-                        keccak256(abi.encodePacked(this.version())),
-                        address(asset)
-                    ),
-                    "unsupported asset"
-                );
+                if (!assetPluginRegistry.isValidAsset(versionHash, address(asset))) {
+                    revert IAssetRegistry__UnsupportedAsset();
+                }
             }
         }
     }
@@ -191,6 +229,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function size() external view returns (uint256) {
         return _erc20s.length();
     }
+
+    // === Internal ===
 
     /// Register an asset
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -219,14 +259,15 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
 
         AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
-        if (address(assetPluginRegistry) != address(0)) {
-            require(
-                main.assetPluginRegistry().isValidAsset(
-                    keccak256(abi.encodePacked(this.version())),
-                    address(asset)
-                ),
-                "unsupported asset"
-            );
+        if (
+            address(assetPluginRegistry) != address(0) &&
+            address(asset.erc20()) != address(main.rToken())
+        ) {
+            bytes32 versionHash = keccak256(abi.encodePacked(this.version()));
+
+            if (!assetPluginRegistry.isValidAsset(versionHash, address(asset))) {
+                revert IAssetRegistry__UnsupportedAsset();
+            }
         }
 
         IERC20Metadata erc20 = asset.erc20();

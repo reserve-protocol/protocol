@@ -7,7 +7,7 @@ import { RoleRegistry } from "./RoleRegistry.sol";
 /**
  * @title VersionRegistry
  * @notice A tiny contract for tracking deployment versions
- *         All versions registered are expected to include veRSR, so effectively 4.0.0+.
+ *         All versions registered are expected to be >=4.0.0
  */
 contract VersionRegistry {
     mapping(bytes32 => IDeployer) public deployments;

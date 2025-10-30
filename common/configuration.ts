@@ -723,7 +723,6 @@ export interface IConfig {
   warmupPeriod: BigNumber
   reweightable: boolean
   enableIssuancePremium: boolean
-  enablePermissionlessRefresh: boolean
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber
   dutchAuctionLength: BigNumber

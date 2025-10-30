@@ -13,6 +13,13 @@ interface ICachedComponent {
     function cacheComponents() external;
 }
 
+// backwards compatibility: deployRTokenAsset was removed in 4.0.0
+interface IDeployer3_4_0 is IDeployer {
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume)
+        external
+        returns (IAsset rTokenAsset);
+}
+
 /**
  * The upgrade contract for the 3.4.0 release. Each spell function can only be cast once per RToken.
  *
@@ -415,7 +422,7 @@ contract Upgrade3_4_0 {
 
             // RTokenAsset
             proxy.assetRegistry.swapRegistered(
-                deployer.deployRTokenAsset(
+                IDeployer3_4_0(address(deployer)).deployRTokenAsset(
                     rToken,
                     proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
                 )

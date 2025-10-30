@@ -20,6 +20,16 @@ struct Registry {
  *      3. The asset can be priced in the UoA, usually via an oracle
  */
 interface IAssetRegistry is IComponent {
+    error IAssetRegistry__CannotRegisterRToken();
+    error IAssetRegistry__CannotSwapRToken();
+    error IAssetRegistry__NoERC20Collision();
+    error IAssetRegistry__CannotUnregisterRToken();
+    error IAssetRegistry__NoAssetToUnregister();
+    error IAssetRegistry__AssetNotFound();
+    error IAssetRegistry__ERC20Unregistered();
+    error IAssetRegistry__ERC20NotCollateral();
+    error IAssetRegistry__UnsupportedAsset();
+
     /// Emitted when an asset is added to the registry
     /// @param erc20 The ERC20 contract for the asset
     /// @param asset The asset contract added to the registry
@@ -36,6 +46,12 @@ interface IAssetRegistry is IComponent {
     /// Fully refresh all asset state
     /// @custom:refresher
     function refresh() external;
+
+    /// Register a new JIT-deployed RTokenAsset instance
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function registerRTokenAsset(uint192 maxTradeVolume) external returns (bool swapped);
 
     /// Register `asset`
     /// If either the erc20 address or the asset was already registered, fail

@@ -121,9 +121,5 @@ interface IDeployer is IVersioned {
         Registries calldata registries
     ) external returns (address);
 
-    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
-    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
-    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
-
     function implementations() external view returns (Implementations memory);
 }
