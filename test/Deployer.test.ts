@@ -330,8 +330,8 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Check assets/collateral
       const erc20s = await assetRegistry.erc20s()
-      expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(erc20s[2])).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
       expect(erc20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
@@ -393,15 +393,17 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   describe('deployRTokenAsset', () => {
     it('Should deploy new RTokenAsset', async () => {
       expect(await rTokenAsset.maxTradeVolume()).to.equal(bn('1e24')) // fp('1e6')
-      const newRTokenAssetAddr = await deployer.callStatic.deployRTokenAsset(
-        rToken.address,
-        bn('1e27')
-      )
-      await expect(deployer.deployRTokenAsset(rToken.address, bn('1e27')))
-        .to.emit(deployer, 'RTokenAssetCreated')
-        .withArgs(rToken.address, newRTokenAssetAddr) // fp('1e9')
+      const oldRTokenAssetAddr = await assetRegistry.toAsset(rToken.address)
+
+      await expect(assetRegistry.registerRTokenAsset(bn('1e27')))
+        .to.emit(assetRegistry, 'AssetUnregistered')
+        .withArgs(rToken.address, oldRTokenAssetAddr)
+
+      const newRTokenAssetAddr = await assetRegistry.toAsset(rToken.address)
+      expect(newRTokenAssetAddr).to.not.equal(oldRTokenAssetAddr)
+
       const newRTokenAsset = await ethers.getContractAt('RTokenAsset', newRTokenAssetAddr)
-      expect(await newRTokenAsset.maxTradeVolume()).to.equal(bn('1e27')) // fp('1e9')
+      expect(await newRTokenAsset.maxTradeVolume()).to.equal(bn('1e27'))
     })
   })
 })

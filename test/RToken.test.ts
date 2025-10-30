@@ -1925,7 +1925,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Unregister everything except token0
         const erc20s = await assetRegistry.erc20s()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address) {
+          if (erc20 != token0.address && erc20 != rToken.address) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }

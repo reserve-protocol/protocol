@@ -1003,7 +1003,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           // Upgrade to RToken fails if not assets registered
           await expect(
             upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, true, true)
-          ).to.be.revertedWith('unsupported asset')
+          ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__UnsupportedAsset')
 
           // Register Assets in the Registry for current version
           const currentAssetRegistry = await assetRegistry.getRegistry()
@@ -1018,7 +1018,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           // Upgrade to RToken fails, still not registered for the new version
           await expect(
             upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, true, true)
-          ).to.be.revertedWith('unsupported asset')
+          ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__UnsupportedAsset')
 
           // Register Assets in the Registry for new version
           await assetPluginRegistry.connect(owner).updateAssetsByVersion(
