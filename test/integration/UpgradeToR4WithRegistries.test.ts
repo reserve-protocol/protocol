@@ -250,8 +250,9 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
         const currentAssetPlugins = currentAssetRegistry.assets
 
         // We don't have all the assets in the registry, so this should fail
-        await expect(RTokenAssetRegistry.validateCurrentAssets()).to.be.revertedWith(
-          'unsupported asset'
+        await expect(RTokenAssetRegistry.validateCurrentAssets()).to.be.revertedWithCustomError(
+          RTokenAssetRegistry,
+          'IAssetRegistry__UnsupportedAsset'
         )
 
         // So, let's upgrade the RToken to a new version now.
@@ -262,7 +263,7 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
           // Registry does not have assets yet.
           await expect(
             RTokenMain.connect(signer).upgradeRTokenTo(v2VersionHash, true, true)
-          ).to.be.revertedWith('unsupported asset')
+          ).to.be.revertedWithCustomError(RTokenAssetRegistry, 'IAssetRegistry__UnsupportedAsset')
         })
 
         // Register Assets in the Registry
