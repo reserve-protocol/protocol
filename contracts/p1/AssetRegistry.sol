@@ -73,7 +73,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
     /// @return swapped If the asset was swapped for a previously-registered asset
     /// @custom:governance
-    function registerRTokenAsset(uint192 maxTradeVolume)
+    function registerNewRTokenAsset(uint192 maxTradeVolume)
         external
         governance
         returns (bool swapped)

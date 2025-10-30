@@ -354,7 +354,7 @@ contract Upgrade4_2_0 is Versioned {
 
             // Rotate RTokenAsset
             require(
-                proxy.assetRegistry.registerRTokenAsset(
+                proxy.assetRegistry.registerNewRTokenAsset(
                     proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
                 ),
                 "US: 13"

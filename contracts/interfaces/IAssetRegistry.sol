@@ -51,7 +51,7 @@ interface IAssetRegistry is IComponent {
     /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
     /// @return swapped If the asset was swapped for a previously-registered asset
     /// @custom:governance
-    function registerRTokenAsset(uint192 maxTradeVolume) external returns (bool swapped);
+    function registerNewRTokenAsset(uint192 maxTradeVolume) external returns (bool swapped);
 
     /// Register `asset`
     /// If either the erc20 address or the asset was already registered, fail

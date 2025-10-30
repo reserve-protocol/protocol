@@ -268,7 +268,7 @@ contract DeployerP1 is IDeployer, Versioned {
 
         // Register RToken Asset
         require(
-            components.assetRegistry.registerRTokenAsset(params.rTokenMaxTradeVolume),
+            components.assetRegistry.registerNewRTokenAsset(params.rTokenMaxTradeVolume),
             "RTokenAsset already registered"
         );
 

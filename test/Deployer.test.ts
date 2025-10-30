@@ -395,7 +395,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await rTokenAsset.maxTradeVolume()).to.equal(bn('1e24')) // fp('1e6')
       const oldRTokenAssetAddr = await assetRegistry.toAsset(rToken.address)
 
-      await expect(assetRegistry.registerRTokenAsset(bn('1e27')))
+      await expect(assetRegistry.registerNewRTokenAsset(bn('1e27')))
         .to.emit(assetRegistry, 'AssetUnregistered')
         .withArgs(rToken.address, oldRTokenAssetAddr)
 
