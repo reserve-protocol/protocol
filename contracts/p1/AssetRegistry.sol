@@ -213,10 +213,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
 
         if (address(assetPluginRegistry) != address(0)) {
+            bytes32 versionHash = keccak256(abi.encodePacked(this.version()));
+
             uint256 assetLen = registry.assets.length;
             for (uint256 i = 0; i < assetLen; ++i) {
                 IAsset asset = registry.assets[i];
-                bytes32 versionHash = keccak256(abi.encodePacked(this.version()));
 
                 if (!assetPluginRegistry.isValidAsset(versionHash, address(asset))) {
                     revert IAssetRegistry__UnsupportedAsset();
