@@ -209,17 +209,22 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// @inheritdoc IAssetRegistry
     function validateCurrentAssets() external view {
-        Registry memory registry = getRegistry();
         AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
 
         if (address(assetPluginRegistry) != address(0)) {
             bytes32 versionHash = keccak256(abi.encodePacked(this.version()));
+            address rToken = address(main.rToken());
+
+            Registry memory registry = getRegistry();
 
             uint256 assetLen = registry.assets.length;
             for (uint256 i = 0; i < assetLen; ++i) {
                 IAsset asset = registry.assets[i];
 
-                if (!assetPluginRegistry.isValidAsset(versionHash, address(asset))) {
+                if (
+                    address(asset.erc20()) != rToken &&
+                    !assetPluginRegistry.isValidAsset(versionHash, address(asset))
+                ) {
                     revert IAssetRegistry__UnsupportedAsset();
                 }
             }
