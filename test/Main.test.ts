@@ -2961,7 +2961,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [compToken.address])
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__ERC20NotCollateral')
+      ).to.be.revertedWith('erc20 is not collateral')
     })
 
     it('Should not allow to set backup Config with RSR/RToken', async () => {

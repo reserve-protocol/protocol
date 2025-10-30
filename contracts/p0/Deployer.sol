@@ -148,13 +148,16 @@ contract DeployerP0 is IDeployer, Versioned {
             params.redemptionThrottle
         );
 
-        // Deploy RToken/RSR Assets
-        IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
-        assets[1] = rsrAsset;
-
-        // Init Asset Registry
+        // Register RSR Asset
+        IAsset[] memory assets = new IAsset[](1);
+        assets[0] = rsrAsset;
         main.assetRegistry().init(main, assets);
+
+        // Register RToken Asset
+        require(
+            main.assetRegistry().registerNewRTokenAsset(params.rTokenMaxTradeVolume),
+            "RTokenAsset already registered"
+        );
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
