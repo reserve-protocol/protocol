@@ -352,16 +352,16 @@ contract Upgrade4_2_0 is Versioned {
                 } else {
                     // the only asset that should not be in the registry is the RToken itself
                     require(address(erc20) == address(rToken), "US: 12");
-
-                    // Rotate RTokenAsset
-                    require(
-                        proxy.assetRegistry.registerRTokenAsset(
-                            proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
-                        ),
-                        "US: 13"
-                    );
                 }
             }
+
+            // Rotate RTokenAsset
+            require(
+                proxy.assetRegistry.registerRTokenAsset(
+                    proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
+                ),
+                "US: 13"
+            );
 
             // Refresh basket
             proxy.basketHandler.refreshBasket();
