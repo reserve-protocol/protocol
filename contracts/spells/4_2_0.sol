@@ -346,12 +346,9 @@ contract Upgrade4_2_0 is Versioned {
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IERC20 erc20 = erc20s[i];
 
-                if (assets[erc20] != Asset(address(0))) {
+                if (assets[erc20] != Asset(address(0)) && address(erc20) != address(rToken)) {
                     // if we have a new asset with that erc20, swapRegistered()
                     proxy.assetRegistry.swapRegistered(assets[erc20]);
-                } else {
-                    // the only asset that should not be in the registry is the RToken itself
-                    require(address(erc20) == address(rToken), "US: 12");
                 }
             }
 
@@ -363,15 +360,18 @@ contract Upgrade4_2_0 is Versioned {
                 "US: 13"
             );
 
+            // Validate all assets
+            proxy.assetRegistry.validateCurrentAssets();
+
             // Refresh basket
             proxy.basketHandler.refreshBasket();
-            require(proxy.basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
+            require(proxy.basketHandler.status() == CollateralStatus.SOUND, "US: 14");
         }
 
         // Deploy new governance, preserving all values
         {
             uint256 minDelay = TimelockController(payable(msg.sender)).getMinDelay();
-            require(minDelay != 0, "US: 14");
+            require(minDelay != 0, "US: 15");
 
             // Deploy new timelock
             newTimelock = address(
@@ -387,7 +387,7 @@ contract Upgrade4_2_0 is Versioned {
                 1e4, // all previous governors are set to 0.01%
                 oldGovernor.quorumNumerator()
             );
-            require(Governance(payable(newGovernor)).timelock() == newTimelock, "US: 15");
+            require(Governance(payable(newGovernor)).timelock() == newTimelock, "US: 16");
 
             TimelockController _newTimelock = TimelockController(payable(newTimelock));
 
@@ -406,21 +406,21 @@ contract Upgrade4_2_0 is Versioned {
                 _newTimelock.hasRole(PROPOSER_ROLE, newGovernor) &&
                     _newTimelock.hasRole(EXECUTOR_ROLE, newGovernor) &&
                     _newTimelock.hasRole(CANCELLER_ROLE, newGovernor),
-                "US: 16"
+                "US: 17"
             );
 
             require(
                 !_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)) &&
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(oldGovernor)) &&
                     !_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)),
-                "US: 17"
+                "US: 18"
             );
 
             require(
                 !_newTimelock.hasRole(PROPOSER_ROLE, address(0)) &&
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(0)) &&
                     !_newTimelock.hasRole(CANCELLER_ROLE, address(0)),
-                "US: 18"
+                "US: 19"
             );
 
             // setup `newGovs` for rToken
@@ -442,13 +442,13 @@ contract Upgrade4_2_0 is Versioned {
                 main.hasRole(MAIN_OWNER_ROLE, newTimelock) &&
                     !main.hasRole(MAIN_OWNER_ROLE, msg.sender) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(this)),
-                "US: 19"
+                "US: 20"
             );
 
             require(
                 !main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)) &&
                     !main.hasRole(MAIN_OWNER_ROLE, newGovernor),
-                "US: 20"
+                "US: 21"
             );
         }
     }
