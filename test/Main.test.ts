@@ -1479,14 +1479,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(assetRegistry.connect(other).unregister(compAsset.address)).to.be.reverted
 
       // Cannot remove asset that does not exist
-      await expect(
-        assetRegistry.connect(owner).unregister(newAsset.address)
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__AssetNotFound')
+      await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.be.revertedWith(
+        'asset not found'
+      )
 
       // Cannot remove asset with non-registered ERC20
       await expect(
         assetRegistry.connect(owner).unregister(newTokenAsset.address)
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__NoAssetToUnregister')
+      ).to.be.revertedWith('no asset to unregister')
 
       // Check nothing changed
       allERC20s = await assetRegistry.erc20s()
@@ -1542,7 +1542,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Cannot swap asset if ERC20 is not registered
       await expect(
         assetRegistry.connect(owner).swapRegistered(invalidAssetForSwap.address)
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__NoERC20Collision')
+      ).to.be.revertedWith('no ERC20 collision')
 
       // Check asset remains the same
       expect(await assetRegistry.toAsset(token0.address)).to.equal(collateral0.address)
@@ -1574,19 +1574,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should return the Asset for an ERC20 and perform validations', async () => {
       // Reverts if ERC20 is not registered
-      await expect(assetRegistry.toAsset(other.address)).to.be.revertedWithCustomError(
-        assetRegistry,
-        'IAssetRegistry__ERC20Unregistered'
-      )
+      await expect(assetRegistry.toAsset(other.address)).to.be.revertedWith('erc20 unregistered')
 
       // Reverts if no registered asset - After unregister
       await expect(assetRegistry.connect(owner).unregister(rsrAsset.address))
         .to.emit(assetRegistry, 'AssetUnregistered')
         .withArgs(rsr.address, rsrAsset.address)
-      await expect(assetRegistry.toAsset(rsr.address)).to.be.revertedWithCustomError(
-        assetRegistry,
-        'IAssetRegistry__ERC20Unregistered'
-      )
+      await expect(assetRegistry.toAsset(rsr.address)).to.be.revertedWith('erc20 unregistered')
 
       // Returns correctly the asset
       expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
@@ -1600,23 +1594,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should return the Collateral for an ERC20 and perform validations', async () => {
       // Reverts if ERC20 is not registered
-      await expect(assetRegistry.toColl(other.address)).to.be.revertedWithCustomError(
-        assetRegistry,
-        'IAssetRegistry__ERC20Unregistered'
-      )
+      await expect(assetRegistry.toColl(other.address)).to.be.revertedWith('erc20 unregistered')
 
       // Reverts if no registered collateral - After unregister
       await assetRegistry.connect(owner).unregister(collateral0.address)
-      await expect(assetRegistry.toColl(token0.address)).to.be.revertedWithCustomError(
-        assetRegistry,
-        'IAssetRegistry__ERC20Unregistered'
-      )
+      await expect(assetRegistry.toColl(token0.address)).to.be.revertedWith('erc20 unregistered')
 
       // Reverts if asset is not collateral
-      await expect(assetRegistry.toColl(rsr.address)).to.be.revertedWithCustomError(
-        assetRegistry,
-        'IAssetRegistry__ERC20NotCollateral'
-      )
+      await expect(assetRegistry.toColl(rsr.address)).to.be.revertedWith('erc20 is not collateral')
 
       // Returns correctly the collaterals
       expect(await assetRegistry.toColl(token1.address)).to.equal(collateral1.address)
@@ -1697,21 +1682,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to register RToken', async () => {
-      await expect(
-        assetRegistry.connect(owner).register(rTokenAsset.address)
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__CannotRegisterRToken')
+      await expect(assetRegistry.connect(owner).register(rTokenAsset.address)).to.be.revertedWith(
+        'cannot register RToken'
+      )
     })
 
     it('Should not allow to swap RToken', async () => {
       await expect(
         assetRegistry.connect(owner).swapRegistered(rTokenAsset.address)
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__CannotSwapRToken')
+      ).to.be.revertedWith('cannot swap RToken')
     })
 
     it('Should not allow to unregister RToken', async () => {
-      await expect(
-        assetRegistry.connect(owner).unregister(rTokenAsset.address)
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__CannotUnregisterRToken')
+      await expect(assetRegistry.connect(owner).unregister(rTokenAsset.address)).to.be.revertedWith(
+        'cannot unregister RToken'
+      )
     })
 
     context('With quantity reverting', function () {
@@ -1862,10 +1847,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       it('Should not allow to set prime Basket with non-collateral tokens', async () => {
         await expect(
           basketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
-        ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__ERC20NotCollateral')
+        ).to.be.revertedWith('erc20 is not collateral')
         await expect(
           basketHandler.connect(owner).forceSetPrimeBasket([compToken.address], [fp('1')])
-        ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__ERC20NotCollateral')
+        ).to.be.revertedWith('erc20 is not collateral')
       })
 
       it('Should not allow to set prime Basket with duplicate ERC20s', async () => {
@@ -2961,7 +2946,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [compToken.address])
-      ).to.be.revertedWithCustomError(assetRegistry, 'IAssetRegistry__ERC20NotCollateral')
+      ).to.be.revertedWith('erc20 is not collateral')
     })
 
     it('Should not allow to set backup Config with RSR/RToken', async () => {
