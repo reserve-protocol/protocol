@@ -2,6 +2,8 @@
 
 # 4.2.0
 
+Bump solidity version to 0.8.28
+
 - **Trusted Fillers**: Rtokens are now integrated with [Trusted Fillers](https://github.com/reserve-protocol/trusted-fillers/) and can be enabled by governance to allow async fillers to compete in auctions to provide better prices. All auction limitations still apply to these fillers. Currently, the only supported async filler is CoW Swap.
 
 # 4.1.0
@@ -13,8 +15,6 @@ This release implements a global lock on `Main` (by inherinting from `GlobalReen
 - Adds to `globalNonReentrant` modifier on impacted functions to enforce global reentrancy checks
 
 # 4.0.0
-
-Bump solidity version to 0.8.28
 
 This release prepares the core protocol for veRSR through the introduction of 3 registries (`DAOFeeRegistry`, `AssetPluginRegistry`, and `VersionRegistry`) and through restricting component upgrades to be handled by `Main`, where upgrade constraints can be enforced.
 

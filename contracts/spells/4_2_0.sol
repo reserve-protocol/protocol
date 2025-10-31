@@ -170,11 +170,11 @@ contract Upgrade4_2_0 is Versioned {
 
         if (_mainnet) {
             // 4.2.0 deployer (mainnet)
-            deployer = IDeployer(0xd01D00c99A750329412909c02CD9C9e45ffe34ee);
+            deployer = IDeployer(0x97c0d2F08355393286221849Da444D2768A0b1E3);
 
             // DAO registries (mainnet)
             registries = IDeployer.Registries(
-                VersionRegistry(0x37c8646139Cf69863cA8C6F09BE09300d4Dc10bf),
+                VersionRegistry(0x67F77878012909C7870169BFDa4f91bc7220562E),
                 AssetPluginRegistry(0x6cf05Ea2A94a101CE6A44Ec2a2995b43F1b0958f),
                 DAOFeeRegistry(0xec716deD4eABa060937D1a915F166E237039342B),
                 ITrustedFillerRegistry(0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A)
@@ -193,11 +193,11 @@ contract Upgrade4_2_0 is Versioned {
             }
         } else {
             // 4.2.0 deployer (base)
-            deployer = IDeployer(0x1142Ad5E5A082077A7d79d211726c1bd39b0D5FA);
+            deployer = IDeployer(0x7e1e077b289c0153b5ceAD9F264d66215341c9Ab);
 
             // DAO registries (base)
             registries = IDeployer.Registries(
-                VersionRegistry(0x35E6756B92daf6aE2CF2156d479e8a806898971B),
+                VersionRegistry(0x2261C428624C1a50df5C101Af2AfcC3C8926021c),
                 AssetPluginRegistry(0x87A959e0377C68A50b08a91ae5ab3aFA7F41ACA4),
                 DAOFeeRegistry(0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD),
                 ITrustedFillerRegistry(0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18)
