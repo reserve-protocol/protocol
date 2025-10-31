@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 // solhint-disable func-name-mixedcase func-visibility
 // slither-disable-start divide-before-multiply
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>

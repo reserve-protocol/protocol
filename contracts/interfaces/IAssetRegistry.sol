@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAsset.sol";
@@ -20,16 +20,6 @@ struct Registry {
  *      3. The asset can be priced in the UoA, usually via an oracle
  */
 interface IAssetRegistry is IComponent {
-    error IAssetRegistry__CannotRegisterRToken();
-    error IAssetRegistry__CannotSwapRToken();
-    error IAssetRegistry__NoERC20Collision();
-    error IAssetRegistry__CannotUnregisterRToken();
-    error IAssetRegistry__NoAssetToUnregister();
-    error IAssetRegistry__AssetNotFound();
-    error IAssetRegistry__ERC20Unregistered();
-    error IAssetRegistry__ERC20NotCollateral();
-    error IAssetRegistry__UnsupportedAsset();
-
     /// Emitted when an asset is added to the registry
     /// @param erc20 The ERC20 contract for the asset
     /// @param asset The asset contract added to the registry

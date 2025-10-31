@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -52,17 +52,14 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         governance
         returns (bool swapped)
     {
-        return _registerIgnoringCollisions(new RTokenAsset(main.rToken(), maxTradeVolume));
+        swapped = _registerIgnoringCollisions(new RTokenAsset(main.rToken(), maxTradeVolume));
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     /// @custom:governance
     function register(IAsset asset) external governance returns (bool) {
-        if (address(asset.erc20()) == address(main.rToken())) {
-            revert IAssetRegistry__CannotRegisterRToken();
-        }
-
+        require(address(asset.erc20()) != address(main.rToken()), "cannot register RToken");
         return _register(asset);
     }
 
@@ -71,14 +68,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// @return swapped If the asset was swapped for a previously-registered asset
     /// @custom:governance
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
-        if (address(asset.erc20()) == address(main.rToken())) {
-            revert IAssetRegistry__CannotSwapRToken();
-        }
-
-        if (!_erc20s.contains(address(asset.erc20()))) {
-            revert IAssetRegistry__NoERC20Collision();
-        }
-
+        require(address(asset.erc20()) != address(main.rToken()), "cannot swap RToken");
+        require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
 
         IBasketHandler basketHandler = main.basketHandler();
@@ -94,17 +85,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// Unregister an asset, requiring that it is already registered
     /// @custom:governance
     function unregister(IAsset asset) external governance {
-        if (address(asset.erc20()) == address(main.rToken())) {
-            revert IAssetRegistry__CannotUnregisterRToken();
-        }
-
-        if (!_erc20s.contains(address(asset.erc20()))) {
-            revert IAssetRegistry__NoAssetToUnregister();
-        }
-
-        if (assets[asset.erc20()] != asset) {
-            revert IAssetRegistry__AssetNotFound();
-        }
+        require(address(asset.erc20()) != address(main.rToken()), "cannot unregister RToken");
+        require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
+        require(assets[asset.erc20()] == asset, "asset not found");
 
         IBasketHandler basketHandler = main.basketHandler();
         try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
@@ -120,26 +103,16 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Return the Asset modelling this ERC20, or revert
     function toAsset(IERC20 erc20) external view returns (IAsset) {
-        if (!_erc20s.contains(address(erc20))) {
-            revert IAssetRegistry__ERC20Unregistered();
-        }
-
+        require(_erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
         return assets[erc20];
     }
 
     /// Return the Collateral modelling this ERC20, or revert
     function toColl(IERC20 erc20) external view returns (ICollateral) {
-        if (!_erc20s.contains(address(erc20))) {
-            revert IAssetRegistry__ERC20Unregistered();
-        }
-
+        require(_erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
-
-        if (!assets[erc20].isCollateral()) {
-            revert IAssetRegistry__ERC20NotCollateral();
-        }
-
+        require(assets[erc20].isCollateral(), "erc20 is not collateral");
         return ICollateral(address(assets[erc20]));
     }
 

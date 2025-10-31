@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -26,7 +26,6 @@ bytes32 constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
  *   Mainnet:
  *    - eUSD
  *    - ETH+
- *    - hyUSD
  *    - USD3
  *    - dgnETH
  *   Base:

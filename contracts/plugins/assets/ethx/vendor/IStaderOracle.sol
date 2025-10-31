@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 /// @title ExchangeRate
 /// @notice This struct holds data related to the exchange rate between ETH and ETHX.
