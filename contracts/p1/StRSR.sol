@@ -195,7 +195,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         rsr = IERC20(address(main_.rsr()));
 
         payoutLastPaid = uint48(block.timestamp);
-        rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
+        rsrRewardsAtLastPayout = rsr.balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
         setRewardRatio(rewardRatio_);
         setWithdrawalLeak(withdrawalLeak_);
