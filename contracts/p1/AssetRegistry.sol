@@ -197,7 +197,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
                 IAsset asset = registry.assets[i];
 
                 require(
-                    assetPluginRegistry.isValidAsset(versionHash, address(asset)),
+                    address(asset.erc20()) == address(rToken) ||
+                        assetPluginRegistry.isValidAsset(versionHash, address(asset)),
                     "unsupported asset"
                 );
             }
@@ -237,18 +238,22 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             );
         }
 
-        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
-        if (address(assetPluginRegistry) != address(0)) {
-            require(
-                main.assetPluginRegistry().isValidAsset(
-                    keccak256(abi.encodePacked(this.version())),
-                    address(asset)
-                ),
-                "unsupported asset"
-            );
+        IERC20Metadata erc20 = asset.erc20();
+
+        if (address(erc20) != address(main.rToken())) {
+            AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+
+            if (address(assetPluginRegistry) != address(0)) {
+                require(
+                    assetPluginRegistry.isValidAsset(
+                        keccak256(abi.encodePacked(this.version())),
+                        address(asset)
+                    ),
+                    "unsupported asset"
+                );
+            }
         }
 
-        IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
             else emit AssetUnregistered(erc20, assets[erc20]);
