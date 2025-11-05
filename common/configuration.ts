@@ -139,6 +139,10 @@ export interface ITokens {
   ETHPLUS?: string
   bsdETH?: string
   KNOX?: string
+
+  RLUSD?: string
+  aEthRLUSD?: string
+  saEthRLUSD?: string
 }
 
 export type ITokensKeys = Array<keyof ITokens>
@@ -295,6 +299,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
       sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
       wOETH: '0xDcEe70654261AF21C44c093C300eD3Bb97b78192',
+      RLUSD: '0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD',
+      aEthRLUSD: '0xFa82580c16A31D0c1bC632A36F82e83EfEF3Eec0',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -326,6 +332,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
       USDS: '0xfF30586cD0F29eD462364C7e81375FC0C71219b1',
       OETHETH: '0x703118C4CbccCBF2AB31913e0f8075fbbb15f563', // OETH/ETH
+      RLUSD: '0x26C46B7aD0012cA71F2298ada567dC9Af14E7f2A',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
