@@ -46,6 +46,12 @@ contract Upgrade4_2_0 is Versioned {
 
     error TestError();
 
+    event NewGovernanceDeployed(
+        IRToken indexed rToken,
+        address indexed newGovernor,
+        address indexed newTimelock
+    );
+
     bytes32 public constant PRIOR_VERSION_HASH = keccak256(abi.encodePacked("3.4.0"));
     bytes32 public constant NEW_VERSION_HASH = keccak256(abi.encodePacked("4.2.0"));
 
@@ -422,11 +428,12 @@ contract Upgrade4_2_0 is Versioned {
                 "US: 19"
             );
 
-            // setup `newGovs` for rToken
+            // setup `newGovs` for rToken, only used in testing but useful for onchain record
             newGovs[rToken] = NewGovernance(
                 IGovernor(payable(newGovernor)),
                 TimelockController(payable(newTimelock))
             );
+            emit NewGovernanceDeployed(rToken, newGovernor, newTimelock);
         }
 
         // Renounce adminships and validate final state
