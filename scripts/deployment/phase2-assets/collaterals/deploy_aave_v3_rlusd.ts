@@ -15,9 +15,9 @@ import { bn, fp } from '#/common/numbers'
 import { AaveV3FiatCollateral } from '../../../../typechain'
 import { priceTimeout, revenueHiding } from '../../utils'
 import {
-  RLUSD_MAX_TRADE_VOLUME,
-  RLUSD_ORACLE_TIMEOUT,
-  RLUSD_ORACLE_ERROR,
+  RLUSD_MAINNET_MAX_TRADE_VOLUME,
+  RLUSD_MAINNET_ORACLE_ERROR,
+  RLUSD_MAINNET_ORACLE_TIMEOUT,
 } from '../../../../test/plugins/individual-collateral/aave-v3/constants'
 
 // This file specifically deploys Aave V3 RLUSD collateral on Mainnet
@@ -76,12 +76,12 @@ async function main() {
     {
       priceTimeout: priceTimeout,
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.RLUSD!,
-      oracleError: RLUSD_ORACLE_ERROR,
+      oracleError: RLUSD_MAINNET_ORACLE_ERROR,
       erc20: erc20.address,
-      maxTradeVolume: RLUSD_MAX_TRADE_VOLUME,
-      oracleTimeout: RLUSD_ORACLE_TIMEOUT,
+      maxTradeVolume: RLUSD_MAINNET_MAX_TRADE_VOLUME,
+      oracleTimeout: RLUSD_MAINNET_ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.01').add(RLUSD_ORACLE_ERROR),
+      defaultThreshold: fp('0.01').add(RLUSD_MAINNET_ORACLE_ERROR),
       delayUntilDefault: bn('86400'),
     },
     revenueHiding
