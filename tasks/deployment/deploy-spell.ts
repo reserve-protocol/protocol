@@ -24,8 +24,21 @@ task('deploy-spell', 'Deploys a spell by name')
     }
 
     // Deploy Spell
-    const SpellFactory = await hre.ethers.getContractFactory(spellName)
-    spell = await SpellFactory.deploy(isMainnet)
+    if (spellName === 'Upgrade4_2_0') {
+      const FacadeWriteLibFactory = await hre.ethers.getContractFactory('FacadeWriteLib')
+      const facadeWriteLib = await FacadeWriteLibFactory.deploy()
+      await facadeWriteLib.deployed()
+
+      const SpellFactory = await hre.ethers.getContractFactory('Upgrade4_2_0', {
+        libraries: {
+          FacadeWriteLib: facadeWriteLib.address,
+        },
+      })
+      spell = await SpellFactory.deploy(isMainnet)
+    } else {
+      const SpellFactory = await hre.ethers.getContractFactory(spellName)
+      spell = await SpellFactory.deploy(isMainnet)
+    }
 
     if (!params.noOutput) {
       console.log(
@@ -49,6 +62,16 @@ task('deploy-spell', 'Deploys a spell by name')
       contract: `contracts/spells/${version}.sol:Upgrade${version}`,
     })
     console.timeEnd('Verifying Spell Implementation')
+
+    if (spellName === 'Upgrade4_2_0') {
+      console.time('Verifying FacadeWriteLib')
+      await hre.run('verify:verify', {
+        address: spell.address,
+        constructorArguments: [isMainnet],
+        contract: `contracts/facade/lib/FacadeWriteLib.sol:FacadeWriteLib`,
+      })
+      console.timeEnd('Verifying Spell Implementation')
+    }
 
     if (!params.noOutput) {
       console.log('verified')
