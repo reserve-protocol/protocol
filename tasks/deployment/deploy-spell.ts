@@ -3,6 +3,7 @@ import { task, types } from 'hardhat/config'
 import { Contract } from 'ethers'
 
 let spell: Contract
+let facadeWriteLib: Contract
 
 task('deploy-spell', 'Deploys a spell by name')
   // version is unusable as a param name
@@ -26,7 +27,7 @@ task('deploy-spell', 'Deploys a spell by name')
     // Deploy Spell
     if (spellName === 'Upgrade4_2_0') {
       const FacadeWriteLibFactory = await hre.ethers.getContractFactory('FacadeWriteLib')
-      const facadeWriteLib = await FacadeWriteLibFactory.deploy()
+      facadeWriteLib = await FacadeWriteLibFactory.deploy()
       await facadeWriteLib.deployed()
 
       const SpellFactory = await hre.ethers.getContractFactory('Upgrade4_2_0', {
@@ -48,11 +49,11 @@ task('deploy-spell', 'Deploys a spell by name')
 
     // Uncomment to verify
     if (!params.noOutput) {
-      console.log('sleeping 15s')
+      console.log('sleeping 30s')
     }
 
     // Sleep to ensure API is in sync with chain
-    await new Promise((r) => setTimeout(r, 15000)) // 15s
+    await new Promise((r) => setTimeout(r, 30000)) // 30s
 
     /** ******************** Verify Spell ****************************************/
     console.time('Verifying Spell Implementation')
@@ -66,11 +67,11 @@ task('deploy-spell', 'Deploys a spell by name')
     if (spellName === 'Upgrade4_2_0') {
       console.time('Verifying FacadeWriteLib')
       await hre.run('verify:verify', {
-        address: spell.address,
-        constructorArguments: [isMainnet],
+        address: facadeWriteLib!.address,
+        constructorArguments: [],
         contract: `contracts/facade/lib/FacadeWriteLib.sol:FacadeWriteLib`,
       })
-      console.timeEnd('Verifying Spell Implementation')
+      console.timeEnd('Verifying FacadeWriteLib')
     }
 
     if (!params.noOutput) {
