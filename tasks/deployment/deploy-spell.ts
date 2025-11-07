@@ -3,6 +3,7 @@ import { task, types } from 'hardhat/config'
 import { Contract } from 'ethers'
 
 let spell: Contract
+let facadeWriteLib: Contract
 
 task('deploy-spell', 'Deploys a spell by name')
   // version is unusable as a param name
@@ -24,8 +25,21 @@ task('deploy-spell', 'Deploys a spell by name')
     }
 
     // Deploy Spell
-    const SpellFactory = await hre.ethers.getContractFactory(spellName)
-    spell = await SpellFactory.deploy(isMainnet)
+    if (spellName === 'Upgrade4_2_0') {
+      const FacadeWriteLibFactory = await hre.ethers.getContractFactory('FacadeWriteLib')
+      facadeWriteLib = await FacadeWriteLibFactory.deploy()
+      await facadeWriteLib.deployed()
+
+      const SpellFactory = await hre.ethers.getContractFactory('Upgrade4_2_0', {
+        libraries: {
+          FacadeWriteLib: facadeWriteLib.address,
+        },
+      })
+      spell = await SpellFactory.deploy(isMainnet)
+    } else {
+      const SpellFactory = await hre.ethers.getContractFactory(spellName)
+      spell = await SpellFactory.deploy(isMainnet)
+    }
 
     if (!params.noOutput) {
       console.log(
@@ -35,11 +49,11 @@ task('deploy-spell', 'Deploys a spell by name')
 
     // Uncomment to verify
     if (!params.noOutput) {
-      console.log('sleeping 15s')
+      console.log('sleeping 30s')
     }
 
     // Sleep to ensure API is in sync with chain
-    await new Promise((r) => setTimeout(r, 15000)) // 15s
+    await new Promise((r) => setTimeout(r, 30000)) // 30s
 
     /** ******************** Verify Spell ****************************************/
     console.time('Verifying Spell Implementation')
@@ -49,6 +63,16 @@ task('deploy-spell', 'Deploys a spell by name')
       contract: `contracts/spells/${version}.sol:Upgrade${version}`,
     })
     console.timeEnd('Verifying Spell Implementation')
+
+    if (spellName === 'Upgrade4_2_0') {
+      console.time('Verifying FacadeWriteLib')
+      await hre.run('verify:verify', {
+        address: facadeWriteLib!.address,
+        constructorArguments: [],
+        contract: `contracts/facade/lib/FacadeWriteLib.sol:FacadeWriteLib`,
+      })
+      console.timeEnd('Verifying FacadeWriteLib')
+    }
 
     if (!params.noOutput) {
       console.log('verified')

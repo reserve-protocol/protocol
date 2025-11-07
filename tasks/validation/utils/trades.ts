@@ -10,8 +10,8 @@ import { BigNumber, ContractTransaction } from 'ethers'
 import { LogDescription } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logToken } from './logs'
-import { getChainId } from '#/common/blockchain-utils'
 import { Whales, getWhalesFile } from '#/scripts/whalesConfig'
+import { useEnv } from '#/utils/env'
 
 export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -22,7 +22,8 @@ export const runBatchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // placeSellOrders() flips it to be from the perspective of the trader
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const tradeAddr = await trader.trades(tradeToken)
@@ -44,7 +45,7 @@ export const runBatchTrade = async (
 
   const sellToken = await hre.ethers.getContractAt('ERC20Mock', await trade.sell())
   const sellDecimals = await sellToken.decimals()
-  const buytoken = await hre.ethers.getContractAt('ERC20Mock', await buyTokenAddress)
+  const buytoken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
   const buyDecimals = await buytoken.decimals()
 
   // GnosisTrade stores worstCasePrice in D27 format (27 decimals), convert to D18
@@ -100,7 +101,8 @@ export const runDutchTrade = async (
   // NOTE:
   // buy & sell are from the perspective of the auction-starter
   // bid() flips it to be from the perspective of the trader
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   let tradesRemain = false
@@ -258,7 +260,8 @@ const getCvxVault = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const cvxWrapper = await hre.ethers.getContractAt('ConvexStakingWrapper', tokenAddress)
@@ -284,7 +287,8 @@ const getCTokenVault = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const collateral = await hre.ethers.getContractAt('CTokenWrapper', tokenAddress)
@@ -307,7 +311,8 @@ const getStaticAToken = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const collateral = await hre.ethers.getContractAt('StaticATokenLM', tokenAddress)
@@ -335,7 +340,8 @@ const getStaticATokenV3 = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const collateral = await hre.ethers.getContractAt('StaticATokenV3LM', tokenAddress)
@@ -369,13 +375,14 @@ const getERC20Tokens = async (
   amount: BigNumber,
   recipient: string
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales: Whales = getWhalesFile(chainId).tokens
 
   const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
 
   // special-cases for wrappers with 0 supply
-  if (chainId == '1' || chainId == '31337') {
+  if (chainId == '1') {
     const wcUSDCv3Address = networkConfig[chainId].tokens.wcUSDCv3!.toLowerCase()
     const wcUSDCv3AddressOld = '0xfBD1a538f5707C0D67a16ca4e3Fc711B80BD931A'.toLowerCase()
     const aUSDCv3Address = networkConfig[chainId].tokens.saEthUSDC!.toLowerCase()

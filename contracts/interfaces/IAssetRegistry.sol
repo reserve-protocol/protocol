@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAsset.sol";
@@ -36,6 +36,12 @@ interface IAssetRegistry is IComponent {
     /// Fully refresh all asset state
     /// @custom:refresher
     function refresh() external;
+
+    /// Register a new JIT-deployed RTokenAsset instance
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function registerNewRTokenAsset(uint192 maxTradeVolume) external returns (bool swapped);
 
     /// Register `asset`
     /// If either the erc20 address or the asset was already registered, fail

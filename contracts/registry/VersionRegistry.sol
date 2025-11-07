@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import { IDeployer, Implementations } from "../interfaces/IDeployer.sol";
 import { RoleRegistry } from "./RoleRegistry.sol";
@@ -7,7 +7,7 @@ import { RoleRegistry } from "./RoleRegistry.sol";
 /**
  * @title VersionRegistry
  * @notice A tiny contract for tracking deployment versions
- *         All versions registered are expected to include veRSR, so effectively 4.0.0+.
+ *         All versions registered are expected to be >=4.0.0
  */
 contract VersionRegistry {
     mapping(bytes32 => IDeployer) public deployments;
