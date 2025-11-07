@@ -53,6 +53,7 @@ async function main() {
       maxIssuableFacet: '',
       backingBufferFacet: '',
       revenueFacet: '',
+      tradeHelperFacet: '',
     },
     facadeWriteLib: '',
     basketLib: '',

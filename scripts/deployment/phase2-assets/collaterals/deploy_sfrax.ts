@@ -63,7 +63,7 @@ async function main() {
   await collateral.deployed()
 
   console.log(`Deployed sFRAX to ${hre.network.name} (${chainId}): ${collateral.address}`)
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.sFRAX = collateral.address

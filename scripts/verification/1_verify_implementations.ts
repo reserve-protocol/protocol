@@ -32,7 +32,7 @@ async function main() {
   await verifyContract(
     chainId,
     deployments.implementations.trading.gnosisTrade,
-    [],
+    [networkConfig[chainId].GNOSIS_EASY_AUCTION!],
     'contracts/plugins/trading/GnosisTrade.sol:GnosisTrade'
   )
 

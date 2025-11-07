@@ -59,21 +59,27 @@ async function main() {
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-  const payPool = await ConvexStakingWrapperFactory.deploy()
-  await payPool.deployed()
-  await (await payPool.initialize(PayPool_POOL_ID)).wait()
+  let erc20 = networkConfig[chainId].tokens.wcvxPayPool
 
-  console.log(
-    `Deployed wrapper for Convex Stable PayPool on ${hre.network.name} (${chainId}): ${payPool.address} `
-  )
+  if (!erc20) {
+    const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+
+    const payPool = await ConvexStakingWrapperFactory.deploy()
+    await payPool.deployed()
+    await (await payPool.initialize(PayPool_POOL_ID)).wait()
+
+    console.log(
+      `Deployed wrapper for Convex Stable PayPool on ${hre.network.name} (${chainId}): ${payPool.address} `
+    )
+    erc20 = payPool.address
+  }
 
   const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
-      erc20: payPool.address,
+      erc20: erc20,
       targetName: ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -95,7 +101,7 @@ async function main() {
     }
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -103,7 +109,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxPayPool = collateral.address
-  assetCollDeployments.erc20s.cvxPayPool = payPool.address
+  assetCollDeployments.erc20s.cvxPayPool = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

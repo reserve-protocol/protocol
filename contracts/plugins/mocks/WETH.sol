@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 /// https://github.com/gnosis/canonical-weth at commit 0dd1ea3e295eef916d0c6223ec63141137d22d67
 

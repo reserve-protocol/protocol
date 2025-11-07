@@ -1735,8 +1735,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       it('Should register ERC20s and Assets/Collateral correctly', async () => {
         // Check assets/collateral
         const ERC20s = await assetRegistry.erc20s()
-        expect(ERC20s[0]).to.equal(rToken.address)
-        expect(ERC20s[1]).to.equal(rsr.address)
+        expect(ERC20s[0]).to.equal(rsr.address)
+        expect(ERC20s[1]).to.equal(rToken.address)
         expect(ERC20s[2]).to.equal(aaveToken.address)
         expect(ERC20s[3]).to.equal(compToken.address)
 
@@ -1749,8 +1749,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
 
         // Assets
-        expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-        expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rTokenAsset.address)
         expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(aaveAsset.address)
         expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(compAsset.address)
         expect(await assetRegistry.toAsset(ERC20s[4])).to.equal(daiCollateral.address)

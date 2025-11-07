@@ -66,9 +66,9 @@ pip3 install solc-select slither-analyzer
 # Include slitherin detectors within slither
 pip3 install slitherin
 
-# Install and use solc version 0.8.19
-solc-select install 0.8.19
-solc-select use 0.8.19
+# Install and use solc version 0.8.28
+solc-select install 0.8.28
+solc-select use 0.8.28
 
 # Double-check that your slither version is at least 0.8.3!
 hash -r && slither --version

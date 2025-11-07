@@ -46,13 +46,11 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy USDe Collateral - sUSDe  **************************/
-  let collateral: USDeFiatCollateral
-
   const USDeFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'USDeFiatCollateral'
   )
 
-  collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(deployer).deploy(
+  const collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: PRICE_TIMEOUT.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDe,
@@ -72,7 +70,7 @@ async function main() {
   console.log(
     `Deployed USDe (sUSDe) Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.sUSDe = collateral.address

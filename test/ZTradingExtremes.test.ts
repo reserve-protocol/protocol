@@ -292,9 +292,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     await setOraclePrice(compAsset.address, bn('1e8'))
 
     // Replace RSR and RToken assets with larger maxTradeVolume settings
-    const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
     const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
-    const newRTokenAsset: Asset = <Asset>await RTokenAssetFactory.deploy(rToken.address, MAX_UOA)
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
         PRICE_TIMEOUT,
@@ -305,7 +303,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         MAX_ORACLE_TIMEOUT
       )
     )
-    await assetRegistry.connect(owner).swapRegistered(newRTokenAsset.address)
+    await assetRegistry.connect(owner).registerNewRTokenAsset(MAX_UOA)
     await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
   }
 
