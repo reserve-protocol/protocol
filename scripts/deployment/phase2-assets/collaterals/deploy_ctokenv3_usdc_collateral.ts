@@ -42,18 +42,25 @@ async function main() {
 
   /********  Deploy CompoundV3 USDC - cUSDCv3 **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CFiatV3Wrapper')
-  const erc20 = await WrapperFactory.deploy(
-    networkConfig[chainId].tokens.cUSDCv3,
-    networkConfig[chainId].COMET_REWARDS,
-    networkConfig[chainId].tokens.COMP,
-    'Wrapped cUSDCv3',
-    'wcUSDCv3',
-    fp(1).toString()
-  )
-  await erc20.deployed()
+  let erc20 = networkConfig[chainId].tokens.wcUSDCv3
 
-  console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
+  if (!erc20) {
+    const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CFiatV3Wrapper')
+    const wrapper = await WrapperFactory.deploy(
+      networkConfig[chainId].tokens.cUSDCv3,
+      networkConfig[chainId].COMET_REWARDS,
+      networkConfig[chainId].tokens.COMP,
+      'Wrapped cUSDCv3',
+      'wcUSDCv3',
+      fp(1).toString()
+    )
+    await wrapper.deployed()
+
+    console.log(
+      `Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${wrapper.address} `
+    )
+    erc20 = wrapper.address
+  }
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
@@ -65,7 +72,7 @@ async function main() {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
       oracleError: usdcOracleError.toString(),
-      erc20: erc20.address,
+      erc20: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: usdcOracleTimeout, // 24h hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -75,13 +82,13 @@ async function main() {
     revenueHiding.toString()
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed CompoundV3 USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.cUSDCv3 = collateral.address
-  assetCollDeployments.erc20s.cUSDCv3 = erc20.address
+  assetCollDeployments.erc20s.cUSDCv3 = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

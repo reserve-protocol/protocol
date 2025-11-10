@@ -74,23 +74,29 @@ async function main() {
   let collateral: CurveStableCollateral | L2ConvexStableCollateral
   let crvUsdUSDCPool: ConvexStakingWrapper | IConvexRewardPool // no wrapper needed for L2s
 
+  let erc20 = networkConfig[chainId].tokens.wcvxCrvUSDUSDC
+
   if (!arbitrumL2Chains.includes(hre.network.name)) {
     const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
       'CurveStableCollateral'
     )
-    const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-    crvUsdUSDCPool = <ConvexStakingWrapper>await ConvexStakingWrapperFactory.deploy()
-    await crvUsdUSDCPool.deployed()
-    await (await crvUsdUSDCPool.initialize(crvUSD_USDC_POOL_ID)).wait()
+    if (!erc20) {
+      const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-    console.log(
-      `Deployed wrapper for Convex Stable crvUSD-USDC pool on ${hre.network.name} (${chainId}): ${crvUsdUSDCPool.address} `
-    )
+      crvUsdUSDCPool = <ConvexStakingWrapper>await ConvexStakingWrapperFactory.deploy()
+      await crvUsdUSDCPool.deployed()
+      await (await crvUsdUSDCPool.initialize(crvUSD_USDC_POOL_ID)).wait()
+
+      console.log(
+        `Deployed wrapper for Convex Stable crvUSD-USDC pool on ${hre.network.name} (${chainId}): ${crvUsdUSDCPool.address} `
+      )
+      erc20 = crvUsdUSDCPool.address
+    }
 
     collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(deployer).deploy(
       {
-        erc20: crvUsdUSDCPool.address,
+        erc20: erc20,
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -118,6 +124,8 @@ async function main() {
     crvUsdUSDCPool = <IConvexRewardPool>(
       await ethers.getContractAt('IConvexRewardPool', ARB_Convex_crvUSD_USDC)
     )
+    erc20 = crvUsdUSDCPool.address
+
     collateral = <L2ConvexStableCollateral>await L2ConvexStableCollateralFactory.connect(
       deployer
     ).deploy(
@@ -150,7 +158,7 @@ async function main() {
   }
 
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -158,7 +166,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxCrvUSDUSDC = collateral.address
-  assetCollDeployments.erc20s.cvxCrvUSDUSDC = crvUsdUSDCPool.address
+  assetCollDeployments.erc20s.cvxCrvUSDUSDC = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

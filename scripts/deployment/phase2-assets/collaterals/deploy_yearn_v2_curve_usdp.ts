@@ -84,7 +84,7 @@ async function main() {
   console.log(
     `Deployed Yearn Curve yvUSDPcrvUSD to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.yvCurveUSDPcrvUSD = collateral.address

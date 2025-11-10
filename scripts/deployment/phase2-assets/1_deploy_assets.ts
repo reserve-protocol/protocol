@@ -46,6 +46,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr
     })
+    console.log('task finished')
     await (<Asset>await ethers.getContractAt('Asset', stkAAVEAsset)).refresh()
 
     assetCollDeployments.assets.stkAAVE = stkAAVEAsset

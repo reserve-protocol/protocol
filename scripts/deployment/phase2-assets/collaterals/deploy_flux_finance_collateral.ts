@@ -56,7 +56,7 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
   })
   let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDC = fUsdcCollateral
@@ -81,7 +81,7 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDT = fUsdtCollateral

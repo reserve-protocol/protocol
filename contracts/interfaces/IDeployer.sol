@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../libraries/Throttle.sol";
@@ -120,10 +120,6 @@ interface IDeployer is IVersioned {
         DeploymentParams calldata params,
         Registries calldata registries
     ) external returns (address);
-
-    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
-    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
-    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
 
     function implementations() external view returns (Implementations memory);
 }

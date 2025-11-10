@@ -39,7 +39,7 @@ async function main() {
     [
       {
         priceTimeout: PRICE_TIMEOUT.toString(),
-        chainlinkFeed: eUSD_USD_FEED,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.eUSD,
         oracleError: eUSD_ORACLE_ERROR.toString(),
         erc20: networkConfig[chainId].tokens.meUSD,
         maxTradeVolume: fp('1e6').toString(),

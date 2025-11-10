@@ -11,7 +11,7 @@ import {
   fileExists,
 } from '../../../deployment/common'
 import { priceTimeout } from '../../../deployment/utils'
-import { Asset, ICollateral } from '../../../../typechain'
+import { ICollateral } from '../../../../typechain'
 import {
   PYUSD_MAX_TRADE_VOLUME,
   PYUSD_ORACLE_ERROR,
@@ -48,8 +48,6 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  let collateral: ICollateral
-
   /********  Deploy pyUSD asset **************************/
   const { collateral: pyUsdCollateral } = await hre.run('deploy-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
@@ -62,8 +60,8 @@ async function main() {
     defaultThreshold: fp('0.01').add(PYUSD_ORACLE_ERROR).toString(),
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  collateral = <ICollateral>await ethers.getContractAt('ICollateral', pyUsdCollateral)
-  await (await collateral.refresh()).wait()
+  const collateral = <ICollateral>await ethers.getContractAt('ICollateral', pyUsdCollateral)
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.pyUSD = pyUsdCollateral

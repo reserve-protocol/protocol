@@ -64,20 +64,26 @@ async function main() {
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
     'CurveStableRTokenMetapoolCollateral'
   )
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-  const wPool = await ConvexStakingWrapperFactory.deploy()
-  await wPool.deployed()
-  await (await wPool.initialize(eUSD_FRAX_BP_POOL_ID)).wait()
+  let erc20 = networkConfig[chainId].tokens.wcvxeUSDFRAXBP
 
-  console.log(
-    `Deployed wrapper for Convex eUSD/FRAX Metapool on ${hre.network.name} (${chainId}): ${wPool.address} `
-  )
+  if (!erc20) {
+    const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+
+    const wPool = await ConvexStakingWrapperFactory.deploy()
+    await wPool.deployed()
+    await (await wPool.initialize(eUSD_FRAX_BP_POOL_ID)).wait()
+
+    console.log(
+      `Deployed wrapper for Convex eUSD/FRAX Metapool on ${hre.network.name} (${chainId}): ${wPool.address} `
+    )
+    erc20 = wPool.address
+  }
 
   const collateral = <CurveStableRTokenMetapoolCollateral>(
     await CurveStableCollateralFactory.connect(deployer).deploy(
       {
-        erc20: wPool.address,
+        erc20: erc20,
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -102,7 +108,7 @@ async function main() {
     )
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -110,7 +116,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxeUSDFRAXBP = collateral.address
-  assetCollDeployments.erc20s.cvxeUSDFRAXBP = wPool.address
+  assetCollDeployments.erc20s.cvxeUSDFRAXBP = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

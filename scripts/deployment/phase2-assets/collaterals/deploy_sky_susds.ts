@@ -65,7 +65,7 @@ async function main() {
 
   console.log(`Deployed sUSDS to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.sUSDS = collateral.address
