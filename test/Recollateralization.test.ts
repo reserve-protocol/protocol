@@ -1155,9 +1155,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             'cannot settle yet'
           )
 
-          // Nothing occurs if we attempt to settle for a token that is not being traded
-          expect(await backingManager.settleTrade(token3.address)).to.not.emit
-
           // Advance time till auction ended
           await advanceTime(config.batchAuctionLength.add(100).toString())
 

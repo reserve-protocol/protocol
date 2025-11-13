@@ -449,8 +449,8 @@ describe('Assets contracts #fast', () => {
       await invalidFiatCollateral.setSimplyRevert(true)
       await expect(invalidFiatCollateral.price()).to.be.revertedWith('errormsg')
 
-      // Check RTokenAsset.price() reverts
-      await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
+      // RTokenAsset.price() should pass through the same error for its revert
+      await expect(rTokenAsset.price()).to.be.revertedWith('errormsg')
 
       // Runnning out of gas
       await invalidFiatCollateral.setSimplyRevert(false)

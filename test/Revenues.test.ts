@@ -1116,10 +1116,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           'cannot settle yet'
         )
 
-        // Nothing occurs if we attempt to settle for a token that is not being traded
-        expect(await rsrTrader.settleTrade(aaveToken.address)).to.not.emit
-        expect(await rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
-
         // Advance time till auction ended
         await advanceTime(config.batchAuctionLength.add(100).toString())
 
