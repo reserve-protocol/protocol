@@ -686,7 +686,7 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return revenue + chain into ActFacet.runRevenueAuctions', async () => {
-      // Set low to 0 == revenueOverview() should not revert
+      // Setting low price to 0 should not cause revenueOverview() to revert
       const minTradeVolume = await rsrTrader.minTradeVolume()
       const auctionLength = await broker.dutchAuctionLength()
       const tokenSurplus = bn('0.5e18')
@@ -717,11 +717,14 @@ describe('Facade + FacadeMonitor contracts', () => {
           expect(canStart[i]).to.equal(false)
           expect(surpluses[i]).to.equal(0)
         }
-        const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
-        const [low] = await asset.price()
-        expect(minTradeAmounts[i]).to.equal(
-          low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
-        ) // 1% oracleError
+
+        if (erc20s[i] != rToken.address) {
+          const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
+          const [low] = await asset.price()
+          expect(minTradeAmounts[i]).to.equal(
+            low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
+          ) // 1% oracleError
+        }
       }
 
       // Run revenue auctions via multicall

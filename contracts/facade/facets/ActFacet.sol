@@ -114,19 +114,23 @@ contract ActFacet is Multicall {
             }
 
             surpluses[i] = erc20s[i].balanceOf(address(revenueTrader));
-            (uint192 low, ) = reg.assets[i].price(); // {UoA/tok}
-            if (low == 0) continue;
 
-            // {qTok} = {UoA} / {UoA/tok}
-            minTradeAmounts[i] = minTradeVolume.safeDiv(low, FLOOR).shiftl_toUint(
-                int8(reg.assets[i].erc20Decimals())
-            );
+            try reg.assets[i].price() returns (uint192 low, uint192) {
+                if (low == 0) continue;
 
-            if (
-                surpluses[i] > minTradeAmounts[i] &&
-                revenueTrader.trades(erc20s[i]) == ITrade(address(0))
-            ) {
-                canStart[i] = true;
+                // {qTok} = {UoA} / {UoA/tok}
+                minTradeAmounts[i] = minTradeVolume.safeDiv(low, FLOOR).shiftl_toUint(
+                    int8(reg.assets[i].erc20Decimals())
+                );
+
+                if (
+                    surpluses[i] > minTradeAmounts[i] &&
+                    revenueTrader.trades(erc20s[i]) == ITrade(address(0))
+                ) {
+                    canStart[i] = true;
+                }
+            } catch {
+                continue;
             }
         }
 

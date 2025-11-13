@@ -62,7 +62,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     ///   in lending markets or anywhere where secondary market price is the central concern.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
+    function tryPrice() public view virtual returns (uint192 low, uint192 high) {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(true); // {UoA/BU}
         require(lowBUPrice != 0 && highBUPrice != FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
@@ -98,13 +98,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        try this.tryPrice() returns (uint192 low, uint192 high) {
-            return (low, high);
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            return (0, FIX_MAX);
-        }
+        return tryPrice();
     }
 
     /// Should not revert
@@ -113,7 +107,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
-        return price();
+        return tryPrice();
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

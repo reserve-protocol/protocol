@@ -142,6 +142,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
         override
         returns (uint192 lowPaired, uint192 highPaired)
     {
+        // can revert if pairedToken is a >=4.0.0 RToken
         return pairedAssetRegistry.toAsset(pairedToken).price();
     }
 }
