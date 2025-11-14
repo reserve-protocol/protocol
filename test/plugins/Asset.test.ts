@@ -456,8 +456,8 @@ describe('Assets contracts #fast', () => {
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
-      // Check RTokenAsset.price() still reverts
-      await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
+      // RTokenAsset.price() should revert with OOG
+      await expect(rTokenAsset.price()).to.be.revertedWithoutReason
     })
 
     it('Should return latestPrice() for RTokenAsset correctly', async () => {
