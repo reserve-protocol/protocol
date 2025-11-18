@@ -40,7 +40,7 @@ async function main() {
   const { asset: stgAsset } = await hre.run('deploy-asset', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.STG,
-    oracleError: fp('0.02').toString(), // 2%
+    oracleError: fp('0.05').toString(), // 5%
     tokenAddress: networkConfig[chainId].tokens.STG,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: '86400', // 24 hr
