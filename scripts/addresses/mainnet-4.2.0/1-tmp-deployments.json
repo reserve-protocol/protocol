@@ -6,17 +6,17 @@
   "tradingLib": "0xD595456AC36aab96CF9d10d1ADF8C3b4576C7937",
   "facade": "0x9d49b363d492725412bf8350bBb525B7a80a7470",
   "facets": {
-    "actFacet": "0xCa60954E8819827B0C56e1ec313175fE68712d98",
+    "actFacet": "0x8578538EB08B39f3aE363757B30afB5a12DDcF0c",
     "readFacet": "0x823110a13eB26cB09c4Bb118DBfE4ff5f96D5526",
     "maxIssuableFacet": "0x5771d976696AA180Fed276FB6571fE2f41D0b849",
     "backingBufferFacet": "0xB555921a031D321687aE8B0569dA7B6da8BCB209",
     "revenueFacet": "0x69c21f4828c57D3BB5Eb5fEEa6C5c1432e193510",
     "tradeHelperFacet": "0x9c09e506e00ac87E2413b7501702fAcA690201Fb"
   },
-  "facadeWriteLib": "0x7a993aff39Ab3047Ef2777cfeDD89F7DFD6d4f9A",
+  "facadeWriteLib": "0x99268AD5808BDFC64aE4C8d95dd8b61b1bef32Bb",
   "basketLib": "0x2fdD94F363644FEDE5106B22b1706E45D4dD9bea",
-  "facadeWrite": "0xe4227Ed382A6E5E3001201635De76b7120B13295",
-  "deployer": "0x087Ac594713DcF03a85A0d3CA10ACe81F47d4526",
+  "facadeWrite": "0xe18131bd99127b6601c4A78dB25fF963006060e2",
+  "deployer": "0x40cd76E78Af4aAc744D1FA443359e7e26c982F9D",
   "rsrAsset": "0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3",
   "implementations": {
     "main": "0xc5bf686CfB85786fcFfF557297D4afF8F4e15e44",
@@ -25,7 +25,7 @@
       "dutchTrade": "0xCC3Cb888dEA5948bbEB7747Aed31128b71b7689D"
     },
     "components": {
-      "assetRegistry": "0xcB7e10000De0DAcE5A79c620191Cab2517693637",
+      "assetRegistry": "0x1aCfF3eB9E4250Fb75526ceb3ff3b05c0CCfa42D",
       "backingManager": "0xc501c9074CE15A4B00dd0B51B3c372518e6D3BA2",
       "basketHandler": "0x54A8fa5217970e2040590DDD7c16f72B1fb57a3C",
       "broker": "0x63c61086418406eBB062c5C6dF80F46c6d052d4c",
