@@ -151,6 +151,7 @@ async function main() {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
       {
         ...baseStableConfig,
+        oracleTimeout: '82800', // 23 hr
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
         erc20: maUSDC,
       },
@@ -178,7 +179,7 @@ async function main() {
   }
 
   {
-    const wbtcOracleError = fp('0.02') // 2%
+    const wbtcOracleError = fp('0.005') // 0.5%
     const btcOracleError = fp('0.005') // 0.5%
     const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
     const collateral = await NonFiatCollateralFactory.connect(deployer).deploy(
@@ -188,7 +189,7 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: fp('0.01').add(wbtcOracleError), // 3%
+        defaultThreshold: fp('0.01').add(wbtcOracleError), // 1.5%
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
         erc20: maWBTC,

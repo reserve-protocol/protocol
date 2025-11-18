@@ -58,6 +58,7 @@ async function main() {
 
   // Phase 2 - Assets/Collateral
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
+    // Ethereum
     scripts.push(
       'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
@@ -109,7 +110,6 @@ async function main() {
       'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_aero.ts',
       'phase2-assets/collaterals/deploy_aerodrome_mog_weth.ts',
-      'phase2-assets/collaterals/deploy_aerodrome_usdz_usdc.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_cbbtc.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_well.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_degen.ts',

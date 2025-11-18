@@ -53,7 +53,7 @@ async function main() {
 
   /********  Verify Collateral - wcUSDCv3  **************************/
 
-  const usdcOracleTimeout = '86400' // 24 hr
+  const usdcOracleTimeout = '82800' // 23 hr
   const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   await verifyContract(
