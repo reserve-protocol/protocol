@@ -14,6 +14,8 @@ import "../OracleLib.sol";
  * @notice Collateral plugin for a CurveLP token for a pool between a
  *    a USD reference token and a USD RToken.
  *
+ * @notice DEPRECATED
+ *
  *    Note:
  *      - The RToken _must_ be the same RToken using this plugin as collateral!
  *      - The RToken SHOULD have an RSR overcollateralization layer. DO NOT USE WITHOUT RSR!

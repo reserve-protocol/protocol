@@ -22,12 +22,11 @@ bytes32 constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
 /**
  * The upgrade spell for the 4.2.0 release. Upgrading RToken must be on 3.4.0.
  *
- * RTokenes supported:
+ * Supported RTokens:
  *   Mainnet:
  *    - eUSD
  *    - ETH+
  *    - USD3
- *    - dgnETH
  *   Base:
  *    - hyUSD
  *    - bsdETH
@@ -58,7 +57,7 @@ contract Upgrade4_2_0 is Versioned {
     // ======================================================================================
 
     // 4.2.0 Assets (mainnet)
-    Asset[56] MAINNET_ASSETS = [
+    Asset[54] MAINNET_ASSETS = [
         Asset(0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3), // RSR
         Asset(0xFb56B651f882f8f90d35DD7ca181A7F4D889ECac), // stkAAVE
         Asset(0x70C8611F5e34266c09c896f3547D1f7Fccf44D54), // COMP
@@ -89,8 +88,6 @@ contract Upgrade4_2_0 is Versioned {
         Asset(0x7e80B2f7b6abb98028cC8A66aE6f7ea5302fA904), // cvxPayPool
         Asset(0x1E98A442F917aA8e0e1f6e18687e58D954b8FfC2), // cvxCrvUSDUSDC
         Asset(0x738C191F95C053602e272AfAF67A638519fA4B2F), // cvxCrvUSDUSDT
-        Asset(0x875af0Bab943b7416c6D2142546cAb61F1Ad964a), // cvxeUSDFRAXBP
-        Asset(0xfa025df685BA0A09B2C767f4Cc1a1972F140d421), // cvxETHPlusETH
         Asset(0x2fe50f96Cd61a3056D497FE88CEA8441244D5d5E), // sDAI
         Asset(0xdCEe056a2fEB893EB1a1C3e3F103Ac8AB098CE2e), // cbETH
         Asset(0x3ca3359006c55164753Ae475D995163adAB5432d), // maUSDT
@@ -118,7 +115,7 @@ contract Upgrade4_2_0 is Versioned {
     ];
 
     // 4.2.0 Assets (base)
-    Asset[21] BASE_ASSETS = [
+    Asset[20] BASE_ASSETS = [
         Asset(0x22018D85BFdA9e2673FB4101e957562a1e952Cdf), // RSR
         Asset(0xf535Cab96457558eE3eeAF1402fCA6441E832f08), // COMP
         Asset(0x0e8439a17bA5cBb2D9823c03a02566B9dd5d96Ac), // STG
@@ -134,7 +131,6 @@ contract Upgrade4_2_0 is Versioned {
         Asset(0x1cCa3FBB11C4b734183f997679d52DeFA74b613A), // aeroUSDCeUSD
         Asset(0xC98eaFc9F249D90e3E35E729e3679DD75A899c10), // aeroWETHAERO
         Asset(0x339c1509b980D80A0b50858518531eDbe2940dA1), // aeroMOGWETH
-        Asset(0x1BD20253c49515D348dad1Af70ff2c0473FEa358), // aeroUSDzUSDC
         Asset(0xDAacEE75C863a79f07699b094DB07793D3A52D6D), // aeroWETHcbBTC
         Asset(0x6647c880Eb8F57948AF50aB45fca8FE86C154D24), // aeroWETHWELL
         Asset(0xCFA67f42A0fDe4F0Fb612ea5e66170B0465B84c1), // aeroWETHDEGEN

@@ -33,6 +33,7 @@ import {
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // This file specifically deploys Convex RToken Metapool Plugin for eUSD/fraxBP
+// DEPRECATED
 
 async function main() {
   // ==== Read Configuration ====

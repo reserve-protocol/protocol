@@ -71,8 +71,6 @@ async function main() {
       'phase2-assets/collaterals/deploy_convex_paypool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
-      'phase2-assets/collaterals/deploy_convex_ethplus_eth.ts',
       'phase2-assets/collaterals/deploy_dsr_sdai.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
@@ -117,20 +115,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_origin_eth.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    // Arbitrum One
-    scripts.push(
-      'phase2-assets/0_setup_deployments.ts',
-      'phase2-assets/1_deploy_assets.ts',
-      'phase2-assets/2_deploy_collateral.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdt_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
-      'phase2-assets/collaterals/deploy_usdm.ts',
-      'phase2-assets/assets/deploy_arb.ts'
-    )
+    // Arbitrum (deprecated)
+    throw new Error('Arbitrum is deprecated')
   }
 
   // ===============================================

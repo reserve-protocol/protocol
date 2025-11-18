@@ -8,6 +8,8 @@ import "./CurveStableMetapoolCollateral.sol";
  *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  involve RTokens, such as eUSD-fraxBP.
  *
+ * @notice DEPRECATED in 4.0.0
+ *
  * tok = ConvexStakingWrapper(pairedUSDRToken/USDBasePool)
  * ref = PairedUSDRToken/USDBasePool pool invariant
  * tar = USD
