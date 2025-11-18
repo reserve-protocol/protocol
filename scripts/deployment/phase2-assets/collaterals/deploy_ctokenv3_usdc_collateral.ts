@@ -64,7 +64,7 @@ async function main() {
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
-  const usdcOracleTimeout = '86400' // 24 hr
+  const usdcOracleTimeout = '82800' // 23 hr
   const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(

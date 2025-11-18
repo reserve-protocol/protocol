@@ -57,7 +57,7 @@ async function main() {
       oracleError: ORACLE_ERROR.toString(),
       erc20: networkConfig[chainId].tokens.sUSDe,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: ORACLE_TIMEOUT.toString(), // 24 hr
+      oracleTimeout: ORACLE_TIMEOUT.toString(), // 23 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.01').add(ORACLE_ERROR).toString(), // ~1.5%
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 72h
