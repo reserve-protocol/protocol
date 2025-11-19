@@ -54,7 +54,7 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.pyUSD,
     oracleError: PYUSD_ORACLE_ERROR.toString(),
     tokenAddress: networkConfig[chainId].tokens.pyUSD,
-    maxTradeVolume: PYUSD_MAX_TRADE_VOLUME.toString(), // $500k,
+    maxTradeVolume: PYUSD_MAX_TRADE_VOLUME.toString(),
     oracleTimeout: PYUSD_ORACLE_TIMEOUT.toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.01').add(PYUSD_ORACLE_ERROR).toString(),

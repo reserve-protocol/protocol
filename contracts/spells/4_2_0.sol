@@ -57,7 +57,7 @@ contract Upgrade4_2_0 is Versioned {
     // ======================================================================================
 
     // 4.2.0 Assets (mainnet)
-    Asset[53] MAINNET_ASSETS = [
+    Asset[54] MAINNET_ASSETS = [
         Asset(0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3), // RSR
         Asset(0xFDE702794298DB19e2a235782B82aD88053F7335), // stkAAVE
         Asset(0xA32a92073fEB7ed31081656DeFF34518FB5194b9), // COMP
@@ -110,7 +110,8 @@ contract Upgrade4_2_0 is Versioned {
         Asset(0x5A78da62a85099A3Da30e56F5dA8db95aFc63920), // apxETH
         Asset(0x403623175656ED0CDF1F9efE54867761F1EBf1D8), // sUSDe
         Asset(0x4FD189996b5344Eb4CF9c749b97C7424D399d24e), // sUSDS
-        Asset(0xBFAc3e99263B7aE9704eC1c879f7c0a57C6b53e1) // wOETH
+        Asset(0xBFAc3e99263B7aE9704eC1c879f7c0a57C6b53e1), // wOETH
+        Asset(0x9A65173df5D5B86E26300Cc9cA5Ff378be6DAeA5) // pyUSD
     ];
 
     // 4.2.0 Assets (base)
