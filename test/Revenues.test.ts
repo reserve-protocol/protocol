@@ -406,7 +406,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       const maxDestinations = 100
 
       for (let i = 0; i < maxDestinations - 2; i++) {
-        const usr: Wallet = await ethers.Wallet.createRandom()
+        const usr: Wallet = ethers.Wallet.createRandom()
         await distributor
           .connect(owner)
           .setDistribution(usr.address, { rTokenDist: bn(4000), rsrDist: bn(6000) })
@@ -636,18 +636,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should launch revenue auction if UNPRICED', async () => {
+      it('Should not launch revenue auction if RTokenAsset.price() reverts', async () => {
         // After oracleTimeout it should still launch auction for RToken
         await advanceTime(DECAY_DELAY.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
 
-        // After priceTimeout it should not buy RToken
+        // After priceTimeout it should not buy RToken anymore
         await advanceTime(PRICE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(
           rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
-        ).to.be.revertedWith('buy asset price unknown')
+        ).to.be.revertedWith('invalid price')
       })
 
       it('Should not launch revenue auction if 0 erc20s len', async () => {
@@ -1115,10 +1115,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(compToken.address)).to.be.revertedWith(
           'cannot settle yet'
         )
-
-        // Nothing occurs if we attempt to settle for a token that is not being traded
-        await expect(rsrTrader.settleTrade(aaveToken.address)).to.not.emit
-        await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
 
         // Advance time till auction ended
         await advanceTime(config.batchAuctionLength.add(100).toString())

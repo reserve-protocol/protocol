@@ -58,6 +58,8 @@ The protocol requires an asset in order to handle an ERC20. Some assets are `col
 
 Pure assets provide USD pricing information only.
 
+All assets are expected to have non-reverting `price()` functions, with the exception of RTokenAsset. The consequence of `RTokenAsset.price()` reverting is to halt most forms of revenue trading but allow other functionality to continue.
+
 #### Collateral
 
 The more interesting type of asset is a _collateral_ asset. A collateral asset provides additional `refPerTok` and `targetPerRef` exchange rates that allow revenue to be measured against some external unit, called the "target unit". These contracts maintain an overall `status() view returns (CollateralStatus)` enum that the BasketHandler uses to define an overall notion of basket status. If the collateral ever becomes DISABLED, the BasketHandler will swap it out for a SOUND collateral in the appropriate quantity.

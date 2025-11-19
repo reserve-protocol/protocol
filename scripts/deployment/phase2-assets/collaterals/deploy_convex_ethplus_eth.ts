@@ -28,6 +28,7 @@ import {
 } from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // This file specifically deploys CurveAppreciatingRTokenSelfReferentialCollateral Plugin for ETH+/ETH
+// DEPRECATED
 
 async function main() {
   // ==== Read Configuration ====

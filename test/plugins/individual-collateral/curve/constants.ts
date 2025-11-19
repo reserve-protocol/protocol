@@ -26,7 +26,7 @@ export const DAI_ORACLE_ERROR = fp('0.0025')
 
 // USDC
 export const USDC_USD_FEED = networkConfig['1'].chainlinkFeeds.USDC!
-export const USDC_ORACLE_TIMEOUT = bn('86400')
+export const USDC_ORACLE_TIMEOUT = bn('82800') // 23h
 export const USDC_ORACLE_ERROR = fp('0.0025')
 
 // USDT
@@ -54,7 +54,7 @@ export const BTC_USD_ORACLE_ERROR = fp('0.005')
 
 // WETH
 export const WETH_USD_FEED = networkConfig['1'].chainlinkFeeds.ETH!
-export const WETH_ORACLE_TIMEOUT = bn('86400')
+export const WETH_ORACLE_TIMEOUT = bn('3600')
 export const WETH_ORACLE_ERROR = fp('0.005')
 
 // MIM

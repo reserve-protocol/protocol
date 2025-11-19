@@ -56,7 +56,7 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade, getTrade, dutchBuyAmount } from './utils/trades'
 import { withinTolerance } from './utils/matchers'
-import { expectRTokenPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
 
@@ -436,7 +436,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.refreshBasket())
+        expect(await basketHandler.refreshBasket())
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
@@ -1033,8 +1033,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-        // RToken unpriced
-        await expectUnpriced(rTokenAsset.address)
+        // RTokenAsset.price() should revert
+        await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
 
         // Attempt to recollateralize (no assets to sell)
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
@@ -1045,7 +1045,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Nothing changes until situation is resolved
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        await expectUnpriced(rTokenAsset.address)
+        await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
       })
 
       context('Should successfully recollateralize after governance basket switch', () => {
@@ -1154,9 +1154,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
             'cannot settle yet'
           )
-
-          // Nothing occurs if we attempt to settle for a token that is not being traded
-          await expect(backingManager.settleTrade(token3.address)).to.not.emit
 
           // Advance time till auction ended
           await advanceTime(config.batchAuctionLength.add(100).toString())
@@ -3601,9 +3598,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
                 .connect(addr1)
                 .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
             ).to.emit(trade, 'TrustedFillCreated')
-
-            // Use cached price at creation
-            const bidAmount = await trade.bidAmount(await getLatestBlockTimestamp())
 
             // Verify active trusted fill is set
             const activeFill = await trade.activeTrustedFill()

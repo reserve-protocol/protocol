@@ -9,7 +9,7 @@ export const USDe_HOLDER = '0x42862F48eAdE25661558AFE0A630b132038553D0'
 export const sUSDe_HOLDER = '0x4139cDC6345aFFbaC0692b43bed4D059Df3e6d65'
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week
-export const ORACLE_TIMEOUT = bn(86400) // 24h
+export const ORACLE_TIMEOUT = bn(82800) // 23 hrs
 export const ORACLE_ERROR = fp('0.005') // 0.5%
 export const DEFAULT_THRESHOLD = fp('0.05') // 5%
 export const DELAY_UNTIL_DEFAULT = bn(259200) // 72h
