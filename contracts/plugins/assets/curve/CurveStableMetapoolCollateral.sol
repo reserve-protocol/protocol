@@ -10,9 +10,6 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 
 /**
  * @title CurveStableMetapoolCollateral
- *
- * @notice DEPRECATED in 4.0.0
- *
  *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  DO NOT involve RTokens, such as LUSD-fraxBP or MIM-3CRV.
  *

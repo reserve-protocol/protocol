@@ -172,7 +172,7 @@ contract Upgrade4_2_0 is Versioned {
 
         if (_mainnet) {
             // 4.2.0 deployer (mainnet)
-            deployer = IDeployer(0x40cd76E78Af4aAc744D1FA443359e7e26c982F9D);
+            deployer = IDeployer(0x08638a2efE63d3A4E5056860E4292B6C059D3BaD);
 
             // DAO registries (mainnet)
             registries = IDeployer.Registries(
@@ -195,7 +195,7 @@ contract Upgrade4_2_0 is Versioned {
             }
         } else {
             // 4.2.0 deployer (base)
-            deployer = IDeployer(0x9FF9c353136e86EFe02ADD177E7c9769f8a5A77F);
+            deployer = IDeployer(0x5574eD38ceAFB537b274E3562414DCA057d8Ff41);
 
             // DAO registries (base)
             registries = IDeployer.Registries(

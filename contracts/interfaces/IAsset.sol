@@ -26,7 +26,7 @@ interface IAsset is IRewardable {
     /// @dev Called immediately after deployment, before use
     function refresh() external;
 
-    /// Should not revert (RTokenAsset exempt)
+    /// Should not revert
     /// low should be nonzero if the asset could be worth selling
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
