@@ -18,8 +18,6 @@ This release implements a global lock on `Main` (by inherinting from `GlobalReen
 
 This release prepares the core protocol for veRSR through the introduction of 3 registries (`DAOFeeRegistry`, `AssetPluginRegistry`, and `VersionRegistry`) and through restricting component upgrades to be handled by `Main`, where upgrade constraints can be enforced.
 
-RTokenAsset.price() now reverts if the RTokenAsset is unpriced.
-
 The release also expands collateral decimal support from 18 to 21, with some caveats about minimum token value. See [docs/solidity-style.md](./docs/solidity-style.md#Collateral-decimals) for more details.
 
 Finally, it adds resistance to toxic issuance by charging more when the collateral is under peg.

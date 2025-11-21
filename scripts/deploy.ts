@@ -72,6 +72,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_convex_paypool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
+      'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
+      'phase2-assets/collaterals/deploy_convex_ethplus_eth.ts',
       'phase2-assets/collaterals/deploy_dsr_sdai.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',

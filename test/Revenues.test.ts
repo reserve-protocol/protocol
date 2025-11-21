@@ -636,18 +636,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should not launch revenue auction if RTokenAsset.price() reverts', async () => {
+      it('Should launch revenue auction if UNPRICED', async () => {
         // After oracleTimeout it should still launch auction for RToken
         await advanceTime(DECAY_DELAY.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
 
-        // After priceTimeout it should not buy RToken anymore
+        // After priceTimeout it should not buy RToken
         await advanceTime(PRICE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(
           rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
-        ).to.be.revertedWith('invalid price')
+        ).to.be.revertedWith('buy asset price unknown')
       })
 
       it('Should not launch revenue auction if 0 erc20s len', async () => {

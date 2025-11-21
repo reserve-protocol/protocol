@@ -308,13 +308,11 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(collateral0.address, bn('0'))
       await setOraclePrice(collateral1.address, bn('0'))
 
-      // Should be unpriced now (except RTokenAsset)
+      // Should be unpriced now
       await expectUnpriced(rsrAsset.address)
       await expectUnpriced(compAsset.address)
       await expectUnpriced(aaveAsset.address)
-
-      // RTokenAsset.price() should revert instead
-      await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
+      await expectUnpriced(rTokenAsset.address)
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
@@ -449,15 +447,15 @@ describe('Assets contracts #fast', () => {
       await invalidFiatCollateral.setSimplyRevert(true)
       await expect(invalidFiatCollateral.price()).to.be.revertedWith('errormsg')
 
-      // RTokenAsset.price() should pass through the same error for its revert
-      await expect(rTokenAsset.price()).to.be.revertedWith('errormsg')
+      // Check RToken unpriced
+      await expectUnpriced(rTokenAsset.address)
 
       // Runnning out of gas
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
-      // RTokenAsset.price() should revert with OOG
-      await expect(rTokenAsset.price()).to.be.revertedWithoutReason
+      //  Check RToken price reverts
+      await expect(rTokenAsset.price()).to.be.reverted
     })
 
     it('Should return latestPrice() for RTokenAsset correctly', async () => {
@@ -526,7 +524,6 @@ describe('Assets contracts #fast', () => {
 
     it('Regression test -- Should handle unpriced collateral for RTokenAsset', async () => {
       // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
-      // change in behavior on 11/12/2025: now should revert instead of being unpriced
 
       // Swap one of the collaterals for an invalid one
       const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
@@ -550,8 +547,8 @@ describe('Assets contracts #fast', () => {
       // Set unpriced collateral
       await invalidFiatCollateral.setUnpriced(true)
 
-      // Check RTokenAsset.price() reverts
-      await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
+      // Check RToken is unpriced
+      await expectUnpriced(rTokenAsset.address)
 
       // Oracle price update should revert
       await expect(rTokenAsset.forceUpdatePrice()).to.be.revertedWith('invalid price')

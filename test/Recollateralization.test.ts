@@ -56,7 +56,7 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade, getTrade, dutchBuyAmount } from './utils/trades'
 import { withinTolerance } from './utils/matchers'
-import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
 
@@ -1033,8 +1033,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-        // RTokenAsset.price() should revert
-        await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
+        // RToken unpriced
+        await expectUnpriced(rTokenAsset.address)
 
         // Attempt to recollateralize (no assets to sell)
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
@@ -1045,7 +1045,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Nothing changes until situation is resolved
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        await expect(rTokenAsset.price()).to.be.revertedWith('invalid price')
+        await expectUnpriced(rTokenAsset.address)
       })
 
       context('Should successfully recollateralize after governance basket switch', () => {

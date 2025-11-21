@@ -99,7 +99,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     /// Process some number of tokens
     /// If the tokenToBuy is included in erc20s, RevenueTrader will distribute it at end of the tx
-    /// @dev If tokenToBuy is the RToken revenue processing halts if RTokenAsset.price() reverts
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
     /// @custom:interaction not strictly RCEI; nonReentrant

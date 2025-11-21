@@ -717,14 +717,11 @@ describe('Facade + FacadeMonitor contracts', () => {
           expect(canStart[i]).to.equal(false)
           expect(surpluses[i]).to.equal(0)
         }
-
-        if (erc20s[i] != rToken.address) {
-          const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
-          const [low] = await asset.price()
-          expect(minTradeAmounts[i]).to.equal(
-            low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
-          ) // 1% oracleError
-        }
+        const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
+        const [low] = await asset.price()
+        expect(minTradeAmounts[i]).to.equal(
+          low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
+        ) // 1% oracleError
       }
 
       // Run revenue auctions via multicall
