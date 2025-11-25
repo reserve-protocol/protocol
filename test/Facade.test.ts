@@ -686,7 +686,7 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return revenue + chain into ActFacet.runRevenueAuctions', async () => {
-      // Set low to 0 == revenueOverview() should not revert
+      // Setting low price to 0 should not cause revenueOverview() to revert
       const minTradeVolume = await rsrTrader.minTradeVolume()
       const auctionLength = await broker.dutchAuctionLength()
       const tokenSurplus = bn('0.5e18')

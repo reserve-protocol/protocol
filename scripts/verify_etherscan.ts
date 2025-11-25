@@ -91,7 +91,6 @@ async function main() {
       'collateral-plugins/verify_aerodrome_usdc_eusd.ts',
       'collateral-plugins/verify_aerodrome_weth_aero.ts',
       'collateral-plugins/verify_aerodrome_mog_weth.ts',
-      'collateral-plugins/verify_aerodrome_usdz_usdc.ts',
       'collateral-plugins/verify_aerodrome_weth_cbbtc.ts',
       'collateral-plugins/verify_aerodrome_weth_well.ts',
       'collateral-plugins/verify_aerodrome_weth_degen.ts',

@@ -58,6 +58,7 @@ async function main() {
 
   // Phase 2 - Assets/Collateral
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
+    // Ethereum
     scripts.push(
       'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
@@ -93,7 +94,8 @@ async function main() {
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
       'phase2-assets/collaterals/deploy_sky_susds.ts',
-      'phase2-assets/collaterals/deploy_origin_oeth.ts'
+      'phase2-assets/collaterals/deploy_origin_oeth.ts',
+      'phase2-assets/collaterals/deploy_pyusd.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -110,7 +112,6 @@ async function main() {
       'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_aero.ts',
       'phase2-assets/collaterals/deploy_aerodrome_mog_weth.ts',
-      'phase2-assets/collaterals/deploy_aerodrome_usdz_usdc.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_cbbtc.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_well.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_degen.ts',
@@ -118,20 +119,8 @@ async function main() {
       'phase2-assets/collaterals/deploy_origin_eth.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    // Arbitrum One
-    scripts.push(
-      'phase2-assets/0_setup_deployments.ts',
-      'phase2-assets/1_deploy_assets.ts',
-      'phase2-assets/2_deploy_collateral.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdt_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
-      'phase2-assets/collaterals/deploy_usdm.ts',
-      'phase2-assets/assets/deploy_arb.ts'
-    )
+    // Arbitrum (deprecated)
+    throw new Error('Arbitrum is deprecated')
   }
 
   // ===============================================

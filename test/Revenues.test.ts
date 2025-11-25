@@ -406,7 +406,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       const maxDestinations = 100
 
       for (let i = 0; i < maxDestinations - 2; i++) {
-        const usr: Wallet = await ethers.Wallet.createRandom()
+        const usr: Wallet = ethers.Wallet.createRandom()
         await distributor
           .connect(owner)
           .setDistribution(usr.address, { rTokenDist: bn(4000), rsrDist: bn(6000) })
@@ -1115,10 +1115,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(compToken.address)).to.be.revertedWith(
           'cannot settle yet'
         )
-
-        // Nothing occurs if we attempt to settle for a token that is not being traded
-        await expect(rsrTrader.settleTrade(aaveToken.address)).to.not.emit
-        await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
 
         // Advance time till auction ended
         await advanceTime(config.batchAuctionLength.add(100).toString())

@@ -72,6 +72,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     }
 
     /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
+    /// @dev Only intended to unstick tokens, not to support recollateralization efforts
     /// @custom:interaction
     function returnTokens(IERC20[] memory erc20s)
         external

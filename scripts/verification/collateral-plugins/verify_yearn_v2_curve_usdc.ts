@@ -54,7 +54,7 @@ async function main() {
           [networkConfig[chainId].chainlinkFeeds.USDC],
           [networkConfig[chainId].chainlinkFeeds.crvUSD],
         ],
-        oracleTimeouts: [['86400'], ['86400']],
+        oracleTimeouts: [['82800'], ['86400']],
         oracleErrors: [[fp('0.0025').toString()], [fp('0.005').toString()]],
         lpToken: YVUSDC_LP_TOKEN,
       },
