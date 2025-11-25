@@ -50,15 +50,6 @@ interface Params {
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
-    // await resetFork(hre, Number(process.env.FORK_BLOCK))
-
-    const chainId = await getChainId(hre)
-
-    // make sure config exists
-    if (!networkConfig[chainId]) {
-      throw new Error(`Missing network configuration for ${hre.network.name}`)
-    }
-
     // only run locally
     if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
       throw new Error('Only run this on a local fork')
@@ -260,7 +251,9 @@ task('run-validations', 'Runs all validations')
     )
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
-    const chainId = await getChainId(hre)
+    const network = useEnv('FORK_NETWORK').toLowerCase()
+    const chainId = network === 'base' ? '8453' : '1'
+
     const whales: Whales = getWhalesFile(chainId).tokens
 
     /*
@@ -303,7 +296,8 @@ const runCheck_stakeUnstake = async (
   stRSR: StRSRP1Votes,
   main: IMain
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales = getWhalesFile(chainId).tokens
   // get RSR
   const stakeAmount = fp('3e6')

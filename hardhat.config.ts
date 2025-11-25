@@ -49,6 +49,14 @@ const config: HardhatUserConfig = {
             return forking
           })()
         : undefined,
+      // chainId: 8453, // for Base fork testing
+      chains: {
+        8453: {
+          hardforkHistory: {
+            cancun: 11188936, // Base Cancun activation block
+          },
+        },
+      },
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
@@ -132,10 +140,6 @@ const config: HardhatUserConfig = {
   },
   solidity: {
     compilers: [
-      {
-        version: '0.8.19',
-        settings,
-      },
       {
         version: '0.8.28',
         settings: {

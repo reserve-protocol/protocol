@@ -91,7 +91,7 @@ async function main() {
       oracleError: oracleError.toString(),
       erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24h hr,
+      oracleTimeout: '82800', // 23 hr,
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.01').add(oracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -99,7 +99,7 @@ async function main() {
     revenueHiding.toString()
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(

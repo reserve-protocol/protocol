@@ -19,10 +19,15 @@ export interface ITokens {
   MIM?: string
   crvUSD?: string
   aDAI?: string
+  saDAI?: string // our wrapper
   aUSDC?: string
+  saUSDC?: string // our wrapper
   aUSDT?: string
+  saUSDT?: string // our wrapper
   aBUSD?: string
+  saBUSD?: string // our wrapper
   aUSDP?: string
+  saUSDP?: string // our wrapper
   aWETH?: string
   aWBTC?: string
   aCRV?: string
@@ -71,6 +76,7 @@ export interface ITokens {
   wcUSDCv3?: string
   cUSDbCv3?: string
   cUSDTv3?: string
+  wcUSDTv3?: string
   ONDO?: string
   sFRAX?: string
   sDAI?: string
@@ -133,6 +139,23 @@ export interface ITokens {
   // Sky
   USDS?: string
   sUSDS?: string
+
+  // Convex
+  wcvx3Pool?: string
+  wcvxPayPool?: string
+  wcvxCrvUSDUSDC?: string
+  wcvxCrvUSDUSDT?: string
+  wcvxeUSDFRAXBP?: string
+  wcvxETHPlusETH?: string
+
+  // Aerodrome
+  waeroUSDCeUSD?: string
+  waeroWETHAERO?: string
+  waeroMOGWETH?: string
+  waeroUSDzUSDC?: string
+  waeroWETHcbBTC?: string
+  waeroWETHWELL?: string
+  waeroWETHDEGEN?: string
 
   // Ether.fi
   weETH?: string
@@ -228,9 +251,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       crvUSD: '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
+      saDAI: '0x717AC7A53C6a6a5529175dff7fCc76858436f8c0',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
+      saUSDC: '0xa8157BF67Fd7BcDCC139CB9Bf1bd7Eb921A779D3',
       aUSDT: '0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811',
+      saUSDT: '0x684AA4faf9b07d5091B88c6e0a8160aCa5e6d17b',
       aBUSD: '0xA361718326c15715591c299427c62086F69923D9',
+      saBUSD: '0xf3840c4B214699F94fBB69ad3922f44176c93658',
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
       aEthUSDC: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
@@ -271,8 +298,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       pxETH: '0x04C154b66CB340F3Ae24111CC767e0184Ed00Cc6',
       apxETH: '0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
-      wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a',
+      wcUSDCv3: '0x27F2f159Fe990Ba83D57f39Fd69661764BEbf37a', // our wrapper
       cUSDTv3: '0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840',
+      wcUSDTv3: '0xEB74EC1d4C1DAB412D5d6674F6833FD19d3118Ce', // our wrapper
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
@@ -300,6 +328,18 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
       sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
       wOETH: '0xDcEe70654261AF21C44c093C300eD3Bb97b78192',
+      wcvx3Pool: '0x24CDc6b4Edd3E496b7283D94D93119983A61056a', // our wrapper
+      wcvxPayPool: '0x511daB8150966aFfE15F0a5bFfBa7F4d2b62DEd4', // our wrapper
+      wcvxCrvUSDUSDC: '0x6ad24C0B8fD4B594C6009A7F7F48450d9F56c6b8', // our wrapper
+      wcvxCrvUSDUSDT: '0x5d1B749bA7f689ef9f260EDC54326C48919cA88b', // our wrapper
+      wcvxeUSDFRAXBP: '0x81697e25DFf8564d9E0bC6D27edb40006b34ea2A', // our wrapper
+      wcvxETHPlusETH: '0xDbC0cE2321B76D3956412B36e9c0FA9B0fD176E7', // our wrapper
+      maUSDT: '0x9FD7165AEf369913258F4C8B19c9C350C2dE63cC', // our wrapper
+      maUSDC: '0x6Bf3356923E6D611b8352B4895135e1Edfcf217B', // our wrapper
+      maDAI: '0x9E5EC103944c19D7E7aBfb2947a865d51bc6947C', // our wrapper
+      maWBTC: '0x1F423dC943738b9c31cB3d96c2A744dd7502593d', // our wrapper
+      maWETH: '0xB7c4c4a2B7453E10d7e4e23Fa8E8D2335d09afab', // our wrapper
+      maStETH: '0xAdc10669354aAd42A581E6F6cC8990B540AA5689', // our wrapper
       weETH: '0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee',
       eETH: '0x35fA164735182de50811E8e2E824cFb9B6118ac2',
       KING: '0x8F08B70456eb22f6109F57b8fafE862ED28E6040',
@@ -573,6 +613,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
       WELL: '0xA88594D404727625A9437C3f886C7643872296AE',
       DEGEN: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',
+      waeroUSDCeUSD: '0xDB5b8cead52f77De0f6B5255f73F348AAf2CBb8D',
+      waeroWETHAERO: '0x65f2c1b253a3E45670aDD259C9688Edf1A3b814d',
+      waeroMOGWETH: '0xfaAC26b279338dF8cF56B11A572617f674A2F69C',
+      waeroUSDzUSDC: '0x246Df11B856E9fD6120494F168475e1b41321c61',
+      waeroWETHcbBTC: '0x4BD08a771CdAbA5333CAc6F20322eD7d72b6cBfA',
+      waeroWETHWELL: '0x1F599F8657CAA38Ee825e4E2d64F695749E2a161',
+      waeroWETHDEGEN: '0xA762F790a31654D9AeF7DE550A473A0F5621E4F1',
       bsdETH: '0xcb327b99ff831bf8223cced12b1338ff3aa322ff',
     },
     chainlinkFeeds: {

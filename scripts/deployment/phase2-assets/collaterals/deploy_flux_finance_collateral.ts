@@ -49,14 +49,14 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: fUsdc.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 24 hr
+    oracleTimeout: '82800', // 23 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
     revenueHiding: revenueHiding.toString(),
   })
   let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDC = fUsdcCollateral
@@ -81,7 +81,7 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDT = fUsdtCollateral

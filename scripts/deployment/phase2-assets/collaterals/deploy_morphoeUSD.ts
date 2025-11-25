@@ -15,7 +15,6 @@ import {
 import {
   eUSD_ORACLE_TIMEOUT,
   eUSD_ORACLE_ERROR,
-  eUSD_USD_FEED,
   PRICE_TIMEOUT,
   DELAY_UNTIL_DEFAULT,
 } from '../../../../test/plugins/individual-collateral/meta-morpho/constants'
@@ -59,7 +58,7 @@ async function main() {
     ).deploy(
       {
         priceTimeout: PRICE_TIMEOUT.toString(),
-        chainlinkFeed: eUSD_USD_FEED,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.eUSD,
         oracleError: eUSD_ORACLE_ERROR.toString(),
         erc20: networkConfig[chainId].tokens.meUSD,
         maxTradeVolume: fp('1e6').toString(), // 17m vault
@@ -73,7 +72,7 @@ async function main() {
     await collateral.deployed()
 
     console.log(`Deployed meUSD to ${hre.network.name} (${chainId}): ${collateral.address}`)
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     assetCollDeployments.collateral.meUSD = collateral.address

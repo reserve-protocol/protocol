@@ -57,18 +57,23 @@ async function main() {
 
   /********  Deploy Aave V3 pyUSD ERC20  **************************/
 
-  const erc20 = await StaticATokenFactory.deploy(
-    networkConfig[chainId].AAVE_V3_POOL!,
-    networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
-  )
-  await erc20.deployed()
-  await (
-    await erc20.initialize(
-      networkConfig[chainId].tokens.aEthPyUSD!,
-      'Static Aave Ethereum pyUSD',
-      'saEthPyUSD'
+  let saEthPyUSD = networkConfig[chainId].tokens.saEthPyUSD!
+
+  if (!saEthPyUSD) {
+    const erc20 = await StaticATokenFactory.deploy(
+      networkConfig[chainId].AAVE_V3_POOL!,
+      networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
     )
-  ).wait()
+    await erc20.deployed()
+    await (
+      await erc20.initialize(
+        networkConfig[chainId].tokens.aEthPyUSD!,
+        'Static Aave Ethereum pyUSD',
+        'saEthPyUSD'
+      )
+    ).wait()
+    saEthPyUSD = erc20.address
+  }
 
   /********  Deploy Aave V3 pyUSD collateral plugin  **************************/
 
@@ -77,7 +82,7 @@ async function main() {
       priceTimeout: priceTimeout,
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.pyUSD!,
       oracleError: PYUSD_ORACLE_ERROR,
-      erc20: erc20.address,
+      erc20: saEthPyUSD,
       maxTradeVolume: PYUSD_MAX_TRADE_VOLUME,
       oracleTimeout: PYUSD_ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
@@ -87,14 +92,14 @@ async function main() {
     revenueHiding
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
     `Deployed Aave V3 pyUSD collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.erc20s.saEthPyUSD = erc20.address
+  assetCollDeployments.erc20s.saEthPyUSD = saEthPyUSD
   assetCollDeployments.collateral.saEthPyUSD = collateral.address
   deployedCollateral.push(collateral.address.toString())
 

@@ -44,8 +44,8 @@ jobs:
       - run: yarn lint
       - run: pip3 install solc-select slither-analyzer
       - run: pip3 install slitherin
-      - run: solc-select install 0.8.19
-      - run: solc-select use 0.8.19
+      - run: solc-select install 0.8.28
+      - run: solc-select use 0.8.28
       - run: yarn slither
 
   plugin-unit-tests:

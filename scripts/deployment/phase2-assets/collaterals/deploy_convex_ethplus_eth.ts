@@ -56,23 +56,28 @@ async function main() {
 
   /********  Deploy Convex Appreciating RToken Collateral for ETH+/ETH  **************************/
 
-  const ConvexStakingWrapperFactory = await hre.ethers.getContractFactory('ConvexStakingWrapper')
-
   const CurveAppreciatingRTokenSelfReferentialCollateralFactory =
     await hre.ethers.getContractFactory('CurveAppreciatingRTokenSelfReferentialCollateral')
 
-  const wPool = await ConvexStakingWrapperFactory.deploy()
-  await wPool.deployed()
-  await (await wPool.initialize(ETHPLUS_BP_POOL_ID)).wait()
+  let erc20 = networkConfig[chainId].tokens.wcvxETHPlusETH
 
-  console.log(
-    `Deployed wrapper for Convex Stable ETH+/ETH on ${hre.network.name} (${chainId}): ${wPool.address} `
-  )
+  if (!erc20) {
+    const ConvexStakingWrapperFactory = await hre.ethers.getContractFactory('ConvexStakingWrapper')
+
+    const wPool = await ConvexStakingWrapperFactory.deploy()
+    await wPool.deployed()
+    await (await wPool.initialize(ETHPLUS_BP_POOL_ID)).wait()
+
+    console.log(
+      `Deployed wrapper for Convex Stable ETH+/ETH on ${hre.network.name} (${chainId}): ${wPool.address} `
+    )
+    erc20 = wPool.address
+  }
 
   const collateral = <CurveAppreciatingRTokenSelfReferentialCollateral>(
     await CurveAppreciatingRTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
       {
-        erc20: wPool.address,
+        erc20: erc20,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS,
@@ -96,7 +101,7 @@ async function main() {
     )
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -104,7 +109,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxETHPlusETH = collateral.address
-  assetCollDeployments.erc20s.cvxETHPlusETH = wPool.address
+  assetCollDeployments.erc20s.cvxETHPlusETH = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

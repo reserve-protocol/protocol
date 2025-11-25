@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 // solhint-disable-next-line max-line-length
 // Based on OpenZeppelin Upgradeable Contracts (last updated v5.1.0) (utils/ReentrancyGuardUpgradeable.sol)

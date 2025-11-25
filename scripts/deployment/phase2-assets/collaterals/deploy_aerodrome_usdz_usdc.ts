@@ -59,31 +59,35 @@ async function main() {
   /********  Deploy Aerodrome Stable Pool for USDz-USDC  **************************/
 
   let collateral: AerodromeStableCollateral
-  let wusdzusdc: AerodromeGaugeWrapper
+  let erc20 = networkConfig[chainId].tokens.waeroUSDzUSDC
 
   // Only for Base
   if (baseL2Chains.includes(hre.network.name)) {
     const AerodromeStableCollateralFactory = await hre.ethers.getContractFactory(
       'AerodromeStableCollateral'
     )
-    const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
 
-    // Deploy gauge wrapper
-    const pool = <IAeroPool>await ethers.getContractAt('IAeroPool', AERO_USDz_USDC_POOL)
-    wusdzusdc = <AerodromeGaugeWrapper>(
-      await AerodromeGaugeWrapperFactory.deploy(
-        pool.address,
-        'w' + (await pool.name()),
-        'w' + (await pool.symbol()),
-        AERO,
-        AERO_USDz_USDC_GAUGE
+    if (!erc20) {
+      const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
+
+      // Deploy gauge wrapper
+      const pool = <IAeroPool>await ethers.getContractAt('IAeroPool', AERO_USDz_USDC_POOL)
+      const wusdzusdc = <AerodromeGaugeWrapper>(
+        await AerodromeGaugeWrapperFactory.deploy(
+          pool.address,
+          'w' + (await pool.name()),
+          'w' + (await pool.symbol()),
+          AERO,
+          AERO_USDz_USDC_GAUGE
+        )
       )
-    )
-    await wusdzusdc.deployed()
+      await wusdzusdc.deployed()
 
-    console.log(
-      `Deployed wrapper for Aerodrome Stable USDz-USDC pool on ${hre.network.name} (${chainId}): ${wusdzusdc.address} `
-    )
+      console.log(
+        `Deployed wrapper for Aerodrome Stable USDz-USDC pool on ${hre.network.name} (${chainId}): ${wusdzusdc.address} `
+      )
+      erc20 = wusdzusdc.address
+    }
 
     const oracleError = combinedError(USDC_ORACLE_ERROR, USDz_ORACLE_ERROR) // 0.3% & 0.5%
 
@@ -91,7 +95,7 @@ async function main() {
       deployer
     ).deploy(
       {
-        erc20: wusdzusdc.address,
+        erc20: erc20,
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -114,7 +118,7 @@ async function main() {
   }
 
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -122,7 +126,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.aeroUSDzUSDC = collateral.address
-  assetCollDeployments.erc20s.aeroUSDzUSDC = wusdzusdc.address
+  assetCollDeployments.erc20s.aeroUSDzUSDC = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

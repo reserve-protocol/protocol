@@ -92,7 +92,7 @@ async function main() {
       revenueHiding.toString()
     )
     await collateral.deployed()
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     console.log(
@@ -107,24 +107,30 @@ async function main() {
     throw new Error('No Aave V3 USDT on Base')
   } else {
     // === Mainnet ===
-    await (
-      await erc20.initialize(
-        networkConfig[chainId].tokens.aEthUSDT!,
-        'Static Aave Ethereum USDT',
-        'saEthUSDT'
-      )
-    ).wait()
 
-    console.log(
-      `Deployed wrapper for Aave V3 USDT on ${hre.network.name} (${chainId}): ${erc20.address} `
-    )
+    let saEthUSDT = networkConfig[chainId].tokens.saEthUSDT!
+
+    if (!saEthUSDT) {
+      await (
+        await erc20.initialize(
+          networkConfig[chainId].tokens.aEthUSDT!,
+          'Static Aave Ethereum USDT',
+          'saEthUSDT'
+        )
+      ).wait()
+
+      console.log(
+        `Deployed wrapper for Aave V3 USDT on ${hre.network.name} (${chainId}): ${erc20.address} `
+      )
+      saEthUSDT = erc20.address
+    }
 
     const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
         oracleError: USDT_MAINNET_ORACLE_ERROR.toString(),
-        erc20: erc20.address,
+        erc20: saEthUSDT,
         maxTradeVolume: USDT_MAINNET_MAX_TRADE_VOLUME.toString(),
         oracleTimeout: USDT_MAINNET_ORACLE_TIMEOUT.toString(),
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -134,14 +140,14 @@ async function main() {
       revenueHiding.toString()
     )
     await collateral.deployed()
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
     console.log(
       `Deployed Aave V3 USDT collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
     )
 
-    assetCollDeployments.erc20s.saEthUSDT = erc20.address
+    assetCollDeployments.erc20s.saEthUSDT = saEthUSDT
     assetCollDeployments.collateral.saEthUSDT = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
