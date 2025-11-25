@@ -63,8 +63,11 @@ contract KingAsset is IAsset, Asset {
         )
     {
         // Note: "ref" in this context refers to ETH, used as intermediate pricing unit
-        uint192 ethUsdPrice = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
-        uint192 ethPerKing = _safeWrap(IKing(address(erc20)).fairValueOf(10**erc20Decimals)); // {ref/tok}
+        // {UoA/ref}
+        uint192 ethUsdPrice = chainlinkFeed.price(oracleTimeout);
+
+        // {ref/tok}
+        uint192 ethPerKing = _safeWrap(IKing(address(erc20)).fairValueOf(10**erc20Decimals));
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 p = ethUsdPrice.mul(ethPerKing);
