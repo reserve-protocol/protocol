@@ -15,6 +15,7 @@ export interface ITokens {
   TUSD?: string
   BUSD?: string
   sUSD?: string
+  RLUSD?: string
   FRAX?: string
   MIM?: string
   crvUSD?: string
@@ -35,6 +36,8 @@ export interface ITokens {
   saEthUSDC?: string
   aEthUSDT?: string
   saEthUSDT?: string
+  aEthRLUSD?: string
+  saEthRLUSD?: string
   aBasUSDC?: string
   saBasUSDC?: string
   aArbUSDCn?: string
@@ -335,6 +338,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       maWBTC: '0x1F423dC943738b9c31cB3d96c2A744dd7502593d', // our wrapper
       maWETH: '0xB7c4c4a2B7453E10d7e4e23Fa8E8D2335d09afab', // our wrapper
       maStETH: '0xAdc10669354aAd42A581E6F6cC8990B540AA5689', // our wrapper
+      RLUSD: '0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD',
+      aEthRLUSD: '0xFa82580c16A31D0c1bC632A36F82e83EfEF3Eec0',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -366,6 +371,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDe: '0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961',
       USDS: '0xfF30586cD0F29eD462364C7e81375FC0C71219b1',
       OETHETH: '0x703118C4CbccCBF2AB31913e0f8075fbbb15f563', // OETH/ETH
+      RLUSD: '0x26C46B7aD0012cA71F2298ada567dC9Af14E7f2A',
     },
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
