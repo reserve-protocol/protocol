@@ -14,6 +14,12 @@ Upon depositing ETH into the Ether.fi protocol, users receive `eETH` - a rebasin
 
 `weETH` contract: <https://etherscan.io/address/0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee>
 
+### Rewards
+
+Rewards come in the form of KING tokens, which will be distributed via an off-chain procedure and sent to the BackingManager.
+
+KING token: `https://etherscan.io/address/0x8F08B70456eb22f6109F57b8fafE862ED28E6040`
+
 ## Implementation
 
 ### Units

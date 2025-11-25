@@ -19,6 +19,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus, ZERO_ADDRESS, MAX_UINT48 } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
+  KING,
   ETH_ORACLE_ERROR,
   ETH_ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
@@ -139,7 +140,7 @@ const makeCollateralFixtureContext = (
     const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
     const eEth = (await ethers.getContractAt('ERC20Mock', EETH)) as ERC20Mock
     const weEth = (await ethers.getContractAt('IWeETH', WEETH)) as IWeETH
-    const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
+    const rewardToken = (await ethers.getContractAt('ERC20Mock', KING)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
 
     return {

@@ -137,6 +137,7 @@ export interface ITokens {
   // Ether.fi
   weETH?: string
   eETH?: string
+  KING?: string
 
   // RTokens
   eUSD?: string
@@ -301,6 +302,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wOETH: '0xDcEe70654261AF21C44c093C300eD3Bb97b78192',
       weETH: '0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee',
       eETH: '0x35fA164735182de50811E8e2E824cFb9B6118ac2',
+      KING: '0x8F08B70456eb22f6109F57b8fafE862ED28E6040',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
