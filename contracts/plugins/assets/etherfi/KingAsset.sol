@@ -67,7 +67,8 @@ contract KingAsset is IAsset, Asset {
         uint192 ethUsdPrice = chainlinkFeed.price(oracleTimeout);
 
         // {ref/tok}
-        uint192 ethPerKing = _safeWrap(IKing(address(erc20)).fairValueOf(10**erc20Decimals));
+        (uint256 ethValue, ) = IKing(address(erc20)).fairValueOf(10**erc20Decimals);
+        uint192 ethPerKing = _safeWrap(ethValue);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 p = ethUsdPrice.mul(ethPerKing);

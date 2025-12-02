@@ -43,9 +43,9 @@ async function main() {
   const kingAsset = <KingAsset>await KingAssetFactory.connect(deployer).deploy(
     priceTimeout,
     networkConfig[chainId].chainlinkFeeds.ETH!,
-    fp('0.04').toString(), // 4% Oracle error - TODO: review
+    fp('0.04').toString(), // 4% Oracle error
     networkConfig[chainId].tokens.KING!,
-    fp('1e6').toString(), // $1m
+    fp('1e5').toString(), // $100K
     ETH_ORACLE_TIMEOUT
   )
   await kingAsset.deployed()

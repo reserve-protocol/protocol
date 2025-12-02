@@ -51,7 +51,8 @@ contract UnpricedKingAssetMock is KingAsset {
         if (unpriced) return (0, FIX_MAX, 0);
 
         uint192 ethUsdPrice = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
-        uint192 ethPerKing = _safeWrap(IKing(address(erc20)).fairValueOf(10**erc20Decimals)); // {ref/tok}
+        (uint256 ethValue, ) = IKing(address(erc20)).fairValueOf(10**erc20Decimals);
+        uint192 ethPerKing = _safeWrap(ethValue); // {ref/tok}
         uint192 p = ethUsdPrice.mul(ethPerKing); // {UoA/tok}
         uint192 delta = p.mul(oracleError, CEIL);
         return (p - delta, p + delta, 0);
