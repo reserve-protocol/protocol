@@ -70,6 +70,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Register a new JIT-deployed RTokenAsset instance
+    /// NOT parallel with register()/swapRegistered():
+    ///   Can be used for initial registration OR rotation
     /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
     /// @return swapped If the asset was swapped for a previously-registered asset
     /// @custom:governance
