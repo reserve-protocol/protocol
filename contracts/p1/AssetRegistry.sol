@@ -252,18 +252,17 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             );
         }
 
-        if (address(erc20) != address(main.rToken())) {
-            AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+        AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
 
-            if (address(assetPluginRegistry) != address(0)) {
-                require(
+        if (address(assetPluginRegistry) != address(0)) {
+            require(
+                address(erc20) == address(main.rToken()) ||
                     assetPluginRegistry.isValidAsset(
                         keccak256(abi.encodePacked(this.version())),
                         address(asset)
                     ),
-                    "unsupported asset"
-                );
-            }
+                "unsupported asset"
+            );
         }
 
         if (_erc20s.contains(address(erc20))) {
