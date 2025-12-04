@@ -10,7 +10,6 @@ import {
 import {
   eUSD_ORACLE_TIMEOUT,
   eUSD_ORACLE_ERROR,
-  eUSD_USD_FEED,
   PRICE_TIMEOUT,
   DELAY_UNTIL_DEFAULT,
 } from '../../../test/plugins/individual-collateral/meta-morpho/constants'
@@ -39,7 +38,7 @@ async function main() {
     [
       {
         priceTimeout: PRICE_TIMEOUT.toString(),
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.eUSD,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.eUSD!,
         oracleError: eUSD_ORACLE_ERROR.toString(),
         erc20: networkConfig[chainId].tokens.meUSD,
         maxTradeVolume: fp('1e6').toString(),
