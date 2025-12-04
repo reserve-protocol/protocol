@@ -49,6 +49,7 @@ export interface RTokenDeployment {
   rToken: string
   governor: string
   timelock: string
+  oracle?: string // Optional (RToken oracle)
 }
 
 export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
@@ -61,6 +62,7 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
     rToken: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8', // ETH+
     governor: '0x868Fe81C276d730A1995Dc84b642E795dFb8F753',
     timelock: '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556',
+    oracle: '0xf87d2F4d42856f0B6Eae140Aaf78bF0F777e9936', // ETH+ Oracle
   },
   /*{
     rToken: '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be', // hyUSD (mainnet)
