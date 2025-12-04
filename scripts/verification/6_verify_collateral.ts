@@ -149,7 +149,7 @@ async function main() {
     )
     /********************** Verify CTokenNonFiatCollateral - cWBTC  ****************************************/
 
-    const wbtcOracleError = fp('0.02') // 2%
+    const wbtcOracleError = fp('0.005') // 0.5%
     const btcOracleError = fp('0.005') // 0.5%
     const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
