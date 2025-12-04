@@ -62,7 +62,7 @@ async function main() {
   )
 
   /********  Verify Fiat Collateral - USDbC  **************************/
-  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleTimeout = baseL2Chains.includes(hre.network.name) ? '86400' : '82800' // 24h base, 23 hr mainnet
   const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   if (baseL2Chains.includes(hre.network.name)) {

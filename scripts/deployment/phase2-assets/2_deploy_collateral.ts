@@ -77,7 +77,7 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
-  const usdcOracleTimeout = '86400'
+  const usdcOracleTimeout = baseL2Chains.includes(hre.network.name) ? '86400' : '82800' // 24h base, 23 hr mainnet
   const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   /********  Deploy Fiat Collateral - USDC  **************************/
@@ -240,7 +240,7 @@ async function main() {
       oracleError: fp('0.0025').toString(), // 0.25%
       staticAToken: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
+      oracleTimeout: usdcOracleTimeout, // 24h base, 23 hr mainnet
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -342,7 +342,7 @@ async function main() {
       oracleError: fp('0.0025').toString(), // 0.25%
       cToken: networkConfig[chainId].tokens.cUSDC,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: '86400', // 24 hr
+      oracleTimeout: usdcOracleTimeout, // 24h base, 23 hr mainnet
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h
