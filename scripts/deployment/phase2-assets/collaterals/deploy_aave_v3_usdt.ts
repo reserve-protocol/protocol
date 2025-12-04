@@ -108,7 +108,7 @@ async function main() {
   } else {
     // === Mainnet ===
 
-    let saEthUSDT = networkConfig[chainId].tokens.saEthUSDT!
+    let saEthUSDT = networkConfig[chainId].tokens.saEthUSDT
 
     if (!saEthUSDT) {
       await (

@@ -57,7 +57,7 @@ async function main() {
 
   /********  Deploy Aave V3 pyUSD ERC20  **************************/
 
-  let saEthPyUSD = networkConfig[chainId].tokens.saEthPyUSD!
+  let saEthPyUSD = networkConfig[chainId].tokens.saEthPyUSD
 
   if (!saEthPyUSD) {
     const erc20 = await StaticATokenFactory.deploy(

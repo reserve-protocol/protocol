@@ -109,7 +109,7 @@ async function main() {
   } else if (baseL2Chains.includes(hre.network.name)) {
     // === Base ===
 
-    let saBasUSDC = networkConfig[chainId].tokens.saBasUSDC!
+    let saBasUSDC = networkConfig[chainId].tokens.saBasUSDC
 
     if (!saBasUSDC) {
       await (
@@ -154,7 +154,7 @@ async function main() {
   } else {
     // === Mainnet ===
 
-    let saEthUSDC = networkConfig[chainId].tokens.saEthUSDC!
+    let saEthUSDC = networkConfig[chainId].tokens.saEthUSDC
 
     if (!saEthUSDC) {
       await (
