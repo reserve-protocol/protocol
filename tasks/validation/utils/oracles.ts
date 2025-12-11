@@ -296,13 +296,13 @@ export const validateRTokenOraclePriceChange = (
     throw new Error(`Invalid price for RToken ${rTokenAddress}`)
   }
 
-  // Check price is within 0.1% range
-  const lowerBound = priceBefore.mul(999).div(1000)
-  const upperBound = priceBefore.mul(1001).div(1000)
+  // Check price is within 0.5% range
+  const lowerBound = priceBefore.mul(995).div(1000)
+  const upperBound = priceBefore.mul(1005).div(1000)
 
   if (priceAfter.lt(lowerBound) || priceAfter.gt(upperBound)) {
     throw new Error(
-      `RToken Oracle price outside allowed 0.1% range.\n` +
+      `RToken Oracle price outside allowed 0.5% range.\n` +
         `  Price before: ${priceBefore.toString()}\n` +
         `  Price after: ${priceAfter.toString()}\n` +
         `  Allowed range: ${lowerBound.toString()} - ${upperBound.toString()}\n` +
