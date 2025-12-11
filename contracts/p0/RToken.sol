@@ -54,7 +54,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
 
-        mandate = mandate_;
+        setMandate(mandate_);
         setThrottleParams(issuanceThrottleParams_, redemptionThrottleParams_);
 
         issuanceThrottle.lastTimestamp = uint48(block.timestamp);
@@ -366,6 +366,12 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             isRedemptionThrottleGreaterByDelta(issuanceParams, redemptionParams),
             "redemption throttle too low"
         );
+    }
+
+    function setMandate(string calldata mandate_) public governance {
+        require(bytes(mandate_).length != 0, "mandate empty");
+        emit MandateSet(mandate, mandate_);
+        mandate = mandate_;
     }
 
     // === Private ===

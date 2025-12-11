@@ -69,7 +69,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     ) external initializer {
         require(bytes(name_).length != 0, "name empty");
         require(bytes(symbol_).length != 0, "symbol empty");
-        require(bytes(mandate_).length != 0, "mandate empty");
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
@@ -79,7 +78,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         backingManager = main_.backingManager();
         furnace = main_.furnace();
 
-        mandate = mandate_;
+        setMandate(mandate_);
         setThrottleParams(issuanceThrottleParams_, redemptionThrottleParams_);
 
         issuanceThrottle.lastTimestamp = uint48(block.timestamp);
@@ -492,6 +491,12 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             isRedemptionThrottleGreaterByDelta(issuanceParams, redemptionParams),
             "redemption throttle too low"
         );
+    }
+
+    function setMandate(string calldata mandate_) public governance {
+        require(bytes(mandate_).length != 0, "mandate empty");
+        emit MandateSet(mandate, mandate_);
+        mandate = mandate_;
     }
 
     // === Private Helpers ===
