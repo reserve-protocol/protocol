@@ -6,6 +6,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { BigNumber } from 'ethers'
 import { AggregatorV3Interface } from '@typechain/index'
 import { ONE_ADDRESS } from '../../../common/constants'
+import { MAINNET_DEPLOYMENTS, BASE_DEPLOYMENTS, RTokenDeployment, OracleConfig } from './constants'
 
 export const overrideOracle = async (
   hre: HardhatRuntimeEnvironment,
@@ -268,4 +269,60 @@ export const setOraclePrice = async (
   }
 
   await oracle.updateAnswer(value)
+}
+
+export const getRTokenOracle = (rTokenAddress: string): OracleConfig | undefined => {
+  const allDeployments: RTokenDeployment[] = [...MAINNET_DEPLOYMENTS, ...BASE_DEPLOYMENTS]
+  const deployment = allDeployments.find(
+    (d) => d.rToken.toLowerCase() === rTokenAddress.toLowerCase()
+  )
+  return deployment?.oracle
+}
+
+export const getRTokenOraclePrice = async (
+  hre: HardhatRuntimeEnvironment,
+  oracleAddress: string
+): Promise<BigNumber> => {
+  // Try Chainlink interface first
+  try {
+    const oracle = await hre.ethers.getContractAt('AggregatorV3Interface', oracleAddress)
+    const roundData = await oracle.latestRoundData()
+    return roundData.answer
+  } catch {
+    // Fallback to price() interface
+    const oracle = await hre.ethers.getContractAt(
+      ['function price() external view returns (uint256)'],
+      oracleAddress
+    )
+    return await oracle.price()
+  }
+}
+
+export const validateRTokenOraclePriceChange = (
+  priceBefore: BigNumber,
+  priceAfter: BigNumber,
+  rTokenAddress: string,
+  threshold: number
+): void => {
+  if (priceBefore.isZero()) {
+    throw new Error(`Invalid price for RToken ${rTokenAddress}`)
+  }
+
+  // Calculate bounds (e.g., 0.5% -> 9950/10000, 1.25% -> 9875/10000)
+  const lowerMultiplier = 10000 - threshold * 100
+  const upperMultiplier = 10000 + threshold * 100
+  const lowerBound = priceBefore.mul(lowerMultiplier).div(10000)
+  const upperBound = priceBefore.mul(upperMultiplier).div(10000)
+
+  if (priceAfter.lt(lowerBound) || priceAfter.gt(upperBound)) {
+    throw new Error(
+      `RToken Oracle price outside allowed ${threshold}% range.\n` +
+        `  Price before: ${priceBefore.toString()}\n` +
+        `  Price after: ${priceAfter.toString()}\n` +
+        `  Allowed range: ${lowerBound.toString()} - ${upperBound.toString()}\n` +
+        `  RToken: ${rTokenAddress}`
+    )
+  }
+
+  console.log(`✅ RToken Oracle price validation passed!\n`)
 }
