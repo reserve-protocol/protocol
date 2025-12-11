@@ -58,16 +58,17 @@ async function main() {
   const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
 
   const StaticATokenFactory = await hre.ethers.getContractFactory('StaticATokenV3LM')
-  const erc20 = await StaticATokenFactory.deploy(
-    networkConfig[chainId].AAVE_V3_POOL!,
-    networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
-  )
-  await erc20.deployed()
 
   /********  Deploy Aave V3 USDC wrapper  **************************/
 
   if (arbitrumL2Chains.includes(hre.network.name)) {
     // === Arbitrum ===
+
+    const erc20 = await StaticATokenFactory.deploy(
+      networkConfig[chainId].AAVE_V3_POOL!,
+      networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
+    )
+    await erc20.deployed()
 
     await (
       await erc20.initialize(
@@ -109,9 +110,15 @@ async function main() {
   } else if (baseL2Chains.includes(hre.network.name)) {
     // === Base ===
 
-    let saBasUSDC = networkConfig[chainId].tokens.saBasUSDC!
+    let saBasUSDC = networkConfig[chainId].tokens.saBasUSDC
 
     if (!saBasUSDC) {
+      const erc20 = await StaticATokenFactory.deploy(
+        networkConfig[chainId].AAVE_V3_POOL!,
+        networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
+      )
+      await erc20.deployed()
+
       await (
         await erc20.initialize(
           networkConfig[chainId].tokens.aBasUSDC!,
@@ -154,9 +161,15 @@ async function main() {
   } else {
     // === Mainnet ===
 
-    let saEthUSDC = networkConfig[chainId].tokens.saEthUSDC!
+    let saEthUSDC = networkConfig[chainId].tokens.saEthUSDC
 
     if (!saEthUSDC) {
+      const erc20 = await StaticATokenFactory.deploy(
+        networkConfig[chainId].AAVE_V3_POOL!,
+        networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
+      )
+      await erc20.deployed()
+
       await (
         await erc20.initialize(
           networkConfig[chainId].tokens.aEthUSDC!,

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { networkConfig } from '../../../../common/configuration'
+import { baseL2Chains, networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
@@ -64,7 +64,7 @@ async function main() {
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
-  const usdcOracleTimeout = '82800' // 23 hr
+  const usdcOracleTimeout = baseL2Chains.includes(hre.network.name) ? '86400' : '82800' // 24h base, 23 hr mainnet
   const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
@@ -74,7 +74,7 @@ async function main() {
       oracleError: usdcOracleError.toString(),
       erc20: erc20,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: usdcOracleTimeout, // 24h hr,
+      oracleTimeout: usdcOracleTimeout, // 24h base, 23 hr mainnet
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h

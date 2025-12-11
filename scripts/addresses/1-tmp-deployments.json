@@ -13,10 +13,10 @@
     "revenueFacet": "0x69c21f4828c57D3BB5Eb5fEEa6C5c1432e193510",
     "tradeHelperFacet": "0x9c09e506e00ac87E2413b7501702fAcA690201Fb"
   },
-  "facadeWriteLib": "0xe4DB7DA0b89365A6eD954594638D21Fb19661EB6",
+  "facadeWriteLib": "0xE8F9df9Fa0a7d40F75e26105aA0f748ea17C9dfe",
   "basketLib": "0x2fdD94F363644FEDE5106B22b1706E45D4dD9bea",
-  "facadeWrite": "0x46CF884c423e35947b27440fc0Bc77d968C74F49",
-  "deployer": "0x08638a2efE63d3A4E5056860E4292B6C059D3BaD",
+  "facadeWrite": "0xA8Ea6cF7beAB5E4395D437AE37D696E007739357",
+  "deployer": "0xd5fcf4795877Ad0084FFc554b71D61bb660255AC",
   "rsrAsset": "0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3",
   "implementations": {
     "main": "0xc5bf686CfB85786fcFfF557297D4afF8F4e15e44",
@@ -25,7 +25,7 @@
       "dutchTrade": "0xCC3Cb888dEA5948bbEB7747Aed31128b71b7689D"
     },
     "components": {
-      "assetRegistry": "0xcB7e10000De0DAcE5A79c620191Cab2517693637",
+      "assetRegistry": "0xF683e671a7Bd91257A32079ca219Cc8398088AEc",
       "backingManager": "0xc501c9074CE15A4B00dd0B51B3c372518e6D3BA2",
       "basketHandler": "0x54A8fa5217970e2040590DDD7c16f72B1fb57a3C",
       "broker": "0x63c61086418406eBB062c5C6dF80F46c6d052d4c",
