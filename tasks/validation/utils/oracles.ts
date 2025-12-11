@@ -283,9 +283,19 @@ export const getRTokenOraclePrice = async (
   hre: HardhatRuntimeEnvironment,
   oracleAddress: string
 ): Promise<BigNumber> => {
-  const oracle = await hre.ethers.getContractAt('AggregatorV3Interface', oracleAddress)
-  const roundData = await oracle.latestRoundData()
-  return roundData.answer
+  // Try Chainlink interface first
+  try {
+    const oracle = await hre.ethers.getContractAt('AggregatorV3Interface', oracleAddress)
+    const roundData = await oracle.latestRoundData()
+    return roundData.answer
+  } catch {
+    // Fallback to price() interface
+    const oracle = await hre.ethers.getContractAt(
+      ['function price() external view returns (uint256)'],
+      oracleAddress
+    )
+    return await oracle.price()
+  }
 }
 
 export const validateRTokenOraclePriceChange = (

@@ -91,5 +91,6 @@ export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
     rToken: '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff', // bsdETH
     governor: '0x21fBa52dA03e1F964fa521532f8B8951fC212055',
     timelock: '0xe664d294824C2A8C952A10c4034e1105d2907F46',
+    oracle: '0xD41310aCF5fA54CDd1970155ac32D708B376Dff6', // bsdETH Oracle
   },
 ]
