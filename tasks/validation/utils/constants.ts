@@ -45,11 +45,16 @@ export const collateralToUnderlying: { [key: string]: string } = {
     networkConfig['1'].tokens.aEthUSDC!.toLowerCase(),
 }
 
+export interface OracleConfig {
+  address: string
+  threshold: number // Allowed deviation percentage (e.g., 0.5 = 0.5%)
+}
+
 export interface RTokenDeployment {
   rToken: string
   governor: string
   timelock: string
-  oracle?: string // Optional (RToken oracle)
+  oracle?: OracleConfig // Optional (RToken oracle)
 }
 
 export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
@@ -62,7 +67,10 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
     rToken: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8', // ETH+
     governor: '0x868Fe81C276d730A1995Dc84b642E795dFb8F753',
     timelock: '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556',
-    oracle: '0xf87d2F4d42856f0B6Eae140Aaf78bF0F777e9936', // ETH+ Oracle
+    oracle: {
+      address: '0xf87d2F4d42856f0B6Eae140Aaf78bF0F777e9936',
+      threshold: 0.5,
+    },
   },
   /*{
     rToken: '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be', // hyUSD (mainnet)
@@ -91,6 +99,9 @@ export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
     rToken: '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff', // bsdETH
     governor: '0x21fBa52dA03e1F964fa521532f8B8951fC212055',
     timelock: '0xe664d294824C2A8C952A10c4034e1105d2907F46',
-    oracle: '0xD41310aCF5fA54CDd1970155ac32D708B376Dff6', // bsdETH Oracle
+    oracle: {
+      address: '0xD41310aCF5fA54CDd1970155ac32D708B376Dff6',
+      threshold: 1.25,
+    },
   },
 ]

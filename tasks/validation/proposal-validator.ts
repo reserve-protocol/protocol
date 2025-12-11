@@ -69,12 +69,14 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
     )
 
-    // Get RToken oracle (if exists) for price validation
-    const rtokenOracleAddress = getRTokenOracle(proposalData.rtoken)
+    // Get RToken oracle config (if exists) for price validation
+    const oracleConfig = getRTokenOracle(proposalData.rtoken)
     let priceBefore
-    if (rtokenOracleAddress) {
-      console.log(`\n🔮 RToken oracle found: ${rtokenOracleAddress}`)
-      priceBefore = await getRTokenOraclePrice(hre, rtokenOracleAddress)
+    if (oracleConfig) {
+      console.log(
+        `\n🔮 RToken oracle found: ${oracleConfig.address} (threshold: ${oracleConfig.threshold}%)`
+      )
+      priceBefore = await getRTokenOraclePrice(hre, oracleConfig.address)
       console.log(`Price (before): ${priceBefore.toString()}`)
     }
 
@@ -83,10 +85,15 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     })
 
     // Validate RToken oracle
-    if (rtokenOracleAddress && priceBefore) {
-      const priceAfter = await getRTokenOraclePrice(hre, rtokenOracleAddress)
+    if (oracleConfig && priceBefore) {
+      const priceAfter = await getRTokenOraclePrice(hre, oracleConfig.address)
       console.log(`\n🔮 RToken Price (after): ${priceAfter.toString()}`)
-      validateRTokenOraclePriceChange(priceBefore, priceAfter, proposalData.rtoken)
+      validateRTokenOraclePriceChange(
+        priceBefore,
+        priceAfter,
+        proposalData.rtoken,
+        oracleConfig.threshold
+      )
     }
 
     await hre.run('recollateralize', {
