@@ -57,7 +57,8 @@ contract Upgrade4_2_0 is Versioned {
     // ======================================================================================
 
     // 4.2.0 Assets (mainnet)
-    Asset[54] MAINNET_ASSETS = [
+    Asset[55] MAINNET_ASSETS = [
+        Asset(0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3), // RSR
         Asset(0xFDE702794298DB19e2a235782B82aD88053F7335), // stkAAVE
         Asset(0xA32a92073fEB7ed31081656DeFF34518FB5194b9), // COMP
         Asset(0x69841bA9E09019acA0d16Ae9c9724D25d51F6956), // CRV
@@ -115,7 +116,8 @@ contract Upgrade4_2_0 is Versioned {
     ];
 
     // 4.2.0 Assets (base)
-    Asset[19] BASE_ASSETS = [
+    Asset[20] BASE_ASSETS = [
+        Asset(0x22018D85BFdA9e2673FB4101e957562a1e952Cdf), // RSR
         Asset(0xC9c37FC53682207844B058026024853A9C0b8c7B), // COMP
         Asset(0x7f7B77e49d5b30445f222764a794AFE14af062eB), // AERO
         Asset(0x3962695aCce0Efce11cFf997890f3D1D7467ec40), // STG
