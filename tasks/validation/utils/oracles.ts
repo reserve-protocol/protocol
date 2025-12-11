@@ -223,7 +223,8 @@ export const pushOracleForward = async (
   // Aerodrome Pools (Base)
   if (
     asset == '0x9216CD5cA133aBBd23cc6F873bB4a95A78032db0' ||
-    asset == '0x1cCa3FBB11C4b734183f997679d52DeFA74b613A'
+    asset == '0x1cCa3FBB11C4b734183f997679d52DeFA74b613A' ||
+    asset == '0x97F9d5ed17A0C99B279887caD5254d15fb1B619B'
   ) {
     const aeroPoolTokens = await hre.ethers.getContractAt('AerodromePoolTokens', asset)
     const feed0 = await hre.ethers.getContractAt(

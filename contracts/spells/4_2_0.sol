@@ -57,24 +57,24 @@ contract Upgrade4_2_0 is Versioned {
     // ======================================================================================
 
     // 4.2.0 Assets (mainnet)
-    Asset[54] MAINNET_ASSETS = [
+    Asset[55] MAINNET_ASSETS = [
         Asset(0xbCb71eE9c3372f3444cBBe3E1b263204967EdBE3), // RSR
         Asset(0xFDE702794298DB19e2a235782B82aD88053F7335), // stkAAVE
         Asset(0xA32a92073fEB7ed31081656DeFF34518FB5194b9), // COMP
         Asset(0x69841bA9E09019acA0d16Ae9c9724D25d51F6956), // CRV
         Asset(0x2635c3B92c8451F9D1e75BD61FCF87D1eCdf0ad0), // CVX
-        Asset(0x7504ED02f3f151Df241ec2eb0bF1a9601fcb012a), // DAI
-        Asset(0xBBF50a582cC03cbbC7E228dc3196091301348B0e), // USDC
-        Asset(0xBC0DC981001B6673F615978B63818fD1F6B0FF98), // USDT
-        Asset(0x9ea621376455B88E4022633399bcd1FfD7844210), // aDAI
-        Asset(0x1645Dd4B47D7FbbFdF876061a9e7fE0eb3C72Eb1), // aUSDC
-        Asset(0x695980209248264Ff7FcD19f7Cc217376FEaE163), // aUSDT
-        Asset(0xf8b09C5b3a1eacd095627fb1354665432DC1D077), // cDAI
-        Asset(0x7A58646a44Dc460fe627f2fd76142b99832F0de6), // cUSDC
-        Asset(0xD3F81Fc6c575CE44283Fd48dA7f0337d8d3d24FB), // cUSDT
-        Asset(0x32Ab9216188F24434Dc629Acfa1554ab7623f300), // cWBTC
-        Asset(0x07b2b41037d89F91DC91aD1DDCCA3e8515FF049E), // cETH
-        Asset(0xCab9805b012460C4E176Fb6b521c20d7bc43419F), // WBTC
+        Asset(0x8A782e182EeE2299B3DB733659ea764A5a97AdC5), // DAI
+        Asset(0xDB665809eF5e2D8015c05504c242DDc2932AcDee), // USDC
+        Asset(0xd717d722074C8dBfd0a29F73E4638cCc49C7D53D), // USDT
+        Asset(0x4615C29BbA8b2Fa32906A594e922285a09301f42), // aDAI
+        Asset(0x0D346E98CECa2Fd7DE7BE3F53737D82BDE932117), // aUSDC
+        Asset(0x7B0E0081bf89E3307b3734d821D4297B33911C44), // aUSDT
+        Asset(0x6394FE4995D03a2a463bae2C3A4406043dF760E8), // cDAI
+        Asset(0x0072118C321181168E6643919074a0B518488637), // cUSDC
+        Asset(0xcAF032D20d09CEa9727Aa1dDf6F4E4367155d05e), // cUSDT
+        Asset(0xa58053D343299BD8818A70D5bfea0318Ca5ebEC5), // cWBTC
+        Asset(0x00a07ac1b3f9C5f7aD4C6935b1Cb2028DebB6555), // cETH
+        Asset(0x7437047523dAe8116a94EF5FFAAB3A657e5dC60E), // WBTC
         Asset(0x90c26f98cBE23666ED1E59186e1e4888512BE58d), // WETH
         Asset(0xF156B8b44941C6f9c1Fd4825b0C6e50ecFDECfC7), // wstETH
         Asset(0x81283be7aD5A6d6C4A085b4D694B127Ccf7E652E), // rETH
@@ -82,7 +82,7 @@ contract Upgrade4_2_0 is Versioned {
         Asset(0x169544B6422C6690457931259FAd8C0A76540A2E), // fUSDT
         Asset(0x79ed64e67B846E483594C496F05B25835e53c614), // fDAI
         Asset(0xBb7B4CAA808C9FA262095221299dbc873071CAF4), // fFRAX
-        Asset(0x309e7D2DF4fc528f8Fd58bE6ecF73293dd2e7e7f), // cUSDCv3
+        Asset(0x4D6F9A0F0F57A8179A146f37dD93D558073b814f), // cUSDCv3
         Asset(0xa52F93E61EdF1B77B2D680945F3EA4E84Bb825D3), // cUSDTv3
         Asset(0xE898cd20696fFE17489955101B97F3f9103B83aC), // cvx3Pool
         Asset(0xFDe02d56dec895f7769dC0505D98706f029738D2), // cvxPayPool
@@ -111,21 +111,22 @@ contract Upgrade4_2_0 is Versioned {
         Asset(0x403623175656ED0CDF1F9efE54867761F1EBf1D8), // sUSDe
         Asset(0x4FD189996b5344Eb4CF9c749b97C7424D399d24e), // sUSDS
         Asset(0xBFAc3e99263B7aE9704eC1c879f7c0a57C6b53e1), // wOETH
-        Asset(0x9A65173df5D5B86E26300Cc9cA5Ff378be6DAeA5) // pyUSD
+        Asset(0x9A65173df5D5B86E26300Cc9cA5Ff378be6DAeA5), // pyUSD
+        Asset(0xb1e61f452CFcF6609C2F4088EC36B4c8dd1806b5) // saEthRLUSD
     ];
 
     // 4.2.0 Assets (base)
     Asset[20] BASE_ASSETS = [
         Asset(0x22018D85BFdA9e2673FB4101e957562a1e952Cdf), // RSR
         Asset(0xC9c37FC53682207844B058026024853A9C0b8c7B), // COMP
-        Asset(0xe0E1d3c6f09DA01399e84699722B11308607BBfC), // STG
         Asset(0x7f7B77e49d5b30445f222764a794AFE14af062eB), // AERO
-        Asset(0xD31eEc6679Dd18D5D42A92F32f01Ed98d4e91941), // DAI
-        Asset(0x18a26902126154437322fe01fBa04A36b093906f), // USDC
-        Asset(0x27F672aAf061cb0b2640a4DFCCBd799cD1a7309A), // USDbC
-        Asset(0x6a0Fc14d21247D4fDf7E12Ebe22307687b7750fb), // WETH
+        Asset(0x3962695aCce0Efce11cFf997890f3D1D7467ec40), // STG
+        Asset(0x49A44d50d3B1E098DAC9402c4aF8D0C0E499F250), // DAI
+        Asset(0x33E840e5711549358f6d4D11F9Ab2896B36E9822), // USDC
+        Asset(0xf003b8A8200F14db13f5F712EC8e76c41e7e9A7A), // USDbC
+        Asset(0x2387C22727ACb91519b80A15AEf393ad40dFdb2F), // WETH
         Asset(0x14c443d8BdbE9A65F3a23FA4e199d8741D5B38Fa), // cbETH
-        Asset(0xdEBe74dc2A415e00bE8B4b9d1e6e0007153D006a), // cUSDCv3
+        Asset(0x41edAFFB50CA1c2FEC86C629F845b8490ced8A2c), // cUSDCv3
         Asset(0xa9F0eca90B5d4f213f8119834E0920785bb70F46), // saBasUSDC
         Asset(0x9b2A9bAeB8F1930fC2AF9b7Fa473edF2B8c3B549), // wstETH
         Asset(0x97F9d5ed17A0C99B279887caD5254d15fb1B619B), // aeroUSDCeUSD
@@ -172,12 +173,12 @@ contract Upgrade4_2_0 is Versioned {
 
         if (_mainnet) {
             // 4.2.0 deployer (mainnet)
-            deployer = IDeployer(0x08638a2efE63d3A4E5056860E4292B6C059D3BaD);
+            deployer = IDeployer(0xd5fcf4795877Ad0084FFc554b71D61bb660255AC);
 
             // DAO registries (mainnet)
             registries = IDeployer.Registries(
-                VersionRegistry(0xBA8CD83f793aA046Fe5Ab7bA01f855742F2D6a30), // TODO
-                AssetPluginRegistry(0x6cf05Ea2A94a101CE6A44Ec2a2995b43F1b0958f), // TODO
+                VersionRegistry(0x121c34FbedcC125cc13782008e2530a5610C5676),
+                AssetPluginRegistry(0x4a818c41131CB9FE65BadF2Bb8671dDE4D117135),
                 DAOFeeRegistry(0xec716deD4eABa060937D1a915F166E237039342B),
                 ITrustedFillerRegistry(0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A)
             );
@@ -195,12 +196,12 @@ contract Upgrade4_2_0 is Versioned {
             }
         } else {
             // 4.2.0 deployer (base)
-            deployer = IDeployer(0x5574eD38ceAFB537b274E3562414DCA057d8Ff41);
+            deployer = IDeployer(0x25a99457FBE10e21ffF9f722dd873cA882CFBA99);
 
             // DAO registries (base)
             registries = IDeployer.Registries(
-                VersionRegistry(0x3BECE5EC596331033726E5C6C188c313Ff4E3fE5), // TODO
-                AssetPluginRegistry(0x87A959e0377C68A50b08a91ae5ab3aFA7F41ACA4), // TODO
+                VersionRegistry(0x7CD9CA6401f743b38B3B16eA314BbaB8e9c1aC51),
+                AssetPluginRegistry(0x7Ac954307356301A10adDb0dB4f61b4a475d3551),
                 DAOFeeRegistry(0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD),
                 ITrustedFillerRegistry(0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18)
             );
