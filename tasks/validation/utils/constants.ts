@@ -101,7 +101,7 @@ export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
     timelock: '0xe664d294824C2A8C952A10c4034e1105d2907F46',
     oracle: {
       address: '0xD41310aCF5fA54CDd1970155ac32D708B376Dff6',
-      threshold: 1.25,
+      threshold: 1.25, // Higher threshold to account for melting and time elapsed
     },
   },
 ]
