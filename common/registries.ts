@@ -24,7 +24,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
     },
     registries: {
       roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
-      versionRegistry: '0x121c34FbedcC125cc13782008e2530a5610C5676',
+      versionRegistry: '0x1895b15B3d0a70962be86Af0E337018aD63464e0',
       assetPluginRegistry: '0x4a818c41131CB9FE65BadF2Bb8671dDE4D117135',
       daoFeeRegistry: '0xec716deD4eABa060937D1a915F166E237039342B',
       trustedFillerRegistry: '0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A',
@@ -37,7 +37,7 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
     },
     registries: {
       roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
-      versionRegistry: '0x7CD9CA6401f743b38B3B16eA314BbaB8e9c1aC51',
+      versionRegistry: '0xBbC532A80DD141449330c1232C953Da6801Aed01',
       assetPluginRegistry: '0x7Ac954307356301A10adDb0dB4f61b4a475d3551',
       daoFeeRegistry: '0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD',
       trustedFillerRegistry: '0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18',
