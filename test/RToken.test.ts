@@ -128,6 +128,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Deployment should setup RToken correctly', async () => {
       expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
+      expect(await rToken.mandate()).to.equal('mandate')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
       expect(await rToken.basketsNeeded()).to.equal(0)
@@ -189,6 +190,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           '0 supply'
         )
       })
+    })
+
+    it('Should not allow to setMandate unless owner #fast', async () => {
+      await expect(rToken.connect(addr1).setMandate('mandate2')).to.be.revertedWith(
+        'governance only'
+      )
+
+      await expect(rToken.connect(owner).setMandate('mandate2'))
+        .to.emit(rToken, 'MandateSet')
+        .withArgs('mandate', 'mandate2')
+      expect(await rToken.mandate()).to.equal('mandate2')
     })
 
     it('Should allow to update issuance throttle if Owner and perform validations', async () => {

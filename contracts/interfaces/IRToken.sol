@@ -54,6 +54,9 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     /// Emitted when redemption SupplyThrottle params are set
     event RedemptionThrottleSet(ThrottleLib.Params oldVal, ThrottleLib.Params newVal);
 
+    /// Emitted when the mandate is set
+    event MandateSet(string indexed oldVal, string newVal);
+
     // Initialization
     function init(
         IMain main_,
@@ -147,6 +150,10 @@ interface TestIRToken is IRToken {
         ThrottleLib.Params calldata issuanceParams,
         ThrottleLib.Params calldata redemptionParams
     ) external;
+
+    function setMandate(string calldata mandate) external;
+
+    function mandate() external view returns (string memory);
 
     function issuanceThrottleParams() external view returns (ThrottleLib.Params memory);
 
