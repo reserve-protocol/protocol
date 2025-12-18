@@ -10,7 +10,6 @@ interface IStargateLPStaking {
 
     function eToken() external view returns (address);
 
-    // Note: STG rewards have been deprecated and are no longer supported.
     // Info of each pool.
     struct PoolInfo {
         // Address of LP token contract.
