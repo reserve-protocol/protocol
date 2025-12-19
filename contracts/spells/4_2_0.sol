@@ -285,7 +285,6 @@ contract Upgrade4_2_0 is Versioned {
             // Upgrade components
             main.upgradeRTokenTo(NEW_VERSION_HASH, false, false);
             main.cacheComponents();
-            require(keccak256(abi.encodePacked(rToken.version())) == NEW_VERSION_HASH, Err(10));
 
             // Verify all components are upgraded
             require(
