@@ -250,6 +250,7 @@ contract Upgrade4_2_0 is Versioned {
         require(supported[rToken] && !cast[rToken], Err(5));
         cast[rToken] = true;
 
+        // validate caller is old timelock
         MainP1 main = MainP1(address(rToken.main()));
         require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), Err(6)); // security crux
         require(main.hasRole(MAIN_OWNER_ROLE, address(this)), Err(7));
@@ -380,6 +381,7 @@ contract Upgrade4_2_0 is Versioned {
         // Deploy new governance, preserving all values
         {
             TimelockController oldTimelock = TimelockController(payable(msg.sender));
+            require(oldTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)), Err(16));
 
             uint256 minDelay = oldTimelock.getMinDelay();
             require(minDelay != 0, Err(16));
