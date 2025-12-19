@@ -1,66 +1,68 @@
-import fs from 'fs'
-import hre, { ethers } from 'hardhat'
-import { getChainId } from '../../../../common/blockchain-utils'
-import { networkConfig } from '../../../../common/configuration'
-import { fp } from '../../../../common/numbers'
-import {
-  getDeploymentFile,
-  getDeploymentFilename,
-  getAssetCollDeploymentFilename,
-  IAssetCollDeployments,
-  fileExists,
-} from '../../../deployment/common'
-import { priceTimeout } from '../../../deployment/utils'
-import { Asset } from '../../../../typechain'
+// Note: STG asset has been deprecated due to changes to Stargate
 
-async function main() {
-  // ==== Read Configuration ====
-  const [burner] = await hre.ethers.getSigners()
-  const chainId = await getChainId(hre)
+// import fs from 'fs'
+// import hre, { ethers } from 'hardhat'
+// import { getChainId } from '../../../../common/blockchain-utils'
+// import { networkConfig } from '../../../../common/configuration'
+// import { fp } from '../../../../common/numbers'
+// import {
+//   getDeploymentFile,
+//   getDeploymentFilename,
+//   getAssetCollDeploymentFilename,
+//   IAssetCollDeployments,
+//   fileExists,
+// } from '../../../deployment/common'
+// import { priceTimeout } from '../../../deployment/utils'
+// import { Asset } from '../../../../typechain'
 
-  console.log(`Deploying STG asset to network ${hre.network.name} (${chainId})
-    with burner account: ${burner.address}`)
+// async function main() {
+//   // ==== Read Configuration ====
+//   const [burner] = await hre.ethers.getSigners()
+//   const chainId = await getChainId(hre)
 
-  if (!networkConfig[chainId]) {
-    throw new Error(`Missing network configuration for ${hre.network.name}`)
-  }
+//   console.log(`Deploying STG asset to network ${hre.network.name} (${chainId})
+//     with burner account: ${burner.address}`)
 
-  // Get phase1 deployment
-  const phase1File = getDeploymentFilename(chainId)
-  if (!fileExists(phase1File)) {
-    throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
-  }
-  // Check previous step completed
-  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
-  const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
+//   if (!networkConfig[chainId]) {
+//     throw new Error(`Missing network configuration for ${hre.network.name}`)
+//   }
 
-  const deployedAssets: string[] = []
+//   // Get phase1 deployment
+//   const phase1File = getDeploymentFilename(chainId)
+//   if (!fileExists(phase1File)) {
+//     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
+//   }
+//   // Check previous step completed
+//   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
+//   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  /********  Deploy STG asset **************************/
-  const { asset: stgAsset } = await hre.run('deploy-asset', {
-    priceTimeout: priceTimeout.toString(),
-    priceFeed: networkConfig[chainId].chainlinkFeeds.STG,
-    oracleError: fp('0.02').toString(), // 2%
-    tokenAddress: networkConfig[chainId].tokens.STG,
-    maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: '86400', // 24 hr
-  })
-  await (<Asset>await ethers.getContractAt('Asset', stgAsset)).refresh()
+//   const deployedAssets: string[] = []
 
-  assetCollDeployments.assets.STG = stgAsset
-  assetCollDeployments.erc20s.STG = networkConfig[chainId].tokens.STG
-  deployedAssets.push(stgAsset.toString())
+//   /********  Deploy STG asset **************************/
+//   const { asset: stgAsset } = await hre.run('deploy-asset', {
+//     priceTimeout: priceTimeout.toString(),
+//     priceFeed: networkConfig[chainId].chainlinkFeeds.STG,
+//     oracleError: fp('0.02').toString(), // 2%
+//     tokenAddress: networkConfig[chainId].tokens.STG,
+//     maxTradeVolume: fp('1e6').toString(), // $1m,
+//     oracleTimeout: '86400', // 24 hr
+//   })
+//   await (<Asset>await ethers.getContractAt('Asset', stgAsset)).refresh()
 
-  /**************************************************************/
+//   assetCollDeployments.assets.STG = stgAsset
+//   assetCollDeployments.erc20s.STG = networkConfig[chainId].tokens.STG
+//   deployedAssets.push(stgAsset.toString())
 
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+//   /**************************************************************/
 
-  console.log(`Deployed STG asset to ${hre.network.name} (${chainId}):
-    New deployments: ${deployedAssets}
-    Deployment file: ${assetCollDeploymentFilename}`)
-}
+//   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
-main().catch((error) => {
-  console.error(error)
-  process.exitCode = 1
-})
+//   console.log(`Deployed STG asset to ${hre.network.name} (${chainId}):
+//     New deployments: ${deployedAssets}
+//     Deployment file: ${assetCollDeploymentFilename}`)
+// }
+
+// main().catch((error) => {
+//   console.error(error)
+//   process.exitCode = 1
+// })

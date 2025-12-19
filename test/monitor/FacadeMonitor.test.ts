@@ -1029,7 +1029,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         wstgUsdc = await SthWrapperFactory.deploy(
           'Wrapped Stargate USDC',
           'wsgUSDC',
-          networkConfig[chainId].tokens.STG!,
+          networkConfig[chainId].tokens.STG!, // DEPRECATED
           networkConfig[chainId].STARGATE_STAKING_CONTRACT!,
           networkConfig[chainId].tokens.sUSDC!
         )
