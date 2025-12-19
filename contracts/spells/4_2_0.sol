@@ -372,7 +372,9 @@ contract Upgrade4_2_0 is Versioned {
 
         // Deploy new governance, preserving all values
         {
-            uint256 minDelay = TimelockController(payable(msg.sender)).getMinDelay();
+            TimelockController oldTimelock = TimelockController(payable(msg.sender));
+
+            uint256 minDelay = oldTimelock.getMinDelay();
             require(minDelay != 0, "US: 15");
 
             // Deploy new timelock
@@ -399,6 +401,7 @@ contract Upgrade4_2_0 is Versioned {
             _newTimelock.grantRole(EXECUTOR_ROLE, newGovernor); // Gov only executor
 
             for (uint256 i = 0; i < guardians.length; i++) {
+                require(oldTimelock.hasRole(CANCELLER_ROLE, guardians[i]), "US: 16.5");
                 _newTimelock.grantRole(CANCELLER_ROLE, guardians[i]); // Guardian can cancel
             }
             _newTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, address(this)); // Revoke admin role
