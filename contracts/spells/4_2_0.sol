@@ -178,6 +178,7 @@ contract Upgrade4_2_0 is Versioned {
         if (_mainnet) {
             // 4.2.0 deployer (mainnet)
             deployer = IDeployer(0x8FcbD0BaaeB442F1f3F374FcB63933e6D4Cb8710);
+            require(keccak256(abi.encodePacked(deployer.version())) == NEW_VERSION_HASH, Err(1));
 
             // DAO registries (mainnet)
             registries = IDeployer.Registries(
@@ -206,6 +207,7 @@ contract Upgrade4_2_0 is Versioned {
         } else {
             // 4.2.0 deployer (base)
             deployer = IDeployer(0x5705F85A05c8b57818663C7AB6a11f88323a1A57);
+            require(keccak256(abi.encodePacked(deployer.version())) == NEW_VERSION_HASH, Err(1));
 
             // DAO registries (base)
             registries = IDeployer.Registries(
