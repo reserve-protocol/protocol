@@ -197,11 +197,11 @@ contract Upgrade4_2_0 is Versioned {
             for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
                 require(
                     keccak256(abi.encodePacked(MAINNET_ASSETS[i].version())) == NEW_VERSION_HASH,
-                    Err(1)
+                    Err(2)
                 );
 
                 IERC20 erc20 = MAINNET_ASSETS[i].erc20();
-                require(address(assets[erc20]) == address(0), Err(2));
+                require(address(assets[erc20]) == address(0), Err(3));
                 assets[erc20] = MAINNET_ASSETS[i];
             }
         } else {
@@ -225,11 +225,11 @@ contract Upgrade4_2_0 is Versioned {
             for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
                 require(
                     keccak256(abi.encodePacked(BASE_ASSETS[i].version())) == NEW_VERSION_HASH,
-                    Err(3)
+                    Err(2)
                 );
 
                 IERC20 erc20 = BASE_ASSETS[i].erc20();
-                require(address(assets[erc20]) == address(0), Err(4));
+                require(address(assets[erc20]) == address(0), Err(3));
                 assets[erc20] = BASE_ASSETS[i];
             }
         }
@@ -245,15 +245,15 @@ contract Upgrade4_2_0 is Versioned {
         Governance oldGovernor,
         address[] calldata guardians
     ) external returns (address newGovernor, address newTimelock) {
-        require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(6));
+        require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(4));
 
         // Can only be cast once per supported RToken
-        require(supported[rToken] && !cast[rToken], Err(6));
+        require(supported[rToken] && !cast[rToken], Err(5));
         cast[rToken] = true;
 
         MainP1 main = MainP1(address(rToken.main()));
-        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), Err(7)); // security crux
-        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), Err(8));
+        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), Err(6)); // security crux
+        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), Err(7));
 
         Components memory proxy;
         proxy.assetRegistry = main.assetRegistry();
@@ -273,7 +273,7 @@ contract Upgrade4_2_0 is Versioned {
 
             // Upgrade Main
             main.upgradeTo(address(impls.main));
-            require(keccak256(abi.encodePacked(main.version())) == NEW_VERSION_HASH, Err(9));
+            require(keccak256(abi.encodePacked(main.version())) == NEW_VERSION_HASH, Err(8));
 
             // Set registries
             // reverts on zero address
@@ -302,12 +302,12 @@ contract Upgrade4_2_0 is Versioned {
                     keccak256(abi.encodePacked(proxy.rTokenTrader.version())) == NEW_VERSION_HASH &&
                     keccak256(abi.encodePacked(proxy.rsrTrader.version())) == NEW_VERSION_HASH &&
                     keccak256(abi.encodePacked(proxy.stRSR.version())) == NEW_VERSION_HASH,
-                Err(11)
+                Err(9)
             );
 
             // Revoke OWNER from Main
             main.revokeRole(MAIN_OWNER_ROLE, address(main));
-            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), Err(12));
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), Err(10));
 
             // Turn on trusted fills
             TestIBroker(address(proxy.broker)).setTrustedFillerRegistry(
@@ -318,7 +318,7 @@ contract Upgrade4_2_0 is Versioned {
             // Keep issuance premium off, should be off by default
             require(
                 !TestIBasketHandler(address(proxy.basketHandler)).enableIssuancePremium(),
-                Err(13)
+                Err(11)
             );
 
             // Verify trading plugins are updated
@@ -327,7 +327,7 @@ contract Upgrade4_2_0 is Versioned {
                     address(impls.trading.dutchTrade) &&
                     address(TestIBroker(address(proxy.broker)).batchTradeImplementation()) ==
                     address(impls.trading.gnosisTrade),
-                Err(14)
+                Err(12)
             );
         }
 
@@ -355,7 +355,7 @@ contract Upgrade4_2_0 is Versioned {
                 proxy.assetRegistry.registerNewRTokenAsset(
                     proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
                 ),
-                Err(17)
+                Err(14)
             );
 
             // Validate all assets
@@ -363,7 +363,7 @@ contract Upgrade4_2_0 is Versioned {
 
             // Refresh basket
             proxy.basketHandler.refreshBasket();
-            require(proxy.basketHandler.status() == CollateralStatus.SOUND, Err(18));
+            require(proxy.basketHandler.status() == CollateralStatus.SOUND, Err(15));
         }
 
         // Deploy new governance, preserving all values
@@ -371,7 +371,7 @@ contract Upgrade4_2_0 is Versioned {
             TimelockController oldTimelock = TimelockController(payable(msg.sender));
 
             uint256 minDelay = oldTimelock.getMinDelay();
-            require(minDelay != 0, Err(19));
+            require(minDelay != 0, Err(16));
 
             // Deploy new timelock
             newTimelock = address(
@@ -387,7 +387,7 @@ contract Upgrade4_2_0 is Versioned {
                 1e4, // all previous governors are set to 0.01%
                 oldGovernor.quorumNumerator()
             );
-            require(Governance(payable(newGovernor)).timelock() == newTimelock, Err(20));
+            require(Governance(payable(newGovernor)).timelock() == newTimelock, Err(17));
 
             TimelockController _newTimelock = TimelockController(payable(newTimelock));
 
@@ -397,34 +397,34 @@ contract Upgrade4_2_0 is Versioned {
             _newTimelock.grantRole(EXECUTOR_ROLE, newGovernor); // Gov only executor
 
             for (uint256 i = 0; i < guardians.length; i++) {
-                require(oldTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(21));
+                require(oldTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(18));
                 _newTimelock.grantRole(CANCELLER_ROLE, guardians[i]); // Guardian can cancel
-                require(_newTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(22));
+                require(_newTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(19));
             }
 
             _newTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, address(this)); // Revoke admin role
-            require(!_newTimelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), Err(22));
+            require(!_newTimelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), Err(20));
 
             // post validation
             require(
                 _newTimelock.hasRole(PROPOSER_ROLE, newGovernor) &&
                     _newTimelock.hasRole(EXECUTOR_ROLE, newGovernor) &&
                     _newTimelock.hasRole(CANCELLER_ROLE, newGovernor),
-                Err(22)
+                Err(21)
             );
 
             require(
                 !_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)) &&
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(oldGovernor)) &&
                     !_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)),
-                Err(23)
+                Err(22)
             );
 
             require(
                 !_newTimelock.hasRole(PROPOSER_ROLE, address(0)) &&
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(0)) &&
                     !_newTimelock.hasRole(CANCELLER_ROLE, address(0)),
-                Err(24)
+                Err(23)
             );
 
             // setup `newGovs` for rToken, only used in testing but useful for onchain record
@@ -453,13 +453,13 @@ contract Upgrade4_2_0 is Versioned {
                     !main.hasRole(SHORT_FREEZER_ROLE, msg.sender) &&
                     !main.hasRole(LONG_FREEZER_ROLE, msg.sender) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(this)),
-                Err(25)
+                Err(24)
             );
 
             require(
                 !main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)) &&
                     !main.hasRole(MAIN_OWNER_ROLE, newGovernor),
-                Err(26)
+                Err(25)
             );
         }
     }
