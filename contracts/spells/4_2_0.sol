@@ -331,28 +331,10 @@ contract Upgrade4_2_0 is Versioned {
             );
         }
 
-        // Make distributor table sum to 10000, adding 1 to StRSR destination if necessary
-        // Context: frontend rounded down during early deployments and tables sum to 9,999 sometimes
+        // Distributor invariant: table must sum to >=10000
         {
             RevenueTotals memory revTotals = proxy.distributor.totals();
-            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION - 1, Err(15));
-
-            // add 1 to StRSR destination if necessary
-            if (revTotals.rTokenTotal + revTotals.rsrTotal < MAX_DISTRIBUTION) {
-                TestIDistributor distributor = TestIDistributor(address(proxy.distributor));
-
-                (uint16 rTokenDist, uint16 rsrDist) = distributor.distribution(address(2));
-                // address(2) is the special-cased key for StRSR
-
-                assert(rsrDist > 0); // sanity check; all RTokens direct _some_ RSR to StRSR
-
-                distributor.setDistribution(address(2), RevenueShare(rTokenDist, rsrDist + 1));
-
-                revTotals = proxy.distributor.totals();
-            }
-
-            // Distributor invariant: table must sum to >=10000
-            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION, Err(16));
+            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION, Err(13));
         }
 
         // Rotate assets, erc20s should not change
