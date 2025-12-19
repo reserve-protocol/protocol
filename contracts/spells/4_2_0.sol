@@ -161,6 +161,9 @@ contract Upgrade4_2_0 is Versioned {
     mapping(IERC20 => Asset) public assets;
 
     // RToken => bool
+    mapping(IRToken => bool) public supported;
+
+    // RToken => bool
     mapping(IRToken => bool) public cast;
 
     bool public mainnet; // !mainnet | base
@@ -184,6 +187,11 @@ contract Upgrade4_2_0 is Versioned {
                 ITrustedFillerRegistry(0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A)
             );
 
+            // Setup `supported`
+            supported[IRToken(0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)] = true; // eUSD
+            supported[IRToken(0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8)] = true; // ETH+
+            supported[IRToken(0x0d86883FAf4FfD7aEb116390af37746F45b6f378)] = true; // USD3
+
             // Setup `assets`
             for (uint256 i = 0; i < MAINNET_ASSETS.length; i++) {
                 require(
@@ -206,6 +214,10 @@ contract Upgrade4_2_0 is Versioned {
                 DAOFeeRegistry(0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD),
                 ITrustedFillerRegistry(0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18)
             );
+
+            // Setup `supported`
+            supported[IRToken(0xCc7FF230365bD730eE4B352cC2492CEdAC49383e)] = true; // hyUSD (base)
+            supported[IRToken(0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff)] = true; // bsdETH
 
             // Setup `assets`
             for (uint256 i = 0; i < BASE_ASSETS.length; i++) {
@@ -231,10 +243,10 @@ contract Upgrade4_2_0 is Versioned {
         Governance oldGovernor,
         address[] calldata guardians
     ) external returns (address newGovernor, address newTimelock) {
-        require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(5));
+        require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(6));
 
-        // Can only be cast once per RToken
-        require(!cast[rToken], Err(6));
+        // Can only be cast once per supported RToken
+        require(supported[rToken] && !cast[rToken], Err(6));
         cast[rToken] = true;
 
         MainP1 main = MainP1(address(rToken.main()));
