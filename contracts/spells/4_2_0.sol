@@ -267,6 +267,14 @@ contract Upgrade4_2_0 is Versioned {
         proxy.rsrTrader = main.rsrTrader();
         proxy.stRSR = main.stRSR();
 
+        // No ongoing trades
+        require(
+            proxy.backingManager.tradesOpen() == 0 &&
+                proxy.rTokenTrader.tradesOpen() == 0 &&
+                proxy.rsrTrader.tradesOpen() == 0,
+            Err(6)
+        );
+
         // Main + Component upgrades
         {
             Implementations memory impls = deployer.implementations();
