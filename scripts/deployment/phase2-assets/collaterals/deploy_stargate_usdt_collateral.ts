@@ -57,7 +57,7 @@ async function main() {
   const erc20 = await WrapperFactory.deploy(
     'Wrapped Stargate USDT',
     'wSTG-USDT',
-    networkConfig[chainId].tokens.STG,
+    networkConfig[chainId].tokens.STG, // DEPRECATED
     STAKING_CONTRACT,
     SUSDT
   )

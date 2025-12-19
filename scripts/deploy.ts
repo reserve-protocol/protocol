@@ -108,7 +108,6 @@ async function main() {
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
       'phase2-assets/assets/deploy_aero.ts',
-      'phase2-assets/assets/deploy_stg.ts',
       'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts',
       'phase2-assets/collaterals/deploy_aerodrome_weth_aero.ts',
       'phase2-assets/collaterals/deploy_aerodrome_mog_weth.ts',

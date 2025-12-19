@@ -20,7 +20,7 @@ switch (forkNetwork) {
 export const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
 const sUSDC_NAME = chainId == '8453' ? 'sUSDbC' : 'sUSDC'
 
-export const STARGATE = networkConfig[chainId].tokens['STG']!
+export const STARGATE = networkConfig[chainId].tokens['STG']! // DEPRECATED
 export const STAKING_CONTRACT = networkConfig[chainId].STARGATE_STAKING_CONTRACT!
 export const SUSDC = networkConfig[chainId].tokens[sUSDC_NAME]!
 export const SUSDT = networkConfig[chainId].tokens['sUSDT']!

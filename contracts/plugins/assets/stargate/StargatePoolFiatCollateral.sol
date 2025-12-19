@@ -41,6 +41,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
         return _rate;
     }
 
+    // NOTE: STG rewards have been deprecated
     function claimRewards() external override(Asset, IRewardable) {
         uint256 _bal = stg.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();
