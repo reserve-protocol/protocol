@@ -14,6 +14,10 @@ import "../p1/BasketHandler.sol";
 import "../p1/Main.sol";
 
 bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
+bytes32 constant PAUSER_ROLE = bytes32("PAUSER");
+bytes32 constant SHORT_FREEZER_ROLE = bytes32("SHORT_FREEZER");
+bytes32 constant LONG_FREEZER_ROLE = bytes32("LONG_FREEZER");
+
 bytes32 constant TIMELOCK_ADMIN_ROLE = keccak256("TIMELOCK_ADMIN_ROLE");
 bytes32 constant PROPOSER_ROLE = keccak256("PROPOSER_ROLE");
 bytes32 constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -440,11 +444,17 @@ contract Upgrade4_2_0 is Versioned {
 
             main.grantRole(MAIN_OWNER_ROLE, newTimelock);
             main.revokeRole(MAIN_OWNER_ROLE, msg.sender);
+            main.revokeRole(PAUSER_ROLE, msg.sender);
+            main.revokeRole(SHORT_FREEZER_ROLE, msg.sender);
+            main.revokeRole(LONG_FREEZER_ROLE, msg.sender);
             main.renounceRole(MAIN_OWNER_ROLE, address(this));
 
             require(
                 main.hasRole(MAIN_OWNER_ROLE, newTimelock) &&
                     !main.hasRole(MAIN_OWNER_ROLE, msg.sender) &&
+                    !main.hasRole(PAUSER_ROLE, msg.sender) &&
+                    !main.hasRole(SHORT_FREEZER_ROLE, msg.sender) &&
+                    !main.hasRole(LONG_FREEZER_ROLE, msg.sender) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(this)),
                 "US: 20"
             );
