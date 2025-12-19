@@ -1,9 +1,13 @@
 import { getChainId } from '../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
 import { Contract } from 'ethers'
+import {
+  getDeploymentFilename,
+  getDeploymentFile,
+  IDeployments,
+} from '../../scripts/deployment/common'
 
 let spell: Contract
-let facadeWriteLib: Contract
 
 task('deploy-spell', 'Deploys a spell by name')
   // version is unusable as a param name
@@ -26,13 +30,13 @@ task('deploy-spell', 'Deploys a spell by name')
 
     // Deploy Spell
     if (spellName === 'Upgrade4_2_0') {
-      const FacadeWriteLibFactory = await hre.ethers.getContractFactory('FacadeWriteLib')
-      facadeWriteLib = await FacadeWriteLibFactory.deploy()
-      await facadeWriteLib.deployed()
+      const deploymentFilename = getDeploymentFilename(chainId)
+      const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
+      console.log(`Using existing FacadeWriteLib address: ${deployments.facadeWriteLib}`)
 
       const SpellFactory = await hre.ethers.getContractFactory('Upgrade4_2_0', {
         libraries: {
-          FacadeWriteLib: facadeWriteLib.address,
+          FacadeWriteLib: deployments.facadeWriteLib,
         },
       })
       spell = await SpellFactory.deploy(isMainnet)
@@ -63,16 +67,6 @@ task('deploy-spell', 'Deploys a spell by name')
       contract: `contracts/spells/${version}.sol:Upgrade${version}`,
     })
     console.timeEnd('Verifying Spell Implementation')
-
-    if (spellName === 'Upgrade4_2_0') {
-      console.time('Verifying FacadeWriteLib')
-      await hre.run('verify:verify', {
-        address: facadeWriteLib!.address,
-        constructorArguments: [],
-        contract: `contracts/facade/lib/FacadeWriteLib.sol:FacadeWriteLib`,
-      })
-      console.timeEnd('Verifying FacadeWriteLib')
-    }
 
     if (!params.noOutput) {
       console.log('verified')

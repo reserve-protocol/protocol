@@ -89,7 +89,6 @@ async function main() {
       'collateral-plugins/verify_aave_v3_usdc.ts',
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
-      'assets/verify_stg.ts',
       'collateral-plugins/verify_aerodrome_usdc_eusd.ts',
       'collateral-plugins/verify_aerodrome_weth_aero.ts',
       'collateral-plugins/verify_aerodrome_mog_weth.ts',

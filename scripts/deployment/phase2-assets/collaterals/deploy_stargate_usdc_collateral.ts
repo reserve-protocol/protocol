@@ -69,7 +69,7 @@ async function main() {
   const erc20 = await WrapperFactory.deploy(
     name,
     symbol,
-    networkConfig[chainIdKey].tokens.STG,
+    networkConfig[chainIdKey].tokens.STG, // DEPRECATED
     networkConfig[chainIdKey].STARGATE_STAKING_CONTRACT,
     sUSDC
   )

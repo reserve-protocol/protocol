@@ -9,7 +9,12 @@ import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
 import { processRevenue } from './utils/rewards'
-import { pushOraclesForward } from './utils/oracles'
+import {
+  pushOraclesForward,
+  getRTokenOracle,
+  getRTokenOraclePrice,
+  validateRTokenOraclePriceChange,
+} from './utils/oracles'
 import {
   passProposal,
   executeProposal,
@@ -60,13 +65,37 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
 
     console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
+    const proposalData = JSON.parse(
+      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
+    )
+
+    // Get RToken oracle config (if exists) for price validation
+    const oracleConfig = getRTokenOracle(proposalData.rtoken)
+    let priceBefore
+    if (oracleConfig) {
+      console.log(
+        `\n🔮 RToken oracle found: ${oracleConfig.address} (threshold: ${oracleConfig.threshold}%)`
+      )
+      priceBefore = await getRTokenOraclePrice(hre, oracleConfig.address)
+      console.log(`Price (before): ${priceBefore.toString()}`)
+    }
+
     await hre.run('propose', {
       pid: params.proposalid,
     })
 
-    const proposalData = JSON.parse(
-      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
-    )
+    // Validate RToken oracle
+    if (oracleConfig && priceBefore) {
+      const priceAfter = await getRTokenOraclePrice(hre, oracleConfig.address)
+      console.log(`\n🔮 RToken Price (after): ${priceAfter.toString()}`)
+      validateRTokenOraclePriceChange(
+        priceBefore,
+        priceAfter,
+        proposalData.rtoken,
+        oracleConfig.threshold
+      )
+    }
+
     await hre.run('recollateralize', {
       rtoken: proposalData.rtoken,
       governor: proposalData.governor,

@@ -45,10 +45,16 @@ export const collateralToUnderlying: { [key: string]: string } = {
     networkConfig['1'].tokens.aEthUSDC!.toLowerCase(),
 }
 
+export interface OracleConfig {
+  address: string
+  threshold: number // Allowed deviation percentage (e.g., 0.5 = 0.5%)
+}
+
 export interface RTokenDeployment {
   rToken: string
   governor: string
   timelock: string
+  oracle?: OracleConfig // Optional (RToken oracle)
 }
 
 export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
@@ -61,6 +67,10 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
     rToken: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8', // ETH+
     governor: '0x868Fe81C276d730A1995Dc84b642E795dFb8F753',
     timelock: '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556',
+    oracle: {
+      address: '0xf87d2F4d42856f0B6Eae140Aaf78bF0F777e9936',
+      threshold: 0.5,
+    },
   },
   /*{
     rToken: '0xaCdf0DBA4B9839b96221a8487e9ca660a48212be', // hyUSD (mainnet)
@@ -72,11 +82,11 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
     governor: '0x441808e20E625e0094b01B40F84af89436229279',
     timelock: '0x12e4F043c6464984A45173E0444105058b6C3c7B',
   },
-  {
-    rToken: '0x005f893ecd7bf9667195642f7649da8163e23658', // dgnETH
-    governor: '0xb7cB3880564A1F8698018ECDc78972F93b2615e6',
-    timelock: '0x05623fcEe6FB48b7C8058022C48A72dbce09878e',
-  },
+  // {
+  //   rToken: '0x005f893ecd7bf9667195642f7649da8163e23658', // dgnETH
+  //   governor: '0xb7cB3880564A1F8698018ECDc78972F93b2615e6',
+  //   timelock: '0x05623fcEe6FB48b7C8058022C48A72dbce09878e',
+  // },
 ]
 
 export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
@@ -89,5 +99,9 @@ export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
     rToken: '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff', // bsdETH
     governor: '0x21fBa52dA03e1F964fa521532f8B8951fC212055',
     timelock: '0xe664d294824C2A8C952A10c4034e1105d2907F46',
+    oracle: {
+      address: '0xD41310aCF5fA54CDd1970155ac32D708B376Dff6',
+      threshold: 1.25, // Higher threshold to account for melting and time elapsed
+    },
   },
 ]

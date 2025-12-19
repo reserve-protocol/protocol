@@ -84,7 +84,7 @@ export interface ITokens {
   sFRAX?: string
   sDAI?: string
   cbETH?: string
-  STG?: string
+  STG?: string // DEPRECATED
   sUSDC?: string
   sUSDbC?: string
   sUSDT?: string
@@ -308,7 +308,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sFRAX: '0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
-      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6', // DEPRECATED
       sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
       sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
@@ -639,7 +639,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 2%, 24hr
       wstETHstETHexr: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24hr
       cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
-      STG: '0x63Af8341b62E683B87bB540896bF283D96B4D385',
+      STG: '0x63Af8341b62E683B87bB540896bF283D96B4D385', // DEPRECATED
       stETHETH: '0xf586d0728a47229e747d824a939000Cf21dEF5A0', // 0.5%, 24h
       ETHUSD: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70', // 0.15%, 20min
       wstETHstETH: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24h
