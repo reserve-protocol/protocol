@@ -330,10 +330,22 @@ contract Upgrade4_2_0 is Versioned {
             );
         }
 
-        // Distributor invariant: table must sum to >=10000
+        // Distributor checks
         {
+            // table invariant; must sum to >=10000
             RevenueTotals memory revTotals = proxy.distributor.totals();
             require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION, Err(13));
+
+            // new require: RToken contract should not be set as a destination
+            (uint16 rTokenDist, uint16 rsrDist) = TestIDistributor(address(proxy.distributor))
+            .distribution(address(rToken));
+            require(rTokenDist == 0 && rsrDist == 0, Err(14));
+
+            // new require: RSR contract should not be set as a destination
+            (rTokenDist, rsrDist) = TestIDistributor(address(proxy.distributor)).distribution(
+                address(main.rsr())
+            );
+            require(rTokenDist == 0 && rsrDist == 0, Err(15));
         }
 
         // Rotate assets, erc20s should not change
