@@ -162,9 +162,6 @@ contract Upgrade4_2_0 is Versioned {
     // RToken => bool
     mapping(IRToken => bool) public supported;
 
-    // RToken => bool
-    mapping(IRToken => bool) public cast;
-
     bool public mainnet; // !mainnet | base
 
     // =======================================================================================
@@ -247,13 +244,16 @@ contract Upgrade4_2_0 is Versioned {
         require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(4));
 
         // Can only be cast once per supported RToken
-        require(supported[rToken] && !cast[rToken], Err(5));
-        cast[rToken] = true;
+        require(supported[rToken], Err(5));
+        supported[rToken] = false;
 
         // validate caller is old timelock
         MainP1 main = MainP1(address(rToken.main()));
-        require(main.hasRole(MAIN_OWNER_ROLE, msg.sender), Err(6)); // security crux
-        require(main.hasRole(MAIN_OWNER_ROLE, address(this)), Err(7));
+        require(
+            main.hasRole(MAIN_OWNER_ROLE, msg.sender) && // security crux
+                main.hasRole(MAIN_OWNER_ROLE, address(this)),
+            Err(5)
+        );
 
         Components memory proxy;
         proxy.assetRegistry = main.assetRegistry();
@@ -273,7 +273,7 @@ contract Upgrade4_2_0 is Versioned {
 
             // Upgrade Main
             main.upgradeTo(address(impls.main));
-            require(keccak256(abi.encodePacked(main.version())) == NEW_VERSION_HASH, Err(8));
+            require(keccak256(abi.encodePacked(main.version())) == NEW_VERSION_HASH, Err(6));
 
             // Set registries
             // reverts on zero address
@@ -302,12 +302,12 @@ contract Upgrade4_2_0 is Versioned {
                     keccak256(abi.encodePacked(proxy.rTokenTrader.version())) == NEW_VERSION_HASH &&
                     keccak256(abi.encodePacked(proxy.rsrTrader.version())) == NEW_VERSION_HASH &&
                     keccak256(abi.encodePacked(proxy.stRSR.version())) == NEW_VERSION_HASH,
-                Err(9)
+                Err(7)
             );
 
             // Revoke OWNER from Main
             main.revokeRole(MAIN_OWNER_ROLE, address(main));
-            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), Err(10));
+            require(!main.hasRole(MAIN_OWNER_ROLE, address(main)), Err(8));
 
             // Turn on trusted fills
             TestIBroker(address(proxy.broker)).setTrustedFillerRegistry(
@@ -318,7 +318,7 @@ contract Upgrade4_2_0 is Versioned {
             // Keep issuance premium off, should be off by default
             require(
                 !TestIBasketHandler(address(proxy.basketHandler)).enableIssuancePremium(),
-                Err(11)
+                Err(9)
             );
 
             // Verify trading plugins are updated
@@ -327,7 +327,7 @@ contract Upgrade4_2_0 is Versioned {
                     address(impls.trading.dutchTrade) &&
                     address(TestIBroker(address(proxy.broker)).batchTradeImplementation()) ==
                     address(impls.trading.gnosisTrade),
-                Err(12)
+                Err(10)
             );
         }
 
@@ -335,18 +335,18 @@ contract Upgrade4_2_0 is Versioned {
         {
             // table invariant; must sum to >=10000
             RevenueTotals memory revTotals = proxy.distributor.totals();
-            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION, Err(13));
+            require(revTotals.rTokenTotal + revTotals.rsrTotal >= MAX_DISTRIBUTION, Err(11));
 
             // new require: RToken contract should not be set as a destination
             (uint16 rTokenDist, uint16 rsrDist) = TestIDistributor(address(proxy.distributor))
             .distribution(address(rToken));
-            require(rTokenDist == 0 && rsrDist == 0, Err(14));
+            require(rTokenDist == 0 && rsrDist == 0, Err(12));
 
             // new require: RSR contract should not be set as a destination
             (rTokenDist, rsrDist) = TestIDistributor(address(proxy.distributor)).distribution(
                 address(main.rsr())
             );
-            require(rTokenDist == 0 && rsrDist == 0, Err(15));
+            require(rTokenDist == 0 && rsrDist == 0, Err(13));
         }
 
         // Rotate assets, erc20s should not change
@@ -384,7 +384,7 @@ contract Upgrade4_2_0 is Versioned {
             require(oldTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)), Err(16));
 
             uint256 minDelay = oldTimelock.getMinDelay();
-            require(minDelay != 0, Err(16));
+            require(minDelay != 0, Err(17));
 
             // Deploy new timelock
             newTimelock = address(
@@ -400,7 +400,7 @@ contract Upgrade4_2_0 is Versioned {
                 1e4, // all previous governors are set to 0.01%
                 oldGovernor.quorumNumerator()
             );
-            require(Governance(payable(newGovernor)).timelock() == newTimelock, Err(17));
+            require(Governance(payable(newGovernor)).timelock() == newTimelock, Err(18));
 
             TimelockController _newTimelock = TimelockController(payable(newTimelock));
 
@@ -410,34 +410,26 @@ contract Upgrade4_2_0 is Versioned {
             _newTimelock.grantRole(EXECUTOR_ROLE, newGovernor); // Gov only executor
 
             for (uint256 i = 0; i < guardians.length; i++) {
-                require(oldTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(18));
+                require(oldTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(19));
                 _newTimelock.grantRole(CANCELLER_ROLE, guardians[i]); // Guardian can cancel
-                require(_newTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(19));
+                require(_newTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(20));
             }
 
             _newTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, address(this)); // Revoke admin role
-            require(!_newTimelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), Err(20));
+            require(!_newTimelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), Err(21));
 
             // post validation
             require(
                 _newTimelock.hasRole(PROPOSER_ROLE, newGovernor) &&
                     _newTimelock.hasRole(EXECUTOR_ROLE, newGovernor) &&
-                    _newTimelock.hasRole(CANCELLER_ROLE, newGovernor),
-                Err(21)
-            );
-
-            require(
-                !_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)) &&
+                    _newTimelock.hasRole(CANCELLER_ROLE, newGovernor) &&
+                    !_newTimelock.hasRole(PROPOSER_ROLE, address(oldGovernor)) &&
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(oldGovernor)) &&
-                    !_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)),
-                Err(22)
-            );
-
-            require(
-                !_newTimelock.hasRole(PROPOSER_ROLE, address(0)) &&
+                    !_newTimelock.hasRole(CANCELLER_ROLE, address(oldGovernor)) &&
+                    !_newTimelock.hasRole(PROPOSER_ROLE, address(0)) &&
                     !_newTimelock.hasRole(EXECUTOR_ROLE, address(0)) &&
                     !_newTimelock.hasRole(CANCELLER_ROLE, address(0)),
-                Err(23)
+                Err(22)
             );
 
             // setup `newGovs` for rToken, only used in testing but useful for onchain record
@@ -465,14 +457,10 @@ contract Upgrade4_2_0 is Versioned {
                     !main.hasRole(PAUSER_ROLE, msg.sender) &&
                     !main.hasRole(SHORT_FREEZER_ROLE, msg.sender) &&
                     !main.hasRole(LONG_FREEZER_ROLE, msg.sender) &&
-                    !main.hasRole(MAIN_OWNER_ROLE, address(this)),
-                Err(24)
-            );
-
-            require(
-                !main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)) &&
+                    !main.hasRole(MAIN_OWNER_ROLE, address(this)) &&
+                    !main.hasRole(MAIN_OWNER_ROLE, address(oldGovernor)) &&
                     !main.hasRole(MAIN_OWNER_ROLE, newGovernor),
-                Err(25)
+                Err(23)
             );
         }
     }
