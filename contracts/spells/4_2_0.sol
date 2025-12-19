@@ -43,8 +43,6 @@ bytes32 constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
 contract Upgrade4_2_0 is Versioned {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    error TestError();
-
     event NewGovernanceDeployed(
         IRToken indexed rToken,
         address indexed newGovernor,
