@@ -417,8 +417,11 @@ contract Upgrade4_2_0 is Versioned {
             for (uint256 i = 0; i < guardians.length; i++) {
                 require(oldTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(21));
                 _newTimelock.grantRole(CANCELLER_ROLE, guardians[i]); // Guardian can cancel
+                require(_newTimelock.hasRole(CANCELLER_ROLE, guardians[i]), Err(22));
             }
+
             _newTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, address(this)); // Revoke admin role
+            require(!_newTimelock.hasRole(TIMELOCK_ADMIN_ROLE, address(this)), Err(22));
 
             // post validation
             require(
