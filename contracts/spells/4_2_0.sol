@@ -173,13 +173,13 @@ contract Upgrade4_2_0 is Versioned {
 
         if (_mainnet) {
             // 4.2.0 deployer (mainnet)
-            deployer = IDeployer(0x8FcbD0BaaeB442F1f3F374FcB63933e6D4Cb8710);
+            deployer = IDeployer(0x30DBbe1969a357e46b640F1C5276569db4af9b84);
             require(keccak256(abi.encodePacked(deployer.version())) == NEW_VERSION_HASH, Err(1));
 
             // DAO registries (mainnet)
             registries = IDeployer.Registries(
-                VersionRegistry(0x1895b15B3d0a70962be86Af0E337018aD63464e0),
-                AssetPluginRegistry(0xA9145A22537B39b04fe91AA479c1b8e7a3569c98),
+                VersionRegistry(0xB031D7742367B92CcBEd0653B9a6341EFa47dd04),
+                AssetPluginRegistry(0x15A9e0CF2Fd9842B99E015E05073b5F0f58A1C29),
                 DAOFeeRegistry(0xec716deD4eABa060937D1a915F166E237039342B),
                 ITrustedFillerRegistry(0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A)
             );
@@ -202,13 +202,13 @@ contract Upgrade4_2_0 is Versioned {
             }
         } else {
             // 4.2.0 deployer (base)
-            deployer = IDeployer(0x5705F85A05c8b57818663C7AB6a11f88323a1A57);
+            deployer = IDeployer(0x7E4650af145f6a9146b91E8b363DF49ee32b0A58);
             require(keccak256(abi.encodePacked(deployer.version())) == NEW_VERSION_HASH, Err(1));
 
             // DAO registries (base)
             registries = IDeployer.Registries(
-                VersionRegistry(0xBbC532A80DD141449330c1232C953Da6801Aed01),
-                AssetPluginRegistry(0x3312507BC3F22430B34D5841A472c767DC5C36e4),
+                VersionRegistry(0xbD769ea5E93A4B232Cee08ED4C2a67Ff5Ba692Df),
+                AssetPluginRegistry(0x093c07787920eB34A0A0c7a09823510725Aee4Af),
                 DAOFeeRegistry(0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD),
                 ITrustedFillerRegistry(0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18)
             );
