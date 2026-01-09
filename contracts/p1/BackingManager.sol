@@ -285,16 +285,20 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         ctx.minTradeVolume = minTradeVolume;
         ctx.maxTradeSlippage = maxTradeSlippage;
         ctx.quantities = new uint192[](reg.erc20s.length);
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            ctx.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
-            // quantities round up, without any issuance premium
-        }
         ctx.bals = new uint192[](reg.erc20s.length);
+
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            ctx.bals[i] = reg.assets[i].bal(address(this)) + tokensOut[reg.erc20s[i]];
+            IERC20 erc20 = reg.erc20s[i];
+            IAsset asset = reg.assets[i];
+
+            ctx.quantities[i] = basketHandler.quantityUnsafe(erc20, asset);
+            // quantities round up, and exclude issuance premium
+
+            // include balances out on trade
+            ctx.bals[i] = asset.bal(address(this)) + tokensOut[erc20];
 
             // include StRSR's balance for RSR
-            if (reg.erc20s[i] == rsr) ctx.bals[i] += reg.assets[i].bal(address(stRSR));
+            if (erc20 == rsr) ctx.bals[i] += asset.bal(address(stRSR));
         }
     }
 
@@ -315,8 +319,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @param trade The trade address itself
     /// @custom:governance
     function forceSettleTrade(ITrade trade) public override(TradingP1, ITrading) {
-        super.forceSettleTrade(trade); // enforces governance only
         delete tokensOut[trade.sell()];
+        super.forceSettleTrade(trade); // enforces governance only; nonReentrant
     }
 
     /// @custom:governance
