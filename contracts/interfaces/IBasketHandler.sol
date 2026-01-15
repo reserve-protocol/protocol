@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../libraries/Fixed.sol";
@@ -43,6 +43,11 @@ interface IBasketHandler is IComponent {
     /// @param newVal The new warmup period
     event WarmupPeriodSet(uint48 oldVal, uint48 newVal);
 
+    /// Emitted when the issuance premium logic is changed
+    /// @param oldVal The old value of enableIssuancePremium
+    /// @param newVal The new value of enableIssuancePremium
+    event EnableIssuancePremiumSet(bool oldVal, bool newVal);
+
     /// Emitted when the status of a basket has changed
     /// @param oldStatus The previous basket status
     /// @param newStatus The new basket status
@@ -57,19 +62,20 @@ interface IBasketHandler is IComponent {
     function init(
         IMain main_,
         uint48 warmupPeriod_,
-        bool reweightable_
+        bool reweightable_,
+        bool enableIssuancePremium_
     ) external;
 
-    /// Set the prime basket
-    /// For an index RToken (reweightable = true), use forceSetPrimeBasket to skip normalization
+    /// Set the prime basket, checking target amounts are constant
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     ///                   required range: 1e9 values; absolute range irrelevant.
     /// @custom:governance
     function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external;
 
-    /// Set the prime basket without normalizing targetAmts by the UoA of the current basket
-    /// Works the same as setPrimeBasket for non-index RTokens (reweightable = false)
+    /// Set the prime basket, skipping any constant target amount checks if RToken is reweightable
+    /// Warning: Reweightable RTokens SHOULD use a spell to execute this function to avoid
+    ///          accidentally changing the UoA value of the RToken.
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     ///                   required range: 1e9 values; absolute range irrelevant.
@@ -110,29 +116,33 @@ interface IBasketHandler is IComponent {
     /// @return If the basket is ready to issue and trade
     function isReady() external view returns (bool);
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// @param erc20 The ERC20 token contract for the asset
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// @return {tok/BU} The redemption quantity of token in the reference basket, rounded up
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
 
+    /// Returns basket quantity rounded up, wihout any issuance premium
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// @return {tok/BU} The redemption quantity of token in the reference basket, rounded up
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantityUnsafe(IERC20 erc20, IAsset asset) external view returns (uint192);
 
     /// @param amount {BU}
+    /// @param applyIssuancePremium Whether to apply the issuance premium
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(uint192 amount, RoundingMode rounding)
-        external
-        view
-        returns (address[] memory erc20s, uint256[] memory quantities);
+    function quote(
+        uint192 amount,
+        bool applyIssuancePremium,
+        RoundingMode rounding
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
     /// @param basketNonces An array of basket nonces to do redemption from
@@ -152,16 +162,10 @@ interface IBasketHandler is IComponent {
 
     /// Should not revert
     /// low should be nonzero when BUs are worth selling
+    /// @param applyIssuancePremium Whether to apply the issuance premium to the high price
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
-    function price() external view returns (uint192 low, uint192 high);
-
-    /// Should not revert
-    /// lotLow should be nonzero if a BU could be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
+    function price(bool applyIssuancePremium) external view returns (uint192 low, uint192 high);
 
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
@@ -190,4 +194,8 @@ interface TestIBasketHandler is IBasketHandler {
     function warmupPeriod() external view returns (uint48);
 
     function setWarmupPeriod(uint48 val) external;
+
+    function enableIssuancePremium() external view returns (bool);
+
+    function setIssuancePremiumEnabled(bool val) external;
 }

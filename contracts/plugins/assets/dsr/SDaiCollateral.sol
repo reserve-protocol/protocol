@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
@@ -53,6 +53,6 @@ contract SDaiCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
-        return shiftl_toFix(pot.chi(), -27);
+        return shiftl_toFix(pot.chi(), -27, FLOOR);
     }
 }

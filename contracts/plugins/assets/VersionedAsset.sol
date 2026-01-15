@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../../interfaces/IVersioned.sol";
 
 // This value should be updated on each release
-string constant ASSET_VERSION = "3.4.0";
+string constant ASSET_VERSION = "4.2.0";
 
 /**
  * @title VersionedAsset

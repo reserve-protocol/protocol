@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../libraries/Fixed.sol";
 import "../interfaces/IFurnace.sol";
@@ -58,7 +58,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     //     payoutAmount = RToken.balanceOf(this) * (1 - (1-ratio)**N) from [furnace-payout-formula]
     // effects:
     //   lastPayout' = lastPayout + numPeriods (end of last pay period)
-    //   lastPayoutBal' = rToken.balanceOf'(this) (balance now == at end of pay leriod)
+    //   lastPayoutBal' = rToken.balanceOf'(this) (balance now == at end of pay period)
     // actions:
     //   rToken.melt(payoutAmount), paying payoutAmount to RToken holders
 

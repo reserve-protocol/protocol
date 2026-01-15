@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../assets/aave/ATokenFiatCollateral.sol";
 
@@ -55,6 +55,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                     // Save prices
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 }
 

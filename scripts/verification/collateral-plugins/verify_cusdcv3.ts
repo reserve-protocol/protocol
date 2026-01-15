@@ -1,6 +1,6 @@
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../../common/configuration'
+import { baseL2Chains, developmentChains, networkConfig } from '../../../common/configuration'
 import { fp, bn } from '../../../common/numbers'
 import {
   getDeploymentFile,
@@ -44,13 +44,16 @@ async function main() {
       networkConfig[chainId].tokens.cUSDCv3,
       networkConfig[chainId].COMET_REWARDS,
       networkConfig[chainId].tokens.COMP,
+      'Wrapped cUSDCv3',
+      'wcUSDCv3',
+      fp(1).toString(),
     ],
-    'contracts/plugins/assets/compoundv3/CusdcV3Wrapper.sol:CusdcV3Wrapper'
+    'contracts/plugins/assets/compoundv3/CFiatV3Wrapper.sol:CFiatV3Wrapper'
   )
 
   /********  Verify Collateral - wcUSDCv3  **************************/
 
-  const usdcOracleTimeout = '86400' // 24 hr
+  const usdcOracleTimeout = baseL2Chains.includes(hre.network.name) ? '86400' : '82800' // 24h base, 23 hr mainnet
   const usdcOracleError = getUsdcOracleError(hre.network.name)
 
   await verifyContract(

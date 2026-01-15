@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
@@ -54,10 +54,16 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     ///   less RSR overcollateralization in % terms than the average (weighted) oracleError.
     ///   This arises from the use of oracleErrors inside of `basketRange()` and inside
     ///   `basketHandler.price()`. When `range.bottom == range.top` then there is no compounding.
+    /// @dev This method should not be relied upon to provide precise bounds for secondary market
+    ///   prices. It is a "reasonable" estimate of the range the RToken is expected to trade in
+    ///   given what the protocol knows about its internal state, but strictly speaking RTokens
+    ///   can trade outside this range for periods of time (ie increased demand during IFFY state)
+    ///   It is therefore NOT recommended to rely on this pricing method to price RTokens
+    ///   in lending markets or anywhere where secondary market price is the central concern.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
-        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
+        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(true); // {UoA/BU}
         require(lowBUPrice != 0 && highBUPrice != FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
@@ -67,8 +73,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
         if (supply == 0) return (lowBUPrice, highBUPrice);
 
-        // The RToken's price is not symmetric like other assets!
-        // range.bottom is lower because of the slippage from the shortfall
+        // The RToken's basket range is not symmetric!
+        // range.bottom is additionally lower because of the slippage from the shortfall
         BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
@@ -88,7 +94,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     }
 
     /// Should not revert
-    /// @dev See `tryPrice` caveat about possible compounding error in calculating price
+    /// @dev See `tryPrice` caveats
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {

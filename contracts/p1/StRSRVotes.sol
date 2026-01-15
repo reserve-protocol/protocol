@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
@@ -171,14 +171,21 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
         bytes32 r,
         bytes32 s
     ) public {
-        require(block.timestamp <= expiry, "signature expired");
+        if (block.timestamp > expiry) {
+            revert SignatureExpired();
+        }
+
         address signer = ECDSAUpgradeable.recover(
             _hashTypedDataV4(keccak256(abi.encode(_DELEGATE_TYPEHASH, delegatee, nonce, expiry))),
             v,
             r,
             s
         );
-        require(nonce == _useDelegationNonce(signer), "invalid nonce");
+
+        if (nonce != _useDelegationNonce(signer)) {
+            revert InvalidNonce();
+        }
+
         _delegate(signer, delegatee);
     }
 
@@ -289,7 +296,9 @@ contract StRSRP1Votes is StRSRP1, IERC5805Upgradeable, IStRSRVotes {
     }
 
     function _requireValidTimepoint(uint256 timepoint) private view {
-        require(timepoint < block.timestamp, "future lookup");
+        if (timepoint >= block.timestamp) {
+            revert FutureLookup();
+        }
     }
 
     /**

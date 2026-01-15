@@ -50,12 +50,14 @@ async function main() {
 
   /********  Deploy Stargate USDT Wrapper  **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargateRewardableWrapper')
+  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'StargateRewardableWrapper'
+  )
 
   const erc20 = await WrapperFactory.deploy(
     'Wrapped Stargate USDT',
     'wSTG-USDT',
-    networkConfig[chainId].tokens.STG,
+    networkConfig[chainId].tokens.STG, // DEPRECATED
     STAKING_CONTRACT,
     SUSDT
   )
@@ -85,7 +87,7 @@ async function main() {
     revenueHiding.toString()
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Stargate USDT to ${hre.network.name} (${chainId}): ${collateral.address}`)

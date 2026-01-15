@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IMain.sol";
@@ -33,6 +33,8 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
+
+    uint192 public savedPegPrice; // {target/ref} The peg price of the token during the last update
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(

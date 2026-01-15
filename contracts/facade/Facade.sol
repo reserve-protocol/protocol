@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IFacade.sol";
@@ -14,7 +14,9 @@ contract Facade is IFacade, Ownable {
     mapping(bytes4 => address) public facets;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() Ownable() {}
+    constructor(address owner) Ownable() {
+        _transferOwnership(owner);
+    }
 
     // Save new facets to the Facade, forcefully
     function save(address facet, bytes4[] memory selectors) external onlyOwner {

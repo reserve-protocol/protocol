@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../interfaces/IFacadeWrite.sol";
+import "../interfaces/IDeployer.sol";
 import "./lib/FacadeWriteLib.sol";
 
 /**
@@ -21,10 +22,11 @@ contract FacadeWrite is IFacadeWrite {
     }
 
     /// Step 1
-    function deployRToken(ConfigurationParams calldata config, SetupParams calldata setup)
-        external
-        returns (address)
-    {
+    function deployRToken(
+        ConfigurationParams calldata config,
+        SetupParams calldata setup,
+        IDeployer.Registries calldata registries
+    ) external returns (address) {
         // Perform validations
         require(setup.primaryBasket.length != 0, "no collateral");
         require(setup.primaryBasket.length == setup.weights.length, "invalid length");
@@ -51,7 +53,8 @@ contract FacadeWrite is IFacadeWrite {
                 config.symbol,
                 config.mandate,
                 address(this), // set as owner
-                config.params
+                config.params,
+                registries
             )
         );
 
@@ -104,12 +107,13 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Setup revshare beneficiaries
+        address[] memory beneficiaries = new address[](setup.beneficiaries.length);
+        RevenueShare[] memory shares = new RevenueShare[](setup.beneficiaries.length);
         for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
-            main.distributor().setDistribution(
-                setup.beneficiaries[i].beneficiary,
-                setup.beneficiaries[i].revShare
-            );
+            beneficiaries[i] = setup.beneficiaries[i].beneficiary;
+            shares[i] = setup.beneficiaries[i].revShare;
         }
+        main.distributor().setDistributions(beneficiaries, shares);
 
         // Pause until setupGovernance
         main.grantRole(PAUSER, address(this));

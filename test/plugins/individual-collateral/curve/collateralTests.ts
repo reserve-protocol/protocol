@@ -32,6 +32,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { useEnv } from '#/utils/env'
 import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../utils/oracles'
 import {
+  IConfig,
   IGovParams,
   IGovRoles,
   IRTokenSetup,
@@ -53,7 +54,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestICollateral,
-  TestIDeployer,
+  DeployerP1,
   TestIMain,
   TestIRevenueTrader,
   TestIRToken,
@@ -500,8 +501,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           const priceTimeout = await ctx.collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
           p = await ctx.collateral.price()
-          expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(p[1]).to.be.closeTo(savedHigh.mul(2), p[1].mul(2).div(10000)) // 1 part in 10 thousand
+          expect(p[0]).to.be.closeTo(savedLow.div(2), savedLow.div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.mul(3).div(2), savedHigh.mul(3).div(2).div(10000)) // 1 part in 10k
 
           // Should be 0 after full priceTimeout
           await advanceTime(priceTimeout / 2)
@@ -509,6 +510,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         it('lotPrice (deprecated) is equal to price()', async () => {
+          // @ts-expect-error -- deprecated but oh well
           const lotPrice = await ctx.collateral.lotPrice()
           const price = await ctx.collateral.price()
           expect(price.length).to.equal(2)
@@ -790,13 +792,16 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     // Only run full protocol integration tests on mainnet
     // Protocol integration fixture not currently set up to deploy onto base
     getDescribeFork(targetNetwork)('integration tests', () => {
+      const onBase = useEnv('FORK_NETWORK').toLowerCase() == 'base'
+      const onArbitrum = useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum'
+
       before(resetFork)
 
       let ctx: X
       let owner: SignerWithAddress
       let addr1: SignerWithAddress
 
-      let chainId: number
+      let chainId: string
 
       let defaultFixture: Fixture<DefaultFixture>
 
@@ -814,17 +819,18 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       let assetRegistry: IAssetRegistry
       let backingManager: TestIBackingManager
       let basketHandler: TestIBasketHandler
-      let rTokenTrader: TestIRevenueTrader
+      let rsrTrader: TestIRevenueTrader
+      let rsr: ERC20Mock
 
-      let deployer: TestIDeployer
+      let deployer: DeployerP1
       let facadeWrite: FacadeWrite
       let govParams: IGovParams
       let govRoles: IGovRoles
 
-      const config = {
+      const config: IConfig = {
         dist: {
-          rTokenDist: bn(100), // 100% RToken
-          rsrDist: bn(0), // 0% RSR
+          rTokenDist: bn(0), // 0% RToken
+          rsrDist: bn(10000), // 100% RSR
         },
         minTradeVolume: bn('0'), // $0
         rTokenMaxTradeVolume: MAX_UINT192, // +inf
@@ -844,10 +850,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           pctRate: fp('0.05'), // 5%
         },
         redemptionThrottle: {
-          amtRate: fp('1e6'), // 1M RToken
-          pctRate: fp('0.05'), // 5%
+          amtRate: fp('2e6'), // 2M RToken
+          pctRate: fp('0.1'), // 10%
         },
         reweightable: false,
+        enableIssuancePremium: false,
       }
 
       interface IntegrationFixture {
@@ -878,7 +885,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         let protocol: DefaultFixture
         ;({ ctx, protocol } = await loadFixture(integrationFixture))
         ;({ collateral } = ctx)
-        ;({ deployer, facadeWrite, govParams } = protocol)
+        ;({ deployer, facadeWrite, govParams, rsr } = protocol)
 
         supply = fp('1')
 
@@ -915,7 +922,13 @@ export default function fn<X extends CurveCollateralFixtureContext>(
               mandate: 'mandate',
               params: config,
             },
-            rTokenSetup
+            rTokenSetup,
+            {
+              assetPluginRegistry: ZERO_ADDRESS,
+              daoFeeRegistry: ZERO_ADDRESS,
+              versionRegistry: ZERO_ADDRESS,
+              trustedFillerRegistry: ZERO_ADDRESS,
+            }
           )
         ).wait()
 
@@ -935,8 +948,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
         )
         rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
-        rTokenTrader = <TestIRevenueTrader>(
-          await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
+        rsrTrader = <TestIRevenueTrader>(
+          await ethers.getContractAt('TestIRevenueTrader', await main.rsrTrader())
         )
 
         // Set initial governance roles
@@ -1021,39 +1034,50 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
       it('forwards revenue and sells in a revenue auction', async () => {
         const router = await (await ethers.getContractFactory('DutchTradeRouter')).deploy()
-        await rToken.connect(addr1).approve(router.address, MAX_UINT256)
+        await rsr.connect(addr1).approve(router.address, MAX_UINT256)
         // Send excess collateral to the RToken trader via forwardRevenue()
         const mintAmt = toBNDecimals(fp('1e-6'), await collateralERC20.decimals())
         await mintCollateralTo(
           ctx,
-          mintAmt.gt('150') ? mintAmt : bn('150'),
+          mintAmt.gt('10000') ? mintAmt : bn('10000'),
           addr1,
           backingManager.address
         )
         await backingManager.forwardRevenue([collateralERC20.address])
-        expect(await collateralERC20.balanceOf(rTokenTrader.address)).to.be.gt(0)
+        expect(await collateralERC20.balanceOf(rsrTrader.address)).to.be.gt(0)
 
         // Run revenue auction
-        await expect(
-          rTokenTrader.manageTokens([collateralERC20.address], [TradeKind.DUTCH_AUCTION])
-        )
-          .to.emit(rTokenTrader, 'TradeStarted')
-          .withArgs(anyValue, collateralERC20.address, rToken.address, anyValue, anyValue)
-        const tradeAddr = await rTokenTrader.trades(collateralERC20.address)
+        await expect(rsrTrader.manageTokens([collateralERC20.address], [TradeKind.DUTCH_AUCTION]))
+          .to.emit(rsrTrader, 'TradeStarted')
+          .withArgs(anyValue, collateralERC20.address, rsr.address, anyValue, anyValue)
+        const tradeAddr = await rsrTrader.trades(collateralERC20.address)
         expect(tradeAddr).to.not.equal(ZERO_ADDRESS)
         const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
 
         expect(await trade.sell()).to.equal(collateralERC20.address)
-        expect(await trade.buy()).to.equal(rToken.address)
+        expect(await trade.buy()).to.equal(rsr.address)
         const buyAmt = await trade.bidAmount(await trade.endTime())
-        await rToken.connect(addr1).approve(trade.address, buyAmt)
+
+        // The base whale below is hyUSDStRSR. This is bad, and generally we don't want to do this. But there
+        // are no RSR holders on Base in size that hold their balance consistently across blocks, since
+        // everyone is farming. Since the individual tests each have their own block they use,
+        // this was the easiest way to make everything work. I'm not worried about this in this case
+        // because hyUSDStRSR is _not_ the RToken we are testing here, so it should have no impact.
+        const whale = onBase
+          ? '0x796d2367AF69deB3319B8E10712b8B65957371c3'
+          : onArbitrum
+          ? '0xBe81e75C579b090428CC5495540541231FD3c0bD'
+          : '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
+        await whileImpersonating(whale, async (signer) => {
+          await rsr.connect(signer).transfer(addr1.address, buyAmt)
+        })
         await advanceToTimestamp((await trade.endTime()) - 1)
 
         await expect(router.connect(addr1).bid(trade.address, addr1.address)).to.emit(
-          rTokenTrader,
+          rsrTrader,
           'TradeSettled'
         )
-        expect(await rTokenTrader.tradesOpen()).to.equal(0)
+        expect(await rsrTrader.tradesOpen()).to.equal(0)
       })
 
       // === Integration Test Helpers ===
@@ -1067,8 +1091,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         )
 
         let chainId = await getChainId(hre)
-        if (useEnv('FORK_NETWORK').toLowerCase() == 'base') chainId = 8453
-        if (useEnv('FORK_NETWORK').toLowerCase() == 'arbitrum') chainId = 42161
+        if (onBase) chainId = '8453'
+        if (onArbitrum) chainId = '42161'
 
         if (target == ethers.utils.formatBytes32String('USD')) {
           // USD
@@ -1077,10 +1101,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             networkConfig[chainId].tokens.USDC!
           )
 
-          const usdcHolder =
-            chainId == 42161
-              ? '0x47c031236e19d024b42f8ae6780e44a573170703'
-              : '0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf'
+          const usdcHolder = onArbitrum
+            ? '0x47c031236e19d024b42f8ae6780e44a573170703'
+            : '0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf'
           await whileImpersonating(usdcHolder, async (signer) => {
             await erc20
               .connect(signer)
@@ -1106,10 +1129,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WETH!
           )
-          const wethHolder =
-            chainId == 42161
-              ? '0x70d95587d40a2caf56bd97485ab3eec10bee6336'
-              : '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+          const wethHolder = onArbitrum
+            ? '0x70d95587d40a2caf56bd97485ab3eec10bee6336'
+            : '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
           await whileImpersonating(wethHolder, async (signer) => {
             await erc20
               .connect(signer)
@@ -1138,10 +1160,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             'IERC20Metadata',
             networkConfig[chainId].tokens.WBTC!
           )
-          const wbtcHolder =
-            chainId == 42161
-              ? '0x47c031236e19d024b42f8ae6780e44a573170703'
-              : '0xccf4429db6322d5c611ee964527d42e5d685dd6a'
+          const wbtcHolder = onArbitrum
+            ? '0x47c031236e19d024b42f8ae6780e44a573170703'
+            : '0xccf4429db6322d5c611ee964527d42e5d685dd6a'
 
           await whileImpersonating(wbtcHolder, async (signer) => {
             await erc20

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "./IWrappedERC20.sol";
 
@@ -78,7 +78,7 @@ abstract contract WrappedERC20 is IWrappedERC20 {
     /**
      * @dev Returns the decimals places of the token.
      */
-    function decimals() public pure virtual returns (uint8) {
+    function decimals() public view virtual returns (uint8) {
         return 18;
     }
 

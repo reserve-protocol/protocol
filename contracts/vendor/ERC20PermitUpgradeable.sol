@@ -3,7 +3,7 @@
 // The only modification that has been made is in the body of the `permit` function at line 83,
 /// where we failover to SignatureChecker in order to handle approvals for smart contracts.
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";

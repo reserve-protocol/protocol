@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
@@ -43,5 +43,14 @@ abstract contract ComponentP0 is Versioned, Initializable, ContextUpgradeable, I
     modifier governance() {
         require(main.hasRole(OWNER, _msgSender()), "governance only");
         _;
+    }
+
+    // === Control Flow ===
+    // In P0 we do not apply locks
+
+    modifier globalNonReentrant() {
+        main.beginTx();
+        _;
+        main.endTx();
     }
 }

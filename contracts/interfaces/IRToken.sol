@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../libraries/Fixed.sol";
 import "../libraries/Throttle.sol";
 import "./IComponent.sol";
 
@@ -54,6 +53,9 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
 
     /// Emitted when redemption SupplyThrottle params are set
     event RedemptionThrottleSet(ThrottleLib.Params oldVal, ThrottleLib.Params newVal);
+
+    /// Emitted when the mandate is set
+    event MandateSet(string indexed oldVal, string newVal);
 
     // Initialization
     function init(
@@ -143,6 +145,15 @@ interface TestIRToken is IRToken {
     function setIssuanceThrottleParams(ThrottleLib.Params calldata) external;
 
     function setRedemptionThrottleParams(ThrottleLib.Params calldata) external;
+
+    function setThrottleParams(
+        ThrottleLib.Params calldata issuanceParams,
+        ThrottleLib.Params calldata redemptionParams
+    ) external;
+
+    function setMandate(string calldata mandate) external;
+
+    function mandate() external view returns (string memory);
 
     function issuanceThrottleParams() external view returns (ThrottleLib.Params memory);
 

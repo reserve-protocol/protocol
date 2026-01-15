@@ -46,20 +46,18 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy USDe Collateral - sUSDe  **************************/
-  let collateral: USDeFiatCollateral
-
   const USDeFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'USDeFiatCollateral'
   )
 
-  collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(deployer).deploy(
+  const collateral = <USDeFiatCollateral>await USDeFiatCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: PRICE_TIMEOUT.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDe,
       oracleError: ORACLE_ERROR.toString(),
       erc20: networkConfig[chainId].tokens.sUSDe,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: ORACLE_TIMEOUT.toString(), // 24 hr
+      oracleTimeout: ORACLE_TIMEOUT.toString(), // 23 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: fp('0.01').add(ORACLE_ERROR).toString(), // ~1.5%
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 72h
@@ -72,7 +70,7 @@ async function main() {
   console.log(
     `Deployed USDe (sUSDe) Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.sUSDe = collateral.address

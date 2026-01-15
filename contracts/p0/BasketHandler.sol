@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -113,6 +113,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
     uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
+    uint192 public constant MIN_TARGET_AMT = FIX_ONE / 1e6; // {target/BU} min basket weight: 1e-6
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
     uint256 internal constant MAX_BACKUP_ERC20S = 64;
 
@@ -153,6 +154,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Whether the total weights of the target basket can be changed
     bool public reweightable; // immutable after init
 
+    bool public enableIssuancePremium;
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -166,12 +169,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     function init(
         IMain main_,
         uint48 warmupPeriod_,
-        bool reweightable_
+        bool reweightable_,
+        bool enableIssuancePremium_
     ) external initializer {
         __Component_init(main_);
 
         setWarmupPeriod(warmupPeriod_);
         reweightable = reweightable_; // immutable thereafter
+        enableIssuancePremium = enableIssuancePremium_;
 
         // Set last status to DISABLED (default)
         lastStatus = CollateralStatus.DISABLED;
@@ -237,7 +242,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// Set the prime basket
+    /// Set the prime basket, checking target amounts are constant
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
@@ -245,10 +250,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        _setPrimeBasket(erc20s, targetAmts, true);
+        _setPrimeBasket(erc20s, targetAmts, false);
     }
 
-    /// Set the prime basket without reweighting targetAmts by UoA of the current basket
+    /// Set the prime basket, skipping any constant target amount checks if RToken is reweightable
+    /// Warning: Reweightable RTokens SHOULD use a spell to execute this function to avoid
+    ///          accidentally changing the UoA value of the RToken.
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
     /// @custom:governance
@@ -256,13 +263,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        _setPrimeBasket(erc20s, targetAmts, false);
+        _setPrimeBasket(erc20s, targetAmts, true);
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param normalize True iff targetAmts should be normalized by UoA to the reference basket
+    /// @param disableTargetAmountCheck For reweightable RTokens, if true
+    ///                                 skips the `requireConstantConfigTargets()` check
     /// @custom:governance
     // checks:
     //   caller is OWNER
@@ -278,18 +286,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     function _setPrimeBasket(
         IERC20[] calldata erc20s,
         uint192[] memory targetAmts,
-        bool normalize
+        bool disableTargetAmountCheck
     ) internal {
-        require(erc20s.length > 0, "empty basket");
-        require(erc20s.length == targetAmts.length, "len mismatch");
+        require(erc20s.length > 0, "invalid lengths");
+        require(erc20s.length == targetAmts.length, "invalid lengths");
         requireValidCollArray(erc20s);
 
-        if (!reweightable && config.erc20s.length > 0) {
+        if (
+            (!reweightable || (reweightable && !disableTargetAmountCheck)) &&
+            config.erc20s.length != 0
+        ) {
             // Require targets remain constant
             requireConstantConfigTargets(erc20s, targetAmts);
-        } else if (normalize && config.erc20s.length > 0) {
-            // Normalize targetAmts based on UoA value of reference basket
-            targetAmts = normalizeByPrice(erc20s, targetAmts);
         }
 
         // Clean up previous basket config
@@ -307,8 +315,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
-            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
-            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
+            require(MIN_TARGET_AMT <= targetAmts[i], "invalid target amount");
+            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -333,8 +341,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 max,
         IERC20[] calldata erc20s
     ) external governance {
-        require(max <= MAX_BACKUP_ERC20S, "max too large");
-        require(erc20s.length <= MAX_BACKUP_ERC20S, "erc20s too large");
+        require(max <= MAX_BACKUP_ERC20S, "too large");
+        require(erc20s.length <= MAX_BACKUP_ERC20S, "too large");
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -377,19 +385,21 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             (block.timestamp >= lastStatusTimestamp + warmupPeriod);
     }
 
+    /// Basket quantity rounded up, without any issuance premium
     /// @param erc20 The token contract to check for quantity for
-    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    /// @return {tok/BU} The redemption token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return _quantity(erc20, coll);
+            return _quantity(erc20, coll, CEIL);
         } catch {
             return FIX_ZERO;
         }
     }
 
+    /// Basket quantity rounded up, without any issuance premium
     /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
@@ -399,66 +409,94 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
         if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)));
+        return _quantity(erc20, ICollateral(address(asset)), CEIL);
     }
 
+    /// @param coll A collateral that has had refresh() called on it this timestamp
+    /// @return {1} The multiplier to charge on issuance quantities for a collateral
+    function issuancePremium(ICollateral coll) public view returns (uint192) {
+        if (!enableIssuancePremium || coll.lastSave() != block.timestamp) return FIX_ONE;
+
+        try coll.savedPegPrice() returns (uint192 pegPrice) {
+            uint192 targetPerRef = coll.targetPerRef(); // {target/ref}
+            if (pegPrice == 0 || pegPrice >= targetPerRef) return FIX_ONE;
+
+            // {1} = {target/ref} / {target/ref}
+            return targetPerRef.safeDiv(pegPrice, CEIL);
+        } catch {
+            // if savedPegPrice() does not exist on the collateral the error bytes are 0 len
+            return FIX_ONE;
+        }
+    }
+
+    /// Returns the quantity of collateral token in a BU
     /// @param erc20 The token contract
     /// @param coll The registered collateral plugin contract
-    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    /// @return q {tok/BU} The token-quantity of an ERC20 token in the basket
     // Returns 0 if coll is not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function _quantity(IERC20 erc20, ICollateral coll) internal view returns (uint192) {
+    function _quantity(
+        IERC20 erc20,
+        ICollateral coll,
+        RoundingMode rounding
+    ) internal view returns (uint192) {
         uint192 refPerTok = coll.refPerTok();
         if (refPerTok == 0) return FIX_MAX;
 
         // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(refPerTok, CEIL);
+        return basket.refAmts[erc20].div(refPerTok, rounding);
     }
 
+    /// Returns the price of a BU (including issuance premium)
+    /// Included for backwards compatibility with <4.0.0
     /// Should not revert
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
     function price() external view returns (uint192 low, uint192 high) {
-        return _price(false);
+        return price(true);
     }
 
     /// Should not revert
-    /// lowLow should be nonzero when the asset might be worth selling
-    /// @dev Deprecated. Phased out in 3.1.0, but left on interface for backwards compatibility
-    /// @return lotLow {UoA/BU} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
-    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        return _price(true);
-    }
-
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/BU} The lower end of the lot price estimate
-    /// @return high {UoA/BU} The upper end of the lot price estimate
-    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
+    /// @param applyIssuancePremium Whether to apply the issuance premium to the high price
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
+    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
+    function price(bool applyIssuancePremium) public view returns (uint192 low, uint192 high) {
         IAssetRegistry reg = main.assetRegistry();
 
         uint256 low256;
         uint256 high256;
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            uint192 qty = quantity(basket.erc20s[i]);
-            if (qty == 0) continue;
+            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
+                uint192 qty = _quantity(basket.erc20s[i], coll, CEIL);
+                if (qty == 0) continue;
 
-            (uint192 lowP, uint192 highP) = useLotPrice
-                ? reg.toAsset(basket.erc20s[i]).lotPrice()
-                : reg.toAsset(basket.erc20s[i]).price();
+                (uint192 lowP, uint192 highP) = reg.toAsset(basket.erc20s[i]).price();
 
-            low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
+                low256 += qty.safeMul(lowP, FLOOR);
 
-            if (high256 < FIX_MAX) {
-                if (highP == FIX_MAX) {
-                    high256 = FIX_MAX;
-                } else {
-                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                if (high256 < FIX_MAX) {
+                    if (highP == FIX_MAX) {
+                        high256 = FIX_MAX;
+                        continue;
+                    }
+
+                    if (applyIssuancePremium) {
+                        uint192 premium = issuancePremium(coll); // {1} always CEIL
+
+                        // {tok} = {tok} * {1}
+                        if (premium > FIX_ONE) qty = qty.safeMul(premium, CEIL);
+                    }
+
+                    high256 += qty.safeMul(highP, CEIL);
                 }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                continue;
             }
         }
 
@@ -467,8 +505,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
     }
 
-    /// Return the current issuance/redemption value of `amount` BUs
+    /// Return the current issuance/redemption quantities for `amount` BUs
+    /// Included for backwards compatibility with <4.0.0
     /// @param amount {BU}
+    /// @param rounding If CEIL, apply issuance premium
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
     // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
@@ -477,14 +517,40 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
+        return quote(amount, rounding == CEIL, rounding);
+    }
+
+    /// @param amount {BU}
+    /// @param applyIssuancePremium Whether to apply the issuance premium
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
+    function quote(
+        uint192 amount,
+        bool applyIssuancePremium,
+        RoundingMode rounding
+    ) public view returns (address[] memory erc20s, uint256[] memory quantities) {
+        IAssetRegistry assetRegistry = main.assetRegistry();
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
 
         for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             erc20s[i] = address(basket.erc20s[i]);
+            ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
-            // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = quantity(basket.erc20s[i]).safeMul(amount, rounding).shiftl_toUint(
+            // {tok} = {tok/BU} * {BU}
+            uint192 q = _quantity(basket.erc20s[i], coll, rounding).safeMul(amount, rounding);
+
+            // Prevent toxic issuance by charging more when collateral is under peg
+            if (applyIssuancePremium) {
+                uint192 premium = issuancePremium(coll); // {1} always CEIL
+
+                // {tok} = {tok} * {1}
+                if (premium > FIX_ONE) q = q.safeMul(premium, rounding);
+            }
+
+            // {qTok} = {tok} * {qTok/tok}
+            quantities[i] = q.shiftl_toUint(
                 int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
                 rounding
             );
@@ -503,7 +569,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        require(basketNonces.length == portions.length, "bad portions len");
+        require(basketNonces.length == portions.length, "invalid lengths");
 
         IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
         ICollateral[] memory collsAll = new ICollateral[](erc20sAll.length);
@@ -571,8 +637,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             quantities[i] = amount
             .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
             .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
-            // marginally more penalizing than its sibling calculation that uses _quantity()
-            // because does not intermediately CEIL as part of the division
         }
     }
 
@@ -591,14 +655,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return BasketRange(FIX_ZERO, FIX_MAX);
 
-            uint192 refPerTok = coll.refPerTok();
-            // If refPerTok is 0, then we have zero of coll's reference unit.
-            // We know that basket.refAmts[basket.erc20s[i]] > 0, so we have no baskets.
-            if (refPerTok == 0) return BasketRange(FIX_ZERO, FIX_MAX);
-
-            // {tok/BU} = {ref/BU} / {ref/tok}.  0-division averted by condition above.
-            uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
-            // q > 0 because q = (n).div(_, CEIL) and n > 0
+            // {tok/BU}
+            uint192 q = _quantity(basket.erc20s[i], coll, CEIL);
+            if (q == FIX_MAX) return BasketRange(FIX_ZERO, FIX_MAX);
 
             // {BU} = {tok} / {tok/BU}
             uint192 inBUs = coll.bal(account).div(q);
@@ -614,6 +673,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
+    }
+
+    /// @custom:governance
+    function setIssuancePremiumEnabled(bool val) public governance {
+        emit EnableIssuancePremiumSet(enableIssuancePremium, val);
+        enableIssuancePremium = val;
     }
 
     /* _switchBasket computes basket' from three inputs:
@@ -837,46 +902,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             else _targetAmts.set(targetName, amt - targetAmts[i]);
         }
         require(_targetAmts.length() == 0, "missing target weights");
-    }
-
-    /// Normalize the target amounts to maintain constant UoA value with the current config
-    /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
-    function normalizeByPrice(IERC20[] calldata erc20s, uint192[] memory targetAmts)
-        private
-        returns (uint192[] memory newTargetAmts)
-    {
-        main.poke();
-        require(status() == CollateralStatus.SOUND, "unsound basket");
-        uint256 len = erc20s.length; // assumes erc20s.length == targetAmts.length
-
-        // Compute current basket price
-        (uint192 low, uint192 high) = _price(false); // {UoA/BU}
-        assert(low > 0 && high < FIX_MAX); // implied by SOUND status
-        uint192 p = low.plus(high).divu(2, FLOOR); // {UoA/BU}
-
-        // Compute would-be new price
-        uint192 newP; // {UoA/BU}
-        for (uint256 i = 0; i < len; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(erc20s[i]); // reverts if unregistered
-            require(coll.status() == CollateralStatus.SOUND, "unsound new collateral");
-
-            (low, high) = coll.price(); // {UoA/tok}
-            require(low > 0 && high < FIX_MAX, "invalid price");
-
-            // {UoA/BU} += {target/BU} * {UoA/tok} / ({target/ref} * {ref/tok})
-            newP += targetAmts[i].mulDiv(
-                low.plus(high).divu(2, FLOOR),
-                coll.targetPerRef().mul(coll.refPerTok(), CEIL),
-                FLOOR
-            );
-        }
-
-        // Scale targetAmts by the price ratio
-        newTargetAmts = new uint192[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            // {target/BU} = {target/BU} * {UoA/BU} / {UoA/BU}
-            newTargetAmts[i] = targetAmts[i].mulDiv(p, newP, CEIL);
-        }
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,

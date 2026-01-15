@@ -41,72 +41,79 @@ async function main() {
   /******** Deploy Morpho - AaveV2 **************************/
 
   /******** Morpho token vaults **************************/
-  console.log(`Deploying morpho token vaults to network ${hre.network.name} (${chainId})
-    with burner account: ${deployer.address}`)
-  const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
-    'MorphoAaveV2TokenisedDeposit'
-  )
-  const maUSDT = await MorphoTokenisedDepositFactory.deploy({
-    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
-    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    underlyingERC20: networkConfig[chainId].tokens.USDT!,
-    poolToken: networkConfig[chainId].tokens.aUSDT!,
-    rewardToken: networkConfig[chainId].tokens.MORPHO!,
-  })
+  // console.log(`Deploying morpho token vaults to network ${hre.network.name} (${chainId})
+  //   with burner account: ${deployer.address}`)
+  // const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
+  //   'MorphoAaveV2TokenisedDeposit'
+  // )
+  // const maUSDT = await MorphoTokenisedDepositFactory.deploy({
+  //   morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+  //   morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+  //   underlyingERC20: networkConfig[chainId].tokens.USDT!,
+  //   poolToken: networkConfig[chainId].tokens.aUSDT!,
+  //   rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  // })
 
-  const maUSDC = await MorphoTokenisedDepositFactory.deploy({
-    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
-    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    underlyingERC20: networkConfig[chainId].tokens.USDC!,
-    poolToken: networkConfig[chainId].tokens.aUSDC!,
-    rewardToken: networkConfig[chainId].tokens.MORPHO!,
-  })
+  // const maUSDC = await MorphoTokenisedDepositFactory.deploy({
+  //   morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+  //   morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+  //   underlyingERC20: networkConfig[chainId].tokens.USDC!,
+  //   poolToken: networkConfig[chainId].tokens.aUSDC!,
+  //   rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  // })
 
-  const maDAI = await MorphoTokenisedDepositFactory.deploy({
-    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
-    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    underlyingERC20: networkConfig[chainId].tokens.DAI!,
-    poolToken: networkConfig[chainId].tokens.aDAI!,
-    rewardToken: networkConfig[chainId].tokens.MORPHO!,
-  })
+  // const maDAI = await MorphoTokenisedDepositFactory.deploy({
+  //   morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+  //   morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+  //   underlyingERC20: networkConfig[chainId].tokens.DAI!,
+  //   poolToken: networkConfig[chainId].tokens.aDAI!,
+  //   rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  // })
 
-  const maWBTC = await MorphoTokenisedDepositFactory.deploy({
-    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
-    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    underlyingERC20: networkConfig[chainId].tokens.WBTC!,
-    poolToken: networkConfig[chainId].tokens.aWBTC!,
-    rewardToken: networkConfig[chainId].tokens.MORPHO!,
-  })
+  // const maWBTC = await MorphoTokenisedDepositFactory.deploy({
+  //   morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+  //   morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+  //   underlyingERC20: networkConfig[chainId].tokens.WBTC!,
+  //   poolToken: networkConfig[chainId].tokens.aWBTC!,
+  //   rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  // })
 
-  const maWETH = await MorphoTokenisedDepositFactory.deploy({
-    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
-    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    underlyingERC20: networkConfig[chainId].tokens.WETH!,
-    poolToken: networkConfig[chainId].tokens.aWETH!,
-    rewardToken: networkConfig[chainId].tokens.MORPHO!,
-  })
+  // const maWETH = await MorphoTokenisedDepositFactory.deploy({
+  //   morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+  //   morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+  //   underlyingERC20: networkConfig[chainId].tokens.WETH!,
+  //   poolToken: networkConfig[chainId].tokens.aWETH!,
+  //   rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  // })
 
-  const maStETH = await MorphoTokenisedDepositFactory.deploy({
-    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
-    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
-    underlyingERC20: networkConfig[chainId].tokens.stETH!,
-    poolToken: networkConfig[chainId].tokens.astETH!,
-    rewardToken: networkConfig[chainId].tokens.MORPHO!,
-  })
+  // const maStETH = await MorphoTokenisedDepositFactory.deploy({
+  //   morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+  //   morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+  //   underlyingERC20: networkConfig[chainId].tokens.stETH!,
+  //   poolToken: networkConfig[chainId].tokens.astETH!,
+  //   rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  // })
 
-  await maUSDT.deployed()
-  await maUSDC.deployed()
-  await maDAI.deployed()
-  await maWBTC.deployed()
-  await maWETH.deployed()
-  await maStETH.deployed()
+  // await maUSDT.deployed()
+  // await maUSDC.deployed()
+  // await maDAI.deployed()
+  // await maWBTC.deployed()
+  // await maWETH.deployed()
+  // await maStETH.deployed()
 
-  assetCollDeployments.erc20s.maUSDT = maUSDT.address
-  assetCollDeployments.erc20s.maUSDC = maUSDC.address
-  assetCollDeployments.erc20s.maDAI = maDAI.address
-  assetCollDeployments.erc20s.maWBTC = maWBTC.address
-  assetCollDeployments.erc20s.maWETH = maWETH.address
-  assetCollDeployments.erc20s.maStETH = maStETH.address
+  const maUSDT = networkConfig[chainId].tokens.maUSDT!
+  const maUSDC = networkConfig[chainId].tokens.maUSDC!
+  const maDAI = networkConfig[chainId].tokens.maDAI!
+  const maWBTC = networkConfig[chainId].tokens.maWBTC!
+  const maWETH = networkConfig[chainId].tokens.maWETH!
+  const maStETH = networkConfig[chainId].tokens.maStETH!
+
+  assetCollDeployments.erc20s.maUSDT = maUSDT
+  assetCollDeployments.erc20s.maUSDC = maUSDC
+  assetCollDeployments.erc20s.maDAI = maDAI
+  assetCollDeployments.erc20s.maWBTC = maWBTC
+  assetCollDeployments.erc20s.maWETH = maWETH
+  assetCollDeployments.erc20s.maStETH = maStETH
 
   /******** Morpho collateral **************************/
   const FiatCollateralFactory = await hre.ethers.getContractFactory('MorphoFiatCollateral')
@@ -131,28 +138,29 @@ async function main() {
       {
         ...baseStableConfig,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
-        erc20: maUSDT.address,
+        erc20: maUSDT,
       },
       revenueHiding
     )
     assetCollDeployments.collateral.maUSDT = collateral.address
     deployedCollateral.push(collateral.address.toString())
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   }
   {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
       {
         ...baseStableConfig,
+        oracleTimeout: '82800', // 23 hr
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-        erc20: maUSDC.address,
+        erc20: maUSDC,
       },
       revenueHiding
     )
     assetCollDeployments.collateral.maUSDC = collateral.address
     deployedCollateral.push(collateral.address.toString())
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   }
   {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy(
@@ -160,18 +168,18 @@ async function main() {
         ...baseStableConfig,
         oracleTimeout: '3600', // 1 hr
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI!,
-        erc20: maDAI.address,
+        erc20: maDAI,
       },
       revenueHiding
     )
     assetCollDeployments.collateral.maDAI = collateral.address
     deployedCollateral.push(collateral.address.toString())
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   }
 
   {
-    const wbtcOracleError = fp('0.02') // 2%
+    const wbtcOracleError = fp('0.005') // 0.5%
     const btcOracleError = fp('0.005') // 0.5%
     const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
     const collateral = await NonFiatCollateralFactory.connect(deployer).deploy(
@@ -181,10 +189,10 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
+        defaultThreshold: fp('0.01').add(wbtcOracleError), // 1.5%
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
-        erc20: maWBTC.address,
+        erc20: maWBTC,
       },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
@@ -193,7 +201,7 @@ async function main() {
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   }
 
   {
@@ -207,14 +215,14 @@ async function main() {
         defaultThreshold: fp('0'), // 0% -- no soft default for self-referential collateral
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-        erc20: maWETH.address,
+        erc20: maWETH,
       },
       revenueHiding
     )
     assetCollDeployments.collateral.maWETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   }
 
   {
@@ -233,10 +241,10 @@ async function main() {
         maxTradeVolume: fp('1e6'), // $1m,
         oracleTimeout: '86400', // 24 hr
         targetName: ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
+        defaultThreshold: fp('0.01').add(ethStEthOracleError), // 1.5%
         delayUntilDefault: bn('86400'), // 24h
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
-        erc20: maStETH.address,
+        erc20: maStETH,
       },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
@@ -245,7 +253,7 @@ async function main() {
     assetCollDeployments.collateral.maStETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   }
 
   console.log(`Deployed collateral to ${hre.network.name} (${chainId})

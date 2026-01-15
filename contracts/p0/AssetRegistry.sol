@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "../plugins/assets/RTokenAsset.sol";
 import "../interfaces/IMain.sol";
 import "./mixins/Component.sol";
 
@@ -42,10 +43,23 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         lastRefresh = uint48(block.timestamp);
     }
 
+    /// Register a new JIT-deployed RTokenAsset instance
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function registerNewRTokenAsset(uint192 maxTradeVolume)
+        external
+        governance
+        returns (bool swapped)
+    {
+        swapped = _registerIgnoringCollisions(new RTokenAsset(main.rToken(), maxTradeVolume));
+    }
+
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     /// @custom:governance
     function register(IAsset asset) external governance returns (bool) {
+        require(address(asset.erc20()) != address(main.rToken()), "cannot register RToken");
         return _register(asset);
     }
 
@@ -54,6 +68,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// @return swapped If the asset was swapped for a previously-registered asset
     /// @custom:governance
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
+        require(address(asset.erc20()) != address(main.rToken()), "cannot swap RToken");
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
 
@@ -70,6 +85,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// Unregister an asset, requiring that it is already registered
     /// @custom:governance
     function unregister(IAsset asset) external governance {
+        require(address(asset.erc20()) != address(main.rToken()), "cannot unregister RToken");
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
 
@@ -125,6 +141,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         assert(reg.erc20s.length == reg.assets.length);
     }
 
+    function validateCurrentAssets() external view {}
+
     /// @return The number of registered ERC20s
     function size() external view returns (uint256) {
         return _erc20s.length();
@@ -174,9 +192,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
         require(
-            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            gas > (64 * GAS_FOR_BH_QTY) / 63 + GAS_FOR_DISABLE_BASKET,
             "not enough gas to unregister safely"
         );
-        return gas - GAS_FOR_DISABLE_BASKET;
+        return GAS_FOR_BH_QTY;
     }
 }

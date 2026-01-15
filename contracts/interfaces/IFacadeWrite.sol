@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "./IDeployer.sol";
 
@@ -91,9 +91,11 @@ interface IFacadeWrite {
     );
 
     /// Deploys an instance of an RToken
-    function deployRToken(ConfigurationParams calldata config, SetupParams calldata setup)
-        external
-        returns (address);
+    function deployRToken(
+        ConfigurationParams calldata config,
+        SetupParams calldata setup,
+        IDeployer.Registries calldata registries
+    ) external returns (address);
 
     /// Sets up governance for an RToken
     function setupGovernance(

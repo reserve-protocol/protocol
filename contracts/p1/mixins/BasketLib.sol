@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -345,6 +345,7 @@ library BasketLibP1 {
     }
 
     /// Normalize the target amounts to maintain constant UoA value with the current config
+    /// @dev Unused; left in for future use in reweightable RToken forceSetPrimeBasket() spell
     /// @param price {UoA/BU} Price of the reference basket (point estimate)
     /// @return newTargetAmts {target/BU} The new target amounts for the normalized basket
     function normalizeByPrice(

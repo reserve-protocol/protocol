@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../erc20/RewardableERC20Wrapper.sol";
 import "../AppreciatingFiatCollateral.sol";
@@ -41,6 +41,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref}
@@ -92,7 +93,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
-        return shiftl_toFix(rate, shiftLeft);
+        return shiftl_toFix(rate, shiftLeft, FLOOR);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

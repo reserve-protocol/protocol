@@ -44,7 +44,7 @@ async function main() {
 
   /********  Deploy Mock Oracle (if needed)  **************************/
   let rethOracleAddress: string = networkConfig[chainId].chainlinkFeeds.rETH!
-  if (chainId == 5) {
+  if (chainId == '5') {
     const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
     const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
     await mockOracle.deployed()
@@ -61,18 +61,19 @@ async function main() {
     'RethCollateral'
   )
 
-  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+  const RETH_ORACLE_ERROR = fp('0.02')
+  const oracleError = combinedError(fp('0.005'), RETH_ORACLE_ERROR) // 0.5% + 2%
 
   const collateral = <RethCollateral>await RethCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-      oracleError: oracleError.toString(), // 0.5% & 2%
+      oracleError: oracleError.toString(), // 0.5% + 2%
       erc20: networkConfig[chainId].tokens.rETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: '3600', // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+      defaultThreshold: fp('0.02').add(RETH_ORACLE_ERROR).toString(), // 4%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
@@ -80,7 +81,7 @@ async function main() {
     '86400' // refPerTokChainlinkTimeout
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Rocketpool rETH to ${hre.network.name} (${chainId}): ${collateral.address}`)

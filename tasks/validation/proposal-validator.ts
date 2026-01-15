@@ -9,7 +9,12 @@ import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
 import { processRevenue } from './utils/rewards'
-import { pushOraclesForward } from './utils/oracles'
+import {
+  pushOraclesForward,
+  getRTokenOracle,
+  getRTokenOraclePrice,
+  validateRTokenOraclePriceChange,
+} from './utils/oracles'
 import {
   passProposal,
   executeProposal,
@@ -36,18 +41,20 @@ interface Params {
   proposalid?: string
 }
 
+// NOTE ON NON-CHAINLINK ORACLES: When dealing with non-chainlink Oracles it is required to redeploy
+// that collateral using another equivalent Chainlink Oracle providing an equivalent answer.
+// At the beginning of the process you need to swap the collateral in the AssetRegistry with this
+// newly deployed collateral to be able to push the oracle forwards during the process.
+// e.g:
+//  const newApxETHColl = await hre.ethers.getContractAt('ApxEthCollateral', NEWLY_DEPLOYED_ADDRESS)
+//  const assetRegistry = await hre.ethers.getContractAt('AssetRegistryP1', ASSET_REG_ADDRESS)
+//  await whileImpersonating(hre, TIMELOCK_ADDRESS, async (timelockSigner) => {
+//    await assetRegistry.connect(timelockSigner).swapRegistered(newApxETHColl.address)
+//  })
+
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
-    // await resetFork(hre, Number(process.env.FORK_BLOCK))
-
-    const chainId = await getChainId(hre)
-
-    // make sure config exists
-    if (!networkConfig[chainId]) {
-      throw new Error(`Missing network configuration for ${hre.network.name}`)
-    }
-
     // only run locally
     if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
       throw new Error('Only run this on a local fork')
@@ -58,13 +65,37 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
 
     console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
+    const proposalData = JSON.parse(
+      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
+    )
+
+    // Get RToken oracle config (if exists) for price validation
+    const oracleConfig = getRTokenOracle(proposalData.rtoken)
+    let priceBefore
+    if (oracleConfig) {
+      console.log(
+        `\n🔮 RToken oracle found: ${oracleConfig.address} (threshold: ${oracleConfig.threshold}%)`
+      )
+      priceBefore = await getRTokenOraclePrice(hre, oracleConfig.address)
+      console.log(`Price (before): ${priceBefore.toString()}`)
+    }
+
     await hre.run('propose', {
       pid: params.proposalid,
     })
 
-    const proposalData = JSON.parse(
-      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
-    )
+    // Validate RToken oracle
+    if (oracleConfig && priceBefore) {
+      const priceAfter = await getRTokenOraclePrice(hre, oracleConfig.address)
+      console.log(`\n🔮 RToken Price (after): ${priceAfter.toString()}`)
+      validateRTokenOraclePriceChange(
+        priceBefore,
+        priceAfter,
+        proposalData.rtoken,
+        oracleConfig.threshold
+      )
+    }
+
     await hre.run('recollateralize', {
       rtoken: proposalData.rtoken,
       governor: proposalData.governor,
@@ -82,7 +113,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
       await main.assetRegistry()
     )
     const basketHandler = await hre.ethers.getContractAt(
-      'TestIBasketHandler',
+      'BasketHandlerP1',
       await main.basketHandler()
     )
     const backingManager = await hre.ethers.getContractAt(
@@ -103,7 +134,7 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
     console.log('💪 Basket is SOUND and fully collateralized!')
     console.log('\n', 'Basket:')
     const [primeBasketERC20s] = await basketHandler.getPrimeBasket()
-    const [refBasketERC20s] = await basketHandler.quote(fp('1e18'), 0)
+    const [refBasketERC20s] = await basketHandler['quote(uint192,uint8)'](fp('1e18'), 0)
     if (primeBasketERC20s.length != refBasketERC20s.length) {
       throw new Error('Reference basket length != prime basket length')
     }
@@ -249,7 +280,9 @@ task('run-validations', 'Runs all validations')
     )
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
-    const chainId = await getChainId(hre)
+    const network = useEnv('FORK_NETWORK').toLowerCase()
+    const chainId = network === 'base' ? '8453' : '1'
+
     const whales: Whales = getWhalesFile(chainId).tokens
 
     /*
@@ -292,10 +325,11 @@ const runCheck_stakeUnstake = async (
   stRSR: StRSRP1Votes,
   main: IMain
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales = getWhalesFile(chainId).tokens
   // get RSR
-  const stakeAmount = fp('4e6')
+  const stakeAmount = fp('3e6')
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
   await whileImpersonating(
     hre,
@@ -337,7 +371,7 @@ const runCheck_mint = async (
   rToken: RTokenP1
 ) => {
   console.log(`\nIssuing  ${formatEther(issueAmt)} RTokens...`)
-  const [erc20s] = await basketHandler.quote(fp('1'), 2)
+  const [erc20s] = await basketHandler['quote(uint192,uint8)'](fp('1'), 2)
   for (let i = 0; i < erc20s.length; i++) {
     const erc20 = await hre.ethers.getContractAt(
       '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',

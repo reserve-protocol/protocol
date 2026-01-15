@@ -25,6 +25,10 @@ async function main() {
   // Part 1/3 of the *overall* deployment process: Deploy all contracts
   // See `confirm.ts` for part 2
 
+  // Phase 0 -- Registries
+  // Phase 0 must be run manually, and is a one time setup for the DAO.
+  // The deploy scripts do not enforce them.
+
   // Phase 1 -- Implementations
   const scripts = [
     'phase1-core/0_setup_deployments.ts',
@@ -46,13 +50,15 @@ async function main() {
     'phase1-facade/2_deploy_actFacet.ts',
     'phase1-facade/3_deploy_maxIssuable.ts',
     'phase1-facade/4_deploy_backingBufferFacet.ts',
-    'phase1-facade/5_deploy_revenueFacet.ts'
+    'phase1-facade/5_deploy_revenueFacet.ts',
+    'phase1-facade/save.ts'
   )
 
   // =============================================
 
   // Phase 2 - Assets/Collateral
   if (!baseL2Chains.includes(hre.network.name) && !arbitrumL2Chains.includes(hre.network.name)) {
+    // Ethereum
     scripts.push(
       'phase2-assets/0_setup_deployments.ts',
       'phase2-assets/1_deploy_assets.ts',
@@ -61,34 +67,34 @@ async function main() {
       'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
       'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
+      'phase2-assets/collaterals/deploy_ctokenv3_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_3pool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_paypool_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
       'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
-      'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_convex_ethplus_eth.ts',
-      'phase2-assets/collaterals/deploy_stakedao_usdc_usdcplus.ts',
-      'phase2-assets/collaterals/deploy_curve_stable_plugin.ts',
-      'phase2-assets/collaterals/deploy_curve_rToken_metapool_plugin.ts',
-      'phase2-assets/collaterals/deploy_curve_stable_metapool_plugin.ts',
       'phase2-assets/collaterals/deploy_dsr_sdai.ts',
       'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
       'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
       'phase2-assets/collaterals/deploy_aave_v3_pyusd.ts',
+      'phase2-assets/collaterals/deploy_aave_v3_rlusd.ts',
       'phase2-assets/collaterals/deploy_yearn_v2_curve_usdc.ts',
-      'phase2-assets/collaterals/deploy_yearn_v2_curve_usdp.ts',
       'phase2-assets/collaterals/deploy_sfrax.ts',
       'phase2-assets/collaterals/deploy_sfrax_eth.ts',
       'phase2-assets/collaterals/deploy_steakusdc.ts',
       'phase2-assets/collaterals/deploy_steakpyusd.ts',
       'phase2-assets/collaterals/deploy_bbusdt.ts',
       'phase2-assets/collaterals/deploy_re7weth.ts',
+      'phase2-assets/collaterals/deploy_ethx_collateral.ts',
       'phase2-assets/collaterals/deploy_apxeth.ts',
       'phase2-assets/collaterals/deploy_USDe.ts',
       'phase2-assets/assets/deploy_crv.ts',
       'phase2-assets/assets/deploy_cvx.ts',
+      'phase2-assets/collaterals/deploy_sky_susds.ts',
+      'phase2-assets/collaterals/deploy_origin_oeth.ts',
       'phase2-assets/collaterals/deploy_pyusd.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
@@ -101,23 +107,19 @@ async function main() {
       'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
       'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
       'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
-      'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
-      'phase2-assets/assets/deploy_stg.ts'
+      'phase2-assets/assets/deploy_aero.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_usdc_eusd.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_aero.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_mog_weth.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_cbbtc.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_well.ts',
+      'phase2-assets/collaterals/deploy_aerodrome_weth_degen.ts',
+      'phase2-assets/collaterals/deploy_morphoeUSD.ts',
+      'phase2-assets/collaterals/deploy_origin_eth.ts'
     )
   } else if (chainId == '42161' || chainId == '421614') {
-    // Arbitrum One
-    scripts.push(
-      'phase2-assets/0_setup_deployments.ts',
-      'phase2-assets/1_deploy_assets.ts',
-      'phase2-assets/2_deploy_collateral.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
-      'phase2-assets/collaterals/deploy_aave_v3_usdt.ts',
-      'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_crvusd_usdc_collateral.ts',
-      'phase2-assets/collaterals/deploy_convex_crvusd_usdt_collateral.ts',
-      'phase2-assets/collaterals/deploy_usdm.ts',
-      'phase2-assets/assets/deploy_arb.ts'
-    )
+    // Arbitrum (deprecated)
+    throw new Error('Arbitrum is deprecated')
   }
 
   // ===============================================

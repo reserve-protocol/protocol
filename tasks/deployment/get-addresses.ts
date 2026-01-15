@@ -23,26 +23,25 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     /*
     Helper functions
     */
-   
-   // hacky api throttler, basescan has rate limits 5req/sec
-   const delay = async (ms: number) => {
-     return new Promise( resolve => setTimeout(resolve, ms) );
+
+    // hacky api throttler, basescan has rate limits 5req/sec
+    const delay = async (ms: number) => {
+      return new Promise((resolve) => setTimeout(resolve, ms))
     }
-    
+
     const capitalize = (s: string) => s && s[0].toUpperCase() + s.slice(1)
-    
+
     const chainId = await getChainId(hre)
     const network: Network = hre.network.name as Network
-    let scannerUrl: string;
-    let scannerApiUrl: string;
-    switch(network) {
+    let scannerUrl: string
+    let scannerApiUrl = `https://api.etherscan.io/v2/api?chainid=${chainId}`
+
+    switch (network) {
       case 'mainnet':
         scannerUrl = 'https://etherscan.io/address/'
-        scannerApiUrl = `https://api.etherscan.io/api`
         break
       case 'base':
         scannerUrl = 'https://basescan.org/address/'
-        scannerApiUrl = `https://api.basescan.org/api`
         break
       default:
         throw new Error(`Unsupported network: ${network}`)
@@ -57,7 +56,7 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
     }
 
     const createRTokenTableRow = async (name: string, address: string) => {
-      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}&module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       await delay(200)
       const response = await fetch(url)
       const data = await response.json()
@@ -65,13 +64,15 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
       const component = await hre.ethers.getContractAt('ComponentP1', address)
       let row = `| ${name} | [${address}](${scannerUrl}${address}) |`
       if (!!implementation) {
-        row += `[${implementation}](${scannerUrl}${implementation}#code) | ${await getVersion(component)} |`
+        row += `[${implementation}](${scannerUrl}${implementation}#code) | ${await getVersion(
+          component
+        )} |`
       }
       return row
     }
 
     const createComponentTableRow = async (name: string, address: string) => {
-      const url = `${scannerApiUrl}?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+      const url = `${scannerApiUrl}&module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
       await delay(200)
       const response = await fetch(url)
       const data = await response.json()
@@ -95,8 +96,8 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
         isRToken
           ? rows.push(await createRTokenTableRow(component.name, component.address))
           : isComponent
-            ? rows.push(await createComponentTableRow(component.name, component.address))
-            : rows.push(await createAssetTableRow(component.name, component.address))
+          ? rows.push(await createComponentTableRow(component.name, component.address))
+          : rows.push(await createAssetTableRow(component.name, component.address))
       }
       return rows.join('\n')
     }
@@ -125,10 +126,7 @@ ${govRows}
         `
     }
 
-    const createComponentMarkdown = async (
-      name: string,
-      rows: string
-    ) => {
+    const createComponentMarkdown = async (name: string, rows: string) => {
       return `# ${name}
 ## Component Addresses
 | Contract | Address | Version |
@@ -181,7 +179,7 @@ ${collaterals}
 
     if (params.rtoken && params.gov) {
       // if rtoken address is provided, print component addresses
-      
+
       const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
       const symbol = await rToken.symbol()
       console.log(`Collecting addresses for RToken: ${symbol} (${params.rtoken}))`)
@@ -239,11 +237,11 @@ ${collaterals}
       const rTokenFileName = await getRTokenFileName(params.rtoken)
       fs.writeFileSync(rTokenFileName, markdown)
       console.log(`Wrote ${rTokenFileName}`)
-      
-      toc[network]['rtokens'].indexOf(rTokenSymbol) === -1 && toc[network]['rtokens'].push(rTokenSymbol)
+
+      toc[network]['rtokens'].indexOf(rTokenSymbol) === -1 &&
+        toc[network]['rtokens'].push(rTokenSymbol)
       fs.writeFileSync(tocFilename, JSON.stringify(toc, null, 2))
       console.log(`Updated table of contents`)
-
     } else if (params.ver) {
       console.log(`Collecting addresses for Version: ${params.ver} (${hre.network.name})`)
       // if version is provided, print implementation addresses
@@ -306,7 +304,8 @@ ${collaterals}
       fs.writeFileSync(componentFileName, componentMarkdown)
       console.log(`Wrote ${componentFileName}`)
 
-      toc[network]['components'].indexOf(componentFileId) === -1 && toc[network]['components'].push(componentFileId)
+      toc[network]['components'].indexOf(componentFileId) === -1 &&
+        toc[network]['components'].push(componentFileId)
       toc[network]['assets'].indexOf(assetFileId) === -1 && toc[network]['assets'].push(assetFileId)
       fs.writeFileSync(tocFilename, JSON.stringify(toc, null, 2))
       console.log(`Updated table of contents`)

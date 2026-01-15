@@ -26,8 +26,14 @@ export const expectPrice = async (
   near: boolean,
   overrideToleranceDiv?: BigNumber
 ) => {
-  const asset = await ethers.getContractAt('Asset', assetAddr)
-  const [lowPrice, highPrice] = await asset.price()
+  let lowPrice, highPrice
+  try {
+    const bh = await ethers.getContractAt('IBasketHandler', assetAddr)
+    ;[lowPrice, highPrice] = await bh.price(false) // without issuance premium
+  } catch {
+    const asset = await ethers.getContractAt('Asset', assetAddr)
+    ;[lowPrice, highPrice] = await asset.price()
+  }
   const delta = avgPrice.mul(oracleError).div(fp('1'))
   const expectedLow = avgPrice.sub(delta)
   const expectedHigh = avgPrice.add(delta)
@@ -106,8 +112,14 @@ export const expectDecayedPrice = async (assetAddr: string) => {
 
 // Expects an unpriced asset with low = 0 and high = FIX_MAX
 export const expectUnpriced = async (assetAddr: string) => {
-  const asset = await ethers.getContractAt('Asset', assetAddr)
-  const [lowPrice, highPrice] = await asset.price()
+  let lowPrice, highPrice
+  try {
+    const asset = await ethers.getContractAt('Asset', assetAddr)
+    ;[lowPrice, highPrice] = await asset.price()
+  } catch (e) {
+    const bh = await ethers.getContractAt('IBasketHandler', assetAddr)
+    ;[lowPrice, highPrice] = await bh.price(false) // without issuance premium
+  }
   expect(lowPrice).to.equal(0)
   expect(highPrice).to.equal(MAX_UINT192)
 }

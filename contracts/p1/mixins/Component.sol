@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -58,8 +58,26 @@ abstract contract ComponentP1 is
         _;
     }
 
+    modifier onlyMain() {
+        require(_msgSender() == address(main), "main only");
+        _;
+    }
+
+    // === Control Flow ===
+
+    /**
+     * @dev Prevents reentrancy by implementing a global lock shared by all components
+     * Calling a `globalNonReentrant` function from another `globalNonReentrant`
+     * function is not supported.
+     */
+    modifier globalNonReentrant() {
+        main.beginTx();
+        _;
+        main.endTx();
+    }
+
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal view override governance {}
+    function _authorizeUpgrade(address newImplementation) internal view override onlyMain {}
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

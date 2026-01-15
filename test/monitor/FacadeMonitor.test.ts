@@ -36,7 +36,7 @@ import {
   TestIRToken,
   USDCMock,
   StaticATokenV3LM,
-  CusdcV3Wrapper,
+  CFiatV3Wrapper,
   CometInterface,
   StargateRewardableWrapper,
   StargatePoolFiatCollateral,
@@ -451,7 +451,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ).wait()
 
         /********  Deploy Aave V3 USDC collateral plugin  **************************/
-        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleTimeout = '82800' // 23 hr
         const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
         const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
@@ -822,16 +822,19 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
     describe('Compound V3', () => {
       const issueAmount: BigNumber = bn('1000000e18')
-      let wcusdcV3: CusdcV3Wrapper
+      let wcusdcV3: CFiatV3Wrapper
 
       beforeEach(async () => {
-        const CUsdcV3WrapperFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
+        const CUsdcV3WrapperFactory = await hre.ethers.getContractFactory('CFiatV3Wrapper')
 
-        wcusdcV3 = <CusdcV3Wrapper>(
+        wcusdcV3 = <CFiatV3Wrapper>(
           await CUsdcV3WrapperFactory.deploy(
             cusdcV3.address,
             networkConfig[chainId].COMET_REWARDS || '',
-            networkConfig[chainId].tokens.COMP || ''
+            networkConfig[chainId].tokens.COMP || '',
+            'Wrapped cUSDCv3',
+            'wcUSDCv3',
+            fp(1).toString()
           )
         )
         await wcusdcV3.deployed()
@@ -839,7 +842,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         /********  Deploy Compound V3 USDC collateral plugin  **************************/
         const CollateralFactory = await ethers.getContractFactory('CTokenV3Collateral')
 
-        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleTimeout = '82800' // 23 hr
         const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
         const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
@@ -1026,14 +1029,14 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         wstgUsdc = await SthWrapperFactory.deploy(
           'Wrapped Stargate USDC',
           'wsgUSDC',
-          networkConfig[chainId].tokens.STG!,
+          networkConfig[chainId].tokens.STG!, // DEPRECATED
           networkConfig[chainId].STARGATE_STAKING_CONTRACT!,
           networkConfig[chainId].tokens.sUSDC!
         )
         await wstgUsdc.deployed()
 
         /********  Deploy Stargate USDC collateral plugin  **************************/
-        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleTimeout = '82800' // 23 hr
         const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
         const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
@@ -1112,7 +1115,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         /********  Deploy Flux USDC collateral plugin  **************************/
         const CollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
-        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleTimeout = '82800' // 23 hr
         const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
         const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
@@ -1204,7 +1207,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         const CollateralFactory = await hre.ethers.getContractFactory('MorphoFiatCollateral')
 
-        const usdcOracleTimeout = '86400' // 24 hr
+        const usdcOracleTimeout = '82800' // 23 hr
         const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
         const baseStableConfig = {
           priceTimeout: bn('604800').toString(),

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -15,8 +15,6 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
-    IGnosis public gnosis;
-
     mapping(address => bool) private trades;
 
     uint48 public batchAuctionLength; // {s} the length of a batch auction
@@ -28,14 +26,12 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     function init(
         IMain main_,
-        IGnosis gnosis_,
         ITrade,
         uint48 batchAuctionLength_,
         ITrade,
         uint48 dutchAuctionLength_
     ) public initializer {
         __Component_init(main_);
-        gnosis = gnosis_;
         batchAuctionLength = batchAuctionLength_;
         dutchAuctionLength = dutchAuctionLength_;
     }

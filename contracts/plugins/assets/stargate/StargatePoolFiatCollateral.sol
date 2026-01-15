@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
@@ -41,6 +41,7 @@ contract StargatePoolFiatCollateral is AppreciatingFiatCollateral {
         return _rate;
     }
 
+    // NOTE: STG rewards have been deprecated
     function claimRewards() external override(Asset, IRewardable) {
         uint256 _bal = stg.balanceOf(address(this));
         IRewardable(address(erc20)).claimRewards();

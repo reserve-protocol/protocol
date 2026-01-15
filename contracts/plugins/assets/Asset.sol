@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -11,7 +11,7 @@ contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    uint192 public constant MAX_HIGH_PRICE_BUFFER = 2 * FIX_ONE; // {UoA/tok} 200%
+    uint192 public constant MAX_HIGH_PRICE_BUFFER = FIX_ONE; // {UoA/tok} 100%
 
     AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
 
@@ -69,6 +69,7 @@ contract Asset is IAsset, VersionedAsset {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @dev The third (unused) variable is only here for compatibility with Collateral
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
@@ -146,7 +147,7 @@ contract Asset is IAsset, VersionedAsset {
             } else {
                 // decayDelay <= delta <= decayDelay + priceTimeout
 
-                // Decay _high upwards to 3x savedHighPrice
+                // Decay _high upwards to 2x savedHighPrice
                 // {UoA/tok} = {UoA/tok} * {1}
                 _high = savedHighPrice.safeMul(
                     FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - decayDelay, priceTimeout),
@@ -176,7 +177,7 @@ contract Asset is IAsset, VersionedAsset {
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view virtual returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
+        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals), FLOOR);
     }
 
     /// @return If the asset is an instance of ICollateral or not

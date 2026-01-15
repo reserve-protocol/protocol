@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
@@ -53,7 +53,7 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function underlyingRefPerTok() public view override returns (uint192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
-        return shiftl_toFix(rateInRAYs, -27);
+        return shiftl_toFix(rateInRAYs, -27, FLOOR);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

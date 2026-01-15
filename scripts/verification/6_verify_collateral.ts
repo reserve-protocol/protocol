@@ -62,7 +62,7 @@ async function main() {
   )
 
   /********  Verify Fiat Collateral - USDbC  **************************/
-  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleTimeout = baseL2Chains.includes(hre.network.name) ? '86400' : '82800' // 24h base, 23 hr mainnet
   const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   if (baseL2Chains.includes(hre.network.name)) {
@@ -149,7 +149,7 @@ async function main() {
     )
     /********************** Verify CTokenNonFiatCollateral - cWBTC  ****************************************/
 
-    const wbtcOracleError = fp('0.02') // 2%
+    const wbtcOracleError = fp('0.005') // 0.5%
     const btcOracleError = fp('0.005') // 0.5%
     const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
@@ -165,7 +165,7 @@ async function main() {
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '86400', // 24 hr
           targetName: hre.ethers.utils.formatBytes32String('BTC'),
-          defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
+          defaultThreshold: fp('0.01').add(wbtcOracleError).toString(), // 3%
           delayUntilDefault: bn('86400').toString(), // 24h
         },
         networkConfig[chainId].chainlinkFeeds.BTC,
@@ -208,7 +208,7 @@ async function main() {
           maxTradeVolume: fp('1e6').toString(), // $1m,
           oracleTimeout: '86400', // 24h
           targetName: ethers.utils.formatBytes32String('BTC'),
-          defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
+          defaultThreshold: fp('0.01').add(wbtcOracleError).toString(), // 3%
           delayUntilDefault: bn('86400').toString(), // 24h
         },
         networkConfig[chainId].chainlinkFeeds.BTC,

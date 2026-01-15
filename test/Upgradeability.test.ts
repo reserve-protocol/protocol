@@ -1,10 +1,11 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
+import { ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
-import { IComponents, IConfig } from '../common/configuration'
+import { IComponents, IConfig, IImplementations } from '../common/configuration'
 import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../common/constants'
+import { whileImpersonating } from './utils/impersonation'
 import { bn } from '../common/numbers'
 import {
   Asset,
@@ -17,6 +18,7 @@ import {
   BasketLibP1,
   BrokerP1,
   BrokerP1V2,
+  DeployerP1,
   DistributorP1,
   DistributorP1V2,
   DutchTrade,
@@ -45,13 +47,24 @@ import {
   TestIRToken,
   TestIStRSR,
   RecollateralizationLibP1,
+  VersionRegistry,
+  DeployerP1V2,
+  AssetPluginRegistry,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
+const MAIN_OWNER_ROLE = '0x4f574e4552000000000000000000000000000000000000000000000000000000'
+
+// Helper function to calculate hash for a specific version
+const toHash = (version: string): string => {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(version))
+}
+
 describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
+  let other: SignerWithAddress
 
   // Config
   let config: IConfig
@@ -78,6 +91,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: RecollateralizationLibP1
   let basketLib: BasketLibP1
+  let deployer: DeployerP1
 
   // Factories
   let MainFactory: ContractFactory
@@ -93,17 +107,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let DutchTradeFactory: ContractFactory
   let StRSRFactory: ContractFactory
 
-  let notWallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[, notWallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
-
   beforeEach(async () => {
-    ;[owner] = await ethers.getSigners()
+    ;[owner, other] = await ethers.getSigners()
 
     // Deploy fixture
     ;({
+      deployer,
       rsr,
       rsrAsset,
       config,
@@ -207,7 +216,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - AssetRegistry', async () => {
       const newAssetRegistry: AssetRegistryP1 = <AssetRegistryP1>await upgrades.deployProxy(
         AssetRegistryFactory,
-        [main.address, [rsrAsset.address, rTokenAsset.address]],
+        [main.address, [rsrAsset.address]],
         {
           initializer: 'init',
           kind: 'uups',
@@ -217,7 +226,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       await newAssetRegistry.deployed()
 
       expect(await newAssetRegistry.isRegistered(rsr.address)).to.equal(true)
-      expect(await newAssetRegistry.isRegistered(rToken.address)).to.equal(true)
+      expect(await newAssetRegistry.isRegistered(rToken.address)).to.equal(false)
       expect(await newAssetRegistry.main()).to.equal(main.address)
     })
 
@@ -248,7 +257,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BasketHandler', async () => {
       const newBasketHandler: BasketHandlerP1 = <BasketHandlerP1>await upgrades.deployProxy(
         BasketHandlerFactory,
-        [main.address, config.warmupPeriod, config.reweightable],
+        [main.address, config.warmupPeriod, config.reweightable, config.enableIssuancePremium],
         {
           initializer: 'init',
           kind: 'uups',
@@ -261,14 +270,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - Broker / Trade', async () => {
-      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy(gnosis.address)
       const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
         [
           main.address,
-          gnosis.address,
           gnosisTrade.address,
           config.batchAuctionLength,
           dutchTrade.address,
@@ -281,7 +289,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       await newBroker.deployed()
 
-      expect(await newBroker.gnosis()).to.equal(gnosis.address)
       expect(await newBroker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await newBroker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
       expect(await newBroker.batchTradeDisabled()).to.equal(false)
@@ -302,8 +309,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       await newDistributor.deployed()
 
       const [rTokenTotal, rsrTotal] = await newDistributor.totals()
-      expect(rsrTotal).equal(bn(60))
-      expect(rTokenTotal).equal(bn(40))
+      expect(rsrTotal).equal(bn(6000))
+      expect(rTokenTotal).equal(bn(4000))
       expect(await newDistributor.main()).to.equal(main.address)
     })
 
@@ -394,332 +401,700 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   })
 
   describe('Upgrades', () => {
-    it('Should only allow OWNER to upgrade - Main', async () => {
-      const MainV2Factory: ContractFactory = await ethers.getContractFactory('MainP1V2', notWallet)
-      await expect(upgrades.upgradeProxy(main.address, MainV2Factory)).revertedWith(
-        `AccessControl: account ${notWallet.address.toLowerCase()} is missing role 0x4f574e4552000000000000000000000000000000000000000000000000000000`
-      )
-    })
-
-    it('Should only allow governance to upgrade - Component', async () => {
-      const AssetRegV2Factory: ContractFactory = await ethers.getContractFactory(
-        'AssetRegistryP1V2',
-        notWallet
-      )
-      await expect(upgrades.upgradeProxy(assetRegistry.address, AssetRegV2Factory)).revertedWith(
-        'governance only'
-      )
-    })
-
-    it('Should upgrade correctly - Main', async () => {
-      // Upgrading
+    it('Should only allow Main to upgrade itself', async () => {
       const MainV2Factory: ContractFactory = await ethers.getContractFactory('MainP1V2')
-      const mainV2: MainP1V2 = <MainP1V2>await upgrades.upgradeProxy(main.address, MainV2Factory)
+      const mainV2ImplAddr = (await upgrades.prepareUpgrade(main.address, MainV2Factory, {
+        kind: 'uups',
+      })) as string
 
-      // Check address is maintained
-      expect(mainV2.address).to.equal(main.address)
-
-      // Check state is preserved
-      expect(await mainV2.tradingPaused()).to.equal(false)
-      expect(await mainV2.issuancePaused()).to.equal(false)
-      expect(await mainV2.frozen()).to.equal(false)
-      expect(await mainV2.tradingPausedOrFrozen()).to.equal(false)
-      expect(await mainV2.issuancePausedOrFrozen()).to.equal(false)
-      expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
-      expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
-      expect(await mainV2.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
-      expect(await mainV2.hasRole(SHORT_FREEZER, main.address)).to.equal(false)
-      expect(await mainV2.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
-      expect(await mainV2.hasRole(LONG_FREEZER, main.address)).to.equal(false)
-      expect(await mainV2.hasRole(PAUSER, owner.address)).to.equal(true)
-      expect(await mainV2.hasRole(PAUSER, main.address)).to.equal(false)
-
-      // Components
-      expect(await mainV2.stRSR()).to.equal(stRSR.address)
-      expect(await mainV2.rToken()).to.equal(rToken.address)
-      expect(await mainV2.assetRegistry()).to.equal(assetRegistry.address)
-      expect(await mainV2.basketHandler()).to.equal(basketHandler.address)
-      expect(await mainV2.backingManager()).to.equal(backingManager.address)
-      expect(await mainV2.distributor()).to.equal(distributor.address)
-      expect(await mainV2.furnace()).to.equal(furnace.address)
-      expect(await mainV2.broker()).to.equal(broker.address)
-      expect(await mainV2.rsrTrader()).to.equal(rsrTrader.address)
-      expect(await mainV2.rTokenTrader()).to.equal(rTokenTrader.address)
-
-      // Check new version is implemented
-      expect(await mainV2.version()).to.equal('2.0.0')
-
-      expect(await mainV2.newValue()).to.equal(0)
-      await mainV2.connect(owner).setNewValue(bn(1000))
-      expect(await mainV2.newValue()).to.equal(bn(1000))
+      const upgMain = <MainP1>await ethers.getContractAt('MainP1', main.address)
+      await expect(upgMain.connect(owner).upgradeTo(mainV2ImplAddr)).revertedWith('not self')
     })
 
-    it('Should upgrade correctly - AssetRegistry', async () => {
-      // Upgrading
+    it('Should only allow Main to upgrade - Component', async () => {
       const AssetRegV2Factory: ContractFactory = await ethers.getContractFactory(
         'AssetRegistryP1V2'
       )
-      const assetRegV2: AssetRegistryP1V2 = <AssetRegistryP1V2>(
-        await upgrades.upgradeProxy(assetRegistry.address, AssetRegV2Factory)
+
+      const assetRegV2ImplAddr = (await upgrades.prepareUpgrade(
+        assetRegistry.address,
+        AssetRegV2Factory,
+        {
+          kind: 'uups',
+        }
+      )) as string
+
+      const upgAR = <AssetRegistryP1>(
+        await ethers.getContractAt('AssetRegistryP1', assetRegistry.address)
       )
-
-      // Check address is maintained
-      expect(assetRegV2.address).to.equal(assetRegistry.address)
-
-      // Check state is preserved
-      expect(await assetRegV2.isRegistered(rsr.address)).to.equal(true)
-      expect(await assetRegV2.isRegistered(rToken.address)).to.equal(true)
-      expect(await assetRegV2.main()).to.equal(main.address)
-
-      // Check new version is implemented
-      expect(await assetRegV2.version()).to.equal('2.0.0')
-
-      expect(await assetRegV2.newValue()).to.equal(0)
-      await assetRegV2.connect(owner).setNewValue(bn(1000))
-      expect(await assetRegV2.newValue()).to.equal(bn(1000))
+      await expect(upgAR.connect(owner).upgradeTo(assetRegV2ImplAddr)).revertedWith('main only')
     })
 
-    it('Should upgrade correctly - BackingManager', async () => {
-      // Upgrading
-      const BackingMgrV2Factory: ContractFactory = await ethers.getContractFactory(
-        'BackingManagerP1V2',
-        {
+    context('With deployed implementations', function () {
+      let MainV2Factory: ContractFactory
+      let AssetRegV2Factory: ContractFactory
+      let BackingMgrV2Factory: ContractFactory
+      let BasketHandlerV2Factory: ContractFactory
+      let BrokerV2Factory: ContractFactory
+      let DistributorV2Factory: ContractFactory
+      let FurnaceV2Factory: ContractFactory
+      let RevTraderV2Factory: ContractFactory
+      let RTokenV2Factory: ContractFactory
+      let StRSRV2Factory: ContractFactory
+
+      let mainV2ImplAddr: string
+      let assetRegV2ImplAddr: string
+      let backingMgrV2ImplAddr: string
+      let bskHndlrV2ImplAddr: string
+      let brokerV2ImplAddr: string
+      let distributorV2ImplAddr: string
+      let furnaceV2ImplAddr: string
+      let rsrTraderV2ImplAddr: string
+      let rTokenTraderV2ImplAddr: string
+      let rTokenV2ImplAddr: string
+      let stRSRV2ImplAddr: string
+
+      beforeEach(async () => {
+        MainV2Factory = await ethers.getContractFactory('MainP1V2')
+        AssetRegV2Factory = await ethers.getContractFactory('AssetRegistryP1V2')
+        BackingMgrV2Factory = await ethers.getContractFactory('BackingManagerP1V2', {
           libraries: {
             RecollateralizationLibP1: tradingLib.address,
           },
-        }
-      )
-      const backingMgrV2: BackingManagerP1V2 = <BackingManagerP1V2>await upgrades.upgradeProxy(
-        backingManager.address,
-        BackingMgrV2Factory,
-        {
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
-        }
-      )
+        })
 
-      // Check address is maintained
-      expect(backingMgrV2.address).to.equal(backingManager.address)
+        BasketHandlerV2Factory = await ethers.getContractFactory('BasketHandlerP1V2', {
+          libraries: { BasketLibP1: basketLib.address },
+        })
 
-      // Check state is preserved
-      expect(await backingMgrV2.tradingDelay()).to.equal(config.tradingDelay)
-      expect(await backingMgrV2.backingBuffer()).to.equal(config.backingBuffer)
-      expect(await backingMgrV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await backingMgrV2.main()).to.equal(main.address)
+        BrokerV2Factory = await ethers.getContractFactory('BrokerP1V2')
+        DistributorV2Factory = await ethers.getContractFactory('DistributorP1V2')
+        FurnaceV2Factory = await ethers.getContractFactory('FurnaceP1V2')
+        RevTraderV2Factory = await ethers.getContractFactory('RevenueTraderP1V2')
+        RTokenV2Factory = await ethers.getContractFactory('RTokenP1V2')
+        StRSRV2Factory = await ethers.getContractFactory('StRSRP1VotesV2')
 
-      // Check new version is implemented
-      expect(await backingMgrV2.version()).to.equal('2.0.0')
+        mainV2ImplAddr = (await upgrades.prepareUpgrade(main.address, MainV2Factory, {
+          kind: 'uups',
+        })) as string
 
-      expect(await backingMgrV2.newValue()).to.equal(0)
-      await backingMgrV2.connect(owner).setNewValue(bn(1000))
-      expect(await backingMgrV2.newValue()).to.equal(bn(1000))
-    })
+        assetRegV2ImplAddr = (await upgrades.prepareUpgrade(
+          assetRegistry.address,
+          AssetRegV2Factory,
+          {
+            kind: 'uups',
+          }
+        )) as string
 
-    it('Should upgrade correctly - BasketHandler', async () => {
-      // Upgrading
-      const BasketHandlerV2Factory: ContractFactory = await ethers.getContractFactory(
-        'BasketHandlerP1V2',
-        { libraries: { BasketLibP1: basketLib.address } }
-      )
-      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>await upgrades.upgradeProxy(
-        basketHandler.address,
-        BasketHandlerV2Factory,
-        {
-          unsafeAllow: ['external-library-linking'], // BasketLibP1
-        }
-      )
+        backingMgrV2ImplAddr = (await upgrades.prepareUpgrade(
+          backingManager.address,
+          BackingMgrV2Factory,
+          {
+            kind: 'uups',
+            unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+          }
+        )) as string
 
-      // Check address is maintained
-      expect(bskHndlrV2.address).to.equal(basketHandler.address)
+        bskHndlrV2ImplAddr = (await upgrades.prepareUpgrade(
+          basketHandler.address,
+          BasketHandlerV2Factory,
+          {
+            kind: 'uups',
+            unsafeAllow: ['external-library-linking'], // BasketLibP1
+          }
+        )) as string
 
-      // Check state is preserved
-      expect(await bskHndlrV2.main()).to.equal(main.address)
+        brokerV2ImplAddr = (await upgrades.prepareUpgrade(broker.address, BrokerV2Factory, {
+          kind: 'uups',
+        })) as string
 
-      // Check new version is implemented
-      expect(await bskHndlrV2.version()).to.equal('2.0.0')
+        distributorV2ImplAddr = (await upgrades.prepareUpgrade(
+          distributor.address,
+          DistributorV2Factory,
+          {
+            kind: 'uups',
+          }
+        )) as string
 
-      expect(await bskHndlrV2.newValue()).to.equal(0)
-      await bskHndlrV2.connect(owner).setNewValue(bn(1000))
-      expect(await bskHndlrV2.newValue()).to.equal(bn(1000))
-    })
+        furnaceV2ImplAddr = (await upgrades.prepareUpgrade(furnace.address, FurnaceV2Factory, {
+          kind: 'uups',
+        })) as string
 
-    it('Should upgrade correctly - Broker', async () => {
-      // Upgrading
-      const BrokerV2Factory: ContractFactory = await ethers.getContractFactory('BrokerP1V2')
-      const brokerV2: BrokerP1V2 = <BrokerP1V2>(
-        await upgrades.upgradeProxy(broker.address, BrokerV2Factory)
-      )
+        rsrTraderV2ImplAddr = (await upgrades.prepareUpgrade(
+          rsrTrader.address,
+          RevTraderV2Factory,
+          {
+            kind: 'uups',
+            unsafeAllow: ['delegatecall'], // Multicall
+          }
+        )) as string
 
-      // Check address is maintained
-      expect(brokerV2.address).to.equal(broker.address)
+        rTokenTraderV2ImplAddr = (await upgrades.prepareUpgrade(
+          rTokenTrader.address,
+          RevTraderV2Factory,
+          {
+            kind: 'uups',
+            unsafeAllow: ['delegatecall'], // Multicall
+          }
+        )) as string
 
-      // Check state is preserved
-      expect(await brokerV2.gnosis()).to.equal(gnosis.address)
-      expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
-      expect(await brokerV2.batchTradeDisabled()).to.equal(false)
-      expect(await brokerV2.dutchTradeDisabled(rToken.address)).to.equal(false)
-      expect(await brokerV2.dutchTradeDisabled(rsr.address)).to.equal(false)
-      expect(await brokerV2.main()).to.equal(main.address)
+        rTokenV2ImplAddr = (await upgrades.prepareUpgrade(rToken.address, RTokenV2Factory, {
+          kind: 'uups',
+        })) as string
 
-      // Check new version is implemented
-      expect(await brokerV2.version()).to.equal('2.0.0')
+        stRSRV2ImplAddr = (await upgrades.prepareUpgrade(stRSR.address, StRSRV2Factory, {
+          kind: 'uups',
+        })) as string
+      })
 
-      expect(await brokerV2.newValue()).to.equal(0)
-      await brokerV2.connect(owner).setNewValue(bn(1000))
-      expect(await brokerV2.newValue()).to.equal(bn(1000))
-    })
+      it('Should upgrade correctly - Main', async () => {
+        const upgMain = <MainP1>await ethers.getContractAt('MainP1', main.address)
 
-    it('Should upgrade correctly - Distributor', async () => {
-      // Upgrading
-      const DistributorV2Factory: ContractFactory = await ethers.getContractFactory(
-        'DistributorP1V2'
-      )
-      const distributorV2: DistributorP1V2 = <DistributorP1V2>(
-        await upgrades.upgradeProxy(distributor.address, DistributorV2Factory)
-      )
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgMain.connect(upgSigner).upgradeTo(mainV2ImplAddr)
+        })
 
-      // Check address is maintained
-      expect(distributorV2.address).to.equal(distributor.address)
+        const mainV2: MainP1V2 = <MainP1V2>await ethers.getContractAt('MainP1V2', main.address)
 
-      // Check state is preserved
-      const [rTokenTotal, rsrTotal] = await distributorV2.totals()
-      expect(rsrTotal).equal(bn(60))
-      expect(rTokenTotal).equal(bn(40))
-      expect(await distributorV2.main()).to.equal(main.address)
+        // Check address is maintained
+        expect(mainV2.address).to.equal(main.address)
 
-      // Check new version is implemented
-      expect(await distributorV2.version()).to.equal('2.0.0')
+        // Check state is preserved
+        expect(await mainV2.tradingPaused()).to.equal(false)
+        expect(await mainV2.issuancePaused()).to.equal(false)
+        expect(await mainV2.frozen()).to.equal(false)
+        expect(await mainV2.tradingPausedOrFrozen()).to.equal(false)
+        expect(await mainV2.issuancePausedOrFrozen()).to.equal(false)
+        expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
+        expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
+        expect(await mainV2.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
+        expect(await mainV2.hasRole(SHORT_FREEZER, main.address)).to.equal(false)
+        expect(await mainV2.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+        expect(await mainV2.hasRole(LONG_FREEZER, main.address)).to.equal(false)
+        expect(await mainV2.hasRole(PAUSER, owner.address)).to.equal(true)
+        expect(await mainV2.hasRole(PAUSER, main.address)).to.equal(false)
 
-      expect(await distributorV2.newValue()).to.equal(0)
-      await distributorV2.connect(owner).setNewValue(bn(1000))
-      expect(await distributorV2.newValue()).to.equal(bn(1000))
-    })
+        // Components
+        expect(await mainV2.stRSR()).to.equal(stRSR.address)
+        expect(await mainV2.rToken()).to.equal(rToken.address)
+        expect(await mainV2.assetRegistry()).to.equal(assetRegistry.address)
+        expect(await mainV2.basketHandler()).to.equal(basketHandler.address)
+        expect(await mainV2.backingManager()).to.equal(backingManager.address)
+        expect(await mainV2.distributor()).to.equal(distributor.address)
+        expect(await mainV2.furnace()).to.equal(furnace.address)
+        expect(await mainV2.broker()).to.equal(broker.address)
+        expect(await mainV2.rsrTrader()).to.equal(rsrTrader.address)
+        expect(await mainV2.rTokenTrader()).to.equal(rTokenTrader.address)
 
-    it('Should upgrade correctly - Furnace', async () => {
-      // Upgrading
-      const FurnaceV2Factory: ContractFactory = await ethers.getContractFactory('FurnaceP1V2')
-      const furnaceV2: FurnaceP1V2 = <FurnaceP1V2>(
-        await upgrades.upgradeProxy(furnace.address, FurnaceV2Factory)
-      )
+        // Check new version is implemented
+        expect(await mainV2.version()).to.equal('2.0.0')
 
-      // Check address is maintained
-      expect(furnaceV2.address).to.equal(furnace.address)
+        expect(await mainV2.newValue()).to.equal(0)
+        await mainV2.connect(owner).setNewValue(bn(1000))
+        expect(await mainV2.newValue()).to.equal(bn(1000))
+      })
 
-      // Check state is preserved
-      expect(await furnaceV2.ratio()).to.equal(config.rewardRatio)
-      expect(await furnaceV2.lastPayout()).to.be.gt(0) // A timestamp is set
-      expect(await furnaceV2.main()).to.equal(main.address)
+      it('Should upgrade correctly - AssetRegistry', async () => {
+        const upgAR = <AssetRegistryP1>(
+          await ethers.getContractAt('AssetRegistryP1', assetRegistry.address)
+        )
 
-      // Check new version is implemented
-      expect(await furnaceV2.version()).to.equal('2.0.0')
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgAR.connect(upgSigner).upgradeTo(assetRegV2ImplAddr)
+        })
 
-      expect(await furnaceV2.newValue()).to.equal(0)
-      await furnaceV2.connect(owner).setNewValue(bn(1000))
-      expect(await furnaceV2.newValue()).to.equal(bn(1000))
-    })
+        const assetRegV2: AssetRegistryP1V2 = <AssetRegistryP1V2>(
+          await ethers.getContractAt('AssetRegistryP1V2', assetRegistry.address)
+        )
 
-    it('Should upgrade correctly - RevenueTrader', async () => {
-      // Upgrading
-      const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
-        'RevenueTraderP1V2'
-      )
-      const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
-        rsrTrader.address,
-        RevTraderV2Factory,
-        {
-          unsafeAllow: ['delegatecall'], // Multicall
-        }
-      )
+        // Check address is maintained
+        expect(assetRegV2.address).to.equal(assetRegistry.address)
 
-      const rTokenTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
-        rTokenTrader.address,
-        RevTraderV2Factory,
-        {
-          unsafeAllow: ['delegatecall'], // Multicall
-        }
-      )
+        // Check state is preserved
+        expect(await assetRegV2.isRegistered(rsr.address)).to.equal(true)
+        expect(await assetRegV2.isRegistered(rToken.address)).to.equal(true)
+        expect(await assetRegV2.main()).to.equal(main.address)
 
-      // Check addresses are maintained
-      expect(rsrTraderV2.address).to.equal(rsrTrader.address)
-      expect(rTokenTraderV2.address).to.equal(rTokenTrader.address)
+        // Check new version is implemented
+        expect(await assetRegV2.version()).to.equal('2.0.0')
 
-      // Check state is preserved
-      expect(await rsrTraderV2.tokenToBuy()).to.equal(rsr.address)
-      expect(await rsrTraderV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await rsrTraderV2.main()).to.equal(main.address)
+        expect(await assetRegV2.newValue()).to.equal(0)
+        await assetRegV2.connect(owner).setNewValue(bn(1000))
+        expect(await assetRegV2.newValue()).to.equal(bn(1000))
+      })
 
-      expect(await rTokenTraderV2.tokenToBuy()).to.equal(rToken.address)
-      expect(await rTokenTraderV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await rTokenTraderV2.main()).to.equal(main.address)
+      it('Should upgrade correctly - BackingManager', async () => {
+        const upgBM = <BackingManagerP1>(
+          await ethers.getContractAt('BackingManagerP1', backingManager.address)
+        )
 
-      // Check new version is implemented
-      expect(await rsrTraderV2.version()).to.equal('2.0.0')
-      expect(await rTokenTraderV2.version()).to.equal('2.0.0')
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgBM.connect(upgSigner).upgradeTo(backingMgrV2ImplAddr)
+        })
 
-      expect(await rsrTraderV2.newValue()).to.equal(0)
-      await rsrTraderV2.connect(owner).setNewValue(bn(1000))
-      expect(await rsrTraderV2.newValue()).to.equal(bn(1000))
+        const backingMgrV2: BackingManagerP1V2 = <BackingManagerP1V2>(
+          await ethers.getContractAt('BackingManagerP1V2', backingManager.address)
+        )
 
-      expect(await rTokenTraderV2.newValue()).to.equal(0)
-      await rTokenTraderV2.connect(owner).setNewValue(bn(500))
-      expect(await rTokenTraderV2.newValue()).to.equal(bn(500))
-    })
+        // Check address is maintained
+        expect(backingMgrV2.address).to.equal(backingManager.address)
 
-    it('Should upgrade correctly - RToken', async () => {
-      // Upgrading
-      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2')
-      const rTokenV2: RTokenP1V2 = <RTokenP1V2>(
-        await upgrades.upgradeProxy(rToken.address, RTokenV2Factory)
-      )
+        // Check state is preserved
+        expect(await backingMgrV2.tradingDelay()).to.equal(config.tradingDelay)
+        expect(await backingMgrV2.backingBuffer()).to.equal(config.backingBuffer)
+        expect(await backingMgrV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+        expect(await backingMgrV2.main()).to.equal(main.address)
 
-      // Check address is maintained
-      expect(rTokenV2.address).to.equal(rToken.address)
+        // Check new version is implemented
+        expect(await backingMgrV2.version()).to.equal('2.0.0')
 
-      // Check state is preserved
-      expect(await rTokenV2.name()).to.equal('RTKN RToken')
-      expect(await rTokenV2.symbol()).to.equal('RTKN')
-      expect(await rTokenV2.decimals()).to.equal(18)
-      expect(await rTokenV2.totalSupply()).to.equal(bn(0))
-      expect(await rTokenV2.main()).to.equal(main.address)
-      const issThrottle = await rToken.issuanceThrottleParams()
-      expect(issThrottle.amtRate).to.equal(config.issuanceThrottle.amtRate)
-      expect(issThrottle.pctRate).to.equal(config.issuanceThrottle.pctRate)
-      const redemptionThrottle = await rToken.redemptionThrottleParams()
-      expect(redemptionThrottle.amtRate).to.equal(config.redemptionThrottle.amtRate)
-      expect(redemptionThrottle.pctRate).to.equal(config.redemptionThrottle.pctRate)
+        expect(await backingMgrV2.newValue()).to.equal(0)
+        await backingMgrV2.connect(owner).setNewValue(bn(1000))
+        expect(await backingMgrV2.newValue()).to.equal(bn(1000))
+      })
 
-      // Check new version is implemented
-      expect(await rTokenV2.version()).to.equal('2.0.0')
+      it('Should upgrade correctly - BasketHandler', async () => {
+        const upgBH = <BasketHandlerP1>(
+          await ethers.getContractAt('BasketHandlerP1', basketHandler.address)
+        )
 
-      expect(await rTokenV2.newValue()).to.equal(0)
-      await rTokenV2.connect(owner).setNewValue(bn(1000))
-      expect(await rTokenV2.newValue()).to.equal(bn(1000))
-    })
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgBH.connect(upgSigner).upgradeTo(bskHndlrV2ImplAddr)
+        })
 
-    it('Should upgrade correctly - StRSR', async () => {
-      // Upgrading
-      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2')
-      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>(
-        await upgrades.upgradeProxy(stRSR.address, StRSRV2Factory)
-      )
+        const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>(
+          await ethers.getContractAt('BasketHandlerP1V2', basketHandler.address)
+        )
 
-      // Check address is maintained
-      expect(stRSRV2.address).to.equal(stRSR.address)
+        // Check address is maintained
+        expect(bskHndlrV2.address).to.equal(basketHandler.address)
 
-      // Check state is preserved
-      expect(await stRSRV2.name()).to.equal('rtknRSR Token')
-      expect(await stRSRV2.symbol()).to.equal('rtknRSR')
-      expect(await stRSRV2.decimals()).to.equal(18)
-      expect(await stRSRV2.totalSupply()).to.equal(0)
-      expect(await stRSRV2.unstakingDelay()).to.equal(config.unstakingDelay)
-      expect(await stRSRV2.rewardRatio()).to.equal(config.rewardRatio)
-      expect(await stRSRV2.main()).to.equal(main.address)
+        // Check state is preserved
+        expect(await bskHndlrV2.main()).to.equal(main.address)
 
-      // Check new version is implemented
-      expect(await stRSRV2.version()).to.equal('2.0.0')
+        // Check new version is implemented
+        expect(await bskHndlrV2.version()).to.equal('2.0.0')
 
-      expect(await stRSRV2.newValue()).to.equal(0)
-      await stRSRV2.connect(owner).setNewValue(bn(1000))
-      expect(await stRSRV2.newValue()).to.equal(bn(1000))
+        expect(await bskHndlrV2.newValue()).to.equal(0)
+        await bskHndlrV2.connect(owner).setNewValue(bn(1000))
+        expect(await bskHndlrV2.newValue()).to.equal(bn(1000))
+      })
+
+      it('Should upgrade correctly - Broker', async () => {
+        const upgBroker = <BrokerP1>await ethers.getContractAt('BrokerP1', broker.address)
+
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgBroker.connect(upgSigner).upgradeTo(brokerV2ImplAddr)
+        })
+
+        const brokerV2: BrokerP1V2 = <BrokerP1V2>(
+          await ethers.getContractAt('BrokerP1V2', broker.address)
+        )
+
+        // Check address is maintained
+        expect(brokerV2.address).to.equal(broker.address)
+
+        // Check state is preserved
+        expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
+        expect(await brokerV2.batchTradeDisabled()).to.equal(false)
+        expect(await brokerV2.dutchTradeDisabled(rToken.address)).to.equal(false)
+        expect(await brokerV2.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await brokerV2.main()).to.equal(main.address)
+
+        // Check new version is implemented
+        expect(await brokerV2.version()).to.equal('2.0.0')
+
+        expect(await brokerV2.newValue()).to.equal(0)
+        await brokerV2.connect(owner).setNewValue(bn(1000))
+        expect(await brokerV2.newValue()).to.equal(bn(1000))
+      })
+
+      it('Should upgrade correctly - Distributor', async () => {
+        const upgDist = <DistributorP1>(
+          await ethers.getContractAt('DistributorP1', distributor.address)
+        )
+
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgDist.connect(upgSigner).upgradeTo(distributorV2ImplAddr)
+        })
+
+        const distributorV2: DistributorP1V2 = <DistributorP1V2>(
+          await ethers.getContractAt('DistributorP1V2', distributor.address)
+        )
+
+        // Check address is maintained
+        expect(distributorV2.address).to.equal(distributor.address)
+
+        // Check state is preserved
+        const [rTokenTotal, rsrTotal] = await distributorV2.totals()
+        expect(rsrTotal).equal(bn(6000))
+        expect(rTokenTotal).equal(bn(4000))
+        expect(await distributorV2.main()).to.equal(main.address)
+
+        // Check new version is implemented
+        expect(await distributorV2.version()).to.equal('2.0.0')
+
+        expect(await distributorV2.newValue()).to.equal(0)
+        await distributorV2.connect(owner).setNewValue(bn(1000))
+        expect(await distributorV2.newValue()).to.equal(bn(1000))
+      })
+
+      it('Should upgrade correctly - Furnace', async () => {
+        const upgFur = <FurnaceP1>await ethers.getContractAt('FurnaceP1', furnace.address)
+
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgFur.connect(upgSigner).upgradeTo(furnaceV2ImplAddr)
+        })
+
+        const furnaceV2: FurnaceP1V2 = <FurnaceP1V2>(
+          await ethers.getContractAt('FurnaceP1V2', furnace.address)
+        )
+
+        // Check address is maintained
+        expect(furnaceV2.address).to.equal(furnace.address)
+
+        // Check state is preserved
+        expect(await furnaceV2.ratio()).to.equal(config.rewardRatio)
+        expect(await furnaceV2.lastPayout()).to.be.gt(0) // A timestamp is set
+        expect(await furnaceV2.main()).to.equal(main.address)
+
+        // Check new version is implemented
+        expect(await furnaceV2.version()).to.equal('2.0.0')
+
+        expect(await furnaceV2.newValue()).to.equal(0)
+        await furnaceV2.connect(owner).setNewValue(bn(1000))
+        expect(await furnaceV2.newValue()).to.equal(bn(1000))
+      })
+
+      it('Should upgrade correctly - RevenueTrader', async () => {
+        const upgRSRRevTrader = <RevenueTraderP1>(
+          await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)
+        )
+        const upgRTokRevTrader = <RevenueTraderP1>(
+          await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+        )
+
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgRSRRevTrader.connect(upgSigner).upgradeTo(rsrTraderV2ImplAddr)
+        })
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgRTokRevTrader.connect(upgSigner).upgradeTo(rTokenTraderV2ImplAddr)
+        })
+
+        const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>(
+          await ethers.getContractAt('RevenueTraderP1V2', rsrTrader.address)
+        )
+
+        const rTokenTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>(
+          await ethers.getContractAt('RevenueTraderP1V2', rTokenTrader.address)
+        )
+
+        // Check addresses are maintained
+        expect(rsrTraderV2.address).to.equal(rsrTrader.address)
+        expect(rTokenTraderV2.address).to.equal(rTokenTrader.address)
+
+        // Check state is preserved
+        expect(await rsrTraderV2.tokenToBuy()).to.equal(rsr.address)
+        expect(await rsrTraderV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+        expect(await rsrTraderV2.main()).to.equal(main.address)
+
+        expect(await rTokenTraderV2.tokenToBuy()).to.equal(rToken.address)
+        expect(await rTokenTraderV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+        expect(await rTokenTraderV2.main()).to.equal(main.address)
+
+        // Check new version is implemented
+        expect(await rsrTraderV2.version()).to.equal('2.0.0')
+        expect(await rTokenTraderV2.version()).to.equal('2.0.0')
+
+        expect(await rsrTraderV2.newValue()).to.equal(0)
+        await rsrTraderV2.connect(owner).setNewValue(bn(1000))
+        expect(await rsrTraderV2.newValue()).to.equal(bn(1000))
+
+        expect(await rTokenTraderV2.newValue()).to.equal(0)
+        await rTokenTraderV2.connect(owner).setNewValue(bn(500))
+        expect(await rTokenTraderV2.newValue()).to.equal(bn(500))
+      })
+
+      it('Should upgrade correctly - RToken', async () => {
+        const upgRToken = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
+
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgRToken.connect(upgSigner).upgradeTo(rTokenV2ImplAddr)
+        })
+
+        const rTokenV2: RTokenP1V2 = <RTokenP1V2>(
+          await ethers.getContractAt('RTokenP1V2', rToken.address)
+        )
+
+        // Check address is maintained
+        expect(rTokenV2.address).to.equal(rToken.address)
+
+        // Check state is preserved
+        expect(await rTokenV2.name()).to.equal('RTKN RToken')
+        expect(await rTokenV2.symbol()).to.equal('RTKN')
+        expect(await rTokenV2.decimals()).to.equal(18)
+        expect(await rTokenV2.totalSupply()).to.equal(bn(0))
+        expect(await rTokenV2.main()).to.equal(main.address)
+        const issThrottle = await rToken.issuanceThrottleParams()
+        expect(issThrottle.amtRate).to.equal(config.issuanceThrottle.amtRate)
+        expect(issThrottle.pctRate).to.equal(config.issuanceThrottle.pctRate)
+        const redemptionThrottle = await rToken.redemptionThrottleParams()
+        expect(redemptionThrottle.amtRate).to.equal(config.redemptionThrottle.amtRate)
+        expect(redemptionThrottle.pctRate).to.equal(config.redemptionThrottle.pctRate)
+
+        // Check new version is implemented
+        expect(await rTokenV2.version()).to.equal('2.0.0')
+
+        expect(await rTokenV2.newValue()).to.equal(0)
+        await rTokenV2.connect(owner).setNewValue(bn(1000))
+        expect(await rTokenV2.newValue()).to.equal(bn(1000))
+      })
+
+      it('Should upgrade correctly - StRSR', async () => {
+        const upgStRSR = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+
+        // Upgrade via Main
+        await whileImpersonating(main.address, async (upgSigner) => {
+          await upgStRSR.connect(upgSigner).upgradeTo(stRSRV2ImplAddr)
+        })
+
+        const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>(
+          await ethers.getContractAt('StRSRP1VotesV2', stRSR.address)
+        )
+
+        // Check address is maintained
+        expect(stRSRV2.address).to.equal(stRSR.address)
+
+        // Check state is preserved
+        expect(await stRSRV2.name()).to.equal('rtknRSR Token')
+        expect(await stRSRV2.symbol()).to.equal('rtknRSR')
+        expect(await stRSRV2.decimals()).to.equal(18)
+        expect(await stRSRV2.totalSupply()).to.equal(0)
+        expect(await stRSRV2.unstakingDelay()).to.equal(config.unstakingDelay)
+        expect(await stRSRV2.rewardRatio()).to.equal(config.rewardRatio)
+        expect(await stRSRV2.main()).to.equal(main.address)
+
+        // Check new version is implemented
+        expect(await stRSRV2.version()).to.equal('2.0.0')
+
+        expect(await stRSRV2.newValue()).to.equal(0)
+        await stRSRV2.connect(owner).setNewValue(bn(1000))
+        expect(await stRSRV2.newValue()).to.equal(bn(1000))
+      })
+
+      context('Using Registries', function () {
+        let versionRegistry: VersionRegistry
+        let assetPluginRegistry: AssetPluginRegistry
+
+        let implementationsV2: IImplementations
+        let deployerV2: DeployerP1V2
+
+        beforeEach(async () => {
+          const versionRegistryFactory = await ethers.getContractFactory('VersionRegistry')
+          const mockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+          const mockRoleRegistry = await mockRoleRegistryFactory.deploy()
+          versionRegistry = await versionRegistryFactory.deploy(mockRoleRegistry.address)
+
+          const assetPluginRegistryFactory = await ethers.getContractFactory('AssetPluginRegistry')
+          assetPluginRegistry = await assetPluginRegistryFactory.deploy(versionRegistry.address)
+
+          // Prepare V2 Deployer and register new version
+          implementationsV2 = {
+            main: mainV2ImplAddr,
+            components: {
+              assetRegistry: assetRegV2ImplAddr,
+              basketHandler: bskHndlrV2ImplAddr,
+              distributor: distributorV2ImplAddr,
+              broker: brokerV2ImplAddr,
+              backingManager: backingMgrV2ImplAddr,
+              furnace: furnaceV2ImplAddr,
+              rToken: rTokenV2ImplAddr,
+              rsrTrader: rsrTraderV2ImplAddr,
+              rTokenTrader: rTokenTraderV2ImplAddr,
+              stRSR: stRSRV2ImplAddr,
+            },
+            trading: {
+              gnosisTrade: await broker.batchTradeImplementation(),
+              dutchTrade: await broker.dutchTradeImplementation(),
+            },
+          }
+
+          const DeployerV2Factory = await ethers.getContractFactory('DeployerP1V2')
+          deployerV2 = await DeployerV2Factory.deploy(
+            rsr.address,
+            rsrAsset.address,
+            implementationsV2
+          )
+        })
+        it('Should upgrade all contracts at once - Using Registries', async () => {
+          // Register current deployment
+          await versionRegistry.connect(owner).registerVersion(deployer.address)
+
+          // Register new deployment
+          await versionRegistry.connect(owner).registerVersion(deployerV2.address)
+
+          // Update Main to new version
+          const versionV1Hash = toHash(await deployer.version())
+          const versionV2Hash = toHash(await deployerV2.version())
+          const upgMain = <MainP1>await ethers.getContractAt('MainP1', main.address)
+
+          // Update Main to have a Registry
+          await main.connect(owner).setVersionRegistry(versionRegistry.address)
+
+          // Upgrade Main
+          expect(toHash(await main.version())).to.equal(versionV1Hash)
+          await upgMain.connect(owner).upgradeMainTo(versionV2Hash)
+          expect(toHash(await main.version())).to.equal(versionV2Hash)
+
+          // Components still in original version
+          expect(toHash(await assetRegistry.version())).to.equal(versionV1Hash)
+          expect(toHash(await backingManager.version())).to.equal(versionV1Hash)
+          expect(toHash(await basketHandler.version())).to.equal(versionV1Hash)
+          expect(toHash(await broker.version())).to.equal(versionV1Hash)
+          expect(toHash(await distributor.version())).to.equal(versionV1Hash)
+          expect(toHash(await furnace.version())).to.equal(versionV1Hash)
+          expect(toHash(await rsrTrader.version())).to.equal(versionV1Hash)
+          expect(toHash(await rTokenTrader.version())).to.equal(versionV1Hash)
+          expect(toHash(await rToken.version())).to.equal(versionV1Hash)
+          expect(toHash(await stRSR.version())).to.equal(versionV1Hash)
+
+          // Upgrade RToken
+          expect(toHash(await rToken.version())).to.equal(versionV1Hash)
+          await upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, false, false)
+          expect(toHash(await rToken.version())).to.equal(versionV2Hash)
+
+          // All components updated
+          expect(toHash(await assetRegistry.version())).to.equal(versionV2Hash)
+          expect(toHash(await backingManager.version())).to.equal(versionV2Hash)
+          expect(toHash(await basketHandler.version())).to.equal(versionV2Hash)
+          expect(toHash(await broker.version())).to.equal(versionV2Hash)
+          expect(toHash(await distributor.version())).to.equal(versionV2Hash)
+          expect(toHash(await furnace.version())).to.equal(versionV2Hash)
+          expect(toHash(await rsrTrader.version())).to.equal(versionV2Hash)
+          expect(toHash(await rTokenTrader.version())).to.equal(versionV2Hash)
+          expect(toHash(await rToken.version())).to.equal(versionV2Hash)
+          expect(toHash(await stRSR.version())).to.equal(versionV2Hash)
+        })
+
+        it('Should perform pre and post validations on Assets- Using Registries', async () => {
+          // Register deployments
+          await versionRegistry.connect(owner).registerVersion(deployer.address)
+          await versionRegistry.connect(owner).registerVersion(deployerV2.address)
+
+          // Update Main to have both registries
+          await main.connect(owner).setVersionRegistry(versionRegistry.address)
+          await main.connect(owner).setAssetPluginRegistry(assetPluginRegistry.address)
+
+          // Update Main to new version
+          const versionV1Hash = toHash(await deployer.version())
+          const versionV2Hash = toHash(await deployerV2.version())
+          const upgMain = <MainP1>await ethers.getContractAt('MainP1', main.address)
+          await upgMain.connect(owner).upgradeMainTo(versionV2Hash)
+
+          // Upgrade to RToken fails if not assets registered
+          await expect(
+            upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, true, true)
+          ).to.be.revertedWith('unsupported asset')
+
+          // Register Assets in the Registry for current version
+          const currentAssetRegistry = await assetRegistry.getRegistry()
+          const currentAssetPlugins = currentAssetRegistry.assets
+
+          await assetPluginRegistry.connect(owner).updateAssetsByVersion(
+            versionV1Hash,
+            currentAssetPlugins,
+            currentAssetPlugins.map(() => true)
+          )
+
+          // Upgrade to RToken fails, still not registered for the new version
+          await expect(
+            upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, true, true)
+          ).to.be.revertedWith('unsupported asset')
+
+          // Register Assets in the Registry for new version
+          await assetPluginRegistry.connect(owner).updateAssetsByVersion(
+            versionV2Hash,
+            currentAssetPlugins,
+            currentAssetPlugins.map(() => true)
+          )
+
+          // Upgrade RToken
+          expect(toHash(await rToken.version())).to.equal(versionV1Hash)
+          await upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, true, true)
+          expect(toHash(await rToken.version())).to.equal(versionV2Hash)
+
+          // All components updated
+          expect(toHash(await assetRegistry.version())).to.equal(versionV2Hash)
+          expect(toHash(await backingManager.version())).to.equal(versionV2Hash)
+          expect(toHash(await basketHandler.version())).to.equal(versionV2Hash)
+          expect(toHash(await broker.version())).to.equal(versionV2Hash)
+          expect(toHash(await distributor.version())).to.equal(versionV2Hash)
+          expect(toHash(await furnace.version())).to.equal(versionV2Hash)
+          expect(toHash(await rsrTrader.version())).to.equal(versionV2Hash)
+          expect(toHash(await rTokenTrader.version())).to.equal(versionV2Hash)
+          expect(toHash(await rToken.version())).to.equal(versionV2Hash)
+          expect(toHash(await stRSR.version())).to.equal(versionV2Hash)
+        })
+
+        it('Should perform validation in the upgrade process - Using Registries', async () => {
+          // Register current deployment
+          await versionRegistry.connect(owner).registerVersion(deployer.address)
+
+          // Get V2 version
+          const versionV2Hash = toHash(await deployerV2.version())
+
+          const upgMain = <MainP1>await ethers.getContractAt('MainP1', main.address)
+
+          // Cannot upgrade if no registry in Main
+          await expect(upgMain.connect(owner).upgradeMainTo(versionV2Hash)).to.be.revertedWith(
+            'no registry'
+          )
+          await expect(
+            upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, false, false)
+          ).to.be.revertedWith('no registry')
+
+          // Update Main to have a Registry
+          await main.connect(owner).setVersionRegistry(versionRegistry.address)
+
+          // If not governance cannot upgrade
+          await expect(upgMain.connect(other).upgradeMainTo(versionV2Hash)).to.be.revertedWith(
+            `AccessControl: account ${other.address.toLowerCase()} is missing role ${MAIN_OWNER_ROLE}`
+          )
+          await expect(
+            upgMain.connect(other).upgradeRTokenTo(versionV2Hash, false, false)
+          ).to.be.revertedWith(
+            `AccessControl: account ${other.address.toLowerCase()} is missing role ${MAIN_OWNER_ROLE}`
+          )
+
+          // Cannot upgrade if version not registered
+          await expect(upgMain.connect(owner).upgradeMainTo(versionV2Hash)).to.be.reverted
+          await expect(upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, false, false)).to.be
+            .reverted
+
+          // Register new deployment
+          await versionRegistry.connect(owner).registerVersion(deployerV2.address)
+
+          // Cannot upgrade RToken before main
+          await expect(
+            upgMain.connect(owner).upgradeRTokenTo(versionV2Hash, false, false)
+          ).to.be.revertedWith('upgrade main first')
+
+          // Cannot upgrade to deprecated version
+          await versionRegistry.connect(owner).deprecateVersion(versionV2Hash)
+          await expect(upgMain.connect(owner).upgradeMainTo(versionV2Hash)).to.be.revertedWith(
+            'version deprecated'
+          )
+        })
+      })
     })
   })
 })

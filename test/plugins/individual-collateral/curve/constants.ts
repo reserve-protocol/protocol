@@ -26,7 +26,7 @@ export const DAI_ORACLE_ERROR = fp('0.0025')
 
 // USDC
 export const USDC_USD_FEED = networkConfig['1'].chainlinkFeeds.USDC!
-export const USDC_ORACLE_TIMEOUT = bn('86400')
+export const USDC_ORACLE_TIMEOUT = bn('82800') // 23h
 export const USDC_ORACLE_ERROR = fp('0.0025')
 
 // USDT
@@ -54,7 +54,7 @@ export const BTC_USD_ORACLE_ERROR = fp('0.005')
 
 // WETH
 export const WETH_USD_FEED = networkConfig['1'].chainlinkFeeds.ETH!
-export const WETH_ORACLE_TIMEOUT = bn('86400')
+export const WETH_ORACLE_TIMEOUT = bn('3600')
 export const WETH_ORACLE_ERROR = fp('0.005')
 
 // MIM
@@ -97,7 +97,7 @@ export const ETHPLUS = networkConfig['1'].tokens.ETHPLUS!
 export const ETHPLUS_ASSET_REGISTRY = '0xf526f058858E4cD060cFDD775077999562b31bE0'
 export const ETHPLUS_BASKET_HANDLER = '0x56f40A33e3a3fE2F1614bf82CBeb35987ac10194'
 export const ETHPLUS_BACKING_MANAGER = '0x608e1e01EF072c15E5Da7235ce793f4d24eCa67B'
-export const ETHPLUS_TIMELOCK = '0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B'
+export const ETHPLUS_TIMELOCK = '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556'
 
 // USDC+
 export const USDCPLUS = networkConfig['1'].tokens.USDCPLUS!
@@ -141,10 +141,10 @@ export const EUSD_BASKET_HANDLER = '0x6d309297ddDFeA104A6E89a132e2f05ce3828e07'
 export const eUSD_BACKING_MANAGER = '0xF014FEF41cCB703975827C8569a3f0940cFD80A4'
 
 // ETH+ + ETH
-export const ETHPLUS_BP_POOL = '0x7fb53345f1b21ab5d9510adb38f7d3590be6364b'
-export const ETHPLUS_BP_TOKEN = '0xe8a5677171c87fcb65b76957f2852515b404c7b1'
-export const ETHPLUS_BP_POOL_ID = 185
-export const ETHPLUS_ETH_HOLDER = '0x298bf7b80a6343214634aF16EB41Bb5B9fC6A1F1'
+export const ETHPLUS_BP_POOL = '0x2c683fAd51da2cd17793219CC86439C1875c353e'
+export const ETHPLUS_BP_TOKEN = '0x2c683fAd51da2cd17793219CC86439C1875c353e'
+export const ETHPLUS_BP_POOL_ID = 470
+export const ETHPLUS_ETH_HOLDER = '0xAD6D1a4B1B2F33712A8b18BeDc95c0A1f9832269'
 
 // USDC + USDC+
 export const USDC_USDCPLUS_GAUGE = networkConfig['1'].tokens.sdUSDCUSDCPlus!

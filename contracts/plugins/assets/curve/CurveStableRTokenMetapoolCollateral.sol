@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "./CurveStableMetapoolCollateral.sol";
 
@@ -15,6 +15,9 @@ import "./CurveStableMetapoolCollateral.sol";
  *
  * @notice Curve pools with native ETH or ERC777 should be avoided,
  *  see docs/collateral.md for information
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
     using FixLib for uint192;
@@ -73,7 +76,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
             }
 
             // Check for soft default + save prices
-            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                 // {UoA/tok}, {UoA/tok}, {UoA/tok}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -81,6 +84,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced

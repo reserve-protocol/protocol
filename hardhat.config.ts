@@ -1,14 +1,13 @@
 import 'tsconfig-paths/register'
-import '@nomicfoundation/hardhat-toolbox'
 import '@nomicfoundation/hardhat-chai-matchers'
+import '@nomicfoundation/hardhat-verify'
 import '@nomiclabs/hardhat-ethers'
-import '@nomiclabs/hardhat-etherscan'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
-import * as tenderly from '@tenderly/hardhat-tenderly'
+// import * as tenderly from '@tenderly/hardhat-tenderly'
 
 import { useEnv } from '#/utils/env'
 import { forkRpcs, Network } from '#/utils/fork'
@@ -18,7 +17,7 @@ import forkBlockNumber from '#/test/integration/fork-block-numbers'
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
 
-tenderly.setup()
+// tenderly.setup()
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
@@ -37,16 +36,36 @@ const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
-      // network for tests/in-process stuff
       forking: useEnv('FORK')
-        ? {
-            url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
-            blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
-          }
+        ? (() => {
+            const forkBlock = useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())
+            const forking: { url: string; blockNumber?: number } = {
+              url: forkRpcs[useEnv('FORK_NETWORK', 'mainnet') as Network],
+            }
+            // Only add blockNumber if it's not "latest"
+            if (forkBlock !== 'latest') {
+              forking.blockNumber = Number(forkBlock)
+            }
+            return forking
+          })()
         : undefined,
+      // chainId: 8453, // for Base fork testing
+      chains: {
+        8453: {
+          hardforkHistory: {
+            cancun: 11188936, // Base Cancun activation block
+          },
+        },
+      },
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
+      accounts: {
+        mnemonic: MNEMONIC,
+        accountsBalance: '10000000000000000000000000000',
+      },
+      gasMultiplier: 2,
+      initialBaseFeePerGas: 0, // Prevents gas fee issues
     },
     localhost: {
       // network for long-lived mainnet forks
@@ -74,6 +93,13 @@ const config: HardhatUserConfig = {
     base: {
       chainId: 8453,
       url: BASE_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
+    bsc: {
+      chainId: 56,
+      url: 'https://bsc-rpc.publicnode.com',
       accounts: {
         mnemonic: MNEMONIC,
       },
@@ -115,8 +141,11 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.19',
-        settings,
+        version: '0.8.28',
+        settings: {
+          ...settings,
+          evmVersion: 'paris',
+        },
       },
       {
         version: '0.6.12',
@@ -127,6 +156,13 @@ const config: HardhatUserConfig = {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
         version: '0.6.12',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
+      },
+      'node_modules/@reserve-protocol/trusted-fillers/**/*.sol': {
+        version: '0.8.28',
+        settings: {
+          ...settings,
+          evmVersion: 'paris',
+        },
       },
     },
   },
@@ -151,53 +187,15 @@ const config: HardhatUserConfig = {
     enabled: !!useEnv('REPORT_GAS'),
   },
   etherscan: {
-    apiKey: {
-      mainnet: useEnv('ETHERSCAN_API_KEY'),
-      base: useEnv('BASESCAN_API_KEY'),
-      arbitrum: useEnv('ARBISCAN_API_KEY'),
-      'arbitrum-sepolia': useEnv('ARBISCAN_API_KEY'),
-    },
-    customChains: [
-      {
-        network: 'base',
-        chainId: 8453,
-        urls: {
-          apiURL: 'https://api.basescan.org/api',
-          browserURL: 'https://basescan.org',
-        },
-      },
-      {
-        network: 'base-goerli',
-        chainId: 84531,
-        urls: {
-          apiURL: 'https://api-goerli.basescan.org/api',
-          browserURL: 'https://goerli.basescan.org',
-        },
-      },
-      {
-        network: 'arbitrum',
-        chainId: 42161,
-        urls: {
-          apiURL: 'https://api.arbiscan.io/api',
-          browserURL: 'https://arbiscan.io',
-        },
-      },
-      {
-        network: 'arbitrum-sepolia',
-        chainId: 421614,
-        urls: {
-          apiURL: 'https://api-sepolia.arbiscan.io/api',
-          browserURL: 'https://sepolia.arbiscan.io',
-        },
-      },
-    ],
+    enabled: true,
+    apiKey: useEnv('ETHERSCAN_API_KEY'),
   },
-  tenderly: {
-    // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
-    username: 'Reserveslug', // org name
-    project: 'testnet', // project name
-    privateVerification: false, // must be false to verify contracts on a testnet or devnet
-  },
+  // tenderly: {
+  //   // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
+  //   username: 'Reserveslug', // org name
+  //   project: 'testnet', // project name
+  //   privateVerification: false, // must be false to verify contracts on a testnet or devnet
+  // },
 }
 
 if (useEnv('ONLY_FAST')) {

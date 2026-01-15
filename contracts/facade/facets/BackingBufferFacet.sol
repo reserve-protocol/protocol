@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IAssetRegistry.sol";
@@ -7,6 +7,13 @@ import "../../interfaces/IBackingManager.sol";
 import "../../interfaces/IBasketHandler.sol";
 import "../../interfaces/IRToken.sol";
 import "../../libraries/Fixed.sol";
+
+interface OldBasketHandler is IBasketHandler {
+    function quote(uint192 amount, RoundingMode rounding)
+        external
+        view
+        returns (address[] memory erc20s, uint256[] memory quantities);
+}
 
 /**
  * @title BackingBufferFacet
@@ -25,7 +32,7 @@ contract BackingBufferFacet {
     function backingBuffer(IRToken rToken) external returns (uint192 required, uint192 actual) {
         IMain main = rToken.main();
         IAssetRegistry reg = main.assetRegistry();
-        IBasketHandler bh = main.basketHandler();
+        OldBasketHandler bh = OldBasketHandler(address(main.basketHandler()));
         TestIBackingManager bm = TestIBackingManager(address(main.backingManager()));
 
         // Refresh AssetRegistry
@@ -57,7 +64,7 @@ contract BackingBufferFacet {
 
     /// === Private ===
 
-    /// Works for IBasketHandler too
+    /// Works for BasketHandler too
     /// @return {UoA/tok} or {UoA/BU} The average price of the asset or BasketHandler, in UoA
     function _getAvgPrice(IAsset asset) private view returns (uint192) {
         (uint192 low, uint192 high) = asset.price(); // will include issuance premium in 4.0.0

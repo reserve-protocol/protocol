@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
-import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "../../interfaces/IStRSRVotes.sol";
+import "./vendor/extensions/GovernorCountingSimple.sol";
+import "./vendor/extensions/GovernorSettings.sol";
+import "./vendor/extensions/GovernorTimelockControl.sol";
+import "./vendor/extensions/GovernorVotes.sol";
+import "./vendor/extensions/GovernorVotesQuorumFraction.sol";
+import "./vendor/Governor.sol";
 
 uint256 constant ONE_DAY = 86400; // {s}
 
@@ -140,8 +140,8 @@ contract Governance is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
-        super._execute(proposalId, targets, values, calldatas, descriptionHash);
         require(startedInSameEra(proposalId), "new era");
+        super._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function _cancel(
@@ -183,7 +183,7 @@ contract Governance is
     // === Private ===
 
     function startedInSameEra(uint256 proposalId) private view returns (bool) {
-        uint256 startTimepoint = proposalSnapshot(proposalId);
+        uint256 startTimepoint = proposalProposedAt(proposalId);
         uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startTimepoint);
         uint256 currentEra = IStRSRVotes(address(token)).currentEra();
         return currentEra == pastEra;

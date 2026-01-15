@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -47,4 +47,24 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
     {
         return super.hasRole(role, account);
     }
+
+    function assetPluginRegistry() external pure returns (AssetPluginRegistry) {
+        return AssetPluginRegistry(address(0));
+    }
+
+    function versionRegistry() external pure returns (VersionRegistry) {
+        return VersionRegistry(address(0));
+    }
+
+    function daoFeeRegistry() external pure returns (DAOFeeRegistry) {
+        return DAOFeeRegistry(address(0));
+    }
+
+    // === Control flow ===
+
+    // solhint-disable-next-line no-empty-blocks
+    function beginTx() external virtual {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function endTx() external virtual {}
 }

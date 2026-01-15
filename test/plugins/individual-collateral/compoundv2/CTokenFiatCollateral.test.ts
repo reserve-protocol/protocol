@@ -64,7 +64,7 @@ import {
   RTokenAsset,
   TestIBackingManager,
   TestIBasketHandler,
-  TestIDeployer,
+  DeployerP1,
   TestIFacade,
   TestIMain,
   TestIRToken,
@@ -121,7 +121,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
 
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
   let facade: TestIFacade
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
@@ -130,8 +130,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   // RToken Configuration
   const dist: IRevenueShare = {
-    rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60), // 3/5 RSR
+    rTokenDist: bn(4000), // 2/5 RToken
+    rsrDist: bn(6000), // 3/5 RSR
   }
   const config: IConfig = {
     dist: dist,
@@ -153,10 +153,11 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       pctRate: fp('0.05'), // 5%
     },
     redemptionThrottle: {
-      amtRate: fp('1e6'), // 1M RToken
-      pctRate: fp('0.05'), // 5%
+      amtRate: fp('2e6'), // 2M RToken
+      pctRate: fp('0.1'), // 10%
     },
     reweightable: false,
+    enableIssuancePremium: false,
   }
 
   const defaultThreshold = fp('0.01') // 1%
@@ -164,7 +165,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let initialBal: BigNumber
 
-  let chainId: number
+  let chainId: string
 
   let CTokenCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
@@ -263,7 +264,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     // Deploy RToken via FacadeWrite
     const receipt = await (
-      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
+      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).wait()
 
     // Get Main
@@ -355,15 +361,15 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
       // Check assets/collateral
       const ERC20s = await assetRegistry.erc20s()
-      expect(ERC20s[0]).to.equal(rToken.address)
-      expect(ERC20s[1]).to.equal(rsr.address)
+      expect(ERC20s[0]).to.equal(rsr.address)
+      expect(ERC20s[1]).to.equal(rToken.address)
       expect(ERC20s[2]).to.equal(compToken.address)
       expect(ERC20s[3]).to.equal(cDai.address)
       expect(ERC20s.length).to.eql(4)
 
       // Assets
-      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(cDaiCollateral.address)
 
@@ -917,7 +923,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
         await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
         const [currLow, currHigh] = await newCDaiCollateral.price()
-        const currRate = await cDaiMock.exchangeRateStored()
 
         // Make exchangeRateStored() revert
         await cDaiMock.setRevertExchangeRateStored(true)

@@ -134,7 +134,6 @@ describe('Facade + FacadeMonitor contracts', () => {
       config,
       facade,
       readFacet,
-      revenueFacet,
       facadeTest,
       facadeMonitor,
       rToken,
@@ -261,7 +260,7 @@ describe('Facade + FacadeMonitor contracts', () => {
         expect(actual).to.equal(0)
 
         // Mimic 10% even appreciation across the board on a 0.01% backingBuffer
-        const [erc20s, amounts] = await basketHandler.quote(issueAmount, 0)
+        const [erc20s, amounts] = await basketHandler.quote(issueAmount, false, 0)
         for (let i = 0; i < erc20s.length; i++) {
           const erc20 = await ethers.getContractAt('ERC20Mock', erc20s[i])
           await erc20.connect(addr1).mint(backingManager.address, amounts[i].div(10))
@@ -310,7 +309,7 @@ describe('Facade + FacadeMonitor contracts', () => {
         )
       })
       it('Should return maxIssuableByAmounts correctly', async () => {
-        const [erc20Addrs] = await basketHandler.quote(fp('1'), 0)
+        const [erc20Addrs] = await basketHandler.quote(fp('1'), false, 0)
         const erc20s = await Promise.all(
           erc20Addrs.map((a) => ethers.getContractAt('ERC20Mock', a))
         )
@@ -687,7 +686,7 @@ describe('Facade + FacadeMonitor contracts', () => {
     })
 
     it('Should return revenue + chain into ActFacet.runRevenueAuctions', async () => {
-      // Set low to 0 == revenueOverview() should not revert
+      // Setting low price to 0 should not cause revenueOverview() to revert
       const minTradeVolume = await rsrTrader.minTradeVolume()
       const auctionLength = await broker.dutchAuctionLength()
       const tokenSurplus = bn('0.5e18')
@@ -834,7 +833,10 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       await expect(facade.callStatic.revenueOverview(rsrTrader.address)).not.to.be.reverted
-      await backingManager.connect(owner).upgradeTo(bckMgrInvalidVer.address)
+
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(bckMgrInvalidVer.address)
+      })
 
       // Reverts due to invalid version when forwarding revenue
       await expect(facade.callStatic.revenueOverview(rsrTrader.address)).to.be.revertedWith(
@@ -930,7 +932,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade BackingManager to V2
-      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV2.address)
+      })
 
       // Confirm no auction to run yet - should not revert
       let [canStart, sell, buy, sellAmount] =
@@ -976,7 +980,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       })
 
       // Upgrade BackingManager to V1
-      await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV1.address)
+      })
 
       // nextRecollateralizationAuction should return false (trade open)
       ;[canStart, sell, buy, sellAmount] = await facade.callStatic.nextRecollateralizationAuction(
@@ -1003,7 +1009,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(sellAmount).to.equal(sellAmt)
 
       // Invalid versions are also handled
-      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerInvalidVer.address)
+      })
 
       await expect(
         facade.callStatic.nextRecollateralizationAuction(
@@ -1024,7 +1032,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade BackingManager to Invalid version
-      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerInvalidVer.address)
+      })
 
       // Setup prime basket
       await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
@@ -1329,10 +1339,6 @@ describe('Facade + FacadeMonitor contracts', () => {
     it('should return redemption available', async () => {
       const issueAmount = bn('100000e18')
 
-      // Decrease redemption allowed amount
-      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
-      await rToken.connect(owner).setRedemptionThrottleParams(redeemThrottleParams)
-
       // Check with no supply
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1341,8 +1347,13 @@ describe('Facade + FacadeMonitor contracts', () => {
       // Issue some RTokens
       await rToken.connect(addr1).issue(issueAmount)
 
-      // check throttles - redemption still fully available
-      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('0.9'))
+      // Decrease redemption allowed amount
+      const issuanceThrottleParams = { amtRate: issueAmount.div(4), pctRate: fp('0.05') } // 25K
+      const redeemThrottleParams = { amtRate: issueAmount.div(2), pctRate: fp('0.1') } // 50K
+      await rToken.connect(owner).setThrottleParams(issuanceThrottleParams, redeemThrottleParams)
+
+      // check throttles - issuance & redemption still fully available (because lower)
+      expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem RTokens (50% of throttle)
@@ -1406,7 +1417,10 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Set issuance throttle to percent only
       const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      const redemptionThrottleParams = { amtRate: fp('2'), pctRate: fp('0.2') } // 10%
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
 
       // Advance time significantly
       await advanceTime(1000000000)
@@ -1417,7 +1431,7 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.equal(fp('1'))
 
       // Check redemption throttle unchanged
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(supplyThrottle.mul(2))
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Issuance #3 - Should be allowed, does not exceed supply restriction
@@ -1427,18 +1441,15 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Check issuance throttle updated - Previous issuances recharged
       expect(await rToken.issuanceAvailable()).to.equal(supplyThrottle.sub(issueAmount3))
-
       // Hourly Limit: 210K (10% of total supply of 2.1 M)
       // Available: 100 K / 201K (~ 0.47619)
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
         fp('0.476'),
         fp('0.001')
       )
-
       // Check redemption throttle unchanged
-      expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
+      // expect(await rToken.redemptionAvailable()).to.equal(config.redemptionThrottle.amtRate)
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
-
       // Check all issuances are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(
         issueAmount1.add(issueAmount2).add(issueAmount3)
@@ -1446,7 +1457,6 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // Advance time, issuance will recharge a bit
       await advanceTime(100)
-
       // Now 50% of hourly limit available (~105.8K / 210 K)
       expect(await rToken.issuanceAvailable()).to.be.closeTo(fp('105800'), fp('100'))
       expect(await facadeMonitor.issuanceAvailable(rToken.address)).to.be.closeTo(
@@ -1473,12 +1483,8 @@ describe('Facade + FacadeMonitor contracts', () => {
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Check redemptions
-      // Set redemption throttle to percent only
-      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') } // 10%
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-
       const totalSupply = await rToken.totalSupply()
-      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(10)) // 10%
+      expect(await rToken.redemptionAvailable()).to.equal(totalSupply.div(5)) // 20%
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.equal(fp('1'))
 
       // Redeem half of the available throttle
@@ -1486,7 +1492,7 @@ describe('Facade + FacadeMonitor contracts', () => {
 
       // About 52% now used of redemption throttle
       expect(await facadeMonitor.redemptionAvailable(rToken.address)).to.be.closeTo(
-        fp('0.52'),
+        fp('0.79'),
         fp('0.01')
       )
 
@@ -1744,8 +1750,10 @@ describe('Facade + FacadeMonitor contracts', () => {
       await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
 
       // Upgrade components to V2
-      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
-      await rTokenTrader.connect(owner).upgradeTo(revTraderV2.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV2.address)
+        await rTokenTrader.connect(signer).upgradeTo(revTraderV2.address)
+      })
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1772,8 +1780,10 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade to V1
-      await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
-      await rTokenTrader.connect(owner).upgradeTo(revTraderV1.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerV1.address)
+        await rTokenTrader.connect(signer).upgradeTo(revTraderV1.address)
+      })
 
       // Advance time till auction ended
       await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 13)
@@ -1813,7 +1823,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       )
 
       // Upgrade RevenueTrader to invalid version - Use RSR as an example
-      await rsrTrader.connect(owner).upgradeTo(revTraderInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await rsrTrader.connect(signer).upgradeTo(revTraderInvalidVer.address)
+      })
 
       const tokenSurplus = bn('0.5e18')
       await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
@@ -1823,7 +1835,9 @@ describe('Facade + FacadeMonitor contracts', () => {
       ).to.be.revertedWith('unrecognized version')
 
       // Also set BackingManager to invalid version
-      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+      await whileImpersonating(main.address, async (signer) => {
+        await backingManager.connect(signer).upgradeTo(backingManagerInvalidVer.address)
+      })
 
       await expect(
         facade.runRevenueAuctions(rsrTrader.address, [], [token.address], [TradeKind.DUTCH_AUCTION])

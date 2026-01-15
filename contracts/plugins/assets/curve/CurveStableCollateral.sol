@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -29,6 +29,9 @@ IERC20 constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
  *
  * @notice Curve pools with native ETH or ERC777 should be avoided,
  *  see docs/collateral.md for information
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
@@ -48,10 +51,11 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @dev Override this when pricing is more complicated than just a single pool
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return {target/ref} Unused. Always 0
+    /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
         external
         view
@@ -60,7 +64,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         returns (
             uint192 low,
             uint192 high,
-            uint192
+            uint192 pegPrice
         )
     {
         // Assumption: the pool is balanced
@@ -80,20 +84,22 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         //   1. A moving average metric (unavailable in the cases we care about)
         //   2. Mapping oracle prices to expected pool balances using precise knowledge about
         //      the shape of the trading curve. (maybe we can do this in the future)
+        // TODO update this approach to be MEV-resistant
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // {tok}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-        // We can always assume that the total supply is non-zero
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()), FLOOR);
+        // We can always assume that the total supply is sufficiently non-zero
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);
         high = aumHigh.div(supply, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
-        return (low, high, 0);
+        pegPrice = 0; // can't deduce from MEV-manipulable pricing unfortunately
+        // no issuance premium! more dangerous to be used inside RTokens as a result
     }
 
     /// Should not revert
@@ -119,7 +125,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             }
 
             // Check for soft default + save prices
-            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                 // {UoA/tok}, {UoA/tok}, {UoA/tok}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -127,6 +133,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced

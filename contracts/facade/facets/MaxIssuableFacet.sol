@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IBasketHandler.sol";
 import "../../interfaces/IRToken.sol";
 import "../../libraries/Fixed.sol";
+import "../../p1/BasketHandler.sol";
 
 /**
  * @title MaxIssuableFacet
@@ -21,7 +22,8 @@ contract MaxIssuableFacet {
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256) {
-        (address[] memory erc20s, ) = rToken.main().basketHandler().quote(FIX_ONE, FLOOR);
+        BasketHandlerP1 bh = BasketHandlerP1(address(rToken.main().basketHandler()));
+        (address[] memory erc20s, ) = bh.quote(FIX_ONE, FLOOR);
         uint256[] memory balances = new uint256[](erc20s.length);
         for (uint256 i = 0; i < erc20s.length; ++i) {
             balances[i] = IERC20(erc20s[i]).balanceOf(account);
@@ -45,7 +47,7 @@ contract MaxIssuableFacet {
         main.assetRegistry().refresh();
 
         // Get basket ERC20s
-        IBasketHandler bh = main.basketHandler();
+        BasketHandlerP1 bh = BasketHandlerP1(address(main.basketHandler()));
         (address[] memory erc20s, uint256[] memory quantities) = bh.quote(FIX_ONE, CEIL);
 
         // Compute how many baskets we can mint with the collateral amounts

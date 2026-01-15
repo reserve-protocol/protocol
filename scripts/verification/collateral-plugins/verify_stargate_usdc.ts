@@ -7,7 +7,13 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { priceTimeout, oracleTimeout, verifyContract, combinedError, revenueHiding } from '../../deployment/utils'
+import {
+  priceTimeout,
+  oracleTimeout,
+  verifyContract,
+  combinedError,
+  revenueHiding,
+} from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -33,16 +39,16 @@ async function main() {
     const sUSDC = networkConfig[chainId].tokens.sUSDC
 
     await verifyContract(
-        chainId,
-        deployments.erc20s.wsgUSDC,
-        [
-            name,
-            symbol,
-            networkConfig[chainId].tokens.STG,
-            networkConfig[chainId].STARGATE_STAKING_CONTRACT,
-            sUSDC
-        ],
-        'contracts/plugins/assets/stargate/StargateRewardableWrapper.sol:StargateRewardableWrapper'
+      chainId,
+      deployments.erc20s.wsgUSDC,
+      [
+        name,
+        symbol,
+        networkConfig[chainId].tokens.STG, // DEPRECATED
+        networkConfig[chainId].STARGATE_STAKING_CONTRACT,
+        sUSDC,
+      ],
+      'contracts/plugins/assets/stargate/StargateRewardableWrapper.sol:StargateRewardableWrapper'
     )
 
     const oracleError = fp('0.0025') // 0.25%
@@ -62,7 +68,7 @@ async function main() {
           defaultThreshold: fp('0.01').add(oracleError).toString(),
           delayUntilDefault: bn('86400').toString(), // 24h
         },
-        revenueHiding.toString()
+        revenueHiding.toString(),
       ],
       'contracts/plugins/assets/stargate/StargatePoolFiatCollateral.sol:StargatePoolFiatCollateral'
     )
@@ -72,16 +78,16 @@ async function main() {
     const sUSDC = networkConfig[chainId].tokens.sUSDbC
 
     await verifyContract(
-        chainId,
-        deployments.erc20s.wsgUSDbC,
-        [
-            name,
-            symbol,
-            networkConfig[chainId].tokens.STG,
-            networkConfig[chainId].STARGATE_STAKING_CONTRACT,
-            sUSDC
-        ],
-        'contracts/plugins/assets/stargate/StargateRewardableWrapper.sol:StargateRewardableWrapper'
+      chainId,
+      deployments.erc20s.wsgUSDbC,
+      [
+        name,
+        symbol,
+        networkConfig[chainId].tokens.STG, // DEPRECATED
+        networkConfig[chainId].STARGATE_STAKING_CONTRACT,
+        sUSDC,
+      ],
+      'contracts/plugins/assets/stargate/StargateRewardableWrapper.sol:StargateRewardableWrapper'
     )
 
     const oracleError = fp('0.003') // 0.3%
@@ -91,17 +97,17 @@ async function main() {
       deployments.collateral.wsgUSDbC,
       [
         {
-            priceTimeout: priceTimeout.toString(),
-            chainlinkFeed: networkConfig['8453'].chainlinkFeeds.USDC!,
-            oracleError: oracleError.toString(),
-            erc20: deployments.erc20s.wsgUSDbC!,
-            maxTradeVolume: fp('1e6').toString(), // $1m,
-            oracleTimeout: oracleTimeout('8453', '86400').toString(), // 24h hr,
-            targetName: hre.ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: fp('0.01').add(oracleError).toString(), // ~2.5%
-            delayUntilDefault: bn('86400').toString(), // 24h
+          priceTimeout: priceTimeout.toString(),
+          chainlinkFeed: networkConfig['8453'].chainlinkFeeds.USDC!,
+          oracleError: oracleError.toString(),
+          erc20: deployments.erc20s.wsgUSDbC!,
+          maxTradeVolume: fp('1e6').toString(), // $1m,
+          oracleTimeout: oracleTimeout('8453', '86400').toString(), // 24h hr,
+          targetName: hre.ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: fp('0.01').add(oracleError).toString(), // ~2.5%
+          delayUntilDefault: bn('86400').toString(), // 24h
         },
-        revenueHiding.toString()
+        revenueHiding.toString(),
       ],
       'contracts/plugins/assets/stargate/StargatePoolFiatCollateral.sol:StargatePoolFiatCollateral'
     )

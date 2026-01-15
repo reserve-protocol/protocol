@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CEIL, FIX_MAX, FixLib, _safeWrap } from "../../libraries/Fixed.sol";
@@ -70,6 +70,7 @@ abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced

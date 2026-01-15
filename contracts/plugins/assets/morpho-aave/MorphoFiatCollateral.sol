@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 // solhint-disable-next-line max-line-length
 import { Asset, AppreciatingFiatCollateral, CollateralConfig, IRewardable } from "../AppreciatingFiatCollateral.sol";
@@ -8,7 +8,7 @@ import { OracleLib } from "../OracleLib.sol";
 // solhint-disable-next-line max-line-length
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { shiftl_toFix, FIX_ONE } from "../../../libraries/Fixed.sol";
+import { shiftl_toFix, FIX_ONE, FLOOR } from "../../../libraries/Fixed.sol";
 
 /**
  * @title MorphoFiatCollateral
@@ -41,7 +41,8 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
         return
             shiftl_toFix(
                 MorphoTokenisedDeposit(address(erc20)).convertToAssets(oneShare),
-                -refDecimals
+                -refDecimals,
+                FLOOR
             );
     }
 

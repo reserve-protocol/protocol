@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 // solhint-disable func-name-mixedcase func-visibility
 // slither-disable-start divide-before-multiply
-pragma solidity ^0.8.19;
+pragma solidity 0.8.28;
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
@@ -11,7 +11,7 @@ pragma solidity ^0.8.19;
     "fixed192x18" -- a value represented by 192 bits, that makes 18 digits available to
     the right of the decimal point.
 
-    The range of values that uint192 can represent is about [-1.7e20, 1.7e20].
+    The range of values that uint192 can represent is [0, 2^192-1 / 10^18 = 6.2e39].
     Unless a function explicitly says otherwise, it will fail on overflow.
     To be clear, the following should hold:
     toFix(0) == 0
@@ -44,8 +44,8 @@ uint64 constant FIX_SCALE = 1e18;
 // FIX_SCALE Squared:
 uint128 constant FIX_SCALE_SQ = 1e36;
 
-// The largest integer that can be converted to uint192 .
-// This is a bit bigger than 3.1e39
+// The largest integer that can be converted to uint192.
+// This is a bit bigger than 6.2e39
 uint192 constant FIX_MAX_INT = type(uint192).max / FIX_SCALE;
 
 uint192 constant FIX_ZERO = 0; // The uint192 representation of zero.
@@ -100,7 +100,7 @@ function shiftl_toFix(
     // conditions for avoiding overflow
     if (x == 0) return 0;
     if (shiftLeft <= -96) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
-    if (40 <= shiftLeft) revert UIntOutOfBounds(); // 10**56 < FIX_MAX < 10**57
+    if (40 <= shiftLeft) revert UIntOutOfBounds(); // 10**57 < FIX_MAX < 10**58
 
     shiftLeft += 18;
 
@@ -577,8 +577,6 @@ library FixLib {
             uint256 pow2 = c & (0 - c);
 
             uint256 c_256 = uint256(c);
-            // Warning: Should not access c below this line
-
             c_256 /= pow2;
             lo /= pow2;
             lo += hi * ((0 - pow2) / pow2 + 1);
@@ -597,7 +595,7 @@ library FixLib {
             if (rounding == CEIL) {
                 if (mm != 0) result_256 += 1;
             } else if (rounding == ROUND) {
-                if (mm > ((c_256 - 1) / 2)) result_256 += 1;
+                if (mm > ((c - 1) / 2)) result_256 += 1; // intentional: use pre-divided c here
             }
         }
 

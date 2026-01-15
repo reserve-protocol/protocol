@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../plugins/assets/Asset.sol";
@@ -27,8 +27,6 @@ import "../mixins/Versioned.sol";
  * @notice The factory contract that deploys the entire P0 system.
  */
 contract DeployerP0 is IDeployer, Versioned {
-    string public constant ENS = "reserveprotocol.eth";
-
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
@@ -61,7 +59,8 @@ contract DeployerP0 is IDeployer, Versioned {
         string memory symbol,
         string calldata mandate,
         address owner,
-        DeploymentParams memory params
+        DeploymentParams memory params,
+        Registries calldata // ignored
     ) external returns (address) {
         require(owner != address(0) && owner != address(this), "invalid owner");
 
@@ -95,7 +94,12 @@ contract DeployerP0 is IDeployer, Versioned {
         );
 
         // Init Basket Handler
-        main.basketHandler().init(main, params.warmupPeriod, params.reweightable);
+        main.basketHandler().init(
+            main,
+            params.warmupPeriod,
+            params.reweightable,
+            params.enableIssuancePremium
+        );
 
         // Init Revenue Traders
         main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
@@ -114,8 +118,7 @@ contract DeployerP0 is IDeployer, Versioned {
 
         main.broker().init(
             main,
-            gnosis,
-            ITrade(address(new GnosisTrade())),
+            ITrade(address(new GnosisTrade(gnosis))),
             params.batchAuctionLength,
             ITrade(address(new DutchTrade())),
             params.dutchAuctionLength
@@ -145,13 +148,16 @@ contract DeployerP0 is IDeployer, Versioned {
             params.redemptionThrottle
         );
 
-        // Deploy RToken/RSR Assets
-        IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
-        assets[1] = rsrAsset;
-
-        // Init Asset Registry
+        // Register RSR Asset
+        IAsset[] memory assets = new IAsset[](1);
+        assets[0] = rsrAsset;
         main.assetRegistry().init(main, assets);
+
+        // Register RToken Asset
+        require(
+            main.assetRegistry().registerNewRTokenAsset(params.rTokenMaxTradeVolume),
+            "RTokenAsset already registered"
+        );
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
@@ -170,4 +176,7 @@ contract DeployerP0 is IDeployer, Versioned {
         rTokenAsset = new RTokenAsset(rToken, maxTradeVolume);
         emit RTokenAssetCreated(rToken, rTokenAsset);
     }
+
+    /// @dev Just to make solc happy.
+    function implementations() external view returns (Implementations memory) {}
 }

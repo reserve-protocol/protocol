@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 interface ICometRewards {
     struct RewardConfig {
         address token;
         uint64 rescaleFactor;
         bool shouldUpscale;
+        uint256 multiplier;
     }
 
     struct RewardOwed {

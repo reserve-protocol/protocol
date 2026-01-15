@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../libraries/Fixed.sol";
@@ -42,6 +42,12 @@ interface ITrading is IComponent, IRewardableComponent {
         uint256 sellAmount,
         uint256 buyAmount
     );
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) external;
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @param sell The sell token in the trade

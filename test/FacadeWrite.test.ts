@@ -41,7 +41,7 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
+  DeployerP1,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -97,7 +97,7 @@ describe('FacadeWrite contract', () => {
   let config: IConfig
 
   // Deployer
-  let deployer: TestIDeployer
+  let deployer: DeployerP1
 
   // Governor
   let governor: Governance
@@ -164,8 +164,8 @@ describe('FacadeWrite contract', () => {
 
     // Decrease revenue splits for nicer rounding
     const localConfig = cloneDeep(config)
-    localConfig.dist.rTokenDist = bn('394')
-    localConfig.dist.rsrDist = bn('591')
+    localConfig.dist.rTokenDist = bn('4000')
+    localConfig.dist.rsrDist = bn('6000')
 
     // Set parameters
     rTokenConfig = {
@@ -229,19 +229,34 @@ describe('FacadeWrite contract', () => {
     rTokenSetup.primaryBasket = [tokenAsset.address, tokenAsset.address]
     rTokenSetup.weights = [fp('0.5'), fp('0.5')]
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('duplicate collateral')
 
     // Cannot deploy with duplicate asset
     rTokenSetup.assets = [tokenAsset.address, tokenAsset.address]
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('duplicate asset')
 
     // Should not accept zero addr beneficiary
     rTokenSetup.beneficiaries = [{ beneficiary: ZERO_ADDRESS, revShare: revShare1 }]
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('beneficiary revShare mismatch')
 
     // Should not accept empty revShare
@@ -249,25 +264,45 @@ describe('FacadeWrite contract', () => {
       { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(0), rTokenDist: bn(0) } },
     ]
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('beneficiary revShare mismatch')
 
     // Cannot deploy backup info with no collateral tokens
     rTokenSetup.backups[0].backupCollateral = []
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('no backup collateral')
 
     // Cannot deploy with invalid length in weights
     rTokenSetup.weights = [fp('1')]
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('invalid length')
 
     // Cannot deploy with no basket
     rTokenSetup.primaryBasket = []
     await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).to.be.revertedWith('no collateral')
   })
 
@@ -277,7 +312,12 @@ describe('FacadeWrite contract', () => {
     ]
     // Deploy RToken via FacadeWrite
     const receipt = await (
-      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).wait()
 
     const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
@@ -290,7 +330,12 @@ describe('FacadeWrite contract', () => {
     ]
     // Deploy RToken via FacadeWrite
     const receipt = await (
-      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+        assetPluginRegistry: ZERO_ADDRESS,
+        daoFeeRegistry: ZERO_ADDRESS,
+        versionRegistry: ZERO_ADDRESS,
+        trustedFillerRegistry: ZERO_ADDRESS,
+      })
     ).wait()
 
     const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
@@ -301,7 +346,12 @@ describe('FacadeWrite contract', () => {
     beforeEach(async () => {
       // Deploy RToken via FacadeWrite
       const receipt = await (
-        await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+        await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+          assetPluginRegistry: ZERO_ADDRESS,
+          daoFeeRegistry: ZERO_ADDRESS,
+          versionRegistry: ZERO_ADDRESS,
+          trustedFillerRegistry: ZERO_ADDRESS,
+        })
       ).wait()
 
       const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
@@ -435,14 +485,14 @@ describe('FacadeWrite contract', () => {
 
         // Check assets/collateral
         const ERC20s = await assetRegistry.erc20s()
-        expect(ERC20s[0]).to.equal(rToken.address)
-        expect(ERC20s[1]).to.equal(rsr.address)
+        expect(ERC20s[0]).to.equal(rsr.address)
+        expect(ERC20s[1]).to.equal(rToken.address)
         expect(ERC20s[2]).to.equal(compToken.address)
 
         // Assets
         const erc20s = await assetRegistry.erc20s()
-        expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rTokenAsset.address)
-        expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rTokenAsset.address)
         expect(await assetRegistry.toAsset(erc20s[2])).to.equal(compAsset.address)
         expect(await assetRegistry.toAsset(erc20s[3])).to.equal(tokenAsset.address)
         expect(await assetRegistry.toAsset(erc20s[4])).to.equal(usdcAsset.address)
@@ -821,7 +871,12 @@ describe('FacadeWrite contract', () => {
     describeGas('Gas Reporting', () => {
       it('Phase 1 - RToken Deployment', async () => {
         await snapshotGasCost(
-          await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+          await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup, {
+            assetPluginRegistry: ZERO_ADDRESS,
+            daoFeeRegistry: ZERO_ADDRESS,
+            versionRegistry: ZERO_ADDRESS,
+            trustedFillerRegistry: ZERO_ADDRESS,
+          })
         )
       })
 

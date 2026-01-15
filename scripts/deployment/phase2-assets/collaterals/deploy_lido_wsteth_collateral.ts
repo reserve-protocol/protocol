@@ -50,7 +50,7 @@ async function main() {
   /********  Deploy Mock Oracle (if needed)  **************************/
   let stethUsdOracleAddress: string = networkConfig[chainId].chainlinkFeeds.stETHUSD!
   let stethEthOracleAddress: string = networkConfig[chainId].chainlinkFeeds.stETHETH!
-  if (chainId == 5) {
+  if (chainId == '5') {
     const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
     const mockStethUsdOracle = await MockOracleFactory.connect(deployer).deploy(8, bn(2000e8))
     await mockStethUsdOracle.deployed()
@@ -96,7 +96,7 @@ async function main() {
       '86400' // targetPerRefChainlinkTimeout
     )
     await collateral.deployed()
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
   } else if (chainId == '8453' || chainId == '84531') {
     const L2LidoStakedEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
@@ -109,7 +109,7 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: BASE_PRICE_FEEDS.stETH_ETH, // ignored
-        oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% & 0.5% & 0.15%
+        oracleError: BASE_ORACLE_ERROR.toString(), // 0.5% + 0.5% + 0.15%
         erc20: networkConfig[chainId].tokens.wstETH,
         maxTradeVolume: fp('5e5').toString(), // $500k
         oracleTimeout: BASE_FEEDS_TIMEOUT.stETH_ETH, // 86400, ignored
@@ -126,7 +126,7 @@ async function main() {
       BASE_FEEDS_TIMEOUT.wstETH_stETH
     )
     await collateral.deployed()
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
   } else {
     throw new Error(`Unsupported chainId: ${chainId}`)

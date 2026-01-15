@@ -4,9 +4,7 @@ import hre, { ethers } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
-import { ReadFacet } from '../../../typechain'
-
-let readFacet: ReadFacet
+import { ReadFacet, TradeHelperFacet } from '../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -34,29 +32,23 @@ async function main() {
 
   // Deploy ReadFacet
   const ReadFacetFactory = await ethers.getContractFactory('ReadFacet')
-  readFacet = <ReadFacet>await ReadFacetFactory.connect(burner).deploy()
+  const readFacet = <ReadFacet>await ReadFacetFactory.connect(burner).deploy()
   await readFacet.deployed()
+
+  // Deploy TradeHelperFacet
+  const TradeHelperFacetFactory = await ethers.getContractFactory('TradeHelperFacet')
+  const tradeHelperFacet = <TradeHelperFacet>await TradeHelperFacetFactory.connect(burner).deploy()
+  await tradeHelperFacet.deployed()
 
   // Write temporary deployments file
   deployments.facets.readFacet = readFacet.address
+  deployments.facets.tradeHelperFacet = tradeHelperFacet.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId})
     ReadFacet:  ${readFacet.address}
+    TradeHelperFacet:  ${tradeHelperFacet.address}
     Deployment file: ${deploymentFilename}`)
-
-  // ******************** Save to Facade ****************************************/
-
-  console.log('Configuring with Facade...')
-
-  // Save ReadFacet to Facade
-  const facade = await ethers.getContractAt('Facade', deployments.facade)
-  await facade.save(
-    readFacet.address,
-    Object.entries(readFacet.functions).map(([fn]) => readFacet.interface.getSighash(fn))
-  )
-
-  console.log('Finished saving to Facade')
 }
 
 main().catch((error) => {

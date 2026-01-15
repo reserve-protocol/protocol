@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -28,7 +28,16 @@ contract UnpricedAssetMock is Asset {
     ) Asset(priceTimeout_, chainlinkFeed_, oracleError_, erc20_, maxTradeVolume_, oracleTimeout_) {}
 
     /// tryPrice: mock unpriced by returning (0, FIX_MAX)
-    function tryPrice() external view override returns (uint192 low, uint192 high, uint192) {
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192
+        )
+    {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);
 
@@ -58,7 +67,11 @@ contract UnpricedFiatCollateralMock is FiatCollateral {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);
@@ -90,10 +103,9 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
     // solhint-disable no-empty-blocks
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding
-    ) AppreciatingFiatCollateral(config, revenueHiding) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {}
 
     /// tryPrice: mock unpriced by returning (0, FIX_MAX)
     function tryPrice()
@@ -101,7 +113,11 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);

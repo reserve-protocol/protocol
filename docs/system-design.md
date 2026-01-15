@@ -154,6 +154,12 @@ The `dutchAuctionLength` can be configured to be any value. The suggested defaul
 
 The "best plausible price" is equal to the exchange rate at the high price of the sell token and the low price of the buy token. The "worst-case price" is equal to the exchange rate at the low price of the sell token and the high price of the sell token, plus an additional discount equal to `maxTradeSlippage`.
 
+### Collateral decimals restriction
+
+The protocol only supports collateral tokens with up to 21 decimals, and for these cases only supports balances up to `~8e28`. Exceeding this could end up overflowing the `uint96` restrictions in GnosisTrade / EasyAuction. We expect `~70e6` whole tokens (for 21 decimals) to always be worth more than the `minTradeVolume`. Note that even when this assumption breaks, the protocol behaves gracefully and downsizes the GnosisTrade to be within the limits.
+
+In terms of rounding, with a 21 decimals token, we lose 3 decimal places when rounding down to our 18 decimal fixed point numbers (up to 999 wei). Even if one whole token is worth 1 billion USD, `1e3` wei will only be worth `1e-9` USD in that case. This is an acceptable loss.
+
 #### Trade violation fallback
 
 Dutch auctions become disabled for an asset being traded if a trade clears in the geometric phase. The rationale is that a trade that clears in this range (multiples above the plausible price) only does so because either 1) the auctioned asset's price was manipulated downwards, or 2) the bidding asset was manipulated upwards, such that the protocol accepts an unfavorable trade. All subsequent trades for that particular trading pair will be forced to use the batch auctions as a result. Dutch auctions for disabled assets must be manually re-enabled by governance.

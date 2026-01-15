@@ -21,7 +21,12 @@ async function main() {
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify Facade ****************************************/
-  await verifyContract(chainId, deployments.facade, [], 'contracts/facade/Facade.sol:Facade')
+  await verifyContract(
+    chainId,
+    deployments.facade,
+    [networkConfig[chainId].DEV_MULTISIG],
+    'contracts/facade/Facade.sol:Facade'
+  )
 
   /** ******************** Verify ReadFacet ****************************************/
   await verifyContract(
@@ -29,6 +34,14 @@ async function main() {
     deployments.facets.readFacet,
     [],
     'contracts/facade/facets/ReadFacet.sol:ReadFacet'
+  )
+
+  /** ******************** Verify TradeHelperFacet ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facets.tradeHelperFacet,
+    [],
+    'contracts/facade/facets/TradeHelperFacet.sol:TradeHelperFacet'
   )
 
   /** ******************** Verify ActFacet ****************************************/

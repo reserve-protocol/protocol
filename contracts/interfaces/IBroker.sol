@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/ITrustedFillerRegistry.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
 import "./IGnosis.sol";
@@ -34,18 +35,17 @@ struct TradeRequest {
  *   the continued proper functioning of trading platforms.
  */
 interface IBroker is IComponent {
-    event GnosisSet(IGnosis oldVal, IGnosis newVal);
     event BatchTradeImplementationSet(ITrade oldVal, ITrade newVal);
     event DutchTradeImplementationSet(ITrade oldVal, ITrade newVal);
     event BatchAuctionLengthSet(uint48 oldVal, uint48 newVal);
     event DutchAuctionLengthSet(uint48 oldVal, uint48 newVal);
     event BatchTradeDisabledSet(bool prevVal, bool newVal);
     event DutchTradeDisabledSet(IERC20Metadata indexed erc20, bool prevVal, bool newVal);
+    event TrustedFillerRegistrySet(address trustedFillerRegistry, bool isEnabled);
 
     // Initialization
     function init(
         IMain main_,
-        IGnosis gnosis_,
         ITrade batchTradeImplemention_,
         uint48 batchAuctionLength_,
         ITrade dutchTradeImplemention_,
@@ -69,6 +69,18 @@ interface IBroker is IComponent {
     function dutchTradeDisabled(IERC20Metadata erc20) external view returns (bool);
 }
 
+interface IExtendedBroker is IBroker {
+    function setBatchTradeImplementation(ITrade newTradeImplementation) external;
+
+    function setDutchTradeImplementation(ITrade newTradeImplementation) external;
+
+    function setTrustedFillerRegistry(address newRegistry, bool enabled) external;
+
+    function trustedFillerRegistry() external view returns (ITrustedFillerRegistry);
+
+    function trustedFillerEnabled() external view returns (bool);
+}
+
 interface TestIBroker is IBroker {
     function gnosis() external view returns (IGnosis);
 
@@ -79,8 +91,6 @@ interface TestIBroker is IBroker {
     function batchAuctionLength() external view returns (uint48);
 
     function dutchAuctionLength() external view returns (uint48);
-
-    function setGnosis(IGnosis newGnosis) external;
 
     function setBatchTradeImplementation(ITrade newTradeImplementation) external;
 
@@ -96,4 +106,10 @@ interface TestIBroker is IBroker {
 
     // only present on pre-3.0.0 Brokers; used by EasyAuction regression test
     function disabled() external view returns (bool);
+
+    function setTrustedFillerRegistry(address newRegistry, bool enabled) external;
+
+    function trustedFillerRegistry() external view returns (ITrustedFillerRegistry);
+
+    function trustedFillerEnabled() external view returns (bool);
 }

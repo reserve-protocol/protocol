@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../curve/CurveStableCollateral.sol";
 
@@ -46,6 +46,7 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
+    /// Should NOT be manipulable by MEV
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return {target/ref} Unused. Always 0
@@ -64,7 +65,7 @@ contract YearnV2CurveFiatCollateral is CurveStableCollateral {
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // {LP token}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()), FLOOR);
         // We can always assume that the total supply is non-zero
 
         // {UoA/LP token} = {UoA} / {LP token}

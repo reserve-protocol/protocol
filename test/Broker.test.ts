@@ -17,6 +17,7 @@ import {
 } from '../common/constants'
 import { bn, fp, divCeil, shortString, toBNDecimals } from '../common/numbers'
 import {
+  CowSwapFillerMock,
   DutchTrade,
   ERC20Mock,
   FiatCollateral,
@@ -25,12 +26,14 @@ import {
   GnosisTrade,
   GnosisTrade__factory,
   IAssetRegistry,
+  MockRoleRegistry,
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
   TestIMain,
   TestIRevenueTrader,
   TestIRToken,
+  TrustedFillerRegistry,
   USDCMock,
   ZeroDecimalMock,
 } from '../typechain'
@@ -62,6 +65,8 @@ import { parseUnits } from 'ethers/lib/utils'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
+const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 const describeExtreme =
   IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
@@ -136,7 +141,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
-      expect(await broker.gnosis()).to.equal(gnosis.address)
       expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await broker.batchTradeDisabled()).to.equal(false)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
@@ -158,67 +162,29 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       await expect(
-        newBroker.init(main.address, ZERO_ADDRESS, ZERO_ADDRESS, bn('100'), ZERO_ADDRESS, bn('100'))
-      ).to.be.revertedWith('invalid Gnosis address')
-      await expect(
-        newBroker.init(
-          main.address,
-          gnosis.address,
-          ZERO_ADDRESS,
-          bn('1000'),
-          ZERO_ADDRESS,
-          bn('1000')
-        )
+        newBroker.init(main.address, ZERO_ADDRESS, bn('1000'), ZERO_ADDRESS, bn('1000'))
       ).to.be.revertedWith('invalid batchTradeImplementation address')
       await expect(
-        newBroker.init(
-          main.address,
-          gnosis.address,
-          ONE_ADDRESS,
-          bn('1000'),
-          ZERO_ADDRESS,
-          bn('1000')
-        )
+        newBroker.init(main.address, ONE_ADDRESS, bn('1000'), ZERO_ADDRESS, bn('1000'))
       ).to.be.revertedWith('invalid dutchTradeImplementation address')
     })
   })
 
   describe('Configuration/State', () => {
-    it('Should allow to update Gnosis if Owner and perform validations', async () => {
-      // Check existing value
-      expect(await broker.gnosis()).to.equal(gnosis.address)
-
-      // If not owner cannot update
-      await expect(broker.connect(other).setGnosis(mock.address)).to.be.revertedWith(
-        'governance only'
-      )
-
-      // Check value did not change
-      expect(await broker.gnosis()).to.equal(gnosis.address)
-
-      // Attempt to update with Owner but zero address - not allowed
-      await expect(broker.connect(owner).setGnosis(ZERO_ADDRESS)).to.be.revertedWith(
-        'invalid Gnosis address'
-      )
-
-      // Update with owner
-      await expect(broker.connect(owner).setGnosis(mock.address))
-        .to.emit(broker, 'GnosisSet')
-        .withArgs(gnosis.address, mock.address)
-
-      // Check value was updated
-      expect(await broker.gnosis()).to.equal(mock.address)
-    })
-
     it('Should allow to update BatchTrade Implementation if Owner and perform validations', async () => {
+      const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
+      const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
+
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy(gnosis.address)
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setBatchTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'BatchTradeImplementationSet')
-        .withArgs(anyValue, tradeImpl.address)
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(broker.connect(upgSigner).setBatchTradeImplementation(tradeImpl.address))
+          .to.emit(broker, 'BatchTradeImplementationSet')
+          .withArgs(anyValue, tradeImpl.address)
+      })
 
       // Check existing value
       expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
@@ -226,34 +192,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // If not owner cannot update
       await expect(
         broker.connect(other).setBatchTradeImplementation(mock.address)
-      ).to.be.revertedWith('governance only')
+      ).to.be.revertedWith(errorMsg)
 
       // Check value did not change
       expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(
-        broker.connect(owner).setBatchTradeImplementation(ZERO_ADDRESS)
-      ).to.be.revertedWith('invalid batchTradeImplementation address')
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(
+          broker.connect(upgSigner).setBatchTradeImplementation(ZERO_ADDRESS)
+        ).to.be.revertedWith('invalid batchTradeImplementation address')
 
-      // Update with owner
-      await expect(broker.connect(owner).setBatchTradeImplementation(mock.address))
-        .to.emit(broker, 'BatchTradeImplementationSet')
-        .withArgs(tradeImpl.address, mock.address)
-
+        // Update with owner
+        await expect(broker.connect(upgSigner).setBatchTradeImplementation(mock.address))
+          .to.emit(broker, 'BatchTradeImplementationSet')
+          .withArgs(tradeImpl.address, mock.address)
+      })
       // Check value was updated
       expect(await broker.batchTradeImplementation()).to.equal(mock.address)
     })
 
     it('Should allow to update DutchTrade Implementation if Owner and perform validations', async () => {
+      const upgraderAddr = IMPLEMENTATION == Implementation.P1 ? main.address : owner.address
+      const errorMsg = IMPLEMENTATION == Implementation.P1 ? 'main only' : 'governance only'
+
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
       const tradeImpl: DutchTrade = <DutchTrade>await TradeFactory.deploy()
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setDutchTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'DutchTradeImplementationSet')
-        .withArgs(anyValue, tradeImpl.address)
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(broker.connect(upgSigner).setDutchTradeImplementation(tradeImpl.address))
+          .to.emit(broker, 'DutchTradeImplementationSet')
+          .withArgs(anyValue, tradeImpl.address)
+      })
 
       // Check existing value
       expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
@@ -261,20 +233,22 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // If not owner cannot update
       await expect(
         broker.connect(other).setDutchTradeImplementation(mock.address)
-      ).to.be.revertedWith('governance only')
+      ).to.be.revertedWith(errorMsg)
 
       // Check value did not change
       expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(
-        broker.connect(owner).setDutchTradeImplementation(ZERO_ADDRESS)
-      ).to.be.revertedWith('invalid dutchTradeImplementation address')
+      await whileImpersonating(upgraderAddr, async (upgSigner) => {
+        await expect(
+          broker.connect(upgSigner).setDutchTradeImplementation(ZERO_ADDRESS)
+        ).to.be.revertedWith('invalid dutchTradeImplementation address')
 
-      // Update with owner
-      await expect(broker.connect(owner).setDutchTradeImplementation(mock.address))
-        .to.emit(broker, 'DutchTradeImplementationSet')
-        .withArgs(tradeImpl.address, mock.address)
+        // Update with owner
+        await expect(broker.connect(upgSigner).setDutchTradeImplementation(mock.address))
+          .to.emit(broker, 'DutchTradeImplementationSet')
+          .withArgs(tradeImpl.address, mock.address)
+      })
 
       // Check value was updated
       expect(await broker.dutchTradeImplementation()).to.equal(mock.address)
@@ -557,19 +531,63 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Trades', () => {
     context('GnosisTrade', () => {
       const amount = fp('100.0')
+      let reentrantGnosis: GnosisMockReentrant
+      let tradeWithReentrantGnosis: GnosisTrade
       let trade: GnosisTrade
 
       beforeEach(async () => {
         // Create a Trade
         const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        trade = <GnosisTrade>await TradeFactory.deploy()
-
+        trade = <GnosisTrade>await TradeFactory.deploy(gnosis.address)
         await setStorageAt(trade.address, 0, 0)
+
+        // Create a Trade with reentrant Gnosis
+        const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
+          'GnosisMockReentrant'
+        )
+        reentrantGnosis = <GnosisMockReentrant>await GnosisReentrantFactory.deploy()
+        tradeWithReentrantGnosis = <GnosisTrade>await TradeFactory.deploy(reentrantGnosis.address)
+        await setStorageAt(tradeWithReentrantGnosis.address, 0, 0)
 
         // Check state
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
         expect(await trade.canSettle()).to.equal(false)
+        expect(await tradeWithReentrantGnosis.status()).to.equal(TradeStatus.NOT_STARTED)
+        expect(await tradeWithReentrantGnosis.canSettle()).to.equal(false)
       })
+
+      it('Should not allow to force settle a trade unless governance', async () => {
+        // Initialize trade - simulate from backingManager
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: amount,
+          minBuyAmount: bn('0'),
+        }
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            broker.address,
+            backingManager.address,
+            config.batchAuctionLength,
+            tradeRequest
+          )
+        ).to.not.be.reverted
+
+        await expect(
+          backingManager.connect(addr1).forceSettleTrade(trade.address)
+        ).to.be.revertedWith('governance only')
+      })
+
+      it('Should not allow deployment with zero address gnosis', async () => {
+        const GnosisTradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+        await expect(GnosisTradeFactory.deploy(ZERO_ADDRESS)).to.be.revertedWith(
+          'gnosis address zero'
+        )
+      })
+
       it('Should initialize GnosisTrade correctly - only once', async () => {
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
@@ -585,7 +603,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -612,7 +629,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             await trade.broker(),
             await trade.origin(),
-            await trade.gnosis(),
             await broker.batchAuctionLength(),
             tradeRequest
           )
@@ -635,7 +651,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -658,13 +673,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should protect against reentrancy when initializing GnosisTrade', async () => {
-        // Create a Reetrant Gnosis
-        const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
-          'GnosisMockReentrant'
-        )
-        const reentrantGnosis: GnosisMockReentrant = <GnosisMockReentrant>(
-          await GnosisReentrantFactory.deploy()
-        )
         await reentrantGnosis.setReenterOnInit(true)
 
         // Initialize trade - simulate from backingManager
@@ -676,12 +684,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         }
 
         // Fund trade and initialize with reentrant Gnosis
-        await token0.connect(owner).mint(trade.address, amount)
+        await token0.connect(owner).mint(tradeWithReentrantGnosis.address, amount)
         await expect(
-          trade.init(
+          tradeWithReentrantGnosis.init(
             broker.address,
             backingManager.address,
-            reentrantGnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -706,7 +713,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -721,7 +727,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -733,16 +738,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Fund trade with large balance
         await token0.connect(owner).mint(trade.address, invalidAmount)
 
-        // Attempt to initialize
+        // Will initialize correctly
         await expect(
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
-        ).to.be.revertedWith('initBal too large')
+        ).to.not.be.reverted
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
@@ -759,7 +763,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -790,7 +793,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -913,13 +915,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should protect against reentrancy when settling GnosisTrade', async () => {
-        // Create a Reetrant Gnosis
-        const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
-          'GnosisMockReentrant'
-        )
-        const reentrantGnosis: GnosisMockReentrant = <GnosisMockReentrant>(
-          await GnosisReentrantFactory.deploy()
-        )
         await reentrantGnosis.setReenterOnInit(false)
         await reentrantGnosis.setReenterOnSettle(true)
 
@@ -932,12 +927,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         }
 
         // Fund trade and initialize
-        await token0.connect(owner).mint(trade.address, amount)
+        await token0.connect(owner).mint(tradeWithReentrantGnosis.address, amount)
         await expect(
-          trade.init(
+          tradeWithReentrantGnosis.init(
             broker.address,
             backingManager.address,
-            reentrantGnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -967,7 +961,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -1041,7 +1034,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           trade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -1087,6 +1079,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Check balances again - funds sent to origin
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
+      })
+
+      it('Should downsize trades above uint96 - sell side', async () => {
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: MAX_UINT96.add(1),
+          minBuyAmount: amount,
+        }
+
+        // Should open trade JUST on MAX_UINT96 approval, not MAX_UINT96 + 1
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.mint(backingManager.address, MAX_UINT96)
+          await token0.connect(bmSigner).approve(broker.address, MAX_UINT96)
+          await broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          // should not revert
+        })
+      })
+
+      it('Should downsize trades above uint96 - buy side', async () => {
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: amount,
+          minBuyAmount: MAX_UINT96.add(1),
+        }
+
+        // Should open trade JUST on amount - 1 approval, not amount
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.mint(backingManager.address, amount.sub(1))
+          await token0.connect(bmSigner).approve(broker.address, amount.sub(1))
+          await broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          // should not revert
+        })
       })
 
       // There is no test here for the reportViolation case; that is in Revenues.test.ts
@@ -1160,6 +1186,48 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('Invalid trade state')
       })
 
+      it('Should not initialize DutchTrade with wrong parameters', async () => {
+        // Fund trade
+        await token0.connect(owner).mint(trade.address, amount)
+
+        // Attempt to initialize with bad auction length
+        prices.sellLow = bn('0')
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            bn(50), // too short
+            prices
+          )
+        ).to.be.revertedWith('bad trade initialization')
+
+        // Attempt to initialize with empty sell token
+        await expect(
+          trade.init(
+            backingManager.address,
+            ZERO_ADDRESS,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.be.revertedWith('bad trade initialization')
+
+        // Attempt to initialize with empty buy token
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            ZERO_ADDRESS,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.be.revertedWith('bad trade initialization')
+      })
+
       it('Should not initialize DutchTrade with bad prices', async () => {
         // Fund trade
         await token0.connect(owner).mint(trade.address, amount)
@@ -1190,6 +1258,20 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             prices
           )
         ).to.be.revertedWith('bad buy pricing')
+
+        prices.buyLow = MAX_UINT192.sub(1)
+        prices.buyHigh = fp('1')
+
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.be.reverted // assertion failure
       })
 
       it('Should apply full maxTradeSlippage to lowPrice at minTradeVolume', async () => {
@@ -1371,7 +1453,499 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
 
+      it('Should not allow to bid if trade not open', async () => {
+        // Attempt to bid on unitilized trade
+        await expect(trade.bid()).to.be.revertedWith('trade not open')
+        await expect(trade.bidWithCallback(new Uint8Array(0))).to.be.revertedWith('trade not open')
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength,
+            prices
+          )
+        ).to.not.be.reverted
+
+        // Advance blocks til trade can be settled
+        const now = await getLatestBlockTimestamp()
+        const tradeLen = (await trade.endTime()) - now
+        await advanceToTimestamp(now + tradeLen + 1)
+
+        // Settle trade
+        expect(await trade.canSettle()).to.equal(true)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        // Attempt to bid on closed trade
+        await expect(trade.bid()).to.be.revertedWith('trade not open')
+        await expect(trade.bidWithCallback(new Uint8Array(0))).to.be.revertedWith('trade not open')
+      })
+
       // There is no test here for the reportViolation case; that is in Revenues.test.ts
+    })
+  })
+
+  describeP1('Trusted Fillers', () => {
+    let TrustedFillerRegistryFactory: ContractFactory
+    let trustedFillerRegistry: TrustedFillerRegistry
+    let cowSwapFillerMock: CowSwapFillerMock
+    let mockRoleRegistry: MockRoleRegistry
+    let dutchTrade: DutchTrade
+
+    beforeEach(async () => {
+      // Deploy mock role registry
+      const MockRoleRegistryFactory = await ethers.getContractFactory('MockRoleRegistry')
+      mockRoleRegistry = <MockRoleRegistry>await MockRoleRegistryFactory.deploy()
+
+      // Deploy TrustedFillerRegistry
+      TrustedFillerRegistryFactory = await ethers.getContractFactory('TrustedFillerRegistry')
+      trustedFillerRegistry = <TrustedFillerRegistry>(
+        await TrustedFillerRegistryFactory.deploy(mockRoleRegistry.address)
+      )
+
+      // Deploy CowSwapFillerMock implementation (this will be cloned by the registry)
+      const CowSwapFillerMockFactory = await ethers.getContractFactory('CowSwapFillerMock')
+      cowSwapFillerMock = <CowSwapFillerMock>await CowSwapFillerMockFactory.deploy()
+
+      // Add CowSwapFillerMock implementation to registry (so it can be cloned)
+      await trustedFillerRegistry.addTrustedFiller(cowSwapFillerMock.address)
+    })
+
+    it('Should allow governance to set trusted filler registry', async () => {
+      // Check initial state
+      expect(await broker.trustedFillerRegistry()).to.equal(ZERO_ADDRESS)
+      expect(await broker.trustedFillerEnabled()).to.equal(false)
+
+      // Set trusted filler registry and enable
+      await expect(
+        broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+      )
+        .to.emit(broker, 'TrustedFillerRegistrySet')
+        .withArgs(trustedFillerRegistry.address, true)
+
+      // Check updated state
+      expect(await broker.trustedFillerRegistry()).to.equal(trustedFillerRegistry.address)
+      expect(await broker.trustedFillerEnabled()).to.equal(true)
+    })
+
+    it('Should not allow non-governance to set trusted filler registry', async () => {
+      await expect(
+        broker.connect(other).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+      ).to.be.revertedWith('governance only')
+    })
+
+    it('Should prevent setting registry twice', async () => {
+      // Set registry first time
+      await broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+
+      // Try to set different registry
+      const trustedFillerRegistry2 = await TrustedFillerRegistryFactory.deploy(
+        mockRoleRegistry.address
+      )
+
+      await expect(
+        broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry2.address, true)
+      ).to.be.revertedWith('trusted filler registry already set')
+    })
+
+    it('Should allow enable/disable without changing registry', async () => {
+      // Set registry first time
+      await broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+
+      // Disable trusted fillers without changing registry
+      await expect(
+        broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry.address, false)
+      )
+        .to.emit(broker, 'TrustedFillerRegistrySet')
+        .withArgs(trustedFillerRegistry.address, false)
+
+      expect(await broker.trustedFillerRegistry()).to.equal(trustedFillerRegistry.address)
+      expect(await broker.trustedFillerEnabled()).to.equal(false)
+    })
+
+    describe('Trading with Trusted Fillers', () => {
+      let tradeRequest: ITradeRequest
+
+      const getNextTradeAddress = async (tradeRequest: ITradeRequest): Promise<string> => {
+        let tradeAddress = ''
+        const sellColl = await ethers.getContractAt('ICollateral', tradeRequest.sell)
+        const sellToken = await ethers.getContractAt('ERC20Mock', await sellColl.erc20())
+
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          // set approval for broker
+          await sellToken.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          tradeAddress = await broker.connect(bmSigner).callStatic.openTrade(
+            TradeKind.BATCH_AUCTION, // workaround to by-pass price checks
+            tradeRequest,
+            prices
+          )
+        })
+        return tradeAddress
+      }
+
+      beforeEach(async () => {
+        // Enable trusted filler registry in broker
+        await broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry.address, true)
+
+        // Create a TradeRequest
+        tradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: fp('100'),
+          minBuyAmount: parseUnits('95.0', 6),
+        }
+
+        // Setup tokens with balances
+        await token0.mint(backingManager.address, fp('10000'))
+        await token1.mint(addr1.address, fp('10000'))
+      })
+
+      it('Should create trusted fill (one at a time) during active auction', async () => {
+        // Get Dutch trade address
+        const tradeAddress = await getNextTradeAddress(tradeRequest)
+
+        // Set automine to false
+        await hre.network.provider.send('evm_setAutomine', [false])
+
+        // Create Dutch trade (need to refresh collaterals in the same timestamp)
+        await assetRegistry.refresh()
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        })
+
+        // Mine block and reset automine
+        await hre.network.provider.send('evm_mine', [])
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Check trade status
+        dutchTrade = await ethers.getContractAt('DutchTrade', tradeAddress)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.OPEN)
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+
+        expect(await dutchTrade.bidType()).to.equal(BidType.NONE)
+        expect(await dutchTrade.savedFillPrice()).to.equal(0)
+
+        // Create trusted fill
+        await expect(
+          dutchTrade
+            .connect(addr1)
+            .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+        ).to.emit(dutchTrade, 'TrustedFillCreated')
+
+        // Verify active trusted fill is set
+        const activeFill = await dutchTrade.activeTrustedFill()
+        expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+        // Verify price was cached and type set
+        expect(await dutchTrade.bidType()).to.equal(BidType.FILL)
+        const prevSavedFillPrice = await dutchTrade.savedFillPrice()
+        expect(prevSavedFillPrice).to.be.gt(0)
+
+        // Try to create second fill - will close previous one
+        const prevFill = activeFill
+        await expect(
+          dutchTrade
+            .connect(addr1)
+            .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+        ).to.not.be.reverted
+
+        // Check new trusted fill status
+        expect(await dutchTrade.activeTrustedFill()).to.not.equal(ZERO_ADDRESS)
+        expect(await dutchTrade.activeTrustedFill()).to.not.equal(prevFill)
+
+        // New price was cached
+        expect(await dutchTrade.savedFillPrice()).to.be.lt(prevSavedFillPrice)
+      })
+
+      it('Should not create trusted fill when registry not enabled', async () => {
+        // Disable trusted fillers
+        await broker.connect(owner).setTrustedFillerRegistry(trustedFillerRegistry.address, false)
+
+        const tradeAddress = await getNextTradeAddress(tradeRequest)
+
+        // Set automine to false
+        await hre.network.provider.send('evm_setAutomine', [false])
+
+        // Create Dutch trade (need to refresh collaterals in the same timestamp)
+        await assetRegistry.refresh()
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        })
+
+        // Mine block and reset automine
+        await hre.network.provider.send('evm_mine', [])
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Check trade status
+        dutchTrade = await ethers.getContractAt('DutchTrade', tradeAddress)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.OPEN)
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+
+        // Attempt to create trusted fill should fail
+        await expect(
+          dutchTrade
+            .connect(addr1)
+            .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+        ).to.be.revertedWith('trusted fillers not enabled')
+      })
+
+      it('Should not create trusted fill when auction is not open', async () => {
+        const DutchTradeFactory = await ethers.getContractFactory('DutchTrade')
+        const newTrade = await DutchTradeFactory.deploy()
+
+        await expect(
+          newTrade
+            .connect(addr1)
+            .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+        ).to.be.revertedWith('trade not open')
+      })
+
+      it('Should allow to settle trade with active trusted fill', async () => {
+        // Create and setup a Dutch trade
+        const tradeAddress = await getNextTradeAddress(tradeRequest)
+
+        // Get current balances
+        const initBal0 = await token0.balanceOf(backingManager.address)
+        const initBal1 = await token1.balanceOf(backingManager.address)
+
+        // Set automine to false
+        await hre.network.provider.send('evm_setAutomine', [false])
+
+        // Create Dutch trade (need to refresh collaterals in the same timestamp)
+        await assetRegistry.refresh()
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        })
+
+        // Mine block and reset automine
+        await hre.network.provider.send('evm_mine', [])
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Check trade status
+        dutchTrade = await ethers.getContractAt('DutchTrade', tradeAddress)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.OPEN)
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+
+        expect(await dutchTrade.bidType()).to.equal(BidType.NONE)
+        expect(await dutchTrade.savedFillPrice()).to.equal(0)
+
+        // Check balances
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1)
+
+        // Create trusted fill
+        await dutchTrade
+          .connect(addr1)
+          .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+
+        // Use cached price at creation
+        const bidAmount = await dutchTrade.bidAmount(await getLatestBlockTimestamp())
+
+        // Verify price was cached and type set
+        expect(await dutchTrade.bidType()).to.equal(BidType.FILL)
+        const prevSavedFillPrice = await dutchTrade.savedFillPrice()
+        expect(prevSavedFillPrice).to.be.gt(0)
+
+        const activeFill = await dutchTrade.activeTrustedFill()
+        expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+        // Advance time
+        await advanceToTimestamp((await dutchTrade.endTime()) - 5)
+
+        // Perform fill
+        await token0.burn(activeFill, tradeRequest.sellAmount)
+        await token1.mint(activeFill, bidAmount)
+
+        // The trade should be settleable with an active trusted fill
+        expect(await dutchTrade.canSettle()).to.equal(true)
+
+        // Settle the trade
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(dutchTrade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        // Used cached price
+        expect(await dutchTrade.savedFillPrice()).to.equal(prevSavedFillPrice)
+
+        // After settling, the trusted fill should be closed
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.CLOSED)
+
+        // Check balances
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1.add(bidAmount))
+      })
+
+      it('Should not allow to settle trade if not enough buy tokens', async () => {
+        // Create and setup a Dutch trade
+        const tradeAddress = await getNextTradeAddress(tradeRequest)
+
+        // Get current balances
+        const initBal0 = await token0.balanceOf(backingManager.address)
+        const initBal1 = await token1.balanceOf(backingManager.address)
+
+        // Set automine to false
+        await hre.network.provider.send('evm_setAutomine', [false])
+
+        // Create Dutch trade (need to refresh collaterals in the same timestamp)
+        await assetRegistry.refresh()
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        })
+
+        // Mine block and reset automine
+        await hre.network.provider.send('evm_mine', [])
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Check trade status
+        dutchTrade = await ethers.getContractAt('DutchTrade', tradeAddress)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.OPEN)
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+
+        // Check balances
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1)
+
+        // Create trusted fill
+        await dutchTrade
+          .connect(addr1)
+          .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+
+        const activeFill = await dutchTrade.activeTrustedFill()
+        expect(activeFill).to.not.equal(ZERO_ADDRESS)
+
+        // No buy tokens in either trade or filler
+        expect(await token1.balanceOf(dutchTrade.address)).to.equal(0)
+        expect(await token1.balanceOf(activeFill)).to.equal(0)
+
+        // Perform fill
+        await token0.burn(activeFill, tradeRequest.sellAmount)
+        await token1.mint(activeFill, tradeRequest.minBuyAmount.div(2)) // not enough
+
+        // Not enough buy tokens
+        expect(await token1.balanceOf(dutchTrade.address)).to.equal(0)
+        expect(await token1.balanceOf(activeFill)).to.be.lt(tradeRequest.minBuyAmount)
+
+        // The trade should not be settleable
+        expect(await dutchTrade.bidType()).to.equal(BidType.FILL)
+        expect(await dutchTrade.canSettle()).to.equal(false)
+
+        // Cannot settle the trade
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(dutchTrade.connect(bmSigner).settle()).to.be.revertedWith('auction not over')
+        })
+
+        // Advance time till trade can be settled
+        await advanceToTimestamp((await dutchTrade.endTime()) + 1)
+
+        // After settling, the trusted fill should be closed
+        expect(await dutchTrade.canSettle()).to.equal(true)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(dutchTrade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.CLOSED)
+
+        // Check balances, tokens were transferred
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(
+          initBal1.add(tradeRequest.minBuyAmount.div(2))
+        )
+      })
+
+      it('Should not allow to settle trade if swap active', async () => {
+        // Create and setup a Dutch trade
+        const tradeAddress = await getNextTradeAddress(tradeRequest)
+
+        // Get current balances
+        const initBal0 = await token0.balanceOf(backingManager.address)
+        const initBal1 = await token1.balanceOf(backingManager.address)
+
+        // Set automine to false
+        await hre.network.provider.send('evm_setAutomine', [false])
+
+        // Create Dutch trade (need to refresh collaterals in the same timestamp)
+        await assetRegistry.refresh()
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          await broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        })
+
+        // Mine block and reset automine
+        await hre.network.provider.send('evm_mine', [])
+        await hre.network.provider.send('evm_setAutomine', [true])
+
+        // Check trade status
+        dutchTrade = await ethers.getContractAt('DutchTrade', tradeAddress)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.OPEN)
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+
+        // Check balances
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1)
+
+        // Create trusted fill
+        await dutchTrade
+          .connect(addr1)
+          .createTrustedFill(cowSwapFillerMock.address, ethers.utils.randomBytes(32))
+
+        // Use cached price at creation
+        const bidAmount = await dutchTrade.bidAmount(await getLatestBlockTimestamp())
+
+        // Set swap active
+        const activeFill = await dutchTrade.activeTrustedFill()
+        const cowswapFillerMock = await ethers.getContractAt('CowSwapFillerMock', activeFill)
+        await cowswapFillerMock.setForceSwapActive(true)
+
+        // Perform fill
+        await token0.burn(activeFill, tradeRequest.sellAmount)
+        await token1.mint(activeFill, bidAmount)
+
+        // Cannot settle at this point
+        await expect(await dutchTrade.canSettle()).to.equal(false)
+
+        //  End swap active
+        await cowswapFillerMock.setForceSwapActive(false)
+
+        // The trade should now be settleable
+        expect(await dutchTrade.canSettle()).to.equal(true)
+
+        // Settle the trade
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(dutchTrade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        // After settling, the trusted fill should be closed
+        expect(await dutchTrade.activeTrustedFill()).to.equal(ZERO_ADDRESS)
+        expect(await dutchTrade.status()).to.equal(TradeStatus.CLOSED)
+
+        // Check balances
+        expect(await token0.balanceOf(backingManager.address)).to.equal(
+          initBal0.sub(tradeRequest.sellAmount)
+        )
+        expect(await token1.balanceOf(backingManager.address)).to.equal(initBal1.add(bidAmount))
+      })
     })
   })
 
@@ -1424,20 +1998,24 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
 
+      const MAX_BUY_TOKEN_SCALED = toBNDecimals(MAX_ERC20_SUPPLY, Number(buyTokDecimals))
+      const MAX_SELL_TOKEN_SCALED = toBNDecimals(MAX_ERC20_SUPPLY, Number(sellTokDecimals))
+
       // Max out throttles
-      const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
+      const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY.mul(80).div(100), pctRate: 0 }
       const redemptionThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      await rToken
+        .connect(owner)
+        .setThrottleParams(issuanceThrottleParams, redemptionThrottleParams)
       await advanceTime(3600)
 
       // Mint coll tokens to addr1
-      await buyTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
-      await sellTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(owner).mint(addr1.address, MAX_BUY_TOKEN_SCALED)
+      await sellTok.connect(owner).mint(addr1.address, MAX_SELL_TOKEN_SCALED)
 
       // Issue RToken
-      await buyTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
-      await sellTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(addr1).approve(rToken.address, MAX_BUY_TOKEN_SCALED)
+      await sellTok.connect(addr1).approve(rToken.address, MAX_SELL_TOKEN_SCALED)
       await rToken.connect(addr1).issue(MAX_ERC20_SUPPLY.div(2))
 
       // Burn buyTok from backingManager and send extra sellTok
@@ -1446,7 +2024,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         bn(10).pow(sellTokDecimals)
       )
       await buyTok.burn(backingManager.address, burnAmount)
-      await sellTok.connect(addr1).transfer(backingManager.address, auctionSellAmt.mul(10))
+      await sellTok
+        .connect(addr1)
+        .transfer(backingManager.address, auctionSellAmt.mul(bn(10).pow(sellTokDecimals)))
 
       // Rebalance should cause backingManager to trade about auctionSellAmt, though not exactly
       await backingManager.setMaxTradeSlippage(bn('0'))
@@ -1483,7 +2063,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await buyTok.connect(addr1).approve(router.address, constants.MaxUint256)
         await router.connect(addr1).bid(trade.address, addr1.address)
       } else if (bidType.eq(bn(BidType.TRANSFER))) {
-        await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+        await buyTok.connect(addr1).approve(tradeAddr, MAX_BUY_TOKEN_SCALED)
         await trade.connect(addr1).bid()
       }
       await advanceBlocks(1)
@@ -1506,7 +2086,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     const bidTypes = [bn(BidType.CALLBACK), bn(BidType.TRANSFER)]
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('18'), bn('27')]
 
     // auction sell amount
     const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
@@ -1514,12 +2094,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     // auction progression %: these will get rounded to blocks later
     const progression = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
 
-    // total cases is 5 * 5 * 3 * 4 = 300
+    // total cases is 2 * 4 * 4 * 3 * 4 = 384
 
     if (SLOW) {
+      decimals.push(bn('8'), bn('9'), bn('21'))
       progression.push(fp('0.176334768961354965'), fp('0.523449931646439834'))
 
-      // total cases is 5 * 5 * 3 * 6 = 450
+      // total cases is 2 * 7 * 7 * 3 * 6 = 1764
     }
 
     const paramList = cartesianProduct(bidTypes, decimals, decimals, auctionSellAmts, progression)
@@ -1599,7 +2180,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           newTrade.init(
             broker.address,
             backingManager.address,
-            gnosis.address,
             config.batchAuctionLength,
             tradeRequest
           )
@@ -1614,7 +2194,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await newTrade.init(
           broker.address,
           backingManager.address,
-          gnosis.address,
           config.batchAuctionLength,
           tradeRequest
         )

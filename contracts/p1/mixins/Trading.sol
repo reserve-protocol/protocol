@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -16,6 +16,9 @@ import "./RewardableLib.sol";
 ///   changed without breaking <3.0.0 RTokens. The only difference in
 ///   MulticallUpgradeable is the 50 slot storage gap and an empty constructor.
 ///   It should be fine to leave the non-upgradeable Multicall here permanently.
+///   Note: For >=4.1.0 RTokens, ReentrancyGuardUpgradeable is deprecated and
+///         replaced with GlobalReentrancyGuard (`globalNonReentrant`), but
+///         kept as base contract for storage slot compatibility.
 abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
     using FixLib for uint192;
 
@@ -59,10 +62,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // solhint-disable-next-line no-empty-blocks
     function requireNotTradingPausedOrFrozen() internal view notTradingPausedOrFrozen {}
 
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireGovernanceOnly() internal view governance {}
+
     /// Claim all rewards
     /// Collective Action
-    /// @custom:interaction CEI
-    function claimRewards() external {
+    /// @custom:interaction CEI (marked `nonReentrant`)
+    function claimRewards() external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
         RewardableLibP1.claimRewards(main.assetRegistry());
     }
@@ -70,8 +77,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Claim rewards for a single asset
     /// Collective Action
     /// @param erc20 The ERC20 to claimRewards on
-    /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external {
+    /// @custom:interaction CEI (marked `nonReentrant`)
+    function claimRewardsSingle(IERC20 erc20) external globalNonReentrant {
         requireNotTradingPausedOrFrozen();
         RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
@@ -89,9 +96,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades.set(sell, 0)
     //   tradesOpen' = tradesOpen - 1
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) public virtual nonReentrant returns (ITrade trade) {
+    function settleTrade(IERC20 sell) public virtual globalNonReentrant returns (ITrade trade) {
         trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
@@ -140,17 +145,34 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
-    // === Setters ===
+    // === Governance ===
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public virtual globalNonReentrant {
+        requireGovernanceOnly();
+        // should not call any ERC20 functions, in case bricked
+
+        IERC20Metadata sell = trade.sell();
+        require(trades[sell] == trade, "wrong trade");
+        delete trades[sell];
+        tradesOpen--;
+        emit TradeSettled(trade, sell, trade.buy(), 0, 0);
+    }
 
     /// @custom:governance
-    function setMaxTradeSlippage(uint192 val) public governance {
-        require(val < MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
+    function setMaxTradeSlippage(uint192 val) public {
+        requireGovernanceOnly();
+        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
     /// @custom:governance
-    function setMinTradeVolume(uint192 val) public governance {
+    function setMinTradeVolume(uint192 val) public {
+        requireGovernanceOnly();
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;

@@ -10,6 +10,7 @@ export const whales: { [key: string]: string } = {
   [networkConfig['31337'].tokens.steakPYUSD!]: '0x7E4B4DC22111B84594d9b7707A8DCFFd793D477A',
   [networkConfig['31337'].tokens.bbUSDT!]: '0xc8E3C36a72B9AA4Af0a057eb4A11e1AFC16465bB',
   [networkConfig['31337'].tokens.Re7WETH!]: '0xd553294B42bdFEb49D8f5A64E8B2D3A65fc673A9',
+  [networkConfig['8453'].tokens.meUSD!]: '0xF02ea73c7A3057649f09899aaE1606712758bE8b',
 }
 
 /**

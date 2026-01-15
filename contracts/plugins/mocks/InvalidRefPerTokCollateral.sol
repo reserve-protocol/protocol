@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
@@ -33,7 +33,7 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
             exposedReferencePrice = hiddenReferencePrice;
 
             // Check for soft default + save prices
-            try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                 // {UoA/tok}, {UoA/tok}, {target/ref}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -41,6 +41,7 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
                 if (high != FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
+                    savedPegPrice = pegPrice;
                     lastSave = uint48(block.timestamp);
                 }
             } catch (bytes memory errData) {

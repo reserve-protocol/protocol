@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
@@ -41,7 +41,7 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateStored() external view returns (uint256) {
-         if (revertExchangeRateStored) {
+        if (revertExchangeRateStored) {
             revert("reverting exchange rate stored");
         }
         return _exchangeRate;

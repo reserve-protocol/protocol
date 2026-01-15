@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -28,6 +28,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
     uint192 public constant MIN_EXCHANGE_RATE = 1e9; // D18{BU/rTok}
     uint192 public constant MAX_EXCHANGE_RATE = 1e27; // D18{BU/rTok}
+    uint192 public constant MIN_THROTTLE_DELTA = 25e16; // {1} 25%
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
     string public mandate;
@@ -53,9 +54,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
 
-        mandate = mandate_;
-        setIssuanceThrottleParams(issuanceThrottleParams_);
-        setRedemptionThrottleParams(redemptionThrottleParams_);
+        setMandate(mandate_);
+        setThrottleParams(issuanceThrottleParams_, redemptionThrottleParams_);
 
         issuanceThrottle.lastTimestamp = uint48(block.timestamp);
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
@@ -109,7 +109,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             ? basketsNeeded.muluDivu(amount, totalSupply(), CEIL) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
-        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
+        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
+            baskets,
+            true,
+            CEIL
+        );
 
         address issuer = _msgSender();
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -136,6 +140,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         main.poke();
 
         require(amount > 0, "Cannot redeem zero");
+        require(recipient != address(0), "cannot redeem to zero address");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
         require(main.basketHandler().fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
@@ -150,6 +155,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             baskets,
+            false,
             FLOOR
         );
 
@@ -262,6 +268,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     function mint(uint192 baskets) external exchangeRateIsValidAfter {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
+        redemptionThrottle.useAvailable(totalSupply(), 0);
         _scaleUp(address(main.backingManager()), baskets);
     }
 
@@ -280,6 +288,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     function dissolve(uint256 amount) external exchangeRateIsValidAfter {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
+        redemptionThrottle.useAvailable(totalSupply(), 0);
         _scaleDown(_msgSender(), amount);
     }
 
@@ -330,25 +340,82 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// @custom:governance
     function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public governance {
+        _setIssuanceThrottleParams(params);
+        require(
+            isRedemptionThrottleGreaterByDelta(params, redemptionThrottle.params),
+            "redemption throttle too low"
+        );
+    }
+
+    /// @custom:governance
+    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+        _setRedemptionThrottleParams(params);
+        require(
+            isRedemptionThrottleGreaterByDelta(issuanceThrottle.params, params),
+            "redemption throttle too low"
+        );
+    }
+
+    function setThrottleParams(
+        ThrottleLib.Params calldata issuanceParams,
+        ThrottleLib.Params calldata redemptionParams
+    ) public governance {
+        _setIssuanceThrottleParams(issuanceParams);
+        _setRedemptionThrottleParams(redemptionParams);
+        require(
+            isRedemptionThrottleGreaterByDelta(issuanceParams, redemptionParams),
+            "redemption throttle too low"
+        );
+    }
+
+    function setMandate(string calldata mandate_) public governance {
+        require(bytes(mandate_).length != 0, "mandate empty");
+        emit MandateSet(mandate, mandate_);
+        mandate = mandate_;
+    }
+
+    // === Private ===
+
+    function _setIssuanceThrottleParams(ThrottleLib.Params calldata params) private {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
         issuanceThrottle.useAvailable(totalSupply(), 0);
+
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
 
     /// @custom:governance
-    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function _setRedemptionThrottleParams(ThrottleLib.Params calldata params) private {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
         redemptionThrottle.useAvailable(totalSupply(), 0);
+
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }
 
-    // === Private ===
+    /// @notice Checks if the redemption throttle is greater than the issuance throttle by the
+    /// required delta
+    /// @dev Compares both amtRate and pctRate individually to ensure each meets the minimum
+    /// delta requirement
+    /// @param issuance The issuance throttle parameters to compare against
+    /// @param redemption The redemption throttle parameters to check
+    /// @return bool True if redemption throttle is greater by at least MIN_THROTTLE_DELTA,
+    /// false otherwise
+    function isRedemptionThrottleGreaterByDelta(
+        ThrottleLib.Params memory issuance,
+        ThrottleLib.Params memory redemption
+    ) private pure returns (bool) {
+        uint256 requiredAmtRate = issuance.amtRate +
+            ((issuance.amtRate * MIN_THROTTLE_DELTA) / FIX_ONE);
+        uint256 requiredPctRate = issuance.pctRate +
+            ((issuance.pctRate * MIN_THROTTLE_DELTA) / FIX_ONE);
+
+        return redemption.amtRate >= requiredAmtRate && redemption.pctRate >= requiredPctRate;
+    }
 
     /// Mint an amount of RToken equivalent to amtBaskets and scale basketsNeeded up
     /// @param recipient The address to receive the RTokens

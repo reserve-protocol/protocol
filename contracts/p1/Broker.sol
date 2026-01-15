@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/ITrustedFillerRegistry.sol";
 import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
@@ -35,8 +36,9 @@ contract BrokerP1 is ComponentP1, IBroker {
     // The Batch Auction Trade contract to clone on openTrade(). Governance parameter.
     ITrade public batchTradeImplementation;
 
-    // The Gnosis contract to init batch auction trades with. Governance parameter.
-    IGnosis public gnosis;
+    /// @custom:oz-renamed-from gnosis
+    // Deprecated in 4.0.0
+    IGnosis public gnosis_DEPRECATED;
 
     /// @custom:oz-renamed-from auctionLength
     // {s} the length of a Gnosis EasyAuction. Governance parameter.
@@ -66,13 +68,17 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     IRToken private rToken;
 
+    // === 4.2.0 ===
+
+    ITrustedFillerRegistry public trustedFillerRegistry;
+    bool public trustedFillerEnabled;
+
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
 
     // effects: initial parameters are set
     function init(
         IMain main_,
-        IGnosis gnosis_,
         ITrade batchTradeImplementation_,
         uint48 batchAuctionLength_,
         ITrade dutchTradeImplementation_,
@@ -81,10 +87,22 @@ contract BrokerP1 is ComponentP1, IBroker {
         __Component_init(main_);
         cacheComponents();
 
-        setGnosis(gnosis_);
-        setBatchTradeImplementation(batchTradeImplementation_);
+        require(
+            address(batchTradeImplementation_) != address(0),
+            "invalid batchTradeImplementation address"
+        );
+        require(
+            address(dutchTradeImplementation_) != address(0),
+            "invalid dutchTradeImplementation address"
+        );
+
+        batchTradeImplementation = batchTradeImplementation_;
+        dutchTradeImplementation = dutchTradeImplementation_;
+
+        emit BatchTradeImplementationSet(ITrade(address(0)), batchTradeImplementation_);
+        emit DutchTradeImplementationSet(ITrade(address(0)), dutchTradeImplementation_);
+
         setBatchAuctionLength(batchAuctionLength_);
-        setDutchTradeImplementation(dutchTradeImplementation_);
         setDutchAuctionLength(dutchAuctionLength_);
     }
 
@@ -160,16 +178,18 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // === Setters ===
 
+    /// @dev _newFillerRegistry must be the already set registry if already set. This is to ensure
+    ///      correctness and in order to be explicit what registry is being enabled/disabled.
     /// @custom:governance
-    function setGnosis(IGnosis newGnosis) public governance {
-        require(address(newGnosis) != address(0), "invalid Gnosis address");
-
-        emit GnosisSet(gnosis, newGnosis);
-        gnosis = newGnosis;
+    function setTrustedFillerRegistry(address _newFillerRegistry, bool _enabled)
+        external
+        governance
+    {
+        _setTrustedFillerRegistry(_newFillerRegistry, _enabled);
     }
 
-    /// @custom:governance
-    function setBatchTradeImplementation(ITrade newTradeImplementation) public governance {
+    /// @custom:main
+    function setBatchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
             address(newTradeImplementation) != address(0),
             "invalid batchTradeImplementation address"
@@ -190,8 +210,8 @@ contract BrokerP1 is ComponentP1, IBroker {
         batchAuctionLength = newAuctionLength;
     }
 
-    /// @custom:governance
-    function setDutchTradeImplementation(ITrade newTradeImplementation) public governance {
+    /// @custom:main
+    function setDutchTradeImplementation(ITrade newTradeImplementation) public onlyMain {
         require(
             address(newTradeImplementation) != address(0),
             "invalid dutchTradeImplementation address"
@@ -247,7 +267,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             address(trade),
             req.sellAmount
         );
-        trade.init(this, caller, gnosis, batchAuctionLength, req);
+        trade.init(this, caller, batchAuctionLength, req);
         return trade;
     }
 
@@ -262,7 +282,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         );
         require(dutchAuctionLength != 0, "dutch auctions not enabled");
         require(
-            priceNotDecayed(req.sell) && priceNotDecayed(req.buy),
+            pricedAtTimestamp(req.sell) && pricedAtTimestamp(req.buy),
             "dutch auctions require live prices"
         );
 
@@ -280,9 +300,25 @@ contract BrokerP1 is ComponentP1, IBroker {
         return trade;
     }
 
-    /// @return true iff the price is not decayed, or it's the RTokenAsset
-    function priceNotDecayed(IAsset asset) private view returns (bool) {
+    /// @return true iff the asset has been priced at this timestamp, or it's the RTokenAsset
+    function pricedAtTimestamp(IAsset asset) private view returns (bool) {
         return asset.lastSave() == block.timestamp || address(asset.erc20()) == address(rToken);
+    }
+
+    function _setTrustedFillerRegistry(address _newFillerRegistry, bool _enabled) internal {
+        if (address(trustedFillerRegistry) != _newFillerRegistry) {
+            require(
+                address(trustedFillerRegistry) == address(0),
+                "trusted filler registry already set"
+            );
+            trustedFillerRegistry = ITrustedFillerRegistry(_newFillerRegistry);
+        }
+
+        if (trustedFillerEnabled != _enabled) {
+            trustedFillerEnabled = _enabled;
+        }
+
+        emit TrustedFillerRegistrySet(address(trustedFillerRegistry), trustedFillerEnabled);
     }
 
     /**
@@ -290,5 +326,5 @@ contract BrokerP1 is ComponentP1, IBroker {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 }

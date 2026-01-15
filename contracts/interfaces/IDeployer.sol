@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../libraries/Throttle.sol";
@@ -11,6 +11,11 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./ITrade.sol";
 import "./IVersioned.sol";
+
+import "../registry/VersionRegistry.sol";
+import "../registry/AssetPluginRegistry.sol";
+import "../registry/DAOFeeRegistry.sol";
+import "@reserve-protocol/trusted-fillers/contracts/interfaces/ITrustedFillerRegistry.sol";
 
 /**
  * @title DeploymentParams
@@ -39,6 +44,7 @@ struct DeploymentParams {
     // === BasketHandler ===
     uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
     bool reweightable; // whether the target amounts in the prime basket can change
+    bool enableIssuancePremium; // whether to enable the issuance premium
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
@@ -91,7 +97,12 @@ interface IDeployer is IVersioned {
     /// @param rTokenAsset The address of the RTokenAsset
     event RTokenAssetCreated(IRToken indexed rToken, IAsset rTokenAsset);
 
-    //
+    struct Registries {
+        VersionRegistry versionRegistry;
+        AssetPluginRegistry assetPluginRegistry;
+        DAOFeeRegistry daoFeeRegistry;
+        ITrustedFillerRegistry trustedFillerRegistry;
+    }
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
@@ -99,37 +110,16 @@ interface IDeployer is IVersioned {
     /// @param mandate An IPFS link or direct string; describes what the RToken _should be_
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
+    /// @param registries Registries list; can be 0 to unset
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string calldata name,
         string calldata symbol,
         string calldata mandate,
         address owner,
-        DeploymentParams calldata params
+        DeploymentParams calldata params,
+        Registries calldata registries
     ) external returns (address);
 
-    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
-    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
-    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
-}
-
-interface TestIDeployer is IDeployer {
-    /// A top-level ENS domain that should always point to the latest Deployer instance
-    // solhint-disable-next-line func-name-mixedcase
-    function ENS() external view returns (string memory);
-
-    function rsr() external view returns (IERC20Metadata);
-
-    function gnosis() external view returns (IGnosis);
-
-    function rsrAsset() external view returns (IAsset);
-
-    function implementations()
-        external
-        view
-        returns (
-            IMain,
-            Components memory,
-            TradePlugins memory
-        );
+    function implementations() external view returns (Implementations memory);
 }

@@ -50,6 +50,7 @@ describeFork('Wrapped S*USDC', () => {
     ;({ usdc, wstgUSDC, stgUSDC, router } = await loadFixture(makewstgSUDC))
   })
 
+  // Note: STG rewards has been deprecated
   describe('Deployment', () => {
     it('reverts if deployed with a 0 address for STG token or LP staking contract', async () => {
       await expect(

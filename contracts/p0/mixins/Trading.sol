@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -94,11 +94,25 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         );
     }
 
-    // === Setters ===
+    // === Governance ===
+
+    /// Forcibly settle a trade, losing all value
+    /// Should only be called in case of censorship
+    /// @param trade The trade address itself
+    /// @custom:governance
+    function forceSettleTrade(ITrade trade) public virtual governance {
+        // should not call any ERC20 functions, in case bricked
+
+        IERC20Metadata sell = trade.sell();
+        require(trades[sell] == trade, "trade not found");
+        delete trades[sell];
+        tradesOpen--;
+        emit TradeSettled(trade, sell, trade.buy(), 0, 0);
+    }
 
     /// @custom:governance
     function setMaxTradeSlippage(uint192 val) public governance {
-        require(val < MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
+        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -296,7 +296,7 @@ contract PoolTokens {
     function totalBalancesValue() internal view returns (uint192 low, uint192 high) {
         for (uint8 i = 0; i < nTokens; ++i) {
             IERC20Metadata token = getToken(i);
-            uint192 balance = shiftl_toFix(curvePool.balances(i), -int8(token.decimals()));
+            uint192 balance = shiftl_toFix(curvePool.balances(i), -int8(token.decimals()), FLOOR);
             (uint192 lowP, uint192 highP) = tokenPrice(i);
 
             low += balance.mul(lowP, FLOOR);
@@ -310,7 +310,7 @@ contract PoolTokens {
 
         for (uint8 i = 0; i < nTokens; ++i) {
             IERC20Metadata token = getToken(i);
-            uint192 balance = shiftl_toFix(curvePool.balances(i), -int8(token.decimals()));
+            uint192 balance = shiftl_toFix(curvePool.balances(i), -int8(token.decimals()), FLOOR);
             balances[i] = (balance);
         }
 

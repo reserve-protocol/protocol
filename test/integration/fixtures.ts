@@ -55,7 +55,6 @@ import {
   TestIBackingManager,
   TestIBasketHandler,
   TestIBroker,
-  TestIDeployer,
   TestIDistributor,
   TestIFacade,
   TestIFurnace,
@@ -585,7 +584,7 @@ type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
 export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
-  deployer: TestIDeployer
+  deployer: DeployerP1
   main: TestIMain
   assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
@@ -626,8 +625,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { easyAuction } = await gnosisFixture()
   const dist: IRevenueShare = {
-    rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60), // 3/5 RSR
+    rTokenDist: bn(4000), // 2/5 RToken
+    rsrDist: bn(6000), // 3/5 RSR
   }
 
   const chainId = await getChainId(hre)
@@ -647,6 +646,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     withdrawalLeak: fp('0'), // 0%; always refresh
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     reweightable: false,
+    enableIssuancePremium: true,
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     batchAuctionLength: bn('900'), // 15 minutes
     dutchAuctionLength: bn('1800'), // 30 minutes
@@ -657,8 +657,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       pctRate: fp('0.05'), // 5%
     },
     redemptionThrottle: {
-      amtRate: fp('1e6'), // 1M RToken
-      pctRate: fp('0.05'), // 5%
+      amtRate: fp('2e6'), // 2M RToken
+      pctRate: fp('0.1'), // 10%
     },
   }
 
@@ -669,7 +669,12 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  const facade = await ethers.getContractAt('TestIFacade', (await FacadeFactory.deploy()).address)
+  const facade = await ethers.getContractAt(
+    'TestIFacade',
+    (
+      await FacadeFactory.deploy(owner.address)
+    ).address
+  )
 
   // Save ReadFacet to Facade
   const ReadFacetFactory: ContractFactory = await ethers.getContractFactory('ReadFacet')
@@ -754,12 +759,10 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   await rsrAsset.refresh()
 
   // Create Deployer
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+  const DeployerFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
-  let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
-  )
+  let deployer = await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
 
   if (IMPLEMENTATION == Implementation.P1) {
     // Deploy implementations
@@ -795,7 +798,9 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
     const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+    const gnosisTrade: GnosisTrade = <GnosisTrade>(
+      await GnosisTradeImplFactory.deploy(easyAuction.address)
+    )
 
     const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
     const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
@@ -830,20 +835,22 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
       },
     }
 
-    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-    deployer = <DeployerP1>(
-      await DeployerFactory.deploy(
-        rsr.address,
-        easyAuction.address,
-        rsrAsset.address,
-        implementations
-      )
-    )
+    const DeployerFactory = await ethers.getContractFactory('DeployerP1')
+    deployer = (await DeployerFactory.deploy(
+      rsr.address,
+      rsrAsset.address,
+      implementations
+    )) as unknown as DeployerP0
   }
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config, {
+      assetPluginRegistry: ZERO_ADDRESS,
+      daoFeeRegistry: ZERO_ADDRESS,
+      versionRegistry: ZERO_ADDRESS,
+      trustedFillerRegistry: ZERO_ADDRESS,
+    })
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

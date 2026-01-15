@@ -20,7 +20,7 @@ switch (forkNetwork) {
 export const USDC_NAME = chainId == '8453' ? 'USDbC' : 'USDC'
 const sUSDC_NAME = chainId == '8453' ? 'sUSDbC' : 'sUSDC'
 
-export const STARGATE = networkConfig[chainId].tokens['STG']!
+export const STARGATE = networkConfig[chainId].tokens['STG']! // DEPRECATED
 export const STAKING_CONTRACT = networkConfig[chainId].STARGATE_STAKING_CONTRACT!
 export const SUSDC = networkConfig[chainId].tokens[sUSDC_NAME]!
 export const SUSDT = networkConfig[chainId].tokens['sUSDT']!
@@ -53,4 +53,4 @@ export const DELAY_UNTIL_DEFAULT = bn(86400)
 export const MAX_TRADE_VOL = bn(1000000)
 export const USDC_DECIMALS = bn(6)
 
-export const FORK_BLOCK = chainId == '8453' ? 4873094 : 17289300
+export const FORK_BLOCK = chainId == '8453' ? 5374534 : 17289300

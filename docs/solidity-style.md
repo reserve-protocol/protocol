@@ -48,7 +48,7 @@ We're using 192 bits instead of the full 256 bits because it makes typical multi
 Initial versions of this code were written using the custom type `Fix` everywhere, and `Fixed` contained the line `type Fix is int192`. We found later that:
 
 - We had essentially no need for negative `Fix` values, so spending a storage bit on sign, and juggling the possibility of negative values, cost extra gas and harmed the clarity of our code.
-- While `solc 0.8.19` allows custom types without any issue, practically all of the other tools we want to use on our Solidity source -- `slither`, `slitherin`, `prettier`, `solhint` -- would fail when encountering substantial code using a custom type.
+- While `solc 0.8.28` allows custom types without any issue, practically all of the other tools we want to use on our Solidity source -- `slither`, `slitherin`, `prettier`, `solhint` -- would fail when encountering substantial code using a custom type.
 
 Reintroducing this custom type should be mostly mechanicanizable, but now that P1 contains a handful of hotspot optimizations that do raw arithmetic internally to eliminate Fixlib calls, it won't be trivial to do so. Still, if and when those tools achieve adequate support for custom types, we will probably do this conversion ourselves, if only to ensure that conversions between the Fix and integer interpretations of uints are carefully type-checked.
 
@@ -135,11 +135,33 @@ That is, we expect timestamps to be any uint48 value.
 
 This should work without change for around 9M years, which is more than enough.
 
+### Collateral decimals
+
+`{decimals}`: [6, 21]
+
+The protocol only supports collateral tokens up to 21 decimals, and they must be sufficiently valuable.
+
+At 21 decimals one whole collateral token must be worth `>= $1` when _at-peg_. This range enables support for `$1` tokens that have been deposited into 3 decimal offset vaults. Note that the protocol does not rely on this property for the _sale_ of collateral, only the _purchase_; therefore it is acceptable for a backing collateral to lose its peg and be worth less than `$1`, as long as its collateral plugin puts it into an IFFY state and begins the default process.
+
+minimum whole token value requirement (at common decimals):
+
+- 21 decimals: `>= $1`
+- 18 decimals: `>= $0.001`
+- 6 decimals: `>= $0.000000000000001`
+
+### Minimum RToken price
+
+Whole RTokens should be worth `>= $0.001` at-peg, since they must be purchasable in revenue auctions.
+
+### Minimum RSR price
+
+The protocol functions best when whole RSR is worth `>= $0.001`. This constraint is less strong than in the case of backing collateral tokens, however. The core functionality of the protocol functions properly even even below this boundary.
+
 ## Function annotations
 
 All core functions that can be called from outside our system are classified into one of the following 3 categories:
 
-1. `@custom:interaction` - An action. Disallowed while paused. Per-contract reentrancy-safety is needed.
+1. `@custom:interaction` - An action. Disallowed while paused. Global reentrancy-safety is needed.
 2. `@custom:governance` - Governance change. Allowed while paused.
 3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `refresh()`.
 
@@ -157,12 +179,17 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - stRSR.withdraw()
 - rToken.issue()
 - rToken.redeem()
-- {rsrTrader,rTokenTrader,backingManager}.claimRewards()
+- rToken.redeemTo()
+- rToken.redeemCustom()
+- rToken.monetizeDonations()
+- {rsrTrader,rTokenTrader,backingManager}.claimRewards() / .claimRewardsSingle()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.rebalance\*()
-- backingManager.forwardRevenue\*()
+- backingManager.rebalance()
+- backingManager.forwardRevenue()
 - {rsrTrader,rTokenTrader}.manageTokens()
+- {rsrTrader,rTokenTrader}.distributeTokenToBuy()
+- {rsrTrader,rTokenTrader}.returnTokens()
 
 ### `@custom:governance`
 
@@ -214,9 +241,9 @@ At the start of the Interactions block in a CEI-pattern function, set them off v
 
 When a function is an interaction made reentrancy-safe by the CEI pattern, follow its `@custom:interaction` mark with `CEI`, or with `RCEI` (R is for "Refresh") if it starts by calling `AssetRegistry.refresh()`.
 
-#### ReentrancyGuard
+#### ReentrancyGuard (Global Lock)
 
-Where using the CEI pattern is impractical, every function on that contract that is `external`, and can write to the relevant state elements, should use `reentrancyGuard`. That is, the contract should inherit from either `ReentrancyGuard` (or `ReentrancyGuardUpgradable` as needed), and every external function that can either modify contract state, or read it when it's inconsistent, should be marked with the `nonReentrant` modifier.
+Where using the CEI pattern is impractical, every function that is `external`, and can write to the relevant state elements, should use a global lock implemented via `GlobalReentrancyGuard` on `Main`. Every `@custom:interaction` should be market with the `globalNonReentrant` modifier.
 
 #### Exceptions
 

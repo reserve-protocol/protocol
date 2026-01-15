@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IDeployerRegistry.sol";
@@ -10,8 +10,6 @@ import "../interfaces/IDeployerRegistry.sol";
  * @dev Does not allow overwriting without deregistration
  */
 contract DeployerRegistry is IDeployerRegistry, Ownable {
-    string public constant ENS = "reserveprotocol.eth";
-
     mapping(string => IDeployer) public deployments;
 
     IDeployer public override latestDeployment;

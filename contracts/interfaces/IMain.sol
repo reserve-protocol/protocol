@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../registry/AssetPluginRegistry.sol";
+import "../registry/VersionRegistry.sol";
+import "../registry/DAOFeeRegistry.sol";
 import "./IAssetRegistry.sol";
 import "./IBasketHandler.sol";
 import "./IBackingManager.sol";
@@ -153,6 +156,8 @@ interface IComponentRegistry {
     event BrokerSet(IBroker oldVal, IBroker newVal);
 
     function broker() external view returns (IBroker);
+
+    function isComponent(address addr) external view returns (bool);
 }
 
 /**
@@ -174,9 +179,29 @@ interface IMain is IVersioned, IAuth, IComponentRegistry {
     ) external;
 
     function rsr() external view returns (IERC20);
+
+    function assetPluginRegistry() external view returns (AssetPluginRegistry);
+
+    function versionRegistry() external view returns (VersionRegistry);
+
+    function daoFeeRegistry() external view returns (DAOFeeRegistry);
+
+    // === Control flow ===
+
+    function beginTx() external;
+
+    function endTx() external;
 }
 
 interface TestIMain is IMain {
+    error ReentrancyGuardReentrantCall();
+
+    function setVersionRegistry(VersionRegistry) external;
+
+    function setAssetPluginRegistry(AssetPluginRegistry) external;
+
+    function setDAOFeeRegistry(DAOFeeRegistry) external;
+
     /// @custom:governance
     function setShortFreeze(uint48) external;
 
