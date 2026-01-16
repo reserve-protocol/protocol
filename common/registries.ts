@@ -24,8 +24,8 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
     },
     registries: {
       roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
-      versionRegistry: '0x1895b15B3d0a70962be86Af0E337018aD63464e0',
-      assetPluginRegistry: '0x4a818c41131CB9FE65BadF2Bb8671dDE4D117135',
+      versionRegistry: '0xB031D7742367B92CcBEd0653B9a6341EFa47dd04',
+      assetPluginRegistry: '0x15A9e0CF2Fd9842B99E015E05073b5F0f58A1C29',
       daoFeeRegistry: '0xec716deD4eABa060937D1a915F166E237039342B',
       trustedFillerRegistry: '0x279ccF56441fC74f1aAC39E7faC165Dec5A88B3A',
     },
@@ -37,8 +37,8 @@ export const registryConfig: Record<string, RegistryChainRecord> = {
     },
     registries: {
       roleRegistry: '0xE1eC57C8EE970280f237863910B606059e9641C9',
-      versionRegistry: '0xBbC532A80DD141449330c1232C953Da6801Aed01',
-      assetPluginRegistry: '0x7Ac954307356301A10adDb0dB4f61b4a475d3551',
+      versionRegistry: '0xbD769ea5E93A4B232Cee08ED4C2a67Ff5Ba692Df',
+      assetPluginRegistry: '0x093c07787920eB34A0A0c7a09823510725Aee4Af',
       daoFeeRegistry: '0x3513D2c7D2F51c678889CeC083E7D7Ae27b219aD',
       trustedFillerRegistry: '0x72DB5f49D0599C314E2f2FEDf6Fe33E1bA6C7A18',
     },
