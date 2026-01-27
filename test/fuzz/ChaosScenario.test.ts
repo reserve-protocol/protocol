@@ -62,7 +62,7 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     await advanceBlocks(warmupPeriod / 12)
   }
 
-    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+  ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
   scenario = await (await F('ChaosOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
   main = await ConAt('MainP1Fuzz', await scenario.main())
   comp = await componentsOf(main)
@@ -413,9 +413,12 @@ const scenarioSpecificTests = () => {
   })
 
   it('all tokens in basket are reentrant', async () => {
-
     // Check current basket, all tokens should be registered as reentrant
-    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
+    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](
+      1n * exa,
+      true,
+      RoundingMode.CEIL
+    )
     const reentrantTokens = await scenario.getReentrantTokens()
     for (let i = 0; i < tokenAddrs.length; i++) {
       expect(reentrantTokens.includes(tokenAddrs[i])).to.equal(true)
@@ -456,7 +459,6 @@ const scenarioSpecificTests = () => {
     await scenario.setReentrancyAttack(tokenIndex, 30) // Enable attack
     await scenario.connect(alice).issueTo(issueAmount, 0)
 
-
     // No new attempt registered
     expect(await scenario.attemptedReentrancies()).to.equal(1)
     expect(await scenario.failedReentrancies()).to.equal(1)
@@ -466,7 +468,6 @@ const scenarioSpecificTests = () => {
     // Reentrancy properties still hold
     expect(await scenario.echidna_no_reentrancy_succeeded()).to.be.true
     expect(await scenario.echidna_all_reentrancies_revert()).to.be.true
-
   })
 
   it('tracks reentrancy attempts during redemption', async () => {
@@ -534,6 +535,28 @@ const scenarioSpecificTests = () => {
     // All attempts should fail
     expect(await scenario.attemptedReentrancies()).to.equal(await scenario.failedReentrancies())
     expect(await scenario.reentrancySucceeded()).to.equal(false)
+  })
+
+  it('regression test -> stRSRInvariants hold in stake/unstake/seize/withdrawAvailable', async () => {
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
+
+    // Stake RSR
+    await scenario.connect(alice).stake(2)
+    await scenario.connect(alice).unstake(2)
+
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
+
+    await advanceTime(793926)
+    await advanceBlocks(1)
+
+    await scenario.seizeRSR(1)
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
+
+    await advanceTime(418187)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).withdrawAvailable()
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
   })
 }
 

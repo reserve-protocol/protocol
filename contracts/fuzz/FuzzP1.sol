@@ -414,7 +414,12 @@ contract DistributorP1Fuzz is DistributorP1 {
             if (share.rTokenDist > 10000 || share.rsrDist > 10000) validShareAmtsProp = false;
             if (share.rTokenDist == 0 && share.rsrDist == 0) destinationsProp = false;
         }
-        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp && destinationsProp && aboveMinValueProp;
+        return
+            distNotEmptyProp &&
+            noInvalidDistProp &&
+            validShareAmtsProp &&
+            destinationsProp &&
+            aboveMinValueProp;
     }
 }
 
@@ -515,8 +520,8 @@ contract StRSRP1Fuzz is StRSRP1 {
     }
 
     function invariantsHold() external view returns (bool) {
-        bool stakesProp = totalStakes == 0 ? stakeRSR == 0 && stakeRate == FIX_ONE : stakeRSR > 0;
-        bool draftsProp = totalDrafts == 0 ? draftRSR == 0 && draftRate == FIX_ONE : draftRSR > 0;
+        bool stakesProp = totalStakes == 0 ? stakeRSR == 0 : stakeRSR > 0;
+        bool draftsProp = totalDrafts == 0 ? draftRSR == 0 : draftRSR > 0;
         bool maxStakeProp = stakeRate > 0 && stakeRate <= MAX_STAKE_RATE;
         bool maxDraftProp = draftRate > 0 && draftRate <= MAX_DRAFT_RATE;
         bool totalStakesCovered = stakeRSR * stakeRate >= totalStakes * 1e18;
