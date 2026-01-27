@@ -395,7 +395,7 @@ contract ChaosOpsScenario is IReentrantScenario {
         _saveRTokenRate();
         main.rToken().issue(amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -407,7 +407,7 @@ contract ChaosOpsScenario is IReentrantScenario {
 
         main.rToken().issueTo(recipient, amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -426,7 +426,7 @@ contract ChaosOpsScenario is IReentrantScenario {
         }
         main.rToken().issue(amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -446,7 +446,7 @@ contract ChaosOpsScenario is IReentrantScenario {
         }
         main.rToken().issueTo(recipient, amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -606,6 +606,14 @@ contract ChaosOpsScenario is IReentrantScenario {
 
     function settleTrades() public {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
+    }
+
+    function forceSettleTrade(uint256 tokenID) public {
+        IERC20 erc20 = main.someToken(tokenID);
+        ITrade trade = main.backingManager().trades(erc20);
+        if (address(trade) != address(0)) {
+            main.backingManager().forceSettleTrade(trade);
+        }
     }
 
     IERC20[] internal backingToManage;
@@ -1009,7 +1017,7 @@ contract ChaosOpsScenario is IReentrantScenario {
         main.stRSR().resetStakes();
     }
 
-     // ====  Reentrancy Attack ====
+    // ====  Reentrancy Attack ====
 
     function setReentrancyAttack(uint8 tokenID, uint256 reentrancySeed) public {
         ERC20ReentrantFuzz token = ERC20ReentrantFuzz(address(main.someToken(tokenID)));
@@ -1124,7 +1132,6 @@ contract ChaosOpsScenario is IReentrantScenario {
     //     if (rTokenRate() < prevRTokenRate) return false;
     //     return true;
     // }
-
 
     // Reentrancy helpers
     function attemptedReentrancies() public view returns (uint256 total) {

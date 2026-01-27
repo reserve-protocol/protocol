@@ -25,7 +25,7 @@ import {
   exa,
   user,
 } from './common'
-import { RoundingMode } from '#/common/constants'
+import { RoundingMode, TradeStatus } from '#/common/constants'
 
 type Fixture<T> = () => Promise<T>
 
@@ -557,6 +557,84 @@ const scenarioSpecificTests = () => {
 
     await scenario.connect(alice).withdrawAvailable()
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
+  })
+
+  it('forceSettleTrade is a no-op when there is no trade', async () => {
+    await warmup()
+
+    // Get a token that has no trade (CA0)
+    const tokenID = tokenIDs.get('CA0') as number
+    const c0 = await ConAt('ERC20Fuzz', await main.someToken(tokenID))
+
+    // Verify there's no trade for this token
+    const tradeAddr = await comp.backingManager.trades(c0.address)
+    expect(tradeAddr).to.equal(ethers.constants.AddressZero)
+
+    // Call forceSettleTrade - should be a no-op, not revert
+    await scenario.forceSettleTrade(tokenID)
+
+    // Still no trade
+    expect(await comp.backingManager.trades(c0.address)).to.equal(ethers.constants.AddressZero)
+  })
+
+  it('can force settle a backing manager trade using forceSettleTrade', async () => {
+    await warmup()
+
+    const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
+
+    // Issue some RTokens
+    const [tokenAddrs, amts] = await comp.rToken.quote(150000n * exa, RoundingMode.CEIL)
+    for (let i = 0; i < amts.length; i++) {
+      const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
+      await token.connect(alice).approve(comp.rToken.address, amts[i])
+    }
+    await scenario.connect(alice).justIssue(150000n * exa)
+
+    // Stake RSR for recollateralization
+    await scenario.connect(alice).stake(100000n * exa)
+
+    // Default CA2
+    const defaultTokenId = tokenIDs.get('CA2') as number
+    const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(c2.address))
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+
+    await scenario.updatePrice(defaultTokenId, 0, fp(1), fp(1), fp(1)) // Will default CA2
+    await scenario.poke()
+
+    expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+
+    // Refresh basket to trigger basket switch
+    await scenario.refreshBasket()
+    await warmup()
+
+    // Rebalance to create a trade
+    await scenario.rebalance(1) // BATCH_AUCTION
+
+    // Verify trade exists for c2 (the defaulted token being sold)
+    const tradeAddr = await comp.backingManager.trades(c2.address)
+    expect(tradeAddr).to.not.equal(ethers.constants.AddressZero)
+
+    const tradeInBackingManager = await ConAt('GnosisTradeMock', tradeAddr)
+    expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
+
+    // Check tradesOpen before
+    const tradesOpenBefore = await comp.backingManager.tradesOpen()
+    expect(tradesOpenBefore).to.be.gt(0)
+
+    // Use forceSettleTrade to remove trade from tracking
+    // Note: forceSettleTrade is a governance escape hatch that removes the trade
+    // from the backing manager's tracking without settling the underlying trade
+    await scenario.forceSettleTrade(defaultTokenId)
+
+    // Verify trade is removed from backing manager's trades mapping
+    expect(await comp.backingManager.trades(c2.address)).to.equal(ethers.constants.AddressZero)
+
+    // Verify tradesOpen decremented
+    expect(await comp.backingManager.tradesOpen()).to.equal(tradesOpenBefore - 1)
+
+    // Note: The underlying trade contract status remains OPEN since forceSettleTrade
+    // is designed for bricked trades and doesn't interact with the trade contract
+    expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
   })
 }
 
