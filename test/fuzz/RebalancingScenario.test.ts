@@ -1409,6 +1409,11 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 
+  /* DEPRECATED: setBackingManagerMinTradeVolume is no longer allowed during rebalancing.
+   * minTradeVolume directly affects the basket range calculation in RecollateralizationLib.basketRange(),
+   * so changing it mid-rebalance can cause the basketRangeSmallerWhenRebalancing invariant to fail.
+   * This test was removed because it relied on changing minTradeVolume during rebalancing.
+   *
   it('Handles small deviations from basket range check', async () => {
     await scenario.setReweightable(1)
     const s0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA0'))
@@ -1451,9 +1456,9 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
   })
+  */
 
-  it('basketRangeSmallerWhenRebalancing works after forceSetPrimeBasket and setMinTradeVolume(0)', async () => {
-    // Echidna sequence that revealed failing invariant (fixed by re-saving basket range)
+  it('basketRangeSmallerWhenRebalancing works after forceSetPrimeBasket', async () => {
     await advanceTime(261401)
     await advanceBlocks(1)
 
@@ -1462,7 +1467,11 @@ const scenarioSpecificTests = () => {
     await scenario.pushBackingForPrimeBasket(0, bn('203834085949521463'))
     await scenario.forceSetPrimeBasket()
     await scenario.refreshBasket()
-    await scenario.setBackingManagerMinTradeVolume(0)
+
+    // setBackingManagerMinTradeVolume not allowed during rebalancing
+    await expect(scenario.setBackingManagerMinTradeVolume(0)).to.be.revertedWith(
+      'Not valid for current state'
+    )
 
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
@@ -1477,7 +1486,6 @@ const scenarioSpecificTests = () => {
     await scenario.pushBackingForPrimeBasket(0, bn('201084998727364590'))
     await scenario.forceSetPrimeBasket()
     await scenario.refreshBasket()
-    await scenario.setBackingManagerMinTradeVolume(0)
     await scenario.rebalance(0) // DUTCH_AUCTION
 
     await advanceTime(303)
@@ -1486,6 +1494,35 @@ const scenarioSpecificTests = () => {
 
     // Should not revert on expired auction
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
+  })
+
+  it('basketRangeSmallerWhenRebalancing works after rebalance and settleTrades', async () => {
+    await advanceTime(260078)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).issueTo(89, 0)
+    await scenario.setReweightable(1)
+    await scenario.pushBackingForPrimeBasket(0, bn('204656550908466496'))
+    await scenario.forceSetPrimeBasket()
+    await scenario.refreshBasket()
+
+    // setBackingManagerMinTradeVolume not allowed during rebalancing
+    await expect(scenario.setBackingManagerMinTradeVolume(0)).to.be.revertedWith(
+      'Not valid for current state'
+    )
+
+    await scenario.rebalance(0) // Opens a trade
+
+    // Also not allowed while trade is open
+    await expect(
+      scenario.setBackingManagerMinTradeVolume(bn('45530557291292458919759858214433665489301762455'))
+    ).to.be.revertedWith('Not valid for current state')
+
+    await advanceTime(351)
+    await advanceBlocks(1)
+    await scenario.settleTrades()
+
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
 }
 

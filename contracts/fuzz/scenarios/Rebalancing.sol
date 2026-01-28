@@ -976,19 +976,23 @@ contract RebalancingScenario {
         ); // 1e29 is Trading.MAX_TRADE_VOLUME
     }
 
-    function setBackingManagerMaxTradeSlippage(uint256 seed) public {
+    function setBackingManagerMaxTradeSlippage(uint256 seed)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+    {
         BackingManagerP1(address(main.backingManager())).setMaxTradeSlippage(
             uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
-        if (status == ScenarioStatus.REBALANCING_ONGOING) saveBasketRange();
     }
 
-    function setBackingManagerMinTradeVolume(uint256 seed) public {
+    function setBackingManagerMinTradeVolume(uint256 seed)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+    {
         BackingManagerP1(address(main.backingManager())).setMinTradeVolume(
             uint192(between(0, 1e29, seed))
         ); // 1e29 is Trading.MAX_TRADE_VOLUME
-        if (status == ScenarioStatus.REBALANCING_ONGOING) saveBasketRange();
     }
 
     function setStakeRewardRatio(uint256 seed) public {
