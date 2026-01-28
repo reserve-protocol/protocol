@@ -423,7 +423,7 @@ contract RebalancingScenario {
         _saveRTokenRate();
         main.rToken().issue(amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -439,7 +439,7 @@ contract RebalancingScenario {
 
         main.rToken().issueTo(recipient, amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -463,11 +463,10 @@ contract RebalancingScenario {
 
         main.rToken().issue(amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
-
 
     // do allowances as needed, and *then* do issuance
     function issueTo(uint256 amount, uint8 recipientID)
@@ -488,7 +487,7 @@ contract RebalancingScenario {
         }
         main.rToken().issueTo(recipient, amount);
         // workaround: disable rate fall check if this is a mint starting at 0 supply
-        if( main.rToken().totalSupply() == amount ) {
+        if (main.rToken().totalSupply() == amount) {
             _saveRTokenRate();
         }
     }
@@ -982,12 +981,14 @@ contract RebalancingScenario {
             uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
+        if (status == ScenarioStatus.REBALANCING_ONGOING) saveBasketRange();
     }
 
     function setBackingManagerMinTradeVolume(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setMinTradeVolume(
             uint192(between(0, 1e29, seed))
         ); // 1e29 is Trading.MAX_TRADE_VOLUME
+        if (status == ScenarioStatus.REBALANCING_ONGOING) saveBasketRange();
     }
 
     function setStakeRewardRatio(uint256 seed) public {
@@ -1177,8 +1178,11 @@ contract RebalancingScenario {
     }
 
     function echidna_RTokenRateNeverFallInNormalOps() external view returns (bool) {
-        if (status == ScenarioStatus.BEFORE_REBALANCING && main.rToken().totalSupply() > 0 && rTokenRate() < prevRTokenRate)
-            return false;
+        if (
+            status == ScenarioStatus.BEFORE_REBALANCING &&
+            main.rToken().totalSupply() > 0 &&
+            rTokenRate() < prevRTokenRate
+        ) return false;
         return true;
     }
 
@@ -1359,7 +1363,11 @@ contract RebalancingScenario {
             } else {
                 trade = DutchTrade(address(broker.lastOpenedTrade()));
 
-                if (broker.tradeKindSet(address(trade)) == uint256(TradeKind.DUTCH_AUCTION) && block.timestamp >= trade.startTime()) {
+                if (
+                    broker.tradeKindSet(address(trade)) == uint256(TradeKind.DUTCH_AUCTION) &&
+                    block.timestamp >= trade.startTime() &&
+                    block.timestamp <= trade.endTime()
+                ) {
                     // Bid & settle the auction - Use transfer method
                     _bidDutchAuction(trade, 1);
                     require(trade.status() == TradeStatus.CLOSED, "trade not closed");

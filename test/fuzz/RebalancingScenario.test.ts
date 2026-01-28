@@ -362,7 +362,11 @@ const scenarioSpecificTests = () => {
 
   it('performs validations on set prime basket if non-reweightable', async () => {
     // Check current basket
-    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
+    const [tokenAddrs] = await comp.basketHandler['quote(uint192,bool,uint8)'](
+      1n * exa,
+      true,
+      RoundingMode.CEIL
+    )
 
     expect(tokenAddrs.length).to.equal(9)
 
@@ -411,7 +415,11 @@ const scenarioSpecificTests = () => {
     await comp.basketHandler.savePrev()
     await scenario.refreshBasket()
 
-    const [newTokenAddrs, amts] = await comp.basketHandler['quote(uint192,bool,uint8)'](1n * exa, true, RoundingMode.CEIL)
+    const [newTokenAddrs, amts] = await comp.basketHandler['quote(uint192,bool,uint8)'](
+      1n * exa,
+      true,
+      RoundingMode.CEIL
+    )
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
     expect(newTokenAddrs.length).to.equal(3)
 
@@ -890,7 +898,7 @@ const scenarioSpecificTests = () => {
         }
 
         // Advance time to settle trade
-        await setNextBlockTimestamp(await trade.endTime() - 2)
+        await setNextBlockTimestamp((await trade.endTime()) - 2)
 
         // Check echidna property is true at all times in the process
         expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
@@ -1441,6 +1449,42 @@ const scenarioSpecificTests = () => {
     // Set minTradeVolume to 0 - properties hold
     await scenario.connect(alice).setBackingManagerMinTradeVolume(0)
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
+  })
+
+  it('basketRangeSmallerWhenRebalancing works after forceSetPrimeBasket and setMinTradeVolume(0)', async () => {
+    // Echidna sequence that revealed failing invariant (fixed by re-saving basket range)
+    await advanceTime(261401)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).issueTo(160, 0)
+    await scenario.setReweightable(1)
+    await scenario.pushBackingForPrimeBasket(0, bn('203834085949521463'))
+    await scenario.forceSetPrimeBasket()
+    await scenario.refreshBasket()
+    await scenario.setBackingManagerMinTradeVolume(0)
+
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+  })
+
+  it('dutchRebalancingProperties works when auction expires', async () => {
+    // Echidna sequence - auction expires before bid attempt
+    await advanceTime(290087)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).issueTo(10, 0)
+    await scenario.setReweightable(1)
+    await scenario.pushBackingForPrimeBasket(0, bn('201084998727364590'))
+    await scenario.forceSetPrimeBasket()
+    await scenario.refreshBasket()
+    await scenario.setBackingManagerMinTradeVolume(0)
+    await scenario.rebalance(0) // DUTCH_AUCTION
+
+    await advanceTime(303)
+    await advanceBlocks(1)
+    await scenario.grantAllowances(bn('80606632486694'))
+
+    // Should not revert on expired auction
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
   })
 }
