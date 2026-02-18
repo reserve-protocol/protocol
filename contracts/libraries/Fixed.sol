@@ -250,7 +250,7 @@ library FixLib {
     /// @return x * y
     // as-ints: x * y/1e18  [division using ROUND, not FLOOR]
     function mul(uint192 x, uint192 y) internal pure returns (uint192) {
-        return mul(x, y, ROUND);
+        return mul(x, y, FLOOR);
     }
 
     /// Multiply this uint192 by a uint192
@@ -547,6 +547,7 @@ library FixLib {
         RoundingMode rounding
     ) internal pure returns (uint192) {
         if (a == 0) return 0;
+        if (a == FIX_MAX) return FIX_MAX;
         if (b == 0) return FIX_MAX;
 
         uint256 raw = _divrnd(FIX_ONE_256 * a, uint256(b), rounding);
