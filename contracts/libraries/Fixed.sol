@@ -592,6 +592,10 @@ library FixLib {
             r *= 2 - c_256 * r;
             result_256 = lo * r;
 
+            if (result_256 >= FIX_MAX) {
+                return FIX_MAX;
+            }
+
             // Apply rounding
             if (rounding == CEIL) {
                 if (mm != 0) result_256 += 1;

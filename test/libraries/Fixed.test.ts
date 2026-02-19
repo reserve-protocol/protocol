@@ -1198,17 +1198,11 @@ describe('In FixLib,', () => {
 
   describe('Certora Regression Tests', () => {
     it('safeMulDiv() may return 0 instead of FIX_MAX', async () => {
-      const factorization = 3n * 5n * 17n * 257n * 641n * 65537n * 274177n * 6700417n
+      const xa = 2n ** 191n + 1n
+      const xb = 2n ** 192n - 2n
+      const xc = 2n ** 127n
 
-      const a = bn(factorization)
-      const b = bn('22894341011050090868949881974522315437050433829130497')
-      const c = bn('1')
-
-      // a * b / c here equals 2^256 - 1
-      // M-01 in the report suggests that this may cause the function to return 0
-      // Should be FIX_MAX however. This test confirms it.
-
-      expect(await caller.safeMulDiv(a, b, c, CEIL)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(xa, xb, xc, CEIL)).to.equal(MAX_UINT192)
     })
 
     it('safeDiv() does not correctly propagate the FIX_MAX value', async () => {
