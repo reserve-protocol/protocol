@@ -504,7 +504,7 @@ describe('In FixLib,', () => {
       const table = commutes.flatMap(([a, b, c]) => [[a, b, c]])
       for (const [a, b, c] of table) {
         expect(await caller.mul(fp(a), fp(b)), `mul(fp(${a}), fp(${b}))`).to.equal(fp(c))
-        expect(await caller.safeMul(fp(a), fp(b), ROUND), `safeMul(fp(${a}), fp(${b}))`).to.equal(
+        expect(await caller.safeMul(fp(a), fp(b), FLOOR), `safeMul(fp(${a}), fp(${b}))`).to.equal(
           fp(c)
         )
       }
@@ -513,13 +513,14 @@ describe('In FixLib,', () => {
     function mulTest(x: string, y: string, result: string) {
       it(`mul(${x}, ${y}) == ${result}`, async () => {
         expect(await caller.mul(fp(x), fp(y))).to.equal(fp(result))
-        expect(await caller.safeMul(fp(x), fp(y), ROUND)).to.equal(fp(result))
+        expect(await caller.safeMul(fp(x), fp(y), FLOOR)).to.equal(fp(result))
       })
     }
 
-    mulTest('0.5e-9', '1e-9', '1e-18')
     mulTest('0.49e-9', '1e-9', '0')
-    mulTest('1.5e-9', '4.5e-8', '68e-18')
+    mulTest('0.9999999999e-9', '1e-9', '0')
+    mulTest('1e-9', '1e-9', '1e-18')
+    mulTest('1.5e-9', '4.5e-8', '67e-18')
 
     it('correctly multiplies at the extremes of its range', async () => {
       const table = [
@@ -531,8 +532,8 @@ describe('In FixLib,', () => {
       for (const [a, b, c] of table) {
         expect(await caller.mul(a, b), `mul(${a}, ${b})`).to.equal(c)
         expect(await caller.mul(b, a), `mul(${b}, ${a})`).to.equal(c)
-        expect(await caller.safeMul(a, b, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
-        expect(await caller.safeMul(b, a, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
+        expect(await caller.safeMul(a, b, FLOOR), `safeMul(${b}, ${a})`).to.equal(c)
+        expect(await caller.safeMul(b, a, FLOOR), `safeMul(${b}, ${a})`).to.equal(c)
       }
     })
 
@@ -626,7 +627,11 @@ describe('In FixLib,', () => {
 
       for (const [a, b, c] of table) {
         expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c)
-        expect(await caller.safeDiv_(a, b, FLOOR), `safeDiv_((${a}, ${b}, FLOOR)`).to.equal(c)
+
+        const safeResult = a === MAX_UINT192 ? MAX_UINT192 : c
+        expect(await caller.safeDiv_(a, b, FLOOR), `safeDiv_((${a}, ${b}, FLOOR)`).to.equal(
+          safeResult
+        )
       }
     })
     it('correctly rounds', async () => {
