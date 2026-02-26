@@ -222,7 +222,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             rToken.mint(baskets - rToken.basketsNeeded());
         }
 
-        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer); // {BU}
+        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer, CEIL); // {BU}
 
         // At this point, even though basketsNeeded may have changed, we are:
         // - We're fully collateralized
