@@ -1524,6 +1524,109 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
+
+  it('RTokenRateNeverFallInNormalOps works after swapRegisteredAsset and rebalance', async () => {
+    // Echidna sequence that revealed failing RToken rate invariant
+    // Fix: removed prevEqualsCurr() check in refreshBasket() - rebalancing can happen
+    // when collateral is swapped without changing basket ERC20 composition
+    await warmup()
+
+    await scenario.connect(alice).issueTo(5, 0)
+
+    await advanceTime(125832)
+    await advanceBlocks(1)
+
+    await scenario.swapRegisteredAsset(
+      0,
+      24,
+      bn('115792089237316195423570985008687907853269984665640564039457584007908834672642'),
+      5378,
+      true,
+      false,
+      bn('17768576230323385432129799213673')
+    )
+
+    // refreshBasket now correctly transitions to REBALANCING_ONGOING
+    // (prevEqualsCurr check removed - swap causes undercollateralization)
+    await scenario.refreshBasket()
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
+
+    await advanceTime(121481)
+    await advanceBlocks(458)
+
+    // setBackupConfig is restricted to BEFORE_REBALANCING - should revert now
+    await expect(scenario.setBackupConfig(0)).to.be.revertedWith('Not valid for current state')
+
+    await advanceTime(139028)
+    await advanceBlocks(13)
+
+    await scenario.rebalance(bn('1689656919639045574804151374092243691248697812586707333380187840694842'))
+
+    expect(await scenario.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
+  })
+
+  it('basketRangeSmallerWhenRebalancing works after forceSetPrimeBasket with reweightable basket', async () => {
+    // Echidna sequence that revealed failing basket range invariant
+    // with reweightable basket and minTradeVolume=0
+
+    await advanceTime(276094)
+    await advanceBlocks(1)
+
+    await scenario.setReweightable(1)
+    await scenario.setBackingManagerMinTradeVolume(0)
+
+    await warmup()
+    await scenario.connect(alice).issueTo(4, 0)
+
+    await scenario.pushBackingForPrimeBasket(
+      0,
+      bn('1537087907031055768439424987390568113030004108877618333381312')
+    )
+    await scenario.forceSetPrimeBasket()
+    await scenario.refreshBasket()
+
+    // Staking RSR during rebalancing increases StRSR's RSR balance,
+    // which is counted in getCurrentBasketRange() - this is a natural change
+    await scenario.connect(alice).stake(9)
+
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+  })
+
+  it('basketRangeSmallerWhenRebalancing works after rebalance with minTradeVolume change', async () => {
+    // Echidna sequence that revealed failing basket range invariant
+    // Fix: setBackingManagerMinTradeVolume is restricted to BEFORE_REBALANCING
+
+    await advanceTime(260078)
+    await advanceBlocks(1)
+
+    await warmup()
+    await scenario.connect(alice).issueTo(89, 0)
+
+    await scenario.setReweightable(1)
+    await scenario.pushBackingForPrimeBasket(0, bn('204656550908466496'))
+    await scenario.forceSetPrimeBasket()
+    await scenario.refreshBasket()
+
+    // setBackingManagerMinTradeVolume is restricted to BEFORE_REBALANCING
+    await expect(scenario.setBackingManagerMinTradeVolume(0)).to.be.revertedWith(
+      'Not valid for current state'
+    )
+
+    await scenario.rebalance(0)
+
+    // Second call also reverts during rebalancing
+    await expect(
+      scenario.setBackingManagerMinTradeVolume(
+        bn('45530557291292458919759858214433665489301762455')
+      )
+    ).to.be.revertedWith('Not valid for current state')
+
+    await advanceTime(351)
+    await advanceBlocks(1)
+    await scenario.settleTrades()
+
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {

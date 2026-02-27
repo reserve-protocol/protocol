@@ -558,6 +558,7 @@ contract RebalancingScenario {
     function stake(uint256 amount) public asSender {
         main.rsr().approve(address(main.stRSR()), amount);
         main.stRSR().stake(amount);
+        naturalBasketRangeUpdate = true;
     }
 
     function unstake(uint256 amount) public asSender {
@@ -757,10 +758,11 @@ contract RebalancingScenario {
         bh.savePrev();
         bh.refreshBasket();
 
-        // If basket switched, it is SOUND, and not fully collateralized -> REBALANCING STARTS
+        // If basket switched and not fully collateralized -> REBALANCING STARTS
         if (
             prevNonce != bh.nonce() &&
-            !bh.prevEqualsCurr() &&
+            // Note: asset swap can end up in uncollaterized basket (same nonce), allowing rebalance
+            // !bh.prevEqualsCurr() &&
             bh.status() == CollateralStatus.SOUND &&
             !bh.fullyCollateralized()
         ) {
