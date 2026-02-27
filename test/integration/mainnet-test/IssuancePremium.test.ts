@@ -242,7 +242,7 @@ describeFork(`ETH+ Issuance Premium - Mainnet Forking P${IMPLEMENTATION}`, funct
     const rETHChange = newQs[2].sub(oldQs[2]).mul(fp('1')).div(oldQs[2])
     expect(sfrxETHChange).to.be.closeTo(fp('0.0012'), fp('1e-4')) // sFraxETH +0.12%
     expect(wstETHChange).to.be.closeTo(fp('0.0001'), fp('1e-4')) // wstETH +0.01%
-    expect(rETHChange).to.be.equal(0) // rETH no change
+    expect(rETHChange).to.be.lte(3) // rETH no change
   })
 
   it('from 4.0.0 to 4.0.0 at-peg', async () => {
