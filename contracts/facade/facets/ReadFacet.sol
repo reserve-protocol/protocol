@@ -68,7 +68,10 @@ contract ReadFacet {
             uint192 mid = (low + high) / 2;
 
             // {UoA} = {tok} * {UoA/Tok}
-            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals()), CEIL).mul(mid);
+            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals()), CEIL).mul(
+                mid,
+                CEIL
+            );
         }
     }
 
@@ -355,7 +358,7 @@ contract ReadFacet {
                 uint192 avg = (low + high) / 2;
 
                 // {UoA} = {UoA} + {tok}
-                uoaNeeded += needed.mul(avg);
+                uoaNeeded += needed.mul(avg, CEIL);
 
                 // {UoA} = {UoA} + {tok} * {UoA/tok}
                 uoaHeldInBaskets += fixMin(needed, asset.bal(address(bm))).mul(avg);
