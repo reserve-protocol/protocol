@@ -2935,7 +2935,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           // Run auctions - will end current, and will open a new auction to sell RSR for collateral
           // 50e18 Tokens left to buy - Sets Buy amount as independent value
-          const buyAmtBidRSR: BigNumber = sellAmt.div(2).add(1)
+          const buyAmtBidRSR: BigNumber = sellAmt.div(2).add(2)
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
               contract: backingManager,
@@ -2964,7 +2964,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           const t = await getTrade(backingManager, rsr.address)
           const sellAmtRSR = await t.initBal()
-          expect(await toMinBuyAmt(sellAmtRSR, fp('1'), fp('1'))).to.equal(buyAmtBidRSR.add(1))
+          expect(await toMinBuyAmt(sellAmtRSR, fp('1'), fp('1'))).to.equal(buyAmtBidRSR)
 
           // Check state
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -3045,11 +3045,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           expect(await basketHandler.fullyCollateralized()).to.equal(true)
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
-            issueAmount.add(1) // 1 attoTokens accumulated
+            issueAmount.add(2) // 2 attoTokens accumulated
           )
           expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-          expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount.add(1))
-          expect(await rToken.totalSupply()).to.equal(issueAmount.add(1)) // free minting
+          expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount.add(2))
+          expect(await rToken.totalSupply()).to.equal(issueAmount.add(2)) // free minting
 
           // Check price in USD of the current RToken - Remains the same
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
