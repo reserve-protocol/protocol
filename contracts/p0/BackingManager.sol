@@ -176,7 +176,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
         }
 
-        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer), CEIL); // {BU}
+        // {BU}
+        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer), CEIL);
 
         // Handout excess assets above what is needed, including any newly minted RToken
         RevenueTotals memory totals = main.distributor().totals();
