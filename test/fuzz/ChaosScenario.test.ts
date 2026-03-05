@@ -636,6 +636,16 @@ const scenarioSpecificTests = () => {
     // is designed for bricked trades and doesn't interact with the trade contract
     expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
   })
+
+  it('stRSRInvariants holds after stake, unstake, seizeRSR, and cancelUnstake', async () => {
+    // Echidna sequence that revealed failing stRSR invariant
+    await scenario.connect(alice).stake(2)
+    await scenario.connect(alice).unstake(2)
+    await scenario.seizeRSR(1)
+    await scenario.connect(alice).cancelUnstake(1)
+
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
