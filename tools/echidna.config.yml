@@ -31,12 +31,5 @@ corpusDir: "echidna-corpus"
 # solcArgs allows special args to solc
 # solcArgs: "optimize"
 
-# crytic: disable compilation from echidna-test!
-cryticArgs: ["--ignore-compile"]
-
-# restrict senders and deployer to known user addresses
-sender: ["0x10000"]
-deployer: "0x10000"
-
 # codeSize max code size for deployed contratcs (default 24576, per EIP-170)
 codeSize: 0xffffffffff

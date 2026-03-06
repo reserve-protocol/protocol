@@ -1627,6 +1627,37 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
+
+  it('batchRebalancingProperties works after swapRegisteredAsset and setFurnaceRatio', async () => {
+    // Echidna sequence that revealed ErrorRevert in batchRebalancingProperties
+
+    await advanceTime(261159)
+    await advanceBlocks(1)
+
+    await warmup()
+    await scenario.connect(alice).issueTo(2511, 11)
+
+    await scenario.swapRegisteredAsset(0, 0, 0, 0, false, false, 6091911)
+
+    await scenario.setFurnaceRatio(
+      bn('72002357423887564134153811588963702431323020106206133098758076570')
+    )
+
+    await advanceTime(1)
+    await advanceBlocks(1)
+
+    await advanceTime(461635)
+    await advanceBlocks(1)
+
+    await scenario.refreshBasket()
+
+    await advanceTime(260748)
+    await advanceBlocks(1)
+
+    await scenario.setFurnaceRatio(0)
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
