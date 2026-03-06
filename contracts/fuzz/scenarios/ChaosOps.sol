@@ -1219,7 +1219,8 @@ contract ChaosOpsScenario is IReentrantScenario {
     */
 
     function echidna_stRSRInvariants() external view returns (bool) {
-        return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
+        assert(StRSRP1Fuzz(address(main.stRSR())).invariantsHold());
+        return true;
     }
 
     // ==== Reentrancy  ====
