@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../CurveRecursiveCollateral.sol";
@@ -27,6 +27,9 @@ interface IStakeDAOGauge is IERC20Metadata {
  * ref = USDC
  * tar = USD
  * UoA = USD
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract StakeDAORecursiveCollateral is CurveRecursiveCollateral {
     using OracleLib for AggregatorV3Interface;

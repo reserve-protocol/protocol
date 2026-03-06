@@ -11,7 +11,8 @@ export interface IPrerequisites {
 export interface IFacets {
   actFacet: string
   readFacet: string
-  // individiual function facets
+  tradeHelperFacet: string
+  // individual function facets
   maxIssuableFacet: string
   backingBufferFacet: string
   revenueFacet: string

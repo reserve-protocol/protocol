@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -151,11 +151,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Should only be called in case of censorship
     /// @param trade The trade address itself
     /// @custom:governance
-    function forceSettleTrade(ITrade trade) public virtual {
+    function forceSettleTrade(ITrade trade) public virtual globalNonReentrant {
         requireGovernanceOnly();
         // should not call any ERC20 functions, in case bricked
 
         IERC20Metadata sell = trade.sell();
+        require(trades[sell] == trade, "wrong trade");
         delete trades[sell];
         tradesOpen--;
         emit TradeSettled(trade, sell, trade.buy(), 0, 0);

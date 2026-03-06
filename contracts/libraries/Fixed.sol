@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 // solhint-disable func-name-mixedcase func-visibility
 // slither-disable-start divide-before-multiply
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
@@ -250,7 +250,7 @@ library FixLib {
     /// @return x * y
     // as-ints: x * y/1e18  [division using ROUND, not FLOOR]
     function mul(uint192 x, uint192 y) internal pure returns (uint192) {
-        return mul(x, y, ROUND);
+        return mul(x, y, FLOOR);
     }
 
     /// Multiply this uint192 by a uint192
@@ -547,6 +547,7 @@ library FixLib {
         RoundingMode rounding
     ) internal pure returns (uint192) {
         if (a == 0) return 0;
+        if (a == FIX_MAX) return FIX_MAX;
         if (b == 0) return FIX_MAX;
 
         uint256 raw = _divrnd(FIX_ONE_256 * a, uint256(b), rounding);
@@ -590,6 +591,10 @@ library FixLib {
             r *= 2 - c_256 * r;
             r *= 2 - c_256 * r;
             result_256 = lo * r;
+
+            if (result_256 >= FIX_MAX) {
+                return FIX_MAX;
+            }
 
             // Apply rounding
             if (rounding == CEIL) {

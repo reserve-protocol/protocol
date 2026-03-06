@@ -48,7 +48,7 @@ We're using 192 bits instead of the full 256 bits because it makes typical multi
 Initial versions of this code were written using the custom type `Fix` everywhere, and `Fixed` contained the line `type Fix is int192`. We found later that:
 
 - We had essentially no need for negative `Fix` values, so spending a storage bit on sign, and juggling the possibility of negative values, cost extra gas and harmed the clarity of our code.
-- While `solc 0.8.19` allows custom types without any issue, practically all of the other tools we want to use on our Solidity source -- `slither`, `slitherin`, `prettier`, `solhint` -- would fail when encountering substantial code using a custom type.
+- While `solc 0.8.28` allows custom types without any issue, practically all of the other tools we want to use on our Solidity source -- `slither`, `slitherin`, `prettier`, `solhint` -- would fail when encountering substantial code using a custom type.
 
 Reintroducing this custom type should be mostly mechanicanizable, but now that P1 contains a handful of hotspot optimizations that do raw arithmetic internally to eliminate Fixlib calls, it won't be trivial to do so. Still, if and when those tools achieve adequate support for custom types, we will probably do this conversion ourselves, if only to ensure that conversions between the Fix and integer interpretations of uints are carefully type-checked.
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -72,6 +72,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     }
 
     /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
+    /// @dev Only intended to unstick tokens, not to support recollateralization efforts
     /// @custom:interaction
     function returnTokens(IERC20[] memory erc20s)
         external

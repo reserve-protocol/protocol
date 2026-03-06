@@ -65,7 +65,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: ETH_ORACLE_TIMEOUT.toString(), // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold:  fp('0.02').add(APXETH_ORACLE_ERROR).toString(), // 3%
+      defaultThreshold: fp('0.02').add(APXETH_ORACLE_ERROR).toString(), // 3%
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(), // 72h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
@@ -73,7 +73,7 @@ async function main() {
     APXETH_ORACLE_TIMEOUT.toString() // targetPerTokChainlinkTimeout - 24h
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed ApxETH to ${hre.network.name} (${chainId}): ${collateral.address}`)

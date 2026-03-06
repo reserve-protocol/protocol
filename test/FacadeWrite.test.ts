@@ -485,14 +485,14 @@ describe('FacadeWrite contract', () => {
 
         // Check assets/collateral
         const ERC20s = await assetRegistry.erc20s()
-        expect(ERC20s[0]).to.equal(rToken.address)
-        expect(ERC20s[1]).to.equal(rsr.address)
+        expect(ERC20s[0]).to.equal(rsr.address)
+        expect(ERC20s[1]).to.equal(rToken.address)
         expect(ERC20s[2]).to.equal(compToken.address)
 
         // Assets
         const erc20s = await assetRegistry.erc20s()
-        expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rTokenAsset.address)
-        expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rTokenAsset.address)
         expect(await assetRegistry.toAsset(erc20s[2])).to.equal(compAsset.address)
         expect(await assetRegistry.toAsset(erc20s[3])).to.equal(tokenAsset.address)
         expect(await assetRegistry.toAsset(erc20s[4])).to.equal(usdcAsset.address)

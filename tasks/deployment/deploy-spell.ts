@@ -1,6 +1,11 @@
 import { getChainId } from '../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
 import { Contract } from 'ethers'
+import {
+  getDeploymentFilename,
+  getDeploymentFile,
+  IDeployments,
+} from '../../scripts/deployment/common'
 
 let spell: Contract
 
@@ -24,8 +29,21 @@ task('deploy-spell', 'Deploys a spell by name')
     }
 
     // Deploy Spell
-    const SpellFactory = await hre.ethers.getContractFactory(spellName)
-    spell = await SpellFactory.deploy(isMainnet)
+    if (spellName === 'Upgrade4_2_0') {
+      const deploymentFilename = getDeploymentFilename(chainId)
+      const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
+      console.log(`Using existing FacadeWriteLib address: ${deployments.facadeWriteLib}`)
+
+      const SpellFactory = await hre.ethers.getContractFactory('Upgrade4_2_0', {
+        libraries: {
+          FacadeWriteLib: deployments.facadeWriteLib,
+        },
+      })
+      spell = await SpellFactory.deploy(isMainnet)
+    } else {
+      const SpellFactory = await hre.ethers.getContractFactory(spellName)
+      spell = await SpellFactory.deploy(isMainnet)
+    }
 
     if (!params.noOutput) {
       console.log(
@@ -35,11 +53,11 @@ task('deploy-spell', 'Deploys a spell by name')
 
     // Uncomment to verify
     if (!params.noOutput) {
-      console.log('sleeping 15s')
+      console.log('sleeping 30s')
     }
 
     // Sleep to ensure API is in sync with chain
-    await new Promise((r) => setTimeout(r, 15000)) // 15s
+    await new Promise((r) => setTimeout(r, 30000)) // 30s
 
     /** ******************** Verify Spell ****************************************/
     console.time('Verifying Spell Implementation')

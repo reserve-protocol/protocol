@@ -121,8 +121,6 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
     user: SignerWithAddress,
     recipient: string
   ) => {
-    const requiredCollat = await ctx.staticWrapper.previewMint(amount)
-
     // Impersonate holder
     await whileImpersonating(altParams.whaleTokenHolder, async (signer) => {
       await ctx.baseToken.connect(signer).approve(ctx.staticWrapper.address, 0) // required for usdt
@@ -131,9 +129,8 @@ export const makeTests = (defaultCollateralOpts: CollateralParams, altParams: Al
         .connect(signer)
         .approve(ctx.staticWrapper.address, ethers.constants.MaxUint256)
 
-      await ctx.staticWrapper
-        .connect(signer)
-        ['deposit(uint256,address,uint16,bool)'](requiredCollat, recipient, 0, true)
+      // Use mint() for exact shares without rounding loss
+      await ctx.staticWrapper.connect(signer)['mint(uint256,address)'](amount, recipient)
     })
   }
 

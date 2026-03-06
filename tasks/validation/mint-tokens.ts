@@ -1,6 +1,5 @@
 import { task, types } from 'hardhat/config'
 import { networkConfig } from '../../common/configuration'
-import { getChainId } from '../../common/blockchain-utils'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -8,6 +7,7 @@ import {
 } from '../../scripts/deployment/common'
 import { whileImpersonating } from '#/utils/impersonation'
 import { fp } from '#/common/numbers'
+import { useEnv } from '#/utils/env'
 
 task('mint-tokens', 'Mints all the tokens to an address')
   .addParam('address', 'Ethereum address to receive the tokens')
@@ -15,12 +15,8 @@ task('mint-tokens', 'Mints all the tokens to an address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
-    const chainId = await getChainId(hre)
-
-    // ********** Read config **********
-    if (!networkConfig[chainId]) {
-      throw new Error(`Missing network configuration for ${hre.network.name}`)
-    }
+    const network = useEnv('FORK_NETWORK').toLowerCase()
+    const chainId = network === 'base' ? '8453' : '1'
 
     if (!params.noOutput) {
       console.log(
@@ -101,18 +97,15 @@ task('give-rsr', 'Mints RSR to an address')
   .addParam('address', 'Ethereum address to receive the tokens')
   .addOptionalParam('amount', 'Amount of RSR to mint', fp('1e9').toString(), types.string)
   .setAction(async (params, hre) => {
-    const chainId = await getChainId(hre)
+    const network = useEnv('FORK_NETWORK').toLowerCase()
 
-    // ********** Read config **********
-    if (!networkConfig[chainId]) {
-      throw new Error(`Missing network configuration for ${hre.network.name}`)
-    }
-
-    const rsr = await hre.ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR!)
     const rsrWhale =
-      chainId == '8453'
+      network === 'base'
         ? '0x95F04B5594e2a944CA91d56933D119841eeF9a99'
         : '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
+    const chainId = network === 'base' ? '8453' : '1'
+
+    const rsr = await hre.ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR!)
     await whileImpersonating(hre, rsrWhale, async (signer) => {
       await rsr.connect(signer).transfer(params.address, params.amount)
     })

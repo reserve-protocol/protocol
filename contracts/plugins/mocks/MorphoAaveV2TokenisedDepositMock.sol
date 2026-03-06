@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import { MorphoAaveV2TokenisedDeposit, MorphoAaveV2TokenisedDepositConfig } from "../assets/morpho-aave/MorphoAaveV2TokenisedDeposit.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";

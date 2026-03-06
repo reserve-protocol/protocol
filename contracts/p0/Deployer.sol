@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../plugins/assets/Asset.sol";
@@ -148,13 +148,16 @@ contract DeployerP0 is IDeployer, Versioned {
             params.redemptionThrottle
         );
 
-        // Deploy RToken/RSR Assets
-        IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
-        assets[1] = rsrAsset;
-
-        // Init Asset Registry
+        // Register RSR Asset
+        IAsset[] memory assets = new IAsset[](1);
+        assets[0] = rsrAsset;
         main.assetRegistry().init(main, assets);
+
+        // Register RToken Asset
+        require(
+            main.assetRegistry().registerNewRTokenAsset(params.rTokenMaxTradeVolume),
+            "RTokenAsset already registered"
+        );
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);

@@ -75,7 +75,7 @@ async function main() {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
           oracleError: bn('1'), // unused but cannot be zero
-          oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+          oracleTimeout: bn('1'), // unused but cannot be zero
           maxTradeVolume: MAX_TRADE_VOL,
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -110,7 +110,7 @@ async function main() {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
           oracleError: bn('1'), // unused but cannot be zero
-          oracleTimeout: ARB_USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+          oracleTimeout: bn('1'), // unused but cannot be zero
           maxTradeVolume: MAX_TRADE_VOL,
           defaultThreshold: combinedError(ARB_crvUSD_ORACLE_ERROR, ARB_USDC_ORACLE_ERROR)
             .add(fp('0.01'))

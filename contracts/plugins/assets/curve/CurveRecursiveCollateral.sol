@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,6 +25,9 @@ import "../OracleLib.sol";
  * ref = coins(0) in the pool
  * tar = USD
  * UoA = USD
+ *
+ * Important: Make sure the Curve pool is compatible with the plugin! This includes pool
+ *   invariants AND security assumptions like reentrancy vectors. Compare to existing deployments!
  */
 contract CurveRecursiveCollateral is CurveStableCollateral {
     using OracleLib for AggregatorV3Interface;

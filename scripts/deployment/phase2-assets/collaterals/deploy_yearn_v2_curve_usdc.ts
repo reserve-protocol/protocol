@@ -73,7 +73,7 @@ async function main() {
         [networkConfig[chainId].chainlinkFeeds.USDC],
         [networkConfig[chainId].chainlinkFeeds.crvUSD],
       ],
-      oracleTimeouts: [['86400'], ['86400']],
+      oracleTimeouts: [['82800'], ['86400']],
       oracleErrors: [[fp('0.0025').toString()], [fp('0.005').toString()]],
       lpToken: YVUSDC_LP_TOKEN,
     },
@@ -84,7 +84,7 @@ async function main() {
   console.log(
     `Deployed Yearn Curve yvUSDCcrvUSD to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.yvCurveUSDCcrvUSD = collateral.address

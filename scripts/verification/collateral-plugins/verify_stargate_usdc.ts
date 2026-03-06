@@ -44,7 +44,7 @@ async function main() {
       [
         name,
         symbol,
-        networkConfig[chainId].tokens.STG,
+        networkConfig[chainId].tokens.STG, // DEPRECATED
         networkConfig[chainId].STARGATE_STAKING_CONTRACT,
         sUSDC,
       ],
@@ -83,7 +83,7 @@ async function main() {
       [
         name,
         symbol,
-        networkConfig[chainId].tokens.STG,
+        networkConfig[chainId].tokens.STG, // DEPRECATED
         networkConfig[chainId].STARGATE_STAKING_CONTRACT,
         sUSDC,
       ],

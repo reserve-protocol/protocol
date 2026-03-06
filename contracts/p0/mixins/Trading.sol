@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -104,6 +104,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         // should not call any ERC20 functions, in case bricked
 
         IERC20Metadata sell = trade.sell();
+        require(trades[sell] == trade, "trade not found");
         delete trades[sell];
         tradesOpen--;
         emit TradeSettled(trade, sell, trade.buy(), 0, 0);

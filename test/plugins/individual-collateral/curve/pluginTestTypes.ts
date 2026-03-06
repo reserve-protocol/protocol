@@ -41,6 +41,7 @@ export interface CurveCollateralOpts extends CollateralOpts {
 export interface CurveMetapoolCollateralOpts extends CurveCollateralOpts {
   metapoolToken?: string
   pairedTokenDefaultThreshold?: BigNumberish
+  pairedRTokenRefreshInterval?: BigNumberish
 }
 
 // A function to deploy the collateral plugin and return the deployed instance of the contract

@@ -73,7 +73,7 @@ async function main() {
       '86400' // refPerTokChainlinkTimeout
     )
     await collateral.deployed()
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
@@ -103,7 +103,7 @@ async function main() {
       '86400' // exchangeRateChainlinkTimeout
     )
     await collateral.deployed()
-    await (await collateral.refresh()).wait()
+    await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
   } else {
     throw new Error(`Unsupported chainId: ${chainId}`)

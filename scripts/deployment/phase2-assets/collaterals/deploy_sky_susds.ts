@@ -54,7 +54,7 @@ async function main() {
       oracleError: ORACLE_ERROR.toString(), // 0.3%
       erc20: networkConfig[chainId].tokens.sUSDS,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: ORACLE_TIMEOUT.toString(), // 24h
+      oracleTimeout: ORACLE_TIMEOUT.toString(), // 23h
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: ORACLE_ERROR.add(fp('0.01')).toString(), // 1.3%
       delayUntilDefault: bn('86400').toString(), // 24h
@@ -65,7 +65,7 @@ async function main() {
 
   console.log(`Deployed sUSDS to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.sUSDS = collateral.address

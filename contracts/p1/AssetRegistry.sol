@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "../plugins/assets/RTokenAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IMain.sol";
 import "./mixins/Component.sol";
@@ -46,7 +47,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
-            _register(assets_[i]);
+            _register(assets_[i], assets_[i].erc20());
         }
     }
 
@@ -68,6 +69,23 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         lastRefresh = uint48(block.timestamp); // safer to do this at end than start, actually
     }
 
+    /// Register a new JIT-deployed RTokenAsset instance
+    /// NOT parallel with register()/swapRegistered():
+    ///   Can be used for initial registration OR rotation
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function registerNewRTokenAsset(uint192 maxTradeVolume)
+        external
+        governance
+        returns (bool swapped)
+    {
+        IRToken rToken = main.rToken();
+        RTokenAsset asset = new RTokenAsset(rToken, maxTradeVolume);
+
+        swapped = _registerIgnoringCollisions(asset, IERC20Metadata(address(rToken)));
+    }
+
     /// Register `asset`
     /// If either the erc20 address or the asset was already registered, fail
     /// @return true if the erc20 address was not already registered.
@@ -76,7 +94,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: (asset.erc20 not in keys(assets))
     function register(IAsset asset) external governance returns (bool) {
-        return _register(asset);
+        IERC20Metadata erc20 = asset.erc20();
+
+        return _register(asset, erc20);
     }
 
     /// Register `asset` if and only if its erc20 address is already registered.
@@ -88,15 +108,18 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets + {asset.erc20(): asset}
     // actions: if asset.erc20() is in basketHandler's basket then basketHandler.disableBasket()
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
-        require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
+        IERC20Metadata erc20 = asset.erc20();
 
-        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
+        require(address(erc20) != address(main.rToken()), "cannot swap RToken");
+        require(_erc20s.contains(address(erc20)), "no ERC20 collision");
+
+        try basketHandler.quantity{ gas: _reserveGas() }(erc20) returns (uint192 quantity) {
             if (quantity != 0) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
         }
 
-        swapped = _registerIgnoringCollisions(asset);
+        swapped = _registerIgnoringCollisions(asset, erc20);
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -106,18 +129,21 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // checks: assets[asset.erc20()] == asset
     // effects: assets' = assets - {asset.erc20():_} + {asset.erc20(), asset}
     function unregister(IAsset asset) external governance {
-        require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
-        require(assets[asset.erc20()] == asset, "asset not found");
+        IERC20Metadata erc20 = asset.erc20();
 
-        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
+        require(address(erc20) != address(main.rToken()), "cannot unregister RToken");
+        require(_erc20s.contains(address(erc20)), "no asset to unregister");
+        require(assets[erc20] == asset, "asset not found");
+
+        try basketHandler.quantity{ gas: _reserveGas() }(erc20) returns (uint192 quantity) {
             if (quantity != 0) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
         }
 
-        _erc20s.remove(address(asset.erc20()));
-        assets[asset.erc20()] = IAsset(address(0));
-        emit AssetUnregistered(asset.erc20(), asset);
+        _erc20s.remove(address(erc20));
+        assets[erc20] = IAsset(address(0));
+        emit AssetUnregistered(erc20, asset);
     }
 
     /// Return the Asset registered for erc20; revert if erc20 is not registered.
@@ -168,19 +194,21 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// @inheritdoc IAssetRegistry
     function validateCurrentAssets() external view {
-        Registry memory registry = getRegistry();
         AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
 
         if (address(assetPluginRegistry) != address(0)) {
+            bytes32 versionHash = keccak256(abi.encodePacked(this.version()));
+            address rToken = address(main.rToken());
+
+            Registry memory registry = getRegistry();
+
             uint256 assetLen = registry.assets.length;
             for (uint256 i = 0; i < assetLen; ++i) {
                 IAsset asset = registry.assets[i];
 
                 require(
-                    assetPluginRegistry.isValidAsset(
-                        keccak256(abi.encodePacked(this.version())),
-                        address(asset)
-                    ),
+                    address(asset.erc20()) == address(rToken) ||
+                        assetPluginRegistry.isValidAsset(versionHash, address(asset)),
                     "unsupported asset"
                 );
             }
@@ -192,25 +220,31 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         return _erc20s.length();
     }
 
+    // === Internal ===
+
     /// Register an asset
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return registered If the asset was moved from unregistered to registered
     // checks: (asset.erc20() not in assets) or (assets[asset.erc20()] == asset)
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: assets.erc20() not in assets
-    function _register(IAsset asset) internal returns (bool registered) {
+    function _register(IAsset asset, IERC20Metadata erc20) internal returns (bool registered) {
+        require(address(erc20) != address(main.rToken()), "cannot register RToken");
         require(
-            !_erc20s.contains(address(asset.erc20())) || assets[asset.erc20()] == asset,
+            !_erc20s.contains(address(erc20)) || assets[erc20] == asset,
             "duplicate ERC20 detected"
         );
 
-        registered = _registerIgnoringCollisions(asset);
+        registered = _registerIgnoringCollisions(asset, erc20);
     }
 
     /// Register an asset, unregistering any previous asset with the same ERC20.
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: assets[asset.erc20()] != asset
-    function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+    function _registerIgnoringCollisions(IAsset asset, IERC20Metadata erc20)
+        private
+        returns (bool swapped)
+    {
         if (asset.isCollateral()) {
             require(
                 ICollateral(address(asset)).status() == CollateralStatus.SOUND,
@@ -219,17 +253,18 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
 
         AssetPluginRegistry assetPluginRegistry = main.assetPluginRegistry();
+
         if (address(assetPluginRegistry) != address(0)) {
             require(
-                main.assetPluginRegistry().isValidAsset(
-                    keccak256(abi.encodePacked(this.version())),
-                    address(asset)
-                ),
+                address(erc20) == address(main.rToken()) ||
+                    assetPluginRegistry.isValidAsset(
+                        keccak256(abi.encodePacked(this.version())),
+                        address(asset)
+                    ),
                 "unsupported asset"
             );
         }
 
-        IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
             else emit AssetUnregistered(erc20, assets[erc20]);

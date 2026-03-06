@@ -216,7 +216,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - AssetRegistry', async () => {
       const newAssetRegistry: AssetRegistryP1 = <AssetRegistryP1>await upgrades.deployProxy(
         AssetRegistryFactory,
-        [main.address, [rsrAsset.address, rTokenAsset.address]],
+        [main.address, [rsrAsset.address]],
         {
           initializer: 'init',
           kind: 'uups',
@@ -226,7 +226,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       await newAssetRegistry.deployed()
 
       expect(await newAssetRegistry.isRegistered(rsr.address)).to.equal(true)
-      expect(await newAssetRegistry.isRegistered(rToken.address)).to.equal(true)
+      expect(await newAssetRegistry.isRegistered(rToken.address)).to.equal(false)
       expect(await newAssetRegistry.main()).to.equal(main.address)
     })
 

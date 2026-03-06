@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -11,6 +11,13 @@ import "../p1/Deployer.sol";
 // interface avoids needing to know about P1 contracts
 interface ICachedComponent {
     function cacheComponents() external;
+}
+
+// backwards compatibility: deployRTokenAsset was removed in 4.0.0
+interface IDeployer3_4_0 is IDeployer {
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume)
+        external
+        returns (IAsset rTokenAsset);
 }
 
 /**
@@ -415,7 +422,7 @@ contract Upgrade3_4_0 {
 
             // RTokenAsset
             proxy.assetRegistry.swapRegistered(
-                deployer.deployRTokenAsset(
+                IDeployer3_4_0(address(deployer)).deployRTokenAsset(
                     rToken,
                     proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
                 )

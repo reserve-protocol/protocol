@@ -24,12 +24,7 @@ async function main() {
   await verifyContract(
     chainId,
     deployments.deployer,
-    [
-      deployments.prerequisites.RSR,
-      deployments.prerequisites.GNOSIS_EASY_AUCTION,
-      deployments.rsrAsset,
-      deployments.implementations,
-    ],
+    [deployments.prerequisites.RSR, deployments.rsrAsset, deployments.implementations],
     'contracts/p1/Deployer.sol:DeployerP1'
   )
 }

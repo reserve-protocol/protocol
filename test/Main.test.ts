@@ -301,8 +301,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check assets/collateral
       const ERC20s = await assetRegistry.erc20s()
-      expect(ERC20s[0]).to.equal(rToken.address)
-      expect(ERC20s[1]).to.equal(rsr.address)
+      expect(ERC20s[0]).to.equal(rsr.address)
+      expect(ERC20s[1]).to.equal(rToken.address)
       expect(ERC20s[2]).to.equal(aaveToken.address)
       expect(ERC20s[3]).to.equal(compToken.address)
 
@@ -315,8 +315,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
 
       // Assets
-      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(compAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[4])).to.equal(collateral0.address)
@@ -1229,7 +1229,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should be able to disableBasket during deregistration with basket size of 128', async () => {
       // Set up backup config
-      await basketHandler.setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [
+      await basketHandler.setBackupConfig(ethers.utils.formatBytes32String('USD'), 1, [
         token1.address,
       ])
 
@@ -1252,7 +1252,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           erc20: newToken.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
-          targetName: await ethers.utils.formatBytes32String('USD'),
+          targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: await collateral0.delayUntilDefault(),
         })
@@ -1274,7 +1274,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         erc20: newToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
-        targetName: await ethers.utils.formatBytes32String('USD'),
+        targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
       })
@@ -1300,7 +1300,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         erc20: await gasGuzzlingColl.erc20(),
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
-        targetName: await ethers.utils.formatBytes32String('USD'),
+        targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
       })
@@ -1679,6 +1679,24 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       allERC20s = await assetRegistry.erc20s()
       expect(allERC20s).to.contain(token0.address)
       expect(allERC20s.length).to.equal(previousLength)
+    })
+
+    it('Should not allow to register RToken', async () => {
+      await expect(assetRegistry.connect(owner).register(rTokenAsset.address)).to.be.revertedWith(
+        'cannot register RToken'
+      )
+    })
+
+    it('Should not allow to swap RToken', async () => {
+      await expect(
+        assetRegistry.connect(owner).swapRegistered(rTokenAsset.address)
+      ).to.be.revertedWith('cannot swap RToken')
+    })
+
+    it('Should not allow to unregister RToken', async () => {
+      await expect(assetRegistry.connect(owner).unregister(rTokenAsset.address)).to.be.revertedWith(
+        'cannot unregister RToken'
+      )
     })
 
     context('With quantity reverting', function () {
@@ -2670,7 +2688,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // Unregister everything except token0
         const erc20s = await assetRegistry.erc20s()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address) {
+          if (erc20 != token0.address && erc20 != rToken.address) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }
@@ -3423,6 +3441,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
       expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
+      // Prices should still work
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR, true)
+      await expectPrice(rTokenAsset.address, fp('0.75'), ORACLE_ERROR, true)
+
       // Set basket config
       await expect(
         basketHandler
@@ -3625,7 +3647,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         erc20: token0.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
-        targetName: await ethers.utils.formatBytes32String('NEW TARGET'),
+        targetName: ethers.utils.formatBytes32String('NEW TARGET'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
       })
@@ -3739,7 +3761,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         erc20: reentrantToken.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
-        targetName: await ethers.utils.formatBytes32String('USD'),
+        targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral0.delayUntilDefault(),
       })

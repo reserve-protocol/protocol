@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IAsset.sol";
@@ -74,7 +74,7 @@ library TradingLibP0 {
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage)).safeMulDiv(
+        uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage), CEIL).safeMulDiv(
             trade.prices.sellLow,
             trade.prices.buyHigh,
             CEIL

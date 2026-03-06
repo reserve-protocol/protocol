@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -232,8 +232,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         // Init Furnace
         furnace.init(this, params.rewardRatio);
 
-        // Init Asset Registry, with default assets for all tokens
-        IAsset[] memory assets = new IAsset[](2);
+        // Init Asset Registry, with default assets for all tokens (excluding RToken)
+        IAsset[] memory assets = new IAsset[](1);
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
             params.rTokenMaxTradeVolume,
@@ -241,8 +241,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
             0.005e18,
             PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );
-        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.rTokenMaxTradeVolume);
         assetRegistry.init(this, assets);
+
+        // Register RToken asset separately (cannot go through _register)
+        assetRegistry.registerNewRTokenAsset(params.rTokenMaxTradeVolume);
 
         // Init Distributor
         distributor.init(this, params.dist);

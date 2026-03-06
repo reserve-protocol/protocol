@@ -63,26 +63,32 @@ async function main() {
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
   const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
 
-  const w3Pool = await ConvexStakingWrapperFactory.deploy()
-  await w3Pool.deployed()
-  await (await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)).wait()
+  let erc20 = networkConfig[chainId].tokens.wcvx3Pool
 
-  console.log(
-    `Deployed wrapper for Convex Stable 3Pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
-  )
+  if (!erc20) {
+    const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+
+    const w3Pool = await ConvexStakingWrapperFactory.deploy()
+    await w3Pool.deployed()
+    await (await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)).wait()
+
+    console.log(
+      `Deployed wrapper for Convex Stable 3Pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
+    )
+    erc20 = w3Pool.address
+  }
 
   const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
-      erc20: w3Pool.address,
+      erc20: erc20,
       targetName: ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
       oracleError: bn('1'), // unused but cannot be zero
-      oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
+      oracleTimeout: bn('1'), // unused but cannot be zero
       maxTradeVolume: MAX_TRADE_VOL,
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -99,7 +105,7 @@ async function main() {
     }
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -107,7 +113,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvx3Pool = collateral.address
-  assetCollDeployments.erc20s.cvx3Pool = w3Pool.address
+  assetCollDeployments.erc20s.cvx3Pool = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

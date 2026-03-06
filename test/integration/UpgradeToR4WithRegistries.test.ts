@@ -247,7 +247,12 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
         }
 
         const currentAssetRegistry = await RTokenAssetRegistry.getRegistry()
-        const currentAssetPlugins = currentAssetRegistry.assets
+        const currentAssetPlugins = currentAssetRegistry.assets.filter(
+          async (assetAddr: string) => {
+            const asset = await ethers.getContractAt('IAsset', assetAddr)
+            return (await asset.erc20()) !== (await RTokenMain.rToken())
+          }
+        )
 
         // We don't have all the assets in the registry, so this should fail
         await expect(RTokenAssetRegistry.validateCurrentAssets()).to.be.revertedWith(

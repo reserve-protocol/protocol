@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 interface IConvexStakingWrapper {
     function crv() external returns (address);

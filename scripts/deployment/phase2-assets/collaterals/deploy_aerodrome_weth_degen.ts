@@ -61,31 +61,35 @@ async function main() {
   /********  Deploy Aerodrome Volatile Pool for WETH-DEGEN  **************************/
 
   let collateral: AerodromeVolatileCollateral
-  let wWethDEGEN: AerodromeGaugeWrapper
+  let erc20 = networkConfig[chainId].tokens.waeroWETHDEGEN
 
   // Only for Base
   if (baseL2Chains.includes(hre.network.name)) {
     const AerodromeVolatileCollateralFactory = await hre.ethers.getContractFactory(
       'AerodromeVolatileCollateral'
     )
-    const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
 
-    // Deploy gauge wrapper
-    const pool = <IAeroPool>await ethers.getContractAt('IAeroPool', AERO_WETH_DEGEN_POOL)
-    wWethDEGEN = <AerodromeGaugeWrapper>(
-      await AerodromeGaugeWrapperFactory.deploy(
-        pool.address,
-        'w' + (await pool.name()),
-        'w' + (await pool.symbol()),
-        AERO,
-        AERO_WETH_DEGEN_GAUGE
+    if (!erc20) {
+      const AerodromeGaugeWrapperFactory = await ethers.getContractFactory('AerodromeGaugeWrapper')
+
+      // Deploy gauge wrapper
+      const pool = <IAeroPool>await ethers.getContractAt('IAeroPool', AERO_WETH_DEGEN_POOL)
+      const wWethDEGEN = <AerodromeGaugeWrapper>(
+        await AerodromeGaugeWrapperFactory.deploy(
+          pool.address,
+          'w' + (await pool.name()),
+          'w' + (await pool.symbol()),
+          AERO,
+          AERO_WETH_DEGEN_GAUGE
+        )
       )
-    )
-    await wWethDEGEN.deployed()
+      await wWethDEGEN.deployed()
 
-    console.log(
-      `Deployed wrapper for Aerodrome Volatile WETH-DEGEN pool on ${hre.network.name} (${chainId}): ${wWethDEGEN.address} `
-    )
+      console.log(
+        `Deployed wrapper for Aerodrome Volatile WETH-DEGEN pool on ${hre.network.name} (${chainId}): ${wWethDEGEN.address} `
+      )
+      erc20 = wWethDEGEN.address
+    }
 
     const oracleError = combinedError(DEGEN_ORACLE_ERROR, ETH_ORACLE_ERROR) // 0.5% & 0.15%
 
@@ -93,7 +97,7 @@ async function main() {
       deployer
     ).deploy(
       {
-        erc20: wWethDEGEN.address,
+        erc20: erc20,
         targetName: ethers.utils.formatBytes32String('ETH_DEGEN_AERODROME_cpAMM'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
@@ -116,7 +120,7 @@ async function main() {
   }
 
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
@@ -124,7 +128,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.aeroWETHDEGEN = collateral.address
-  assetCollDeployments.erc20s.aeroWETHDEGEN = wWethDEGEN.address
+  assetCollDeployments.erc20s.aeroWETHDEGEN = erc20
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

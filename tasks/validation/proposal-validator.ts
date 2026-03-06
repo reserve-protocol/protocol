@@ -9,7 +9,12 @@ import { MAX_UINT256, TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { recollateralize, redeemRTokens } from './utils/rtokens'
 import { processRevenue } from './utils/rewards'
-import { pushOraclesForward } from './utils/oracles'
+import {
+  pushOraclesForward,
+  getRTokenOracle,
+  getRTokenOraclePrice,
+  validateRTokenOraclePriceChange,
+} from './utils/oracles'
 import {
   passProposal,
   executeProposal,
@@ -50,15 +55,6 @@ interface Params {
 task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + redeem + mint')
   .addParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params: Params, hre) => {
-    // await resetFork(hre, Number(process.env.FORK_BLOCK))
-
-    const chainId = await getChainId(hre)
-
-    // make sure config exists
-    if (!networkConfig[chainId]) {
-      throw new Error(`Missing network configuration for ${hre.network.name}`)
-    }
-
     // only run locally
     if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
       throw new Error('Only run this on a local fork')
@@ -69,13 +65,37 @@ task('proposal-validator', 'Runs a proposal and confirms can fully rebalance + r
 
     console.log(`Network Block: ${await getLatestBlockNumber(hre)}`)
 
+    const proposalData = JSON.parse(
+      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
+    )
+
+    // Get RToken oracle config (if exists) for price validation
+    const oracleConfig = getRTokenOracle(proposalData.rtoken)
+    let priceBefore
+    if (oracleConfig) {
+      console.log(
+        `\n🔮 RToken oracle found: ${oracleConfig.address} (threshold: ${oracleConfig.threshold}%)`
+      )
+      priceBefore = await getRTokenOraclePrice(hre, oracleConfig.address)
+      console.log(`Price (before): ${priceBefore.toString()}`)
+    }
+
     await hre.run('propose', {
       pid: params.proposalid,
     })
 
-    const proposalData = JSON.parse(
-      fs.readFileSync(`./tasks/validation/proposals/proposal-${params.proposalid}.json`, 'utf-8')
-    )
+    // Validate RToken oracle
+    if (oracleConfig && priceBefore) {
+      const priceAfter = await getRTokenOraclePrice(hre, oracleConfig.address)
+      console.log(`\n🔮 RToken Price (after): ${priceAfter.toString()}`)
+      validateRTokenOraclePriceChange(
+        priceBefore,
+        priceAfter,
+        proposalData.rtoken,
+        oracleConfig.threshold
+      )
+    }
+
     await hre.run('recollateralize', {
       rtoken: proposalData.rtoken,
       governor: proposalData.governor,
@@ -260,7 +280,9 @@ task('run-validations', 'Runs all validations')
     )
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
-    const chainId = await getChainId(hre)
+    const network = useEnv('FORK_NETWORK').toLowerCase()
+    const chainId = network === 'base' ? '8453' : '1'
+
     const whales: Whales = getWhalesFile(chainId).tokens
 
     /*
@@ -303,7 +325,8 @@ const runCheck_stakeUnstake = async (
   stRSR: StRSRP1Votes,
   main: IMain
 ) => {
-  const chainId = await getChainId(hre)
+  const network = useEnv('FORK_NETWORK').toLowerCase()
+  const chainId = network === 'base' ? '8453' : '1'
   const whales = getWhalesFile(chainId).tokens
   // get RSR
   const stakeAmount = fp('3e6')

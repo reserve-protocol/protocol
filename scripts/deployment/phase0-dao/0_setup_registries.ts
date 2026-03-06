@@ -56,6 +56,7 @@ async function main() {
     await versionRegistry.deployed()
 
     rConfig.registries.versionRegistry = versionRegistry.address
+    console.log('Version Registry deployed to:', versionRegistry.address)
   }
 
   if (rConfig.registries.assetPluginRegistry == '') {
@@ -69,6 +70,7 @@ async function main() {
     await assetPluginRegistry.deployed()
 
     rConfig.registries.assetPluginRegistry = assetPluginRegistry.address
+    console.log('Asset Plugin Registry deployed to:', assetPluginRegistry.address)
   }
 
   if (rConfig.registries.daoFeeRegistry == '') {
@@ -83,6 +85,7 @@ async function main() {
     await daoFeeRegistry.deployed()
 
     rConfig.registries.daoFeeRegistry = daoFeeRegistry.address
+    console.log('DAO Fee Registry deployed to:', daoFeeRegistry.address)
   }
 
   console.log('!!!!!!!!!!!!!!!! IMPORTANT !!!!!!!!!!!!!!!!')

@@ -44,7 +44,7 @@ async function main() {
 
   /********  Deploy Mock Oracle (if needed)  **************************/
   let rethOracleAddress: string = networkConfig[chainId].chainlinkFeeds.rETH!
-  if (chainId == 5) {
+  if (chainId == '5') {
     const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
     const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
     await mockOracle.deployed()
@@ -81,7 +81,7 @@ async function main() {
     '86400' // refPerTokChainlinkTimeout
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Rocketpool rETH to ${hre.network.name} (${chainId}): ${collateral.address}`)

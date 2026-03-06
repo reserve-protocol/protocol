@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "../assets/compoundv2/ICToken.sol";
 import "./ERC20Mock.sol";

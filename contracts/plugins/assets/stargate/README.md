@@ -12,9 +12,9 @@ The Stargate Finance documentation will be a good starting point to understand t
 >
 > _[From The Stargate User Docs](https://stargateprotocol.gitbook.io/stargate/v/user-docs/stargate-features/pool#overview)_
 
-These rewards are added to the total available liquidity, thereby increasing the amount of the underlying token the LP token can be redeemed for. Users can also further stake their LP tokens with the [LPStaking](https://github.com/stargate-protocol/stargate/blob/main/contracts/LPStaking.sol) contract to receive $STG rewards.
+These rewards are added to the total available liquidity, thereby increasing the amount of the underlying token the LP token can be redeemed for. It's required to have a wrapper token that'll automatically stake and collect these rewards so it can be used as additional revenue for the collateral.
 
-It's therefore required to have a wrapper token that'll automatically stake and collect these rewards so it can be used as additional revenue for the collateral.
+Note: STG rewards have been deprecated and are no longer supported.
 
 ## Wrapper Token for Automatic Staking and Reward Collection
 

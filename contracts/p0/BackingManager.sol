@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -176,7 +176,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
         }
 
-        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
+        // {BU}
+        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer), CEIL);
 
         // Handout excess assets above what is needed, including any newly minted RToken
         RevenueTotals memory totals = main.distributor().totals();

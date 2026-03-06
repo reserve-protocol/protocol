@@ -128,6 +128,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Deployment should setup RToken correctly', async () => {
       expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
+      expect(await rToken.mandate()).to.equal('mandate')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
       expect(await rToken.basketsNeeded()).to.equal(0)
@@ -189,6 +190,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           '0 supply'
         )
       })
+    })
+
+    it('Should not allow to setMandate unless owner #fast', async () => {
+      await expect(rToken.connect(addr1).setMandate('mandate2')).to.be.revertedWith(
+        'governance only'
+      )
+
+      await expect(rToken.connect(owner).setMandate('mandate2'))
+        .to.emit(rToken, 'MandateSet')
+        .withArgs('mandate', 'mandate2')
+      expect(await rToken.mandate()).to.equal('mandate2')
     })
 
     it('Should allow to update issuance throttle if Owner and perform validations', async () => {
@@ -1925,7 +1937,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Unregister everything except token0
         const erc20s = await assetRegistry.erc20s()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address) {
+          if (erc20 != token0.address && erc20 != rToken.address) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }

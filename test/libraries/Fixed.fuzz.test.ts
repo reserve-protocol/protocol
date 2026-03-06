@@ -260,7 +260,7 @@ describe('FixLib Fuzzing', () => {
     await binaryOp(
       [192, 192, 192],
       caller.mul,
-      (x, y) => div(x * y, SCALE, RoundingMode.ROUND),
+      (x, y) => div(x * y, SCALE, RoundingMode.FLOOR),
       null
     )
   })

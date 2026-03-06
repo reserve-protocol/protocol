@@ -71,7 +71,7 @@ async function main() {
     ETHX_ORACLE_TIMEOUT.toString() // targetPerTokChainlinkTimeout - 24h
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
+  await (await collateral.refresh({ gasLimit: 3_000_000 })).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Stader ETHx to ${hre.network.name} (${chainId}): ${collateral.address}`)

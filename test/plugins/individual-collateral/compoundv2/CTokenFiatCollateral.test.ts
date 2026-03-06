@@ -361,15 +361,15 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
       // Check assets/collateral
       const ERC20s = await assetRegistry.erc20s()
-      expect(ERC20s[0]).to.equal(rToken.address)
-      expect(ERC20s[1]).to.equal(rsr.address)
+      expect(ERC20s[0]).to.equal(rsr.address)
+      expect(ERC20s[1]).to.equal(rToken.address)
       expect(ERC20s[2]).to.equal(compToken.address)
       expect(ERC20s[3]).to.equal(cDai.address)
       expect(ERC20s.length).to.eql(4)
 
       // Assets
-      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(cDaiCollateral.address)
 

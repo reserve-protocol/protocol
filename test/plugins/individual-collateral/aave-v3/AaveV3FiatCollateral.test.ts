@@ -22,6 +22,9 @@ import {
   USDT_MAINNET_MAX_TRADE_VOLUME,
   USDT_MAINNET_ORACLE_TIMEOUT,
   USDT_MAINNET_ORACLE_ERROR,
+  RLUSD_MAINNET_MAX_TRADE_VOLUME,
+  RLUSD_MAINNET_ORACLE_TIMEOUT,
+  RLUSD_MAINNET_ORACLE_ERROR,
 } from './constants'
 
 // Mainnet - USDC
@@ -118,6 +121,30 @@ makeTests(
     forkBlock: 20890018,
     targetNetwork: 'mainnet',
     toleranceDivisor: bn('1e8'), // 1 part in 100 million
+  }
+)
+
+// Mainnet - RLUSD
+makeTests(
+  {
+    priceTimeout: PRICE_TIMEOUT,
+    chainlinkFeed: networkConfig[1].chainlinkFeeds['RLUSD']!,
+    oracleError: RLUSD_MAINNET_ORACLE_ERROR,
+    erc20: '', // to be set
+    maxTradeVolume: RLUSD_MAINNET_MAX_TRADE_VOLUME,
+    oracleTimeout: RLUSD_MAINNET_ORACLE_TIMEOUT,
+    targetName: ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.01').add(RLUSD_MAINNET_ORACLE_TIMEOUT),
+    delayUntilDefault: bn('86400'),
+  },
+  {
+    testName: 'RLUSD - Mainnet',
+    aaveIncentivesController: networkConfig[1].AAVE_V3_INCENTIVES_CONTROLLER!,
+    aavePool: networkConfig[1].AAVE_V3_POOL!,
+    aToken: networkConfig[1].tokens['aEthRLUSD']!,
+    whaleTokenHolder: '0x1073d55Dfb892ed86151015402DB8B1CDb6edE78',
+    forkBlock: 23726585,
+    targetNetwork: 'mainnet',
   }
 )
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 // From https://gist.github.com/ottodevs/c43d0a8b4b891ac2da675f825b1d1dbf
 library StringLib {

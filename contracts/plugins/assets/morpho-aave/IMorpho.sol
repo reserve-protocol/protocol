@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import { IERC20Metadata } from "../erc20/RewardableERC4626Vault.sol";
 import { IERC4626 } from "../../../vendor/oz/IERC4626.sol";

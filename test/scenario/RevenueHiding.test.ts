@@ -130,7 +130,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     await basketHandler.setPrimeBasket([cDAI.address, dai.address], [fp('1'), fp('1')])
     await basketHandler
       .connect(owner)
-      .setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [dai.address])
+      .setBackupConfig(ethers.utils.formatBytes32String('USD'), 1, [dai.address])
     await basketHandler.refreshBasket()
 
     // Advance time post warmup period - SOUND just regained

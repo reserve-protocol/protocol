@@ -30,7 +30,7 @@ export const MEUSD = networkConfig[chainId].tokens.meUSD!
 
 // USDC
 export const USDC_USD_FEED = networkConfig[chainId].chainlinkFeeds.USDC!
-export const USDC_ORACLE_TIMEOUT = bn('86400')
+export const USDC_ORACLE_TIMEOUT = bn('82800') // 23 hrs
 export const USDC_ORACLE_ERROR = fp('0.0025')
 
 // PYUSD
