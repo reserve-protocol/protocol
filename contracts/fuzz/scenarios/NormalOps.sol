@@ -720,6 +720,11 @@ contract NormalOpsScenario {
         return true;
     }
 
+    function check_ratesNeverFall() external view {
+        assert(main.stRSR().exchangeRate() >= prevRSRRate);
+        assert(!(main.rToken().totalSupply() > 0 && rTokenRate() < prevRTokenRate));
+    }
+
     function echidna_mainInvariants() external view returns (bool) {
         return main.invariantsHold();
     }
