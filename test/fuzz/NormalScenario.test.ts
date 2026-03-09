@@ -13,7 +13,7 @@ import { advanceBlocks, advanceTime } from '../utils/time'
 import { expect } from 'chai'
 import { CollateralStatus } from '../plugins/individual-collateral/pluginTestTypes'
 import { whileImpersonating } from '../utils/impersonation'
-import { fp } from '#/common/numbers'
+import { bn, fp } from '#/common/numbers'
 import {
   Components,
   FuzzTestContext,
@@ -354,7 +354,53 @@ const scenarioSpecificTests = () => {
       expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
     })
   })
-  }
+
+  it('ratesNeverFall holds after resetStakes', async () => {
+    // Echidna sequence that revealed failing rates invariant
+
+    await advanceTime(263514)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).issue(10)
+    await scenario.connect(alice).redeemTo(10, 81)
+
+    await scenario.pushSeedForTrades(
+      bn(166454074441998289102556034350508142865738666477291799n)
+    )
+    await scenario.setRSRTraderMaxTradeSlippage(805791915850993860n)
+
+    await scenario.connect(alice).manageTokenInRSRTrader(
+        44034183595135802330219540153506069026044156430734706881446739660433259869n,
+        15
+    )
+
+    await advanceTime(1843)
+    await advanceBlocks(1)
+
+    await scenario.settleTrades()
+    await scenario.connect(alice).stake(999999999999999998n)
+    await scenario.connect(alice).stake(2)
+
+    await advanceTime(11)
+    await advanceBlocks(4)
+
+    await scenario.setStakeRewardRatio(
+      5739973937512307025935902976796315n
+    )
+
+    await advanceTime(11)
+    await advanceBlocks(4)
+
+    await scenario.saveRates()
+
+    // May revert with 'RatesStillSafe()' - Echidna ignores reverts
+    try {
+      await scenario.resetStakes()
+    } catch (e) {}
+
+    expect(await scenario.echidna_ratesNeverFall()).to.be.true
+  })
+}
 
 const context: FuzzTestContext<FuzzTestFixture> = {
     f: createFixture,
