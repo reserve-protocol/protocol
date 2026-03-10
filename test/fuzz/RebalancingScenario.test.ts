@@ -1658,6 +1658,37 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
+
+  it('batchRebalancingProperties works after unregisterAsset and stake', async () => {
+    // Echidna sequence that revealed failing batchRebalancingProperties.
+    //
+    // Root cause: issueTo(2, 0) creates only 2 wei of basketsNeeded (2e-18 baskets).
+    // After unregistering an asset and refreshing, the basket changes and the BM needs
+    // to rebalance. The property calls rebalance(), settles the trade (3 wei sell/buy),
+    // then checks isBasketRangeSmaller(). But at these wei-level amounts, the fixed-point
+    // divisions in RecollateralizationLib.basketRange() (one per basket token) each lose
+    // up to 1 wei of precision, which is enough to round basketRange.bottom from 2 to 0.
+    //
+    // Fix: isBasketRangeSmaller() now skips the bottom check when prev.bottom <= basketLength,
+    // since rounding errors alone can account for the entire drop at that scale.
+
+    await advanceTime(267028)
+    await advanceBlocks(1)
+
+    await warmup()
+    await scenario.connect(alice).issueTo(2, 0) // only 2 wei of basketsNeeded
+
+    await scenario.setBackingManagerMinTradeVolume(1) // allows tiny trades
+    await scenario.unregisterAsset(0) // removes first collateral
+    await scenario.refreshBasket() // basket switches to backups, triggers REBALANCING_ONGOING
+
+    await advanceTime(273380)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).stake(5)
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {

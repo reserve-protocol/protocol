@@ -203,11 +203,16 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         );
         BasketRange memory currentRange = getCurrentBasketRange();
 
-        return
-            currentRange.top <=
-            basketRangePrev.top.mul(FIX_ONE.plus(maxTradeSlippage), CEIL) + bh.basketLength() &&
+        bool topOk = currentRange.top <=
+            basketRangePrev.top.mul(FIX_ONE.plus(maxTradeSlippage), CEIL) + bh.basketLength();
+
+        // When prev.bottom is small enough, rounding errors in basketRange() (up to 1 wei
+        // per basket token) can wipe it to 0. Skip the bottom check in that case.
+        bool bottomOk = basketRangePrev.bottom <= bh.basketLength() ||
             currentRange.bottom >=
             basketRangePrev.bottom.mul(FIX_ONE.minus(maxTradeSlippage), FLOOR);
+
+        return topOk && bottomOk;
     }
 
     function isValidSurplusToken(IERC20 token) external view returns (bool) {
