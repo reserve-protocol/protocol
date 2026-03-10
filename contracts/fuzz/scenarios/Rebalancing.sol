@@ -1368,13 +1368,15 @@ contract RebalancingScenario {
                 }
             } else {
                 trade = DutchTrade(address(broker.lastOpenedTrade()));
+                uint256 tradeKind = broker.tradeKindSet(address(trade));
 
+                // Bid at or after the auction midpoint for a realistic price;
+                // bidding at startTime gives an unrealistically favorable price to the BM
                 if (
-                    broker.tradeKindSet(address(trade)) == uint256(TradeKind.DUTCH_AUCTION) &&
-                    block.timestamp >= trade.startTime() &&
+                    tradeKind == uint256(TradeKind.DUTCH_AUCTION) &&
+                    block.timestamp >= (trade.startTime() + trade.endTime()) / 2 &&
                     block.timestamp <= trade.endTime()
                 ) {
-                    // Bid & settle the auction - Use transfer method
                     _bidDutchAuction(trade, 1);
                     require(trade.status() == TradeStatus.CLOSED, "trade not closed");
 

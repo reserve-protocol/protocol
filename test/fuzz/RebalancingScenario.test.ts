@@ -1689,6 +1689,37 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
+
+  it('dutchRebalancingProperties works after unregisterAsset and rebalance', async () => {
+    // Echidna sequence that revealed failing dutchRebalancingProperties.
+    //
+    // Root cause: the property was bidding on the dutch auction at startTime, where the
+    // price is at its highest (most favorable for BM). This pushed the basket range top
+    // up beyond the slippage threshold. Fixed by only bidding at or after the auction
+    // midpoint for a more realistic price.
+
+    await advanceTime(259230)
+    await advanceBlocks(1)
+
+    await warmup()
+    await scenario.connect(alice).issue(75)
+
+    await scenario.unregisterAsset(0)
+    await scenario.setBackingManagerMinTradeVolume(0)
+    await scenario.refreshBasket()
+
+    await advanceTime(260365)
+    await advanceBlocks(1)
+
+    await scenario.rebalance(160294615092338571400777948508n)
+
+    // Advance to auction midpoint for a realistic bid price
+    const dutchAuctionLength = await comp.broker.dutchAuctionLength()
+    await advanceTime(dutchAuctionLength / 2)
+    await advanceBlocks(1)
+
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
