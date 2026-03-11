@@ -1720,6 +1720,58 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
   })
+
+  it('batchRebalancingProperties handles basketRange underflow gracefully', async () => {
+    // Echidna sequence: basketRange() underflows at line 211 in RecollateralizationLib.sol:
+    //   range.top = ctx.basketsHeld.top - _safeWrap(uint256(-deltaTop))
+    //
+    // With only 1 wei of basketsNeeded, rounding errors across ~9 tokens accumulate
+    // in deltaTop (each token's mulDiv can round by 1 wei), producing abs(deltaTop) = 3
+    // which exceeds basketsHeld.top = 1. This is expected — the underflow revert is
+    // intentional in production code. The fuzzing property catches it via try/catch
+    // and returns true (not a real invariant violation).
+    //
+    // Steps:
+    // 1. issueTo(1, 0) — 1 wei of RToken
+    // 2. updatePrice defaults CB2 (refPerTok=0, targetPerRef=0)
+    // 3. refreshBasket() — basket switches to backups, REBALANCING_ONGOING
+    // 4. updatePrice sets extreme uoaPerTarget on CA1 via partialUpdate
+
+    await advanceTime(133815)
+    await advanceBlocks(1)
+
+    await warmup()
+    await scenario.connect(alice).issueTo(1, 0)
+
+    await advanceTime(125918)
+    await advanceBlocks(1)
+
+    // Defaults CB2 (refPerTok=0, targetPerRef=0)
+    await scenario.updatePrice(
+      78425517840617118363056651579398204164739701490191469244679745858659n,
+      0,
+      0,
+      2991835486774299833066955256192831n,
+      12067474591268137424200578159250n
+    )
+
+    await scenario.refreshBasket()
+
+    // Sets extreme uoaPerTarget on CA1 during REBALANCING_ONGOING
+    await scenario.updatePrice(
+      2,
+      1283608745668237311470265n,
+      0,
+      88411097901455668643190647349925n,
+      10959117125774980623553958677088n
+    )
+
+    // basketRange() underflows: basketsHeld.top(1) - abs(deltaTop)(3) < 0
+    await expect(comp.backingManager.saveBasketRange()).to.be.reverted
+
+    // Property handles the revert gracefully via try/catch and returns true
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {

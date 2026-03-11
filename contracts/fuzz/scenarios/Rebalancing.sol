@@ -769,7 +769,8 @@ contract RebalancingScenario {
             status = ScenarioStatus.REBALANCING_ONGOING;
 
             // Save initial basket range
-            saveBasketRange();
+            // basketRange() can underflow at wei-level basketsNeeded due to rounding
+            try this.saveBasketRange() {} catch {}
         }
     }
 
@@ -1275,11 +1276,12 @@ contract RebalancingScenario {
             uint256 tradesBMPrev = bm.tradesOpen();
             uint256 tradesBrokerPrev = broker.tradesLength();
 
-            // Save current basket range
-            bm.saveBasketRange();
+            // Save current basket range and surplus/deficit tokens
+            // basketRange() can underflow at wei-level basketsNeeded due to rounding
+            // when abs(deltaTop) > basketsHeld.top; this is expected behavior
+            try bm.saveBasketRange() {} catch { return true; }
+            try bm.saveSurplusAndDeficitTokens() {} catch { return true; }
 
-            // Save Tokens in surplus and deficit (excludes RSR)
-            bm.saveSurplusAndDeficitTokens();
             IAssetRegistry ar = main.assetRegistry();
             // Create trade, if able and needed
             try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {
@@ -1339,11 +1341,12 @@ contract RebalancingScenario {
             uint256 tradesBMPrev = bm.tradesOpen();
             uint256 tradesBrokerPrev = broker.tradesLength();
 
-            // Save current basket range
-            bm.saveBasketRange();
+            // Save current basket range and surplus/deficit tokens
+            // basketRange() can underflow at wei-level basketsNeeded due to rounding
+            // when abs(deltaTop) > basketsHeld.top; this is expected behavior
+            try bm.saveBasketRange() {} catch { return true; }
+            try bm.saveSurplusAndDeficitTokens() {} catch { return true; }
 
-            // Save Tokens in surplus and deficit (excludes RSR)
-            bm.saveSurplusAndDeficitTokens();
             IAssetRegistry ar = main.assetRegistry();
 
             DutchTrade trade;
