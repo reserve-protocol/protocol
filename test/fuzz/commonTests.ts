@@ -130,6 +130,128 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
         expect(await usd0.balanceOf(aliceAddr)).to.equal(alice_usd0_0)
         expect(await rsr.balanceOf(aliceAddr)).to.equal(fp(456).add(alice_rsr_0))
       })
+
+      it('settles batch trade where sell token is RToken (RSR trader)', async () => {
+        // RSR trader sells RToken to buy RSR
+        // RTokens stay at MarketMock (no redeem/drain of backing manager)
+
+        const issueAmt = fp('100')
+        await warmup()
+
+        // Issue RTokens to alice
+        await scenario.connect(alice).issueTo(issueAmt, 0)
+
+        // Transfer RTokens from alice to RSR trader
+        const rToken = comp.rToken
+        const rsrTrader = comp.rsrTrader
+        await rToken.connect(alice).transfer(rsrTrader.address, issueAmt)
+
+        // Set min trade volumes to 0
+        await scenario.setBackingManagerMinTradeVolume(0)
+        await scenario.setRSRTraderMinTradeVolume(0)
+
+        // Get the RToken's tokenID (symbol is 'Rtkn')
+        const rTokenID = tokenIDs.get('Rtkn')!
+
+        // Create a batch trade: RSR trader sells RToken for RSR
+        // TradeKind.BATCH_AUCTION = 1
+        await scenario.manageTokenInRSRTrader(rTokenID, 1)
+
+        // Verify trade was created with sell=RToken
+        const tradeAddr = await rsrTrader.trades(rToken.address)
+        expect(tradeAddr).to.not.equal(ethers.constants.AddressZero)
+        const trade = await ConAt('GnosisTradeMock', tradeAddr)
+        expect(await trade.sell()).to.equal(rToken.address)
+
+        // Record balances before settlement
+        const rTokenSupplyBefore = await rToken.totalSupply()
+        const marketMock = await main.marketMock()
+        const marketRTokenBefore = await rToken.balanceOf(marketMock)
+        const rsr = comp.rsr
+        const rsrTraderRSRBefore = await rsr.balanceOf(rsrTrader.address)
+
+        // Settle: allow instant settlement, push seed, settle
+        await trade.allowInstantSettlement()
+        await scenario.pushSeedForTrades(fp('1000000'))
+        await scenario.settleTrades()
+
+        // Trade should be settled (CLOSED = 2)
+        expect(await trade.status()).to.equal(2)
+
+        // RTokens stay at MarketMock (like an external market holder)
+        const marketRTokenAfter = await rToken.balanceOf(marketMock)
+        expect(marketRTokenAfter).to.be.gt(marketRTokenBefore)
+
+        // RToken supply unchanged (no redeem/burn)
+        const rTokenSupplyAfter = await rToken.totalSupply()
+        expect(rTokenSupplyAfter).to.equal(rTokenSupplyBefore)
+
+        // RSR trader should have received RSR (buy token)
+        const rsrTraderRSRAfter = await rsr.balanceOf(rsrTrader.address)
+        expect(rsrTraderRSRAfter).to.be.gt(rsrTraderRSRBefore)
+      })
+
+      it('settles batch trade where buy token is RToken (RToken trader)', async () => {
+        // RToken trader sells collateral to buy RToken
+        // RTokens are pre-procured via prepareRTokenBuy outside globalNonReentrant
+
+        const tradeAmt = fp('100')
+        await warmup()
+
+        // Issue some RTokens first so the system has supply
+        await scenario.connect(alice).issueTo(fp('1000'), 0)
+
+        // Mint collateral tokens to the RToken trader
+        const ca0Addr = await main.someToken(tokenIDs.get(collaterals[0])!)
+        const ca0 = await ConAt('ERC20Mock', ca0Addr)
+        const rTokenTrader = comp.rTokenTrader
+        await ca0.mint(rTokenTrader.address, tradeAmt)
+
+        // Set min trade volumes to 0
+        await scenario.setBackingManagerMinTradeVolume(0)
+        await scenario.setRTokenTraderMinTradeVolume(0)
+
+        // Create a batch trade: RToken trader sells collateral for RToken
+        // TradeKind.BATCH_AUCTION = 1
+        await scenario.manageTokenInRTokenTrader(tokenIDs.get(collaterals[0])!, 1)
+
+        // Verify trade was created with buy=RToken
+        const tradeAddr = await rTokenTrader.trades(ca0Addr)
+        expect(tradeAddr).to.not.equal(ethers.constants.AddressZero)
+        const trade = await ConAt('GnosisTradeMock', tradeAddr)
+        expect(await trade.buy()).to.equal(comp.rToken.address)
+
+        // Record balances before settlement
+        const rToken = comp.rToken
+        const rTokenSupplyBefore = await rToken.totalSupply()
+        const rTokenTraderRTokenBefore = await rToken.balanceOf(rTokenTrader.address)
+
+        // CA0 should be in the trade contract now
+        const sellAmt = await trade.requestedSellAmt()
+        expect(sellAmt).to.be.gt(0)
+
+        // Settle: allow instant settlement, push seed, settle
+        // Advance time to recharge issuance throttle (needed for prepareRTokenBuy)
+        await trade.allowInstantSettlement()
+        await advanceTime(3600)
+        await scenario.pushSeedForTrades(fp('101'))
+        await scenario.settleTrades()
+
+        // Trade should be settled (CLOSED = 2)
+        expect(await trade.status()).to.equal(2)
+
+        // RTokens should have been issued (procured) via prepareRTokenBuy
+        // Supply increases because MarketMock minted backing + issued RTokens
+        const rTokenSupplyAfter = await rToken.totalSupply()
+        expect(rTokenSupplyAfter).to.be.gt(rTokenSupplyBefore)
+
+        // RToken trader received RTokens and may have already distributed them
+        // (RevenueTrader.settleTrade calls distributeTokenToBuy internally)
+        // Check that furnace or stRSR received the distributed RTokens
+        const furnaceRTokenAfter = await rToken.balanceOf(comp.furnace.address)
+        const rTokenTraderRTokenAfter = await rToken.balanceOf(rTokenTrader.address)
+        expect(furnaceRTokenAfter.add(rTokenTraderRTokenAfter)).to.be.gt(rTokenTraderRTokenBefore)
+      })
     })
 
     it('guarantees that someTokens = tokens and someAddr = users on their shared range', async () => {

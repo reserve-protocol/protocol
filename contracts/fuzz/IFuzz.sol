@@ -31,6 +31,10 @@ interface IMarketMock {
         uint256 buyAmt
     ) external returns (uint256);
 
+    // Pre-procure RTokens for a trade whose buy token is RToken.
+    // Must be called BEFORE settleTrade() to avoid reentrancy with globalNonReentrant.
+    function prepareRTokenBuy(ITrade trade) external;
+
     // Add/Remove seeds to be used for calculating buy amounts in trade settling
     function pushSeed(uint256 seed) external;
 

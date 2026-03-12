@@ -1772,6 +1772,91 @@ const scenarioSpecificTests = () => {
     // Property handles the revert gracefully via try/catch and returns true
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
+
+  it('batchRebalancingProperties works after manageTokenInRSRTrader and enableBatchTrade', async () => {
+    // Echidna sequence: property reverted with ErrorRevert
+    //
+    // 1. issueTo(60, 9)
+    // 2. setBackingManagerMinTradeVolume(0)
+    // 3. unregisterAsset(0)
+    // 4. refreshBasket()
+    // 5. manageTokenInRSRTrader(25, 22442672667746284687)
+    // 6. enableBatchTrade()
+
+    await advanceTime(261780)
+    await advanceBlocks(1)
+
+    await scenario.connect(alice).issueTo(60, 9)
+    await scenario.setBackingManagerMinTradeVolume(0)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.refreshBasket()
+
+    try {
+      await scenario.connect(alice).manageTokenInRSRTrader(
+        25,
+        22442672667746284687n
+      )
+    } catch (e) {}
+
+    await advanceTime(264184)
+    await advanceBlocks(1)
+
+    try {
+      await scenario.enableBatchTrade()
+    } catch (e) {}
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
+  it('settles Dutch trade where buy token is RToken (RToken trader revenue auction)', async () => {
+    await warmup()
+
+    // Issue RTokens so the system has supply
+    await scenario.connect(alice).issueTo(fp('1000'), 0)
+
+    // Mint collateral tokens to the RToken trader to create a revenue auction
+    const ca0Addr = await main.someToken(tokenIDs.get('CA0')!)
+    const ca0 = await ConAt('ERC20Fuzz', ca0Addr)
+    const rTokenTrader = comp.rTokenTrader
+    await ca0.mint(rTokenTrader.address, fp('100'))
+
+    // Set min trade volumes to 0 and a reasonable dutch auction length
+    await scenario.setBackingManagerMinTradeVolume(0)
+    await scenario.setRTokenTraderMinTradeVolume(0)
+    await scenario.setDutchAuctionLength(1800) // 30 min
+
+    // Create a Dutch trade: RToken trader sells collateral for RToken
+    // TradeKind.DUTCH_AUCTION = 0
+    await scenario.manageTokenInRTokenTrader(tokenIDs.get('CA0')!, 0)
+
+    // Get the Dutch trade
+    const tradeAddr = await comp.broker.lastOpenedTrade()
+    const trade = await ConAt('DutchTrade', tradeAddr)
+    expect(await trade.buy()).to.equal(comp.rToken.address)
+    expect(await trade.status()).to.equal(TradeStatus.OPEN)
+
+    // Record balances before bidding
+    const rToken = comp.rToken
+    const rTokenSupplyBefore = await rToken.totalSupply()
+
+    // Advance time near end of auction (same pattern as existing Dutch tests)
+    await setNextBlockTimestamp((await trade.endTime()) - 2)
+
+    // Bid on the Dutch auction — this calls _bidDutchAuction → _procureRTokens
+    await scenario.bidOpenDutchAuction(0) // TRANSFER bid type
+
+    // Trade should be closed
+    expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+
+    // RToken supply increased (procured via issuance for the bid)
+    const rTokenSupplyAfter = await rToken.totalSupply()
+    expect(rTokenSupplyAfter).to.be.gt(rTokenSupplyBefore)
+
+    // RTokens distributed to furnace after settlement
+    const furnaceRToken = await rToken.balanceOf(comp.furnace.address)
+    const traderRToken = await rToken.balanceOf(rTokenTrader.address)
+    expect(furnaceRToken.add(traderRToken)).to.be.gt(0)
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {

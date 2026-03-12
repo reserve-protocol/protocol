@@ -360,11 +360,21 @@ contract BrokerP1Fuzz is BrokerP1 {
     }
 
     function settleTrades() public {
+        IMarketMock marketMock = IMainFuzz(address(main)).marketMock();
+        address rToken = address(IMainFuzz(address(main)).rToken());
         uint256 length = tradesLength();
         for (uint256 i = 0; i < length; i++) {
             GnosisTradeMock trade = GnosisTradeMock(tradeSet.at(i));
             if (trade.canSettle()) {
+                // Pre-procure RTokens outside globalNonReentrant context
+                if (address(trade.buy()) == rToken) {
+                    marketMock.prepareRTokenBuy(trade);
+                }
+
                 ITrading(trade.origin()).settleTrade(IERC20(address(trade.sell())));
+
+                // When sell is RToken, the tokens stay at MarketMock (like an external holder).
+                // No redeem needed — in reality the buyer just holds the RTokens.
             }
         }
     }

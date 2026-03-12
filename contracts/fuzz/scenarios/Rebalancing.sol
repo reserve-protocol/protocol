@@ -1317,8 +1317,15 @@ contract RebalancingScenario {
 
     function _bidDutchAuction(DutchTrade trade, uint256 bidTypeSeed) internal {
         uint256 bidAmount = trade.bidAmount(uint48(block.timestamp));
-        ERC20Fuzz buy = ERC20Fuzz(address(trade.buy()));
-        buy.mint(address(this), bidAmount);
+        IERC20 buy = trade.buy();
+
+        if (address(buy) == address(main.rToken())) {
+            // RToken doesn't have public mint; procure via issuance
+            // Safe here: Dutch bids happen outside globalNonReentrant
+            _procureRTokens(bidAmount);
+        } else {
+            ERC20Fuzz(address(buy)).mint(address(this), bidAmount);
+        }
 
         bidTypeSeed %= 2;
         if (bidTypeSeed == 0) {
@@ -1389,6 +1396,17 @@ contract RebalancingScenario {
             }
         }
         return true;
+    }
+
+    /// Mint backing tokens, issue RTokens to this contract
+    function _procureRTokens(uint256 rtokenAmt) internal {
+        IRTokenFuzz rtoken = IRTokenFuzz(address(main.rToken()));
+        (address[] memory tokens, uint256[] memory amts) = rtoken.quote(rtokenAmt, CEIL);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            ERC20Fuzz(tokens[i]).mint(address(this), amts[i]);
+            ERC20Fuzz(tokens[i]).approve(address(rtoken), amts[i]);
+        }
+        rtoken.issue(rtokenAmt);
     }
 
     function _isValidError(string memory reason) internal returns (bool) {

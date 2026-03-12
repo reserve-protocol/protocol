@@ -1,4 +1,4 @@
-How to fuzz with echidna-parade on a Google Cloud VM instance.
+How to fuzz with echidna on a Google Cloud VM instance.
 
 # 1) Get a VM instance
 
@@ -74,8 +74,8 @@ echo 'export PATH="$PATH:$HOME/.local/bin"' >> .bashrc
 
 # install python packages
 pip3 install solc-select
-pip3 install slither_analyzer==0.9.3
-pip3 install echidna_parade
+pip3 install slither_analyzer
+
 # Maybe overkill, but it won't take too long
 solc-select install all
 
@@ -83,15 +83,11 @@ solc-select install all
 # _way too much_ other junk
 sudo snap install node --classic --channel=16
 
-# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.4; see https://github.com/crytic/echidna/releases/latest
-wget "https://github.com/crytic/echidna/releases/download/v2.0.4/echidna-test-2.0.4-Ubuntu-18.04.tar.gz"
-tar -xf echidna-test-2.0.4-Ubuntu-18.04.tar.gz
-mv echidna-test ~/.local/bin
-rm echidna-test-2.0.4-Ubuntu-18.04.tar.gz
-
-# Install echidna parade (from source, with live files)
-git clone https://github.com/crytic/echidna-parade.git
-pip install -e echidna-parade/
+# Fetch and install echidna. The URL and filename given here assume most recent release is v2.3.1; see https://github.com/crytic/echidna/releases/latest
+wget "https://github.com/crytic/echidna/releases/download/v2.3.1/echidna-2.3.1-x86_64-Linux.tar.gz"
+tar -xf echidna-2.3.1-x86_64-Linux.tar.gz
+mv echidna ~/.local/bin
+rm echidna-2.3.1-x86_64-Linux.tar.gz
 
 # Install google cloud ops agent, for memory utilization plots
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
@@ -114,7 +110,7 @@ TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
 
 # Test run echidna briefly, see that it actually works
 # you have to change "YourScenario" to the right thing yourself
-echidna-test . --config tools/echidna.config.yml \
+echidna . --config tools/echidna.config.yml \
   --contract ${SCENARIO} --test-limit 3
 ```
 
@@ -129,27 +125,6 @@ git checkout fuzz
 git pull
 ```
 
-echidna-parade follows an initial run of echidna with lots and lots of further echidna generations. Each of those generations has further randomized launch parameters, so that the overall test can explore more deeply. Each generation inherits the corpus improvements from previous generations, so they can all run increasingly detailed tests.
-
-Write `launch-parade.sh` (should already exist if using the `fuzzbox` gcp machine image):
-
-```bash
-nice echidna-parade protocol --name parade \
-    --contract $1 \
-    --config protocol/tools/echidna.config.yml \
-    --ncores 4 \
-    --timeout -1 \
-    --gen_time 3600 --initial_time 7200 \
-    --minseqLen 10 --maxseqLen 100 \
-    --clean-results
-```
-
-Back in the shell, run parade for a scenario:
-
-```bash
-tmux  # Easy way to ensure you're in a detachable session.
-bash launch-parade.sh NormalOpsScenario
-```
 The possible scenarios are:
 - NormalOpsScenario
 - ChaosOpsScenario

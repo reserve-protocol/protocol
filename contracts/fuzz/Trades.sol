@@ -116,9 +116,23 @@ contract MarketMock is IMarketMock {
     uint256[] public seeds;
     uint256 private index;
 
+    // Pre-calculated buy amounts for RToken trades, to avoid issuing inside globalNonReentrant
+    mapping(address => uint256) public preparedBuyAmt; // trade address => amount
+
     constructor(IMainFuzz main_, SettlingMode mode_) {
         main = main_;
         mode = mode_;
+    }
+
+    /// @notice Pre-procure RTokens for a trade whose buy token is RToken.
+    /// Must be called BEFORE settleTrade() to avoid reentrancy with globalNonReentrant.
+    function prepareRTokenBuy(ITrade trade) external {
+        require(address(trade.buy()) == address(main.rToken()), "buy not RToken");
+        require(preparedBuyAmt[address(trade)] == 0, "already prepared");
+
+        uint256 actualBuyAmt = calculateActualBuyAmt(trade.buy(), GnosisTradeMock(address(trade)).requestedBuyAmt());
+        procureRTokens(actualBuyAmt);
+        preparedBuyAmt[address(trade)] = actualBuyAmt;
     }
 
     // execute expects the sell tokens to be already at MarketMock.
@@ -137,17 +151,22 @@ contract MarketMock is IMarketMock {
         address trader = _msgSender();
 
         if (address(sell) == address(main.rToken())) {
-            vanishRTokens(sellAmt);
+            // RTokens stay at MarketMock (like an external market holder).
+            // No redeem — in reality the buyer just holds the RTokens.
         } else {
             ERC20Mock(address(sell)).burn(address(this), sellAmt);
         }
 
         // Calculate buy amount
-        uint256 actualBuyAmt = calculateActualBuyAmt(buy, buyAmt);
-
+        uint256 actualBuyAmt;
         if (address(buy) == address(main.rToken())) {
-            procureRTokens(actualBuyAmt);
+            // RToken was pre-procured via prepareRTokenBuy() to avoid
+            // reentrancy with globalNonReentrant in settleTrade()
+            actualBuyAmt = preparedBuyAmt[msg.sender];
+            require(actualBuyAmt > 0, "RToken buy not prepared");
+            delete preparedBuyAmt[msg.sender];
         } else {
+            actualBuyAmt = calculateActualBuyAmt(buy, buyAmt);
             ERC20Mock(address(buy)).mint(address(this), actualBuyAmt);
         }
 
@@ -190,8 +209,18 @@ contract MarketMock is IMarketMock {
     function vanishRTokens(uint256 rtokenAmt) internal {
         IRTokenFuzz rtoken = IRTokenFuzz(address(main.rToken()));
 
-        // Redeem these tokens
-        rtoken.redeem(rtokenAmt);
+        // Try normal redeem first; falls back to redeemCustom if basket changed
+        try rtoken.redeem(rtokenAmt) {} catch {
+            // Partial redemption: use redeemCustom with current nonce
+            uint48 currentNonce = main.basketHandler().nonce();
+            uint48[] memory nonces = new uint48[](1);
+            nonces[0] = currentNonce;
+            uint192[] memory portions = new uint192[](1);
+            portions[0] = FIX_ONE;
+            address[] memory empty = new address[](0);
+            uint256[] memory emptyAmts = new uint256[](0);
+            rtoken.redeemCustom(address(this), rtokenAmt, nonces, portions, empty, emptyAmts);
+        }
 
         // Burn the backing tokens we received
         (address[] memory tokens, ) = rtoken.quote(rtokenAmt, FLOOR);
