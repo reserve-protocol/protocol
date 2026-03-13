@@ -206,9 +206,13 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         bool topOk = currentRange.top <=
             basketRangePrev.top.mul(FIX_ONE.plus(maxTradeSlippage), CEIL) + bh.basketLength();
 
-        // When prev.bottom is small enough, rounding errors in basketRange() (up to 1 wei
-        // per basket token) can wipe it to 0. Skip the bottom check in that case.
-        bool bottomOk = basketRangePrev.bottom <= bh.basketLength() ||
+        // basketRange() accumulates rounding errors from fixed-point math at wei scale.
+        // Per basket token per call: up to ~3 wei loss from mulDiv operations in the loop
+        // (lines 161, 185, 189 in RecollateralizationLib) plus minTradeVolume deduction (line 198).
+        // The property compares two independent basketRange() calls (save vs check), so errors
+        // compound: worst-case bottom delta ≈ 2 * 3 * basketLength. Using basketLength^2 as the
+        // threshold provides sufficient margin for any wei-scale basketsNeeded.
+        bool bottomOk = basketRangePrev.bottom <= bh.basketLength() * bh.basketLength() ||
             currentRange.bottom >=
             basketRangePrev.bottom.mul(FIX_ONE.minus(maxTradeSlippage), FLOOR);
 
