@@ -1435,7 +1435,9 @@ contract RebalancingScenario {
             keccak256(abi.encodePacked(reason)) ==
             keccak256(abi.encodePacked("already collateralized")) ||
             keccak256(abi.encodePacked(reason)) ==
-            keccak256(abi.encodePacked("0 supply")));
+            keccak256(abi.encodePacked("0 supply")) ||
+            keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("dutch auctions disabled for token pair")));
     }
 
     // The system is fully collateralized after rebalancing

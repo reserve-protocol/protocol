@@ -1885,6 +1885,43 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
 
+  it('dutchRebalancingProperties does not revert after bidOpenDutchAuction and setBatchAuctionLength', async () => {
+    // Echidna sequence (rebalancing9): createToken → issue(10) → createToken → updatePrice →
+    // setBackingManagerMinTradeVolume(0) → refreshBasket → rebalance → bidOpenDutchAuction → setBatchAuctionLength
+    await scenario.connect(alice).createToken(0, '', '')
+    await advanceTime(264035)
+    await advanceBlocks(3)
+    await scenario.connect(alice).issue(10)
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).updatePrice(
+      bn('2816504923643277'),
+      bn('17173400253534986402463500667755523917148025680049119583'),
+      0,
+      bn('32877698290903017171729643570626944387415019723434247113'),
+      bn('81975097262544943188563')
+    )
+    await scenario.connect(alice).setBackingManagerMinTradeVolume(0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(373081)
+    await advanceBlocks(16)
+    await scenario.connect(alice).rebalance(
+      bn('43748227010114355314355753005161948743651426864581908393098700520215564')
+    )
+    await advanceTime(1)
+    await advanceBlocks(8)
+    await scenario.connect(alice).bidOpenDutchAuction(
+      bn('28278441634591911939156577935742330805310486728625839020521')
+    )
+    await advanceTime(8030)
+    await advanceBlocks(290)
+    await scenario.connect(alice).setBatchAuctionLength(
+      bn('34599280484936969153302353165385333466608564683164179775319')
+    )
+
+    // Property should not revert (ErrorRevert)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
+  })
+
   it('batchRebalancingProperties does not revert after payRTokenProfits and refreshBasket', async () => {
     // Echidna sequence: setFurnaceRatio → issueTo(1,11) → unregisterAsset(0) →
     // payRTokenProfits → refreshBasket → popBackingToManage
