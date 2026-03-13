@@ -645,8 +645,13 @@ contract RebalancingScenario {
     }
 
     // settleTrades: May end the Rebalancing Process
+    // During rebalancing, only settle backing manager trades (skip revenue trader trades)
     function settleTrades() public mayEndRebalancing {
-        BrokerP1Fuzz(address(main.broker())).settleTrades();
+        if (status == ScenarioStatus.REBALANCING_ONGOING) {
+            BrokerP1Fuzz(address(main.broker())).settleTradesBMOnly();
+        } else {
+            BrokerP1Fuzz(address(main.broker())).settleTrades();
+        }
     }
 
     IERC20[] internal backingToManage;
@@ -667,7 +672,10 @@ contract RebalancingScenario {
         main.backingManager().forwardRevenue(backingToManage);
     }
 
-    function manageTokenInRSRTrader(uint256 tokenID, uint256 kindSeed) public {
+    function manageTokenInRSRTrader(uint256 tokenID, uint256 kindSeed)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+    {
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = main.someToken(tokenID);
         TradeKind[] memory tradeKinds = new TradeKind[](1);
@@ -675,7 +683,10 @@ contract RebalancingScenario {
         main.rsrTrader().manageTokens(tokens, tradeKinds);
     }
 
-    function manageTokenInRTokenTrader(uint256 tokenID, uint256 kindSeed) public {
+    function manageTokenInRTokenTrader(uint256 tokenID, uint256 kindSeed)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+    {
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = main.someToken(tokenID);
         TradeKind[] memory tradeKinds = new TradeKind[](1);

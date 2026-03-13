@@ -360,12 +360,24 @@ contract BrokerP1Fuzz is BrokerP1 {
     }
 
     function settleTrades() public {
+        _settleTrades(false);
+    }
+
+    function settleTradesBMOnly() public {
+        _settleTrades(true);
+    }
+
+    function _settleTrades(bool bmOnly) internal {
         IMarketMock marketMock = IMainFuzz(address(main)).marketMock();
         address rToken = address(IMainFuzz(address(main)).rToken());
+        address backingManager = address(IMainFuzz(address(main)).backingManager());
         uint256 length = tradesLength();
         for (uint256 i = 0; i < length; i++) {
             GnosisTradeMock trade = GnosisTradeMock(tradeSet.at(i));
             if (trade.canSettle()) {
+                // Skip revenue trader trades if bmOnly
+                if (bmOnly && trade.origin() != backingManager) continue;
+
                 // Pre-procure RTokens outside globalNonReentrant context
                 if (address(trade.buy()) == rToken) {
                     marketMock.prepareRTokenBuy(trade);

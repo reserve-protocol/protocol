@@ -1845,6 +1845,46 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
   })
 
+  it('basketRangeSmallerWhenRebalancing holds after settleTrades with RToken buy trade', async () => {
+    // Echidna sequence (rebalancing8): createToken → transfer → manageTokenInRTokenTrader → issue(1) →
+    // swapRegisteredAsset → refreshBasket → settleTrades
+    // transfer(10,176,...) sends to someAddr(10)=rTokenTrader, someToken(176)
+    // manageTokenInRTokenTrader creates a batch trade (buy=RToken)
+    await advanceTime(97098)
+    await advanceBlocks(1)
+    await scenario.connect(alice).createToken(0, '', '')
+
+    // Mint tokens so transfer and manageTokenInRTokenTrader succeed
+    // someToken(176) = token 8 (transfer target), someToken(big seed) = token 20 (manage target)
+    const transferTokenAddr = await main.someToken(176)
+    const transferToken = await ConAt('ERC20Mock', transferTokenAddr)
+    await transferToken.mint(await alice.getAddress(), bn('22064537844'))
+
+    const manageTokenAddr = await main.someToken(bn('37317961264830191348888287321882636230801995920809706636059317090971167833556'))
+    const manageToken = await ConAt('ERC20Mock', manageTokenAddr)
+    await manageToken.mint(comp.rTokenTrader.address, bn('22064537844'))
+
+    await advanceTime(67075)
+    await advanceBlocks(1)
+    await scenario.connect(alice).transfer(10, 176, bn('22064537844'))
+    await scenario
+      .connect(alice)
+      .manageTokenInRTokenTrader(
+        bn('37317961264830191348888287321882636230801995920809706636059317090971167833556'),
+        bn('32481491009345185194612095902876578322429773344333065849961466758428097073')
+      )
+    await advanceTime(95141)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issue(1)
+    await scenario.connect(alice).swapRegisteredAsset(0, 0, 0, 0, false, false, 0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(265369)
+    await advanceBlocks(1)
+    await scenario.connect(alice).settleTrades()
+
+    expect(await scenario.callStatic.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+  })
+
   it('batchRebalancingProperties does not revert after payRTokenProfits and refreshBasket', async () => {
     // Echidna sequence: setFurnaceRatio → issueTo(1,11) → unregisterAsset(0) →
     // payRTokenProfits → refreshBasket → popBackingToManage
