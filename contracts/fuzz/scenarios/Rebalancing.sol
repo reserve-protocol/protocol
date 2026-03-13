@@ -1419,7 +1419,9 @@ contract RebalancingScenario {
             keccak256(abi.encodePacked("basket not ready")) ||
             keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked("trading delayed")) ||
             keccak256(abi.encodePacked(reason)) ==
-            keccak256(abi.encodePacked("already collateralized")));
+            keccak256(abi.encodePacked("already collateralized")) ||
+            keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("0 supply")));
     }
 
     // The system is fully collateralized after rebalancing

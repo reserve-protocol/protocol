@@ -1808,6 +1808,32 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
 
+  it('batchRebalancingProperties does not revert after payRTokenProfits and refreshBasket', async () => {
+    // Echidna sequence: setFurnaceRatio → issueTo(1,11) → unregisterAsset(0) →
+    // payRTokenProfits → refreshBasket → popBackingToManage
+    await scenario
+      .connect(alice)
+      .setFurnaceRatio(
+        bn('33880357801394138381884461365731586340175156308467648455669203459510888472')
+      )
+    await advanceTime(261085)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(1, 11)
+    await advanceTime(1)
+    await advanceBlocks(1)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).payRTokenProfits()
+    await advanceTime(420343)
+    await advanceBlocks(1)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(259682)
+    await advanceBlocks(1)
+    await scenario.connect(alice).popBackingToManage()
+
+    // Property should not revert (ErrorRevert)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
   it('settles Dutch trade where buy token is RToken (RToken trader revenue auction)', async () => {
     await warmup()
 
