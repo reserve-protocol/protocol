@@ -1116,6 +1116,7 @@ contract ChaosOpsScenario is IReentrantScenario {
 
     // pseudo-mutator for saving old rates...
     function saveRates() public {
+        try main.furnace().melt() {} catch {}
         prevRSRRate = main.stRSR().exchangeRate();
         _saveRTokenRate();
     }

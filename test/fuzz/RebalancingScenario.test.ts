@@ -1808,6 +1808,43 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
 
+  it('RTokenRateNeverFallInNormalOps holds after settleTrades with RToken buy trade', async () => {
+    // Echidna sequence: createToken → transfer → manageTokenInRTokenTrader → issueTo →
+    // poke → setFurnaceRatio → saveRates → settleTrades
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).transfer(10, 176, bn('21525301164903'))
+    try {
+      await scenario
+        .connect(alice)
+        .manageTokenInRTokenTrader(
+          bn('62487632685312083538399496010433434342117689137295908062607763875669604303356'),
+          bn('19426681057013454190153429324628983888041366280976153840609046228931934117')
+        )
+    } catch (e) {}
+    await warmup()
+    await advanceTime(29202)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(158706, 11)
+    await advanceTime(230449)
+    await advanceBlocks(1)
+    await scenario.connect(alice).poke()
+    await advanceTime(1)
+    await advanceBlocks(1)
+    await advanceTime(3)
+    await advanceBlocks(1)
+    await scenario
+      .connect(alice)
+      .setFurnaceRatio(
+        bn('22212134570404021319703060526664840774311808194387099566553056145265615342')
+      )
+    await advanceTime(427199)
+    await advanceBlocks(20)
+    await scenario.connect(alice).saveRates()
+    await scenario.connect(alice).settleTrades()
+
+    expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
+  })
+
   it('batchRebalancingProperties does not revert after payRTokenProfits and refreshBasket', async () => {
     // Echidna sequence: setFurnaceRatio → issueTo(1,11) → unregisterAsset(0) →
     // payRTokenProfits → refreshBasket → popBackingToManage

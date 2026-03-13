@@ -1154,7 +1154,10 @@ contract RebalancingScenario {
     }
 
     // pseudo-mutator for saving old rates...
+    // Melt first to account for any pending furnace payouts,
+    // since issue()/refresh() triggers melt() internally
     function saveRates() public {
+        try main.furnace().melt() {} catch {}
         prevRSRRate = main.stRSR().exchangeRate();
         _saveRTokenRate();
     }

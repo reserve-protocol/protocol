@@ -400,6 +400,56 @@ const scenarioSpecificTests = () => {
 
     expect(await scenario.echidna_ratesNeverFall()).to.be.true
   })
+  it('RToken rate does not fall after settleTrades with RToken buy trade (melt drains supply)', async () => {
+    // Adapted from Rebalancing Echidna sequence for NormalOps
+    // Core: mint collateral to rTokenTrader → manageTokenInRTokenTrader → issueTo →
+    //   payRTokenProfits → setFurnaceRatio → wait → saveRates → settleTrades
+    await warmup()
+
+    // Issue first so there's RToken supply
+    await scenario.connect(alice).issueTo(158706, 11)
+
+    // Mint collateral to the RToken trader and create a batch trade (buy=RToken)
+    const c0Addr = await main.someToken(tokenIDs.get('C0')!)
+    const c0 = await ConAt('ERC20Mock', c0Addr)
+    await c0.mint(comp.rTokenTrader.address, fp('100'))
+    await scenario.connect(alice).setRTokenTraderMinTradeVolume(0)
+    await scenario.connect(alice).manageTokenInRTokenTrader(tokenIDs.get('C0')!, 1)
+
+    // Verify trade was created with buy=RToken
+    const tradeAddr = await comp.rTokenTrader.trades(c0Addr)
+    expect(tradeAddr).to.not.equal(ethers.constants.AddressZero)
+    const trade = await ConAt('GnosisTradeMock', tradeAddr)
+    expect(await trade.buy()).to.equal(comp.rToken.address)
+
+    // Transfer RTokens to the Furnace so melt has something to burn
+    const rToken = comp.rToken
+    const aliceAddr = await alice.getAddress()
+    await rToken.connect(alice).transfer(comp.furnace.address, await rToken.balanceOf(aliceAddr))
+
+    // Step 1: Set ratio to 1e14 (max in NormalOps), wait one period, trigger partial melt → rate > 1.0
+    // seed = 1e14 → between(0, 1e14, 1e14) = 1e14 % (1e14+1) = 1e14 (max ratio)
+    await scenario.connect(alice).setFurnaceRatio(bn('100000000000000'))
+    await advanceTime(12) // one period
+    await advanceBlocks(1)
+    await scenario.connect(alice).payRTokenProfits() // melts supply * 1e14 / 1e18 ≈ 15 tokens
+
+    // Step 2: Keep ratio at max (1e14) + long wait (pending melt builds up)
+    // Ratio is already at 1e14 from step 1, just advance time
+    await advanceTime(427199)
+    await advanceBlocks(20)
+
+    // saveRates captures rate with melt applied (fix: melt() called inside saveRates)
+    await scenario.connect(alice).saveRates()
+
+    // Settle — issue() inside prepareRTokenBuy triggers melt, draining supply to 0
+    await trade.allowInstantSettlement()
+    await advanceTime(3600)
+    await scenario.connect(alice).pushSeedForTrades(fp('101'))
+    await scenario.connect(alice).settleTrades()
+
+    expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
