@@ -2045,6 +2045,34 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
   })
 
+  it('refreshBasketIsNoopDuringAfterRebalancing holds after updatePrice with Band models', async () => {
+    // Echidna sequence (rebalancing20): same pattern as rebalancing17 but with Band model (kind=2)
+    await warmup()
+    await advanceTime(260495)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(1, 0)
+    await scenario.connect(alice).pushPriceModel(
+      2,
+      bn('37021757033436'),
+      bn('1723773398640633167796142663202276843823479415822'),
+      bn('1224822245498277817896888905617068724665399053124515864902')
+    )
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).swapRegisteredAsset(0, 0, 0, 0, false, false, 0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(1)
+    await advanceBlocks(1)
+    await scenario.connect(alice).updatePrice(
+      bn('10566640798385763995565873187037896389585120169337201572963'),
+      0, 0, 0, 0
+    )
+
+    expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
+  })
+
   it('dutchRebalancingProperties does not revert after bidOpenDutchAuction and setBatchAuctionLength', async () => {
     // Echidna sequence (rebalancing9): createToken → issue(10) → createToken → updatePrice →
     // setBackingManagerMinTradeVolume(0) → refreshBasket → rebalance → bidOpenDutchAuction → setBatchAuctionLength

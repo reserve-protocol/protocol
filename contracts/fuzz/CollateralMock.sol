@@ -113,6 +113,12 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
         deviationModel.update(b);
     }
 
+    /// Directly restore curr values for uoaPerTarget and deviation models
+    function restorePartialUpdate(uint192 uoaCurr, uint192 devCurr) public {
+        uoaPerTargetModel.setCurr(uoaCurr);
+        deviationModel.setCurr(devCurr);
+    }
+
     // expects delegatecall; claimer and rewardee is `this`
     function claimRewards() public override(Asset, IRewardable) {
         ERC20Fuzz(address(erc20)).payRewards(address(this));

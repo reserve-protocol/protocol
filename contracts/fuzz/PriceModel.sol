@@ -44,4 +44,8 @@ library PriceModelLib {
             model.curr = model.curr.mul(mult);
         }
     }
+
+    function setCurr(PriceModel storage model, uint192 value) internal {
+        model.curr = value;
+    }
 }
