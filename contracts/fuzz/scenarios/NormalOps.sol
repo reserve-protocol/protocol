@@ -415,6 +415,7 @@ contract NormalOpsScenario {
 
     function settleTrades() public {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
+        _saveRTokenRate();
     }
 
     IERC20[] internal backingToManage;

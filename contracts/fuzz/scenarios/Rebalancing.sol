@@ -611,8 +611,18 @@ contract RebalancingScenario {
                 // May trigger default if Rebalancing has not occurred
                 CollateralMock(address(asset)).update(a, b, c, d);
             } else {
-                // Avoid changes that may cause a new default
-                CollateralMock(address(asset)).partialUpdate(a, b);
+                // Avoid changes that may cause a new default:
+                // save current model state, apply update, refresh, and revert if no longer SOUND
+                CollateralMock coll = CollateralMock(address(asset));
+                (, uint192 prevUoa, , ) = coll.uoaPerTargetModel();
+                (, uint192 prevDev, , ) = coll.deviationModel();
+                coll.partialUpdate(a, b);
+                coll.refresh();
+                if (coll.status() != CollateralStatus.SOUND) {
+                    // Revert the update
+                    coll.partialUpdate(prevUoa, prevDev);
+                    coll.refresh();
+                }
             }
         } else {
             AssetMock(address(asset)).update(a);
@@ -653,6 +663,7 @@ contract RebalancingScenario {
         } else {
             BrokerP1Fuzz(address(main.broker())).settleTrades();
         }
+        _saveRTokenRate();
     }
 
     IERC20[] internal backingToManage;

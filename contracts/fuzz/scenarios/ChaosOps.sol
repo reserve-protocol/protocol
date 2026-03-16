@@ -606,6 +606,7 @@ contract ChaosOpsScenario is IReentrantScenario {
 
     function settleTrades() public {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
+        _saveRTokenRate();
     }
 
     function forceSettleTrade(uint256 tokenID) public {

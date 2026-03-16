@@ -1986,6 +1986,35 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
 
+  it('refreshBasketIsNoopDuringAfterRebalancing holds after createToken, swapRegisteredAsset and updatePrice', async () => {
+    // Echidna sequence (rebalancing15): issueTo(1,0) → pushPriceModel → 4x createToken →
+    // swapRegisteredAsset(0,0,0,0,true,false,0) → refreshBasket → updatePrice(all zeros)
+    await warmup()
+    await advanceTime(260495)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(1, 0)
+    await scenario.connect(alice).pushPriceModel(
+      1,
+      bn('37768139863654'),
+      bn('88256595424329846958805168890177467955250494928'),
+      bn('351140761532836484806927192632302953322420880042615035')
+    )
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).swapRegisteredAsset(0, 0, 0, 0, true, false, 0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(260031)
+    await advanceBlocks(1)
+    await scenario.connect(alice).updatePrice(
+      bn('520242693583116060694226140827109216614861643064883109296225'),
+      0, 0, 0, 0
+    )
+
+    expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
+  })
+
   it('dutchRebalancingProperties does not revert after bidOpenDutchAuction and setBatchAuctionLength', async () => {
     // Echidna sequence (rebalancing9): createToken → issue(10) → createToken → updatePrice →
     // setBackingManagerMinTradeVolume(0) → refreshBasket → rebalance → bidOpenDutchAuction → setBatchAuctionLength
@@ -2047,6 +2076,51 @@ const scenarioSpecificTests = () => {
 
     // Property should not revert (ErrorRevert)
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
+  it('RTokenRateNeverFallInNormalOps holds after setFurnaceRatio and settleTrades', async () => {
+    // Echidna sequence (rebalancing16): createToken → transfer → setWarmupPeriod(0) →
+    // issueTo(131,11) → payRTokenProfits → saveRates → setFurnaceRatio(high) → wait →
+    // manageTokenInRTokenTrader → settleTrades
+    // Root cause: saveRates() captures rate with old (low) furnace ratio. Then ratio changes
+    // to high, long wait, settleTrades → prepareRTokenBuy → issue → refresh → melt() burns
+    // most supply with new high ratio. Issuance at near-1:1 rate dilutes saved rate.
+    // Fix: setFurnaceRatio re-saves RToken rate after changing ratio.
+    await scenario.connect(alice).createToken(0, '', '')
+    await advanceTime(60)
+    await advanceBlocks(1)
+    await scenario.connect(alice).setWarmupPeriod(0)
+    await scenario.connect(alice).issueTo(131, 11)
+    await advanceTime(1)
+    await advanceBlocks(1)
+    await scenario.connect(alice).payRTokenProfits()
+    await advanceTime(3366)
+    await advanceBlocks(1)
+    await scenario.connect(alice).saveRates()
+
+    // Change furnace ratio to high AFTER saveRates
+    await scenario.connect(alice).setFurnaceRatio(
+      bn('397079341055285447695049485019009470802427371994277448629793311146996615')
+    )
+
+    // Long wait — pending melt accumulates with high ratio
+    await advanceTime(474792)
+    await advanceBlocks(1)
+
+    // Mint token to rTokenTrader and create a buy=RToken trade
+    const newTokenAddr = await main.someToken(28)
+    const newToken = await ConAt('ERC20Fuzz', newTokenAddr)
+    await newToken.mint(comp.rTokenTrader.address, fp('1000'))
+    await scenario.setRTokenTraderMinTradeVolume(0)
+    await scenario.connect(alice).manageTokenInRTokenTrader(28, 1)
+
+    // Settle — prepareRTokenBuy → issue → refresh → melt burns all supply,
+    // then issues at 1:1 rate. settleTrades re-saves RToken rate.
+    await advanceTime(await comp.broker.batchAuctionLength())
+    await advanceBlocks(1)
+    await scenario.connect(alice).settleTrades()
+
+    expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
   })
 
   it('settles Dutch trade where buy token is RToken (RToken trader revenue auction)', async () => {
