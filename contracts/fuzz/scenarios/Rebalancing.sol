@@ -612,16 +612,19 @@ contract RebalancingScenario {
                 CollateralMock(address(asset)).update(a, b, c, d);
             } else {
                 // Avoid changes that may cause a new default:
-                // save current model state, apply update, refresh, and revert if no longer SOUND
+                // save current model state, apply update, check price via view, roll back if unsafe.
+                // NEVER call refresh() here — it can permanently DISABLE a collateral
+                // (alreadyDefaulted() makes refresh() a no-op, preventing recovery).
                 CollateralMock coll = CollateralMock(address(asset));
                 (, uint192 prevUoa, , ) = coll.uoaPerTargetModel();
                 (, uint192 prevDev, , ) = coll.deviationModel();
                 coll.partialUpdate(a, b);
-                coll.refresh();
-                if (coll.status() != CollateralStatus.SOUND) {
-                    // Revert the update
+                try coll.tryPrice() returns (uint192 low, uint192, uint192) {
+                    if (low == 0) {
+                        coll.partialUpdate(prevUoa, prevDev);
+                    }
+                } catch {
                     coll.partialUpdate(prevUoa, prevDev);
-                    coll.refresh();
                 }
             }
         } else {

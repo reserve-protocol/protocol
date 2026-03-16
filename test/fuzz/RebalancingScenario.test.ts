@@ -2015,6 +2015,36 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
   })
 
+  it('refreshBasketIsNoopDuringAfterRebalancing holds after updatePrice with crashing models', async () => {
+    // Echidna sequence (rebalancing17): issueTo(1,0) → pushPriceModel(Walk) → 4x createToken →
+    // swapRegisteredAsset → refreshBasket → updatePrice(huge, 0, 0, 0, 1)
+    // Root cause: updatePrice during rebalancing called coll.refresh() which permanently
+    // DISABLED the collateral (alreadyDefaulted() blocks recovery). Fix: use tryPrice()
+    // (view) instead of refresh() to check safety, never mutate collateral status.
+    await warmup()
+    await advanceTime(260495)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(1, 0)
+    await scenario.connect(alice).pushPriceModel(
+      23,
+      bn('37768139863654'),
+      bn('42594188996155547256292737188476255063412822679374'),
+      bn('33167581111306929695971110833009551294173009561739512762')
+    )
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).createToken(0, '', '')
+    await scenario.connect(alice).swapRegisteredAsset(0, 0, 0, 0, true, false, 0)
+    await scenario.connect(alice).refreshBasket()
+    await scenario.connect(alice).updatePrice(
+      bn('10566640798385763995565873187037896389585120169337201572963'),
+      0, 0, 0, 1
+    )
+
+    expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
+  })
+
   it('dutchRebalancingProperties does not revert after bidOpenDutchAuction and setBatchAuctionLength', async () => {
     // Echidna sequence (rebalancing9): createToken → issue(10) → createToken → updatePrice →
     // setBackingManagerMinTradeVolume(0) → refreshBasket → rebalance → bidOpenDutchAuction → setBatchAuctionLength
