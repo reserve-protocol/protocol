@@ -1959,6 +1959,33 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
 
+  it('batchRebalancingProperties does not revert after issueTo(1) and updatePrice', async () => {
+    // Echidna sequence (rebalancing14): issueTo(1,0) → updatePrice → refreshBasket → updatePrice
+    await warmup()
+    await advanceTime(259903)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(1, 0)
+    await scenario.connect(alice).updatePrice(
+      bn('2069620613063539078623794909072364140908530124402581410068459240149022'),
+      0,
+      608827,
+      bn('42513599708914548050505987463472954998'),
+      bn('248218245977572863551219678602755372476643')
+    )
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(260031)
+    await advanceBlocks(1)
+    await scenario.connect(alice).updatePrice(
+      28335,
+      bn('18261263094308454983698383596386151694651'),
+      0,
+      bn('34685083978808251838494002778604357455449'),
+      bn('15867639247735914061957926659633209131910')
+    )
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
   it('dutchRebalancingProperties does not revert after bidOpenDutchAuction and setBatchAuctionLength', async () => {
     // Echidna sequence (rebalancing9): createToken → issue(10) → createToken → updatePrice →
     // setBackingManagerMinTradeVolume(0) → refreshBasket → rebalance → bidOpenDutchAuction → setBatchAuctionLength

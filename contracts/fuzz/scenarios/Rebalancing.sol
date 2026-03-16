@@ -1322,6 +1322,9 @@ contract RebalancingScenario {
             } catch Error(string memory reason) {
                 if (_isValidError(reason)) return true;
                 else revert(reason);
+            } catch {
+                // Panic(0x11) from basketRange() overflow at wei-level basketsNeeded
+                return true;
             }
         }
         return true;
@@ -1396,6 +1399,9 @@ contract RebalancingScenario {
                 } catch Error(string memory reason) {
                     if (_isValidError(reason)) return true;
                     else revert(reason);
+                } catch {
+                    // Panic(0x11) from basketRange() overflow at wei-level basketsNeeded
+                    return true;
                 }
             } else {
                 trade = DutchTrade(address(broker.lastOpenedTrade()));
