@@ -177,7 +177,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             if (erc20s[i] == components.rsr) continue;
 
             IAsset asset = components.ar.toAsset(erc20s[i]);
-            uint192 bal = asset.bal(address(this)); // {tok}
+            uint192 bal = asset.bal(address(this)) + tokensOut[erc20s[i]]; // {tok}
             uint192 needed = range.top.mul(
                 IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]),
                 CEIL

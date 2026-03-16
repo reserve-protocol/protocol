@@ -1919,6 +1919,28 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
 
+  it('batchRebalancingProperties holds after stake during rebalancing', async () => {
+    // Echidna sequence (rebalancing12): setDistribution → issueTo(4279022358,10) →
+    // setBackingManagerMinTradeVolume(0) → unregisterAsset(0) → refreshBasket →
+    // setDistribution → stake(844823540)
+    await warmup()
+    await scenario.connect(alice).setDistribution(7, 1, 0)
+    await advanceTime(106540)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(4279022358, 10)
+    await scenario.connect(alice).setBackingManagerMinTradeVolume(0)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(45303)
+    await advanceBlocks(13)
+    await scenario.connect(alice).setDistribution(bn('136154714892784049129125691031246942691417158720768856'), 0, 0)
+    await scenario.connect(alice).stake(844823540)
+    await advanceTime(214363)
+    await advanceBlocks(1)
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
   it('dutchRebalancingProperties does not revert after bidOpenDutchAuction and setBatchAuctionLength', async () => {
     // Echidna sequence (rebalancing9): createToken → issue(10) → createToken → updatePrice →
     // setBackingManagerMinTradeVolume(0) → refreshBasket → rebalance → bidOpenDutchAuction → setBatchAuctionLength
