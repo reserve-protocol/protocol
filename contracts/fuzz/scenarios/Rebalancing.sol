@@ -1290,14 +1290,13 @@ contract RebalancingScenario {
             uint256 tradesBMPrev = bm.tradesOpen();
             uint256 tradesBrokerPrev = broker.tradesLength();
 
-            // Save current basket range and surplus/deficit tokens
-            // basketRange() can underflow at wei-level basketsNeeded due to rounding
-            // when abs(deltaTop) > basketsHeld.top; this is expected behavior
-            try bm.saveBasketRange() {} catch { return true; }
+            // Save surplus/deficit tokens BEFORE rebalance (captures pre-trade state)
             try bm.saveSurplusAndDeficitTokens() {} catch { return true; }
 
             IAssetRegistry ar = main.assetRegistry();
             // Create trade, if able and needed
+            // rebalance() may call compromiseBasketsNeeded() which changes basketsNeeded,
+            // so we must save the basket range AFTER rebalance() to use the same baseline
             try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {
                 // Check if new trade was created
                 if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
@@ -1307,6 +1306,12 @@ contract RebalancingScenario {
                         bm.isValidDeficitToken(trade.buy());
                     // Check auctioned tokens
                     if (!valid) return false;
+
+                    // Save basket range AFTER rebalance but BEFORE settling
+                    // rebalance() calls compromiseBasketsNeeded() which changes basketsNeeded;
+                    // saving here ensures save and check use the same basketsNeeded baseline
+                    // basketRange() can underflow at wei-level basketsNeeded due to rounding
+                    try bm.saveBasketRange() {} catch { return true; }
 
                     // Settle trades
                     trade.allowInstantSettlement();
@@ -1362,16 +1367,15 @@ contract RebalancingScenario {
             uint256 tradesBMPrev = bm.tradesOpen();
             uint256 tradesBrokerPrev = broker.tradesLength();
 
-            // Save current basket range and surplus/deficit tokens
-            // basketRange() can underflow at wei-level basketsNeeded due to rounding
-            // when abs(deltaTop) > basketsHeld.top; this is expected behavior
-            try bm.saveBasketRange() {} catch { return true; }
-            try bm.saveSurplusAndDeficitTokens() {} catch { return true; }
-
             IAssetRegistry ar = main.assetRegistry();
+
+            // Save surplus/deficit tokens BEFORE rebalance (captures pre-trade state)
+            try bm.saveSurplusAndDeficitTokens() {} catch { return true; }
 
             DutchTrade trade;
             // Create trade, if able and needed
+            // rebalance() may call compromiseBasketsNeeded() which changes basketsNeeded,
+            // so we must save the basket range AFTER rebalance() to use the same baseline
             if (tradesBMPrev == 0) {
                 try main.backingManager().rebalance(TradeKind.DUTCH_AUCTION) {
                     // Check if new trade was created
@@ -1385,6 +1389,10 @@ contract RebalancingScenario {
 
                         // Check auctioned tokens
                         if (!valid) return false;
+
+                        // Save basket range AFTER rebalance but BEFORE bidding
+                        // basketRange() can underflow at wei-level basketsNeeded due to rounding
+                        try bm.saveBasketRange() {} catch { return true; }
                     }
                 } catch Error(string memory reason) {
                     if (_isValidError(reason)) return true;
@@ -1401,6 +1409,9 @@ contract RebalancingScenario {
                     block.timestamp >= (trade.startTime() + trade.endTime()) / 2 &&
                     block.timestamp <= trade.endTime()
                 ) {
+                    // Save basket range BEFORE bidding (no rebalance here, trade already exists)
+                    try bm.saveBasketRange() {} catch { return true; }
+
                     _bidDutchAuction(trade, 1);
                     require(trade.status() == TradeStatus.CLOSED, "trade not closed");
 
