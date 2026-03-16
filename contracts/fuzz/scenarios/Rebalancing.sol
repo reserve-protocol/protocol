@@ -362,7 +362,8 @@ contract RebalancingScenario {
             ? CollateralMock(address(asset)).targetName()
             : someTargetName(targetNameID);
 
-        if (isColl) {
+        // Preserve type: collateral stays collateral, asset stays asset
+        if (asset.isCollateral()) {
             reg.swapRegistered(
                 createColl(
                     erc20,
