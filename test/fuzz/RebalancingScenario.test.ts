@@ -2208,6 +2208,29 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
   })
 
+  it('RTokenRateNeverFallInNormalOps holds after forwardRevenue with high furnace ratio', async () => {
+    // Echidna sequence (rebalancing24): issueTo(6,155) → setFurnaceRatio(large) →
+    // refreshBasket → settleTrades → forwardRevenue
+    // forwardRevenue triggers refresh() → melt() chain that changes rate
+    await advanceTime(266993)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(6, 155)
+    await advanceTime(1)
+    await advanceBlocks(1)
+    await scenario.connect(alice).setFurnaceRatio(
+      bn('7568748322286815917184775686868546479494289574555338360312905651')
+    )
+    await advanceTime(19554)
+    await advanceBlocks(1)
+    await scenario.connect(alice).refreshBasket()
+    await scenario.connect(alice).settleTrades()
+    await advanceTime(430560)
+    await advanceBlocks(1)
+    await scenario.connect(alice).forwardRevenue()
+
+    expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
+  })
+
   it('basketRangeSmallerWhenRebalancing does not revert after pushPriceModel and swapRegisteredAsset', async () => {
     // Echidna sequence (rebalancing22): issueTo(1,0) → pushPriceModel(0,...) →
     // swapRegisteredAsset(0,0,0,0,false,false,0) → unregisterAsset(2) → refreshBasket

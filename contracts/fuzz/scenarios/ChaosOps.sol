@@ -633,6 +633,7 @@ contract ChaosOpsScenario is IReentrantScenario {
 
     function forwardRevenue() public {
         main.backingManager().forwardRevenue(backingToManage);
+        _saveRTokenRate();
     }
 
     function manageTokenInRSRTrader(uint256 tokenID, uint256 kindSeed) public {
