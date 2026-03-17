@@ -207,12 +207,27 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             basketRangePrev.top.mul(FIX_ONE.plus(maxTradeSlippage), CEIL) + bh.basketLength();
 
         // basketRange() accumulates rounding errors from fixed-point math at wei scale.
-        // Per basket token per call: up to ~3 wei loss from mulDiv operations in the loop
-        // (lines 161, 185, 189 in RecollateralizationLib) plus minTradeVolume deduction (line 198).
-        // The property compares two independent basketRange() calls (save vs check), so errors
-        // compound: worst-case bottom delta ≈ 2 * 3 * basketLength. Using basketLength^2 as the
-        // threshold provides sufficient margin for any wei-scale basketsNeeded.
-        bool bottomOk = basketRangePrev.bottom <= bh.basketLength() * bh.basketLength() ||
+        // Two independent basketRange() calls (save vs check) can differ due to:
+        //
+        // 1. mulDiv rounding (lines 185, 189, 220 in RecollateralizationLib):
+        //    Up to 2 wei per basket token per call (anchor + val), plus 1 for the final
+        //    division. Two calls compound: worst case = 4 * basketLength + 2 BU,
+        //    bounded above by basketLength^2 for basketLength >= 5.
+        //
+        // 2. minTradeVolume dust deduction flips (line 198):
+        //    Between two calls with different balances (pre/post trade), a token's surplus
+        //    val can cross the minTradeVolume threshold — contributing ~minTradeVolume UoA
+        //    per flip. Up to basketLength tokens can flip. Converted from UoA to BU by
+        //    dividing by buPriceHigh: basketLength * minTradeVolume / buPriceHigh.
+        //
+        // Combined noise bound in BU:
+        //   basketLength * (minTradeVolume * FIX_ONE / buPriceHigh + basketLength) + 2
+        uint256 bl = bh.basketLength();
+        (, uint192 buPriceHigh) = bh.price(false);
+        uint256 dustNoiseBU = mulDiv256(uint256(minTradeVolume), FIX_ONE, buPriceHigh, CEIL);
+        uint256 threshold = bl * (dustNoiseBU + bl) + 2;
+
+        bool bottomOk = basketRangePrev.bottom <= threshold ||
             currentRange.bottom >=
             basketRangePrev.bottom.mul(FIX_ONE.minus(maxTradeSlippage), FLOOR);
 

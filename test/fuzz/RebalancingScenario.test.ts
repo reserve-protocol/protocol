@@ -2181,6 +2181,24 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
   })
 
+  it('batchRebalancingProperties holds after issueTo(122), unregisterAsset, minTradeVol and stake', async () => {
+    // Echidna sequence (rebalancing21): issueTo(122,0) → unregisterAsset(0) →
+    // setBackingManagerMinTradeVolume(11) → refreshBasket → stake(137)
+    await advanceTime(268178)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(122, 0)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).setBackingManagerMinTradeVolume(11)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(251219)
+    await advanceBlocks(1)
+    await advanceTime(8074)
+    await advanceBlocks(1)
+    await scenario.connect(alice).stake(137)
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
   it('settles Dutch trade where buy token is RToken (RToken trader revenue auction)', async () => {
     await warmup()
 
