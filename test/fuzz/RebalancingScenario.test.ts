@@ -2181,6 +2181,27 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
   })
 
+  it('basketRangeSmallerWhenRebalancing does not revert after pushPriceModel and swapRegisteredAsset', async () => {
+    // Echidna sequence (rebalancing22): issueTo(1,0) → pushPriceModel(0,...) →
+    // swapRegisteredAsset(0,0,0,0,false,false,0) → unregisterAsset(2) → refreshBasket
+    // Property reverted (ErrorRevert) because getCurrentBasketRange() calls basketRange()
+    // which calls bh.price() that reverts with "BUs unpriced" when collateral has extreme prices.
+    await advanceTime(260251)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issueTo(1, 0)
+    await scenario.connect(alice).pushPriceModel(
+      0,
+      bn('37625550542716'),
+      bn('41610781889985945777'),
+      bn('17161309206111955693985403247888')
+    )
+    await scenario.connect(alice).swapRegisteredAsset(0, 0, 0, 0, false, false, 0)
+    await scenario.connect(alice).unregisterAsset(2)
+    await scenario.connect(alice).refreshBasket()
+
+    expect(await scenario.callStatic.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+  })
+
   it('batchRebalancingProperties holds after issueTo(122), unregisterAsset, minTradeVol and stake', async () => {
     // Echidna sequence (rebalancing21): issueTo(122,0) → unregisterAsset(0) →
     // setBackingManagerMinTradeVolume(11) → refreshBasket → stake(137)

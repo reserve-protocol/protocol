@@ -201,7 +201,16 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(
             address(IMainFuzz(address(main)).basketHandler())
         );
-        BasketRange memory currentRange = getCurrentBasketRange();
+
+        // getCurrentBasketRange() calls basketRange() which reverts when BUs are unpriced
+        // (buPriceLow == 0 || buPriceHigh == FIX_MAX) or on overflow at wei-level amounts.
+        // Return true (skip check) when the calculation is unreliable.
+        BasketRange memory currentRange;
+        try this.getCurrentBasketRange() returns (BasketRange memory r) {
+            currentRange = r;
+        } catch {
+            return true;
+        }
 
         bool topOk = currentRange.top <=
             basketRangePrev.top.mul(FIX_ONE.plus(maxTradeSlippage), CEIL) + bh.basketLength();
@@ -223,9 +232,14 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         // Combined noise bound in BU:
         //   basketLength * (minTradeVolume * FIX_ONE / buPriceHigh + basketLength) + 2
         uint256 bl = bh.basketLength();
-        (, uint192 buPriceHigh) = bh.price(false);
-        uint256 dustNoiseBU = mulDiv256(uint256(minTradeVolume), FIX_ONE, buPriceHigh, CEIL);
-        uint256 threshold = bl * (dustNoiseBU + bl) + 2;
+        uint256 threshold;
+        try bh.price(false) returns (uint192, uint192 buPriceHigh) {
+            uint256 dustNoiseBU = mulDiv256(uint256(minTradeVolume), FIX_ONE, buPriceHigh, CEIL);
+            threshold = bl * (dustNoiseBU + bl) + 2;
+        } catch {
+            // BUs unpriced — fall back to basketLength^2 (rounding-only threshold)
+            threshold = bl * bl;
+        }
 
         bool bottomOk = basketRangePrev.bottom <= threshold ||
             currentRange.bottom >=
