@@ -2181,6 +2181,33 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
   })
 
+  it('batchRebalancingProperties does not revert after pushPriceModel, swapRegisteredAsset and setRTokenTraderMinTradeVolume', async () => {
+    // Echidna sequence (rebalancing23): pushPriceModel → issueTo(1,0) → stake(2) →
+    // swapRegisteredAsset → unregisterAsset(0) → refreshBasket → setRTokenTraderMinTradeVolume(0)
+    // Property reverted (ErrorRevert)
+    await advanceTime(268013)
+    await advanceBlocks(1)
+    await scenario.connect(alice).pushPriceModel(
+      bn('471079695008156119670242042120875470593158810314'),
+      bn('498787645562157077892850782265270768594341'),
+      bn('15470611557325841562442376645331773801072136131679'),
+      0
+    )
+    await scenario.connect(alice).issueTo(1, 0)
+    await scenario.connect(alice).stake(2)
+    await scenario.connect(alice).swapRegisteredAsset(
+      24, 0, 0, 0, false, false,
+      bn('120193965166909332853196204437960265076233684698653227941')
+    )
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(260720)
+    await advanceBlocks(1)
+    await scenario.connect(alice).setRTokenTraderMinTradeVolume(0)
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
   it('basketRangeSmallerWhenRebalancing does not revert after pushPriceModel and swapRegisteredAsset', async () => {
     // Echidna sequence (rebalancing22): issueTo(1,0) → pushPriceModel(0,...) →
     // swapRegisteredAsset(0,0,0,0,false,false,0) → unregisterAsset(2) → refreshBasket
