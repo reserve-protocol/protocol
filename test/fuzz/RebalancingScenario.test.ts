@@ -2231,6 +2231,24 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
   })
 
+  it('batchRebalancingProperties holds with zero maxTradeSlippage', async () => {
+    // Echidna sequence (rebalancing25): setBackingManagerMaxTradeSlippage(0) → issue(161) →
+    // setBackingManagerMinTradeVolume(0) → unregisterAsset(0) → refreshBasket → setWithdrawalLeak(0)
+    // With maxTradeSlippage=0, the bottom check has zero tolerance — any rounding drop fails.
+    await scenario.connect(alice).setBackingManagerMaxTradeSlippage(0)
+    await advanceTime(260081)
+    await advanceBlocks(1)
+    await scenario.connect(alice).issue(161)
+    await scenario.connect(alice).setBackingManagerMinTradeVolume(0)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).refreshBasket()
+    await advanceTime(261479)
+    await advanceBlocks(1)
+    await scenario.connect(alice).setWithdrawalLeak(0)
+
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+  })
+
   it('basketRangeSmallerWhenRebalancing does not revert after pushPriceModel and swapRegisteredAsset', async () => {
     // Echidna sequence (rebalancing22): issueTo(1,0) → pushPriceModel(0,...) →
     // swapRegisteredAsset(0,0,0,0,false,false,0) → unregisterAsset(2) → refreshBasket

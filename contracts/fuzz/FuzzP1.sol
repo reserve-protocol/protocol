@@ -230,18 +230,27 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         //    dividing by buPriceHigh: basketLength * minTradeVolume / buPriceHigh.
         //
         // Combined noise bound in BU:
-        //   basketLength * (minTradeVolume * FIX_ONE / buPriceHigh + basketLength) + 2
+        //   roundingNoise = basketLength * (minTradeVolume * FIX_ONE / buPriceHigh + basketLength) + 2
+        //
+        // Skip check when slippage tolerance < rounding noise. The slippage tolerance is
+        // prevBottom * maxTradeSlippage / FIX_ONE. When maxTradeSlippage = 0, tolerance = 0
+        // and ANY rounding drop fails — so we must skip.
         uint256 bl = bh.basketLength();
-        uint256 threshold;
+        uint256 roundingNoise;
         try bh.price(false) returns (uint192, uint192 buPriceHigh) {
             uint256 dustNoiseBU = mulDiv256(uint256(minTradeVolume), FIX_ONE, buPriceHigh, CEIL);
-            threshold = bl * (dustNoiseBU + bl) + 2;
+            roundingNoise = bl * (dustNoiseBU + bl) + 2;
         } catch {
-            // BUs unpriced — fall back to basketLength^2 (rounding-only threshold)
-            threshold = bl * bl;
+            // BUs unpriced — fall back to basketLength^2 (rounding-only noise)
+            roundingNoise = bl * bl;
         }
 
-        bool bottomOk = basketRangePrev.bottom <= threshold ||
+        // slippageTolerance = prevBottom * maxTradeSlippage / FIX_ONE
+        uint256 slippageTolerance = mulDiv256(
+            basketRangePrev.bottom, maxTradeSlippage, FIX_ONE, FLOOR
+        );
+
+        bool bottomOk = slippageTolerance <= roundingNoise ||
             currentRange.bottom >=
             basketRangePrev.bottom.mul(FIX_ONE.minus(maxTradeSlippage), FLOOR);
 
