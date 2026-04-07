@@ -70,10 +70,8 @@ const RSR_WHALE = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
 // ======================== END CONFIG ========================
 
 const PAUSER_ROLE = '0x5041555345520000000000000000000000000000000000000000000000000000'
-const SHORT_FREEZER_ROLE =
-  '0x53484f52545f465245455a455200000000000000000000000000000000000000'
-const LONG_FREEZER_ROLE =
-  '0x4c4f4e475f465245455a45520000000000000000000000000000000000000000'
+const SHORT_FREEZER_ROLE = '0x53484f52545f465245455a455200000000000000000000000000000000000000'
+const LONG_FREEZER_ROLE = '0x4c4f4e475f465245455a45520000000000000000000000000000000000000000'
 const OWNER_ROLE = '0x4f574e4552000000000000000000000000000000000000000000000000000000'
 
 describe('Deprecation Proposal (from JSON)', () => {
@@ -217,14 +215,8 @@ describe('Deprecation Proposal (from JSON)', () => {
   it('should still allow redemption', async () => {
     const rToken = await ethers.getContractAt('RTokenP1', RTOKEN)
     const main = await ethers.getContractAt('IMain', MAIN)
-    const basketHandler = await ethers.getContractAt(
-      'BasketHandlerP1',
-      await main.basketHandler()
-    )
-    const assetRegistry = await ethers.getContractAt(
-      'AssetRegistryP1',
-      await main.assetRegistry()
-    )
+    const basketHandler = await ethers.getContractAt('BasketHandlerP1', await main.basketHandler())
+    const assetRegistry = await ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
 
     await pushOraclesForward(hre, RTOKEN, [])
     await assetRegistry.refresh()
