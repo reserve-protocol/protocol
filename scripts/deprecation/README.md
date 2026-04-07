@@ -47,6 +47,7 @@ PROTO=p1 FORK=1 FORK_NETWORK=<mainnet|base|arbitrum> FORK_BLOCK=<block> \
 ```
 
 The test validates 7 post-conditions:
+
 - Proposal executes through full governance lifecycle
 - All roles removed (PAUSER, SHORT_FREEZER, LONG_FREEZER, OWNER)
 - Issuance paused
@@ -80,13 +81,14 @@ This verifies the JSON calldata matches the on-chain proposal ID before running 
 
 Different RTokens use different governor implementations. The fork tests must advance time/blocks correctly:
 
-| Governor | Clock Mode | Voting Delay | Voting Period |
-|----------|-----------|--------------|---------------|
-| **Governance** (Reserve) | timestamp | `advanceTime` | `advanceBlocks` |
-| **Governor Anastasius** | timestamp | `advanceTime` + `advanceBlocks(2)` | `advanceTime` + `advanceBlocks(2)` |
-| **Governor Alexios** | block-based | `advanceBlocks` | `advanceBlocks` |
+| Governor                 | Clock Mode  | Voting Delay                       | Voting Period                      |
+| ------------------------ | ----------- | ---------------------------------- | ---------------------------------- |
+| **Governance** (Reserve) | timestamp   | `advanceTime`                      | `advanceBlocks`                    |
+| **Governor Anastasius**  | timestamp   | `advanceTime` + `advanceBlocks(2)` | `advanceTime` + `advanceBlocks(2)` |
+| **Governor Alexios**     | block-based | `advanceBlocks`                    | `advanceBlocks`                    |
 
 To identify the governor type:
+
 ```bash
 cast call <GOVERNOR> "name()(string)" --rpc-url <RPC>
 cast call <GOVERNOR> "CLOCK_MODE()(string)" --rpc-url <RPC>  # reverts for Alexios
@@ -95,9 +97,11 @@ cast call <GOVERNOR> "CLOCK_MODE()(string)" --rpc-url <RPC>  # reverts for Alexi
 ## Voting Power
 
 ### Mainnet
+
 Use the RSR whale `0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1` — transfer RSR to tester, stake, and delegate before proposing.
 
 ### Base / Arbitrum
+
 No consistent RSR whale exists. Instead, delegate from existing StRSR holders:
 
 ```bash
