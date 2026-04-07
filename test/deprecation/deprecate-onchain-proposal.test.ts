@@ -84,6 +84,7 @@ describe('Deprecation Proposal (on-chain)', () => {
 
   before(async () => {
     // Decode proposal from generated JSON
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const proposalJson = require(PROPOSAL_JSON)
     const iface = new ethers.utils.Interface([
       'function propose(address[] targets, uint256[] values, bytes[] calldatas, string description) returns (uint256)',
