@@ -16,8 +16,13 @@ import time
 # Pre-computed calldata for individual deprecation actions
 SET_BATCH_AUCTION_LENGTH_0 = "0x8881615a0000000000000000000000000000000000000000000000000000000000000000"
 SET_ISSUANCE_THROTTLE_MIN = "0x5beafb3d0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000000"
+UNPAUSE_TRADING = "0x456068d2"
 PAUSE_ISSUANCE = "0xdf23cbb1"
-SET_DISTRIBUTIONS_0_100 = "0xebb4d30e000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002710"
+# setDistribution(address,(uint16,uint16)) — singular form for v3.4.0 deployed contracts
+# FURNACE = address(1), share = (rTokenDist=0, rsrDist=0)
+SET_DISTRIBUTION_FURNACE_0 = "0x88594437000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+# ST_RSR = address(2), share = (rTokenDist=0, rsrDist=10000)
+SET_DISTRIBUTION_STRSR_100 = "0x88594437000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002710"
 
 # Role bytes32 values
 PAUSER_ROLE = "0x5041555345520000000000000000000000000000000000000000000000000000"
@@ -59,31 +64,39 @@ def build_actions(timelock: str, main: str, rtoken: str, broker: str,
     targets.append(main)
     calldatas.append(encode_grant_role(PAUSER_ROLE, timelock))
 
-    # 4. Pause minting
+    # 4. Unpause trading (safety measure — ensures stakers can unstake after deprecation)
+    targets.append(main)
+    calldatas.append(UNPAUSE_TRADING)
+
+    # 5. Pause minting
     targets.append(main)
     calldatas.append(PAUSE_ISSUANCE)
 
-    # 5. Set distribution to 0% RToken, 100% RSR
+    # 6a. Set distribution: FURNACE (address(1)) to 0% RToken, 0% RSR
     targets.append(distributor)
-    calldatas.append(SET_DISTRIBUTIONS_0_100)
+    calldatas.append(SET_DISTRIBUTION_FURNACE_0)
 
-    # 6. Remove all PAUSER roles (including the timelock we just granted)
+    # 6b. Set distribution: ST_RSR (address(2)) to 0% RToken, 100% RSR
+    targets.append(distributor)
+    calldatas.append(SET_DISTRIBUTION_STRSR_100)
+
+    # 7. Remove all PAUSER roles (including the timelock we just granted)
     all_pausers = sorted(set([p.lower() for p in pausers] + [timelock.lower()]))
     for pauser in all_pausers:
         targets.append(main)
         calldatas.append(encode_revoke_role(PAUSER_ROLE, pauser))
 
-    # 7. Remove all SHORT_FREEZER roles
+    # 8. Remove all SHORT_FREEZER roles
     for freezer in sorted(set([f.lower() for f in short_freezers])):
         targets.append(main)
         calldatas.append(encode_revoke_role(SHORT_FREEZER_ROLE, freezer))
 
-    # 8. Remove all LONG_FREEZER roles
+    # 9. Remove all LONG_FREEZER roles
     for freezer in sorted(set([f.lower() for f in long_freezers])):
         targets.append(main)
         calldatas.append(encode_revoke_role(LONG_FREEZER_ROLE, freezer))
 
-    # 9. Remove all OWNER roles (MUST BE LAST)
+    # 10. Remove all OWNER roles (MUST BE LAST)
     targets.append(main)
     calldatas.append(encode_revoke_role(OWNER_ROLE, timelock))
 
@@ -124,12 +137,13 @@ def generate_proposal(name: str, chain_id: int, governor: str, timelock: str,
         f"Actions:\\n"
         f"1. Set batch auction length to 0\\n"
         f"2. Set issuance throttle to 1e18 (minimum)\\n"
-        f"3. Pause minting\\n"
-        f"4. Set distribution to 0% RToken, 100% RSR\\n"
-        f"5. Remove all PAUSER roles\\n"
-        f"6. Remove all SHORT_FREEZER roles\\n"
-        f"7. Remove all LONG_FREEZER roles\\n"
-        f"8. Remove all OWNER roles"
+        f"3. Unpause trading (safety: ensures stakers can unstake after deprecation)\\n"
+        f"4. Pause minting\\n"
+        f"5. Set distribution to 0% RToken, 100% RSR\\n"
+        f"6. Remove all PAUSER roles\\n"
+        f"7. Remove all SHORT_FREEZER roles\\n"
+        f"8. Remove all LONG_FREEZER roles\\n"
+        f"9. Remove all OWNER roles"
     )
 
     propose_calldata = encode_propose(targets, calldatas, description)
@@ -247,8 +261,7 @@ rtokens = [
         "name": "KNOX",
         "filename": "deprecate-KNOX.json",
         "chain_id": 42161,
-        # TODO: Fill in KNOX governor address on Arbitrum (CLI doesn't support Arbitrum)
-        "governor": "FILL_IN_KNOX_GOVERNOR_ADDRESS",
+        "governor": "0x17a5fA0C4c682b86Cfb76FAd2A03B2328D4680fF",
         "timelock": "0xccb548e8f74eb2f613f53dd2c389842dd4a13e22",
         "main": "0xB0F377e58F4fA4bC42067868A699666bd7DAc565",
         "rtoken": "0x0BBF664D46becc28593368c97236FAa0fb397595",
@@ -339,7 +352,7 @@ rtokens = [
         ],
     },
     {
-        "name": "rgUSD",
+        "name": "rgUSD (2)",
         "filename": "deprecate-rgUSD.json",
         "chain_id": 1,
         "governor": "0x409bac94c4207c6627ea5f4e4ffb7128e8f654fc",

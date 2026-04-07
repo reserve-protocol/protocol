@@ -3,7 +3,8 @@ import { advanceBlocks, advanceTime } from '#/utils/time'
 import { IRewardable } from '@typechain/IRewardable'
 import { formatEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { runBatchTrade } from './trades'
+import { runBatchTrade, runDutchTrade } from './trades'
+import { pushOraclesForward } from './oracles'
 
 const claimRewards = async (claimer: IRewardable) => {
   const resp = await claimer.claimRewards()
@@ -55,8 +56,20 @@ export const processRevenue = async (hre: HardhatRuntimeEnvironment, rtokenAddre
 
   await backingManager.forwardRevenue(rewards)
 
-  await rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION])
-  await runBatchTrade(hre, rsrTrader, rToken.address, false)
+  // Try batch auction first, fall back to Dutch auction (4.2.0+ disables batch)
+  try {
+    await rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION])
+    await runBatchTrade(hre, rsrTrader, rToken.address, false)
+  } catch (e: any) {
+    if (e.message?.includes('batch auctions not enabled')) {
+      console.log('Batch auctions not enabled, using Dutch auction...')
+      await pushOraclesForward(hre, rToken.address, [])
+      await rsrTrader.manageTokens([rToken.address], [TradeKind.DUTCH_AUCTION])
+      await runDutchTrade(hre, rsrTrader, rToken.address)
+    } else {
+      throw e
+    }
+  }
 
   await strsr.payoutRewards()
   await advanceBlocks(hre, 100)
