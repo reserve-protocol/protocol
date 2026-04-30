@@ -126,7 +126,7 @@ Before executing any deprecation proposal, verify:
 
 ## Key Technical Notes
 
-- **`setDistribution` (singular)**: Deployed v3.4.0 Distributor uses `setDistribution(address,(uint16,uint16))` (selector `0x88594437`), NOT `setDistributions` (plural). The script uses two separate calls: FURNACE=address(1) to (0,0) and ST_RSR=address(2) to (0,10000).
+- **`setDistributions` (plural)**: Script uses `setDistributions(address[],(uint16,uint16)[])` (selector `0xebb4d30e`), available on 4.2.0+ Distributors. The plural form defers the `totals.rTokenTotal + totals.rsrTotal >= MAX_DISTRIBUTION` invariant check to end-of-loop. The singular form (`0x88594437`) checks per-call, which reverts on 4.2.0+ if FURNACE is zeroed before ST_RSR is set to 10000 (intermediate total = 0 < 10000). Pre-4.2.0 Distributors enforced only the weaker `_ensureNonZeroDistribution` (sum > 0), which is why historical v3.4.0 deprecations passed with two singular calls.
 
 - **`pushOraclesForward`**: Required before `governor.execute()` and before redemption tests, as time advancement during the governance lifecycle causes oracle staleness.
 
