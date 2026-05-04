@@ -477,6 +477,7 @@ contract DutchTrade is ITrade, Versioned {
     /// Close any active trusted fill and reclaim tokens
     function _closeTrustedFill() private {
         if (address(activeTrustedFill) != address(0)) {
+            // limitation: reverting fillers brick DutchTrade and require Trading.forceSettleTrade()
             activeTrustedFill.closeFiller();
             delete activeTrustedFill;
         }
