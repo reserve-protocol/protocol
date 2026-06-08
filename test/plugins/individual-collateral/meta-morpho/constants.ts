@@ -28,6 +28,16 @@ export const BBUSDT = networkConfig[chainId].tokens.bbUSDT!
 export const RE7WETH = networkConfig[chainId].tokens.Re7WETH!
 export const MEUSD = networkConfig[chainId].tokens.meUSD!
 
+// Morpho Vault V2 (mainnet)
+export const STEAKUSDC_PRIME = networkConfig[chainId].tokens.steakUSDCPrime!
+export const SENTORA_PYUSD = networkConfig[chainId].tokens.sentoraPYUSD!
+export const GAUNTLET_USDC_FRONTIER = networkConfig[chainId].tokens.gauntletUSDCFrontier!
+export const STEAKUSDT_PRIME = networkConfig[chainId].tokens.steakUSDTPrime!
+export const GALAXY_USDT_QUALITY = networkConfig[chainId].tokens.galaxyUSDTQuality!
+export const GAUNTLET_USDC_PRIME = networkConfig[chainId].tokens.gauntletUSDCPrime!
+export const GALAXY_USDC_QUALITY = networkConfig[chainId].tokens.galaxyUSDCQuality!
+export const SKY_USDT_SAVINGS = networkConfig[chainId].tokens.skyUSDTSavings!
+
 // USDC
 export const USDC_USD_FEED = networkConfig[chainId].chainlinkFeeds.USDC!
 export const USDC_ORACLE_TIMEOUT = bn('82800') // 23 hrs
@@ -64,3 +74,12 @@ const FORK_BLOCKS: { [key: string]: number } = {
 }
 
 export const FORK_BLOCK = FORK_BLOCKS[chainId]
+
+// Morpho Vault V2 vaults post-date the V1 mainnet block above; keyed by network for consistency
+const FORK_BLOCKS_V2: { [key: string]: number } = {
+  '1': 25250000,
+  '8453': 20454200, // no V2 vaults integrated yet
+  '42161': 193157126, // not used
+}
+
+export const FORK_BLOCK_V2 = FORK_BLOCKS_V2[chainId]

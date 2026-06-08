@@ -39,6 +39,32 @@ It is important to note that in the case of Rtokens, rewards will need to be cla
 | -------- | ------- | ------------------------------------------ | --------------------------- |
 | Re7 WETH | Re7WETH | 0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0 | USDC, SWISE, BTRFLY, MORPHO |
 
+## Morpho Vault V2
+
+The same `MetaMorphoFiatCollateral` / `MetaMorphoSelfReferentialCollateral` contracts are reused, unchanged, for [Morpho Vault V2](https://docs.morpho.org/learn/concepts/vault-v2/) vaults. V2 keeps the exact ERC-4626 surface these plugins depend on (`convertToAssets`, `asset`, `decimals`), so `underlyingRefPerTok()` is correct without modification. The V2-specific deviations were checked on-chain and found benign:
+
+| Check               | Result                                                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ERC-4626 / 2612** | Compliant. 18-decimal share over a 6-decimal asset; `convertToAssets` accounts for fees.                                                                                      |
+| **Gates**           | V2 adds optional transfer/deposit/withdraw gate contracts. A share-transfer gate would block the protocol from holding/trading the collateral. **Every target vault must have all four gates unset (`address(0)`).** |
+| **`max*` quirk**    | V2 `maxDeposit`/`maxMint`/`maxWithdraw`/`maxRedeem` always return 0. Harmless: the protocol holds and trades the share token and never calls `vault.redeem()`.                |
+| **Fees & losses**   | Performance/management fees and adapter losses flow through `convertToAssets`. Routine fee dips are absorbed by `revenueHiding`; a genuine loss correctly DISABLES the collateral. |
+
+Mainnet vaults validated against the live chain (all gates unset; fees 0 except Sentora PYUSD at 15% performance fee):
+
+| Name                   | Symbol       | Address                                      | Asset |
+| ---------------------- | ------------ | -------------------------------------------- | ----- |
+| Steakhouse Prime USDC  | steakUSDC    | `0xbeef088055857739C12CD3765F20b7679Def0f51` | USDC  |
+| Sentora PYUSD Main     | senPYUSD     | `0xC21b08C16458202593D4D9B26b9984Ee67b38BbD` | PYUSD |
+| Gauntlet USDC Frontier | gtusdcf      | `0x9a1D6bd5b8642C41F25e0958129B85f8E1176F3e` | USDC  |
+| Steakhouse Prime USDT  | steakUSDT    | `0xbeef003C68896c7D2c3c60d363e8d71a49Ab2bf9` | USDT  |
+| Galaxy USDT Quality    | gUSDTq       | `0x71ffB6a81786eC285D429d531Cf655107B9D878d` | USDT  |
+| Gauntlet USDC Prime    | gtusdcp      | `0x8c106EEDAd96553e64287A5A6839c3Cc78afA3D0` | USDC  |
+| Galaxy USDC Quality    | gUSDCq       | `0x91600E31fBeDc72433d4a57F16639cfe661Be7d8` | USDC  |
+| Sky.money USDT Savings | skyMoneyUsdt | `0x23f5E9c35820f4baB695Ac1F19c203cC3f8e1e11` | USDT  |
+
+Reward claiming is unchanged from V1 (off-chain Merkle claim on behalf of the Backing Manager).
+
 ## Future Work
 
 - Assets need to exist for each of the Reward Tokens, which requires oracles. Only USDC meets this bar; SWISE, BTRFLY, and MORPHO do not have oracles yet.

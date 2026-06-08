@@ -15,6 +15,11 @@ import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
  * by anyone, on behalf of the RToken's Backing Manager address.
  * For more information:  https://docs.morpho.org/rewards/tutorials/claim-rewards/
  *
+ * @dev Morpho Vault V2 compatibility
+ *      This plugin is reused as-is for Morpho Vault V2 vaults (e.g. Steakhouse Prime USDC,
+ *      Gauntlet USDC Prime, Galaxy/Sentora/Sky vaults). V2 preserves the exact ERC-4626 surface
+ *      this plugin relies on, and the V2-specific deviations were checked on-chain to be benign:
+ *
  */
 contract MetaMorphoFiatCollateral is ERC4626FiatCollateral {
     /// config.erc20 must be a MetaMorpho ERC4626 vault
