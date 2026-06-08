@@ -100,15 +100,24 @@ async function main() {
 
   for (const v of VAULTS) {
     /********  Verify Morpho Vault V2 collateral  **************************/
+    const collateralAddr = deployments.collateral[v.tokenKey]
+    if (!collateralAddr) {
+      throw new Error(`Missing deployed collateral for ${v.tokenKey} on chain ${chainId}`)
+    }
+    const erc20 = networkConfig[chainId].tokens[v.tokenKey]
+    if (!erc20) {
+      throw new Error(`Missing token address for ${v.tokenKey} on chain ${chainId}`)
+    }
+
     await verifyContract(
       chainId,
-      deployments.collateral[v.tokenKey],
+      collateralAddr,
       [
         {
           priceTimeout: PRICE_TIMEOUT.toString(),
           chainlinkFeed: v.feed,
           oracleError: v.oracleError.toString(),
-          erc20: networkConfig[chainId].tokens[v.tokenKey],
+          erc20: erc20,
           maxTradeVolume: fp('1e6').toString(),
           oracleTimeout: v.oracleTimeout.toString(),
           targetName: hre.ethers.utils.formatBytes32String('USD'),
