@@ -34,14 +34,54 @@ interface V2VaultVerification {
 }
 
 const VAULTS: V2VaultVerification[] = [
-  { tokenKey: 'steakUSDCPrime', feed: USDC_USD_FEED, oracleTimeout: USDC_ORACLE_TIMEOUT, oracleError: USDC_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'sentoraPYUSD', feed: PYUSD_USD_FEED, oracleTimeout: PYUSD_ORACLE_TIMEOUT, oracleError: PYUSD_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'gauntletUSDCFrontier', feed: USDC_USD_FEED, oracleTimeout: USDC_ORACLE_TIMEOUT, oracleError: USDC_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'steakUSDTPrime', feed: USDT_USD_FEED, oracleTimeout: USDT_ORACLE_TIMEOUT, oracleError: USDT_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'galaxyUSDTQuality', feed: USDT_USD_FEED, oracleTimeout: USDT_ORACLE_TIMEOUT, oracleError: USDT_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'gauntletUSDCPrime', feed: USDC_USD_FEED, oracleTimeout: USDC_ORACLE_TIMEOUT, oracleError: USDC_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'galaxyUSDCQuality', feed: USDC_USD_FEED, oracleTimeout: USDC_ORACLE_TIMEOUT, oracleError: USDC_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
-  { tokenKey: 'skyUSDTSavings', feed: USDT_USD_FEED, oracleTimeout: USDT_ORACLE_TIMEOUT, oracleError: USDT_ORACLE_ERROR }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'steakUSDCPrime',
+    feed: USDC_USD_FEED,
+    oracleTimeout: USDC_ORACLE_TIMEOUT,
+    oracleError: USDC_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'sentoraPYUSD',
+    feed: PYUSD_USD_FEED,
+    oracleTimeout: PYUSD_ORACLE_TIMEOUT,
+    oracleError: PYUSD_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'gauntletUSDCFrontier',
+    feed: USDC_USD_FEED,
+    oracleTimeout: USDC_ORACLE_TIMEOUT,
+    oracleError: USDC_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'steakUSDTPrime',
+    feed: USDT_USD_FEED,
+    oracleTimeout: USDT_ORACLE_TIMEOUT,
+    oracleError: USDT_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'galaxyUSDTQuality',
+    feed: USDT_USD_FEED,
+    oracleTimeout: USDT_ORACLE_TIMEOUT,
+    oracleError: USDT_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'gauntletUSDCPrime',
+    feed: USDC_USD_FEED,
+    oracleTimeout: USDC_ORACLE_TIMEOUT,
+    oracleError: USDC_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'galaxyUSDCQuality',
+    feed: USDC_USD_FEED,
+    oracleTimeout: USDC_ORACLE_TIMEOUT,
+    oracleError: USDC_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
+  {
+    tokenKey: 'skyUSDTSavings',
+    feed: USDT_USD_FEED,
+    oracleTimeout: USDT_ORACLE_TIMEOUT,
+    oracleError: USDT_ORACLE_ERROR,
+  }, // eslint-disable-line prettier/prettier
 ]
 
 async function main() {

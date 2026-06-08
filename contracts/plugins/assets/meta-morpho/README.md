@@ -43,12 +43,12 @@ It is important to note that in the case of Rtokens, rewards will need to be cla
 
 The same `MetaMorphoFiatCollateral` / `MetaMorphoSelfReferentialCollateral` contracts are reused, unchanged, for [Morpho Vault V2](https://docs.morpho.org/learn/concepts/vault-v2/) vaults. V2 keeps the exact ERC-4626 surface these plugins depend on (`convertToAssets`, `asset`, `decimals`), so `underlyingRefPerTok()` is correct without modification. The V2-specific deviations were checked on-chain and found benign:
 
-| Check               | Result                                                                                                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ERC-4626 / 2612** | Compliant. 18-decimal share over a 6-decimal asset; `convertToAssets` accounts for fees.                                                                                      |
+| Check               | Result                                                                                                                                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ERC-4626 / 2612** | Compliant. 18-decimal share over a 6-decimal asset; `convertToAssets` accounts for fees.                                                                                                                             |
 | **Gates**           | V2 adds optional transfer/deposit/withdraw gate contracts. A share-transfer gate would block the protocol from holding/trading the collateral. **Every target vault must have all four gates unset (`address(0)`).** |
-| **`max*` quirk**    | V2 `maxDeposit`/`maxMint`/`maxWithdraw`/`maxRedeem` always return 0. Harmless: the protocol holds and trades the share token and never calls `vault.redeem()`.                |
-| **Fees & losses**   | Performance/management fees and adapter losses flow through `convertToAssets`. Routine fee dips are absorbed by `revenueHiding`; a genuine loss correctly DISABLES the collateral. |
+| **`max*` quirk**    | V2 `maxDeposit`/`maxMint`/`maxWithdraw`/`maxRedeem` always return 0. Harmless: the protocol holds and trades the share token and never calls `vault.redeem()`.                                                       |
+| **Fees & losses**   | Performance/management fees and adapter losses flow through `convertToAssets`. Routine fee dips are absorbed by `revenueHiding`; a genuine loss correctly DISABLES the collateral.                                   |
 
 Mainnet vaults validated against the live chain (all gates unset; fees 0 except Sentora PYUSD at 15% performance fee):
 

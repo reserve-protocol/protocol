@@ -14,7 +14,8 @@ export const whales: { [key: string]: string } = {
   // Morpho Vault V2 share whales (mainnet, verified holding at block 25250000)
   [networkConfig['31337'].tokens.steakUSDCPrime!]: '0x087e2aac2e2457a5107700a58543e35ff63391b4',
   [networkConfig['31337'].tokens.sentoraPYUSD!]: '0x75381e9bc6b908a2e9bc31a535fc48ceceac568e',
-  [networkConfig['31337'].tokens.gauntletUSDCFrontier!]: '0x3bd9248048df95db4fbd748c6cd99c1baa40bad0',
+  [networkConfig['31337'].tokens.gauntletUSDCFrontier!]:
+    '0x3bd9248048df95db4fbd748c6cd99c1baa40bad0',
   [networkConfig['31337'].tokens.steakUSDTPrime!]: '0xffff8e7c98fc62dde2081825e7556b05717159c9',
   [networkConfig['31337'].tokens.galaxyUSDTQuality!]: '0xaac7519736532f7731d1b01b0221c8a0959dd0fe',
   [networkConfig['31337'].tokens.gauntletUSDCPrime!]: '0xd8b444ac665b0de3a9135ad7be1a45f88ac97b3c',

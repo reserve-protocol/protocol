@@ -248,33 +248,89 @@ makeFiatCollateralTestSuite(
 // Morpho Vault V2 vaults — same plugin, USD-pegged, no gates (verified on-chain)
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Steakhouse Prime USDC (V2)',
-  makeOpts(STEAKUSDC_PRIME, USDC_USD_FEED, USDC_ORACLE_TIMEOUT, USDC_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    STEAKUSDC_PRIME,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Sentora PYUSD Main (V2)',
-  makeOpts(SENTORA_PYUSD, PYUSD_USD_FEED, PYUSD_ORACLE_TIMEOUT, PYUSD_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    SENTORA_PYUSD,
+    PYUSD_USD_FEED,
+    PYUSD_ORACLE_TIMEOUT,
+    PYUSD_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Gauntlet USDC Frontier (V2)',
-  makeOpts(GAUNTLET_USDC_FRONTIER, USDC_USD_FEED, USDC_ORACLE_TIMEOUT, USDC_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    GAUNTLET_USDC_FRONTIER,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Steakhouse Prime USDT (V2)',
-  makeOpts(STEAKUSDT_PRIME, USDT_USD_FEED, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    STEAKUSDT_PRIME,
+    USDT_USD_FEED,
+    USDT_ORACLE_TIMEOUT,
+    USDT_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Galaxy USDT Quality (V2)',
-  makeOpts(GALAXY_USDT_QUALITY, USDT_USD_FEED, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    GALAXY_USDT_QUALITY,
+    USDT_USD_FEED,
+    USDT_ORACLE_TIMEOUT,
+    USDT_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Gauntlet USDC Prime (V2)',
-  makeOpts(GAUNTLET_USDC_PRIME, USDC_USD_FEED, USDC_ORACLE_TIMEOUT, USDC_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    GAUNTLET_USDC_PRIME,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Galaxy USDC Quality (V2)',
-  makeOpts(GALAXY_USDC_QUALITY, USDC_USD_FEED, USDC_ORACLE_TIMEOUT, USDC_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    GALAXY_USDC_QUALITY,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - Sky.money USDT Savings (V2)',
-  makeOpts(SKY_USDT_SAVINGS, USDT_USD_FEED, USDT_ORACLE_TIMEOUT, USDT_ORACLE_ERROR, 'mainnet', FORK_BLOCK_V2) // eslint-disable-line prettier/prettier
+  makeOpts(
+    SKY_USDT_SAVINGS,
+    USDT_USD_FEED,
+    USDT_ORACLE_TIMEOUT,
+    USDT_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2
+  ) // eslint-disable-line prettier/prettier
 )
