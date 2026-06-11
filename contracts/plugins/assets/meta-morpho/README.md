@@ -8,13 +8,14 @@ MetaMorpho suffers from a similar to that of the Curve volatile pools which can 
 
 ## Reward claiming
 
-Rewards can be claimed permissionlessly by anyone from off-chain, following this detailed guide from the Morpho docs:
+Rewards can be claimed permissionlessly by anyone from off-chain, following the Morpho docs:
 
-https://docs.morpho.org/rewards/tutorials/claim-rewards/
+- Rewards concept: https://docs.morpho.org/learn/concepts/rewards/
+- Claiming via the Morpho app: https://help.morpho.org/en/articles/12032660-rewards-on-the-morpho-app
 
-It requires the following steps:
+It requires the following steps (see https://help.morpho.org/en/articles/12032660-rewards-on-the-morpho-app for a step-by-step walkthrough):
 
-1. Querying the Morpho API with the holder address: https://rewards.morpho.org/v1/users/0xADDRESS/distributions
+1. Querying the rewards for the holder address via the Morpho rewards portals: https://rewards-legacy.morpho.org/ and https://campaigns.morpho.org/
 2. Retrieving the distributor contract and sending a transaction to `claim()` the rewards with the following parameters (all obtained from the previous call):
    - `account`: the holder address
    - `reward`: the address of the reward token

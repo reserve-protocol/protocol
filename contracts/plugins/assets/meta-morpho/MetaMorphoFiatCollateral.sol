@@ -13,7 +13,7 @@ import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
  *
  * Rewards need to be claimed manually, from off-chain. This can be done permissionlessly,
  * by anyone, on behalf of the RToken's Backing Manager address.
- * For more information:  https://docs.morpho.org/rewards/tutorials/claim-rewards/
+ * For more information:  https://docs.morpho.org/learn/concepts/rewards/
  *
  * @dev Morpho Vault V2 compatibility
  *      This plugin is reused as-is for Morpho Vault V2 vaults (e.g. Steakhouse Prime USDC,
