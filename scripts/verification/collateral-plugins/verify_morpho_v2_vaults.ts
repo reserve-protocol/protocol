@@ -126,7 +126,7 @@ async function main() {
         },
         fp('1e-4'), // can have small drawdowns
       ],
-      'contracts/plugins/assets/meta-morpho/MetaMorphoFiatCollateral.sol:MetaMorphoFiatCollateral'
+      'contracts/plugins/assets/meta-morpho/MorphoV2FiatCollateral.sol:MorphoV2FiatCollateral'
     )
   }
 }

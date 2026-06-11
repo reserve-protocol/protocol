@@ -25,7 +25,7 @@ import {
   PRICE_TIMEOUT,
   DELAY_UNTIL_DEFAULT,
 } from '../../../../test/plugins/individual-collateral/meta-morpho/constants'
-import { MetaMorphoFiatCollateral } from '../../../../typechain'
+import { MorphoV2FiatCollateral } from '../../../../typechain'
 import { ContractFactory, BigNumber } from 'ethers'
 
 // Morpho Vault V2 collaterals. All are USD-pegged MetaMorpho ERC4626 vaults with
@@ -111,8 +111,8 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  const MetaMorphoFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'MetaMorphoFiatCollateral'
+  const MorphoV2FiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'MorphoV2FiatCollateral'
   )
 
   for (const v of VAULTS) {
@@ -121,7 +121,7 @@ async function main() {
       throw new Error(`Missing token address for ${v.tokenKey} on chain ${chainId}`)
     }
 
-    const collateral = <MetaMorphoFiatCollateral>await MetaMorphoFiatCollateralFactory.connect(
+    const collateral = <MorphoV2FiatCollateral>await MorphoV2FiatCollateralFactory.connect(
       deployer
     ).deploy(
       {
