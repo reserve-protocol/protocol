@@ -51,12 +51,12 @@ The same `MetaMorphoFiatCollateral` / `MetaMorphoSelfReferentialCollateral` cont
 | **`max*` quirk**    | V2 `maxDeposit`/`maxMint`/`maxWithdraw`/`maxRedeem` always return 0. Harmless: the protocol holds and trades the share token and never calls `vault.redeem()`.                                                       |
 | **Fees & losses**   | Performance/management fees and adapter losses flow through `convertToAssets`. Routine fee dips are absorbed by `revenueHiding`; a genuine loss correctly DISABLES the collateral.                                   |
 
-Mainnet vaults validated against the live chain (all gates unset; fees 0 except Sentora PYUSD at 15% performance fee):
+Mainnet vaults validated against the live chain (all gates unset; fees 0 except PayPal USD Main, which has a ~1%/yr management fee):
 
 | Name                   | Symbol              | Address                                      | Asset |
 | ---------------------- | ------------------- | -------------------------------------------- | ----- |
 | Steakhouse Prime USDC  | steakUSDC           | `0xbeef088055857739C12CD3765F20b7679Def0f51` | USDC  |
-| Sentora PYUSD Main     | senPYUSDPRIMEv2     | `0xC21b08C16458202593D4D9B26b9984Ee67b38BbD` | PYUSD |
+| PayPal USD Main        | senPYUSDmain        | `0xb576765fB15505433aF24FEe2c0325895C559FB2` | PYUSD |
 | Gauntlet USDC Frontier | gtusdcf             | `0x9a1D6bd5b8642C41F25e0958129B85f8E1176F3e` | USDC  |
 | Steakhouse Prime USDT  | steakUSDT           | `0xbeef003C68896c7D2c3c60d363e8d71a49Ab2bf9` | USDT  |
 | Galaxy USDT Quality    | gUSDTq              | `0x71ffB6a81786eC285D429d531Cf655107B9D878d` | USDT  |

@@ -258,7 +258,7 @@ makeFiatCollateralTestSuite(
   ) // eslint-disable-line prettier/prettier
 )
 makeFiatCollateralTestSuite(
-  'MetaMorphoFiatCollateral - Sentora PYUSD Main (V2)',
+  'MetaMorphoFiatCollateral - PayPal USD Main (V2)',
   makeOpts(
     SENTORA_PYUSD,
     PYUSD_USD_FEED,
