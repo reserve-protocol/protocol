@@ -185,7 +185,7 @@ yarn deploy:check_env --network mainnet
 
 If this passes successfully it will print the deployer address and the current ETH balance. Next:
 
-1. Send at least 6 ETH to this address (check ethgasstation.info; if gas prices are > 30gwei then we may need more)
+1. Send at least 6 ETH to this address (check current gas prices on [Etherscan Gas Tracker](https://etherscan.io/gastracker) or the [OpenChainBench gas benchmark](https://openchainbench.com/benchmarks/gas-estimation); if gas prices are > 30gwei then we may need more)
 2. Close the current terminal session.
 
 End state: Your `.env` file is known to be good. You did all of this without screensharing and are now at the end of the private-portion of the deployment process.
