@@ -1,3 +1,5 @@
+// Verifies the Morpho AAVE V2 collateral plugins. These predate the MORPHO token migration
+// and reward in the LEGACY token; see assets/verify_morpho.ts for the current MORPHO Asset.
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
@@ -37,7 +39,7 @@ async function main() {
         rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
         underlyingERC20: networkConfig[chainId].tokens.USDT!,
         poolToken: networkConfig[chainId].tokens.aUSDT!,
-        rewardToken: networkConfig[chainId].tokens.MORPHO!,
+        rewardToken: LEGACY_MORPHO,
       },
     ],
     'contracts/plugins/assets/morpho-aave/MorphoAaveV2TokenisedDeposit.sol:MorphoAaveV2TokenisedDeposit'

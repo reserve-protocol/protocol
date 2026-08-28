@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
+pragma solidity 0.8.28;
+
+/// Minimal subset of the Uniswap V3 pool interface needed for TWAP consultation
+interface IUniswapV3Pool {
+    /// @notice Returns the cumulative tick and liquidity as of each timestamp `secondsAgos`
+    /// @dev Reverts with "OLD" if the oldest stored observation is more recent than the largest
+    ///      requested `secondsAgo`. The number of observations retained is governed by the pool's
+    ///      observationCardinality, which can be grown permissionlessly by anyone via
+    ///      increaseObservationCardinalityNext().
+    function observe(uint32[] calldata secondsAgos)
+        external
+        view
+        returns (
+            int56[] memory tickCumulatives,
+            uint160[] memory secondsPerLiquidityCumulativeX128s
+        );
+
+    function token0() external view returns (address);
+
+    function token1() external view returns (address);
+}

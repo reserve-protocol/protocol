@@ -18,6 +18,7 @@ import { CollateralOpts } from '../pluginTestTypes'
 import { pushOracleForward } from '../../../utils/oracles'
 import {
   DELAY_UNTIL_DEFAULT,
+  LEGACY_MORPHO,
   FORK_BLOCK,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -49,7 +50,7 @@ const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestIC
       morphoLens: networkConfig[1].MORPHO_AAVE_LENS!,
       underlyingERC20: opts.underlyingToken!,
       poolToken: opts.poolToken!,
-      rewardToken: networkConfig[1].tokens.MORPHO!,
+      rewardToken: LEGACY_MORPHO,
     })
     opts.erc20 = wrapperMock.address
   }
@@ -96,7 +97,7 @@ const makeCollateralFixtureContext = (
       morphoLens: networkConfig[1].MORPHO_AAVE_LENS!,
       underlyingERC20: opts.underlyingToken!,
       poolToken: opts.poolToken!,
-      rewardToken: networkConfig[1].tokens.MORPHO!,
+      rewardToken: LEGACY_MORPHO,
     })
 
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
