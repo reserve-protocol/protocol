@@ -106,8 +106,10 @@ export const WBTC = networkConfig[chainId].tokens.WBTC!
 export const MORPHO_WETH_POOL_030 = '0xc8219b876753A85025156b22176c2eDEA17aAC53'
 export const MORPHO_WETH_POOL_100 = '0x25b96761e765b9AC20db18fA57Fa91e3b617Ec6F'
 
-// Wider than a normal ETH/USD error: it also absorbs TWAP-vs-spot drift on a thin pool
-export const MORPHO_ORACLE_ERROR = fp('0.05') // 5%
+// Much wider than a normal ETH/USD error. Two sources of uncertainty stack here: the ETH/USD
+// feed itself, and TWAP-vs-spot drift on a pool with only ~$126k of total MORPHO liquidity.
+// 10% reflects that honestly rather than understating it.
+export const MORPHO_ORACLE_ERROR = fp('0.10') // 10%
 
 // Deliberately far below the usual $1e6. All mainnet MORPHO liquidity is ~$126k, and the deepest
 // priceable venue (the 0.30% pool) holds ~$62k of MORPHO against ~$95-122k of WETH. Since a

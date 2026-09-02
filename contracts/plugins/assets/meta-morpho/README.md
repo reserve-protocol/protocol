@@ -1,6 +1,6 @@
 # MetaMorpho
 
-Morpho Blue is a permisionless lending protocol. At the time of this writing (March 19th, 2024), the only way to deposit is through something called **MetaMorpho**: (somewhat) managed ERC4626 vaults. Our integration with these tokens is straightforward with the exception of reward claiming, which occurs via supplying a merkle proof. This can be done permisionlessly and without interacting with any of our contracts, so any interaction with rewards is omitted here. The expectation is -- _and this is important to emphasize_ -- **any MORPHO reward claiming is left up to the RToken community to cause**. Once claimed, the MORPHO sitting in the Backing Manager can be sold by the protocol via [`MorphoAsset`](#selling-claimed-morpho-morphoasset).
+Morpho Blue is a permisionless lending protocol. At the time of this writing (March 19th, 2024), the only way to deposit is through something called **MetaMorpho**: (somewhat) managed ERC4626 vaults. Our integration with these tokens is straightforward with the exception of reward claiming, which occurs via supplying a merkle proof. This can be done permisionlessly and without interacting with any of our contracts, so any interaction with rewards is omitted here. The expectation is -- _and this is important to emphasize_ -- **any MORPHO reward claiming is left up to the RToken community to cause**. A [`MorphoAsset`](#morphoasset-reference-implementation----do-not-deploy) reference implementation exists for selling claimed MORPHO, but it is **not production ready and is not deployed** -- see that section.
 
 ## Up-only-ness
 
@@ -24,17 +24,23 @@ It requires the following steps (see https://help.morpho.org/en/articles/1203266
 
 It is important to note that in the case of Rtokens, rewards will need to be claimed on behalf of the Backing Manager.
 
-## Selling claimed MORPHO: `MorphoAsset`
+## `MorphoAsset` (reference implementation -- DO NOT DEPLOY)
 
-Claiming only moves MORPHO into the Backing Manager; without a registered `Asset` the protocol has no price for it and cannot sell it. `MorphoAsset` closes that gap, so claimed MORPHO can be swept with `forwardRevenue()` and auctioned like any other revenue. It is an `Asset`, not a Collateral -- MORPHO is never backing and is only ever sold.
+> **This plugin is not production ready and is intentionally not deployable.** There are no deployment or Etherscan verification scripts for it, and it is not referenced by `scripts/deploy.ts` or `scripts/verify_etherscan.ts`. It is kept in-tree as a reference implementation only. **Do not register it in an RToken's `AssetRegistry`.**
 
-Rewards are paid in the new, transferable MORPHO (`0x58D97B57BB95320F9a05dC918Aef65434969c2B2`), not the legacy token still used by the Morpho AAVE V2 plugins.
+MORPHO is earned by holding MetaMorpho / Vault V2 collateral and is claimed off-chain. Claiming only moves it into the Backing Manager -- without a registered `Asset` the protocol has no price for it and cannot sell it. `MorphoAsset` was written to close that gap (an `Asset`, not a Collateral -- MORPHO is never backing and is only ever sold), pricing it as `{UoA/tok} = ETH/USD x TWAP(MORPHO/WETH)` over the Uniswap V3 0.30% pool `0xc8219b876753A85025156b22176c2eDEA17aAC53`, since Chainlink's MORPHO/USD feed exists only on Base.
 
-There is no MORPHO/USD feed on mainnet (Chainlink's is Base-only), so the price is composed as `{UoA/tok} = ETH/USD x TWAP(MORPHO/WETH)`, using a 30-minute TWAP over the Uniswap V3 0.30% pool `0xc8219b876753A85025156b22176c2eDEA17aAC53`. Uniswap V4 holds a comparable share of MORPHO liquidity but V4 moved its oracle into hooks and every MORPHO pool there is hookless, so V3 is the only TWAP-capable venue.
+It is not deployed for two reasons.
 
-**Liquidity is very low.** All mainnet MORPHO venues together hold only ~$126k, of which just ~48% sits in the two TWAP-capable V3 pools; the deepest of them has ~$95-122k of WETH on the buy side. Realistically only ~$5-15k can be sold per auction before 1-3% price impact, so MORPHO will drip out over many auctions rather than clear at once. This also means the TWAP is cheap to move, which is why `maxTradeVolume` is set to $10k rather than the usual $1e6 -- per-auction exposure, not the oracle, is the binding protection. Revisit if liquidity deepens.
+**1. The price source is cheaply manipulable.** All mainnet MORPHO liquidity totals ~$126k, and the deepest TWAP-capable venue holds only ~$62k. (Uniswap V4 holds a comparable share, but V4 moved its oracle into hooks and every MORPHO pool there is hookless, so V3 is the only TWAP-capable venue at all.) `docs/collateral.md` requires that an oracle not be manipulable _cheaply_; a 30-minute TWAP over a pool that thin does not clear that bar, even though it is not manipulable within a single block.
 
-One further deployment caveat: the pool's `observationCardinality` must be raised (permissionlessly, via `increaseObservationCardinalityNext`) to cover the TWAP window under heavy trading, or `observe()` can be griefed into reverting and the asset becomes temporarily unpriced.
+**2. `maxTradeVolume` does not bound true-value exposure -- it amplifies it.** `TradeLib.maxTradeSize()` sizes a lot as `maxTradeVolume / sellHigh`, denominated in this plugin's own reported price. Push the TWAP down by a factor `k` and the lot grows as `1/k`, so the true value sold grows as `1/k`, while the minimum proceeds are `maxTradeVolume * (1 - oracleError) * (1 - maxTradeSlippage) / (1 + oracleError)` -- **independent of `k`**. With $10k `maxTradeVolume`, 10% `oracleError` and 1% `maxTradeSlippage`, that floor is ~$8.1k whether the price is honest, halved, or down 10x; only the quantity of MORPHO handed over grows. The effective ceiling is the entire held balance. Revenue auctions are permissionless, so the same actor moves the TWAP and bids. No parameter value fixes this -- lowering `maxTradeVolume` scales both sides equally.
+
+Every other plugin is safe here because its price bottoms out in a Chainlink feed a bidder cannot move, which is the assumption `TradeLib`'s sizing relies on. This is a plugin violating that precondition, not a flaw in `TradeLib`.
+
+Shipping it would require sizing that does not depend on a manipulable price -- an oracle-independent cap on token quantity or aggregate exposure, or a price source meeting the "not cheaply manipulable" bar. Note that as of 2026-09 none of the eight Vault V2 vaults emit MORPHO, so nothing is currently forgone.
+
+If it is ever revisited, one operational prerequisite: the pool's `observationCardinality` must retain `twapWindow` seconds of observations (`twapWindow / blockTime + 1` of them) or `observe()` reverts `OLD` and the asset becomes unpriced. Grow it permissionlessly with headroom via `increaseObservationCardinalityNext()`, well in advance.
 
 ## Target tokens
 

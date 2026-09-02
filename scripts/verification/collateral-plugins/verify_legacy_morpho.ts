@@ -1,5 +1,6 @@
-// Verifies the Morpho AAVE V2 collateral plugins. These predate the MORPHO token migration
-// and reward in the LEGACY token; see assets/verify_morpho.ts for the current MORPHO Asset.
+// Verifies the Morpho AAVE V2 collateral plugins. These predate the MORPHO token migration and
+// reward in the LEGACY token, hence LEGACY_MORPHO rather than networkConfig.tokens.MORPHO (which
+// now points at the current, transferable MORPHO).
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
@@ -10,6 +11,8 @@ import {
   IAssetCollDeployments,
 } from '../../deployment/common'
 import { combinedError, priceTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
+// eslint-disable-next-line max-len
+import { LEGACY_MORPHO } from '../../../test/plugins/individual-collateral/morpho-aave/constants'
 
 let deployments: IAssetCollDeployments
 

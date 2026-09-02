@@ -26,15 +26,48 @@ import { UniswapV3TwapLib } from "./vendor/UniswapV3TwapLib.sol";
  *   - {UoA/quoteTok} comes from `chainlinkFeed` (e.g. ETH/USD)
  *   - {quoteTok/tok} comes from an arithmetic-mean-tick TWAP over `uniswapV3Pool`
  *
- * WARNING -- operational requirements for a safe deployment:
- *   1. The pool's `observationCardinality` MUST be large enough to retain `twapWindow` seconds of
- *      observations, or `observe()` reverts ("OLD") and this Asset becomes unpriced. Cardinality
- *      is grown permissionlessly via `increaseObservationCardinalityNext()` and never shrinks;
- *      the constructor probes the window once, but a pool that is traded in many consecutive
- *      blocks can still evict history later. Size cardinality with headroom.
- *   2. A TWAP is only as manipulation-resistant as the pool is deep. `maxTradeVolume` -- not the
- *      oracle -- is the binding protection here: a manipulated-downwards price lowers the
- *      DutchTrade floor, so cap per-auction exposure accordingly.
+ * =====================================================================================
+ * DO NOT DEPLOY. NOT PRODUCTION READY.
+ * =====================================================================================
+ * This plugin is deliberately not deployable: there are no deployment or Etherscan
+ * verification scripts for it, and it is not referenced by scripts/deploy.ts or
+ * scripts/verify_etherscan.ts. It is kept in-tree as a reference implementation only.
+ * Do NOT register it in an RToken's AssetRegistry.
+ *
+ * Reason 1 -- the price source is cheaply manipulable.
+ *   All mainnet MORPHO liquidity is ~$126k, and the deepest TWAP-capable venue (the Uniswap V3
+ *   0.30% MORPHO/WETH pool) holds only ~$62k. `docs/collateral.md` requires that an oracle not
+ *   be manipulable *cheaply*; a 30-minute TWAP over a pool that thin does not clear that bar,
+ *   even though it is not manipulable within a single block.
+ *
+ * Reason 2 -- `maxTradeVolume` does NOT bound true-value exposure, and makes it worse.
+ *   `TradeLib.maxTradeSize()` sizes a lot as `maxTradeVolume / sellHigh`, i.e. denominated in
+ *   *this plugin's own reported price*. If an attacker pushes the TWAP down by a factor k, the
+ *   lot grows as 1/k, so the true value sold grows as 1/k -- while the minimum proceeds are
+ *   `maxTradeVolume * (1 - oracleError) * (1 - maxTradeSlippage) / (1 + oracleError)`, which is
+ *   INDEPENDENT of k. With $10k maxTradeVolume, 10% oracleError and 1% maxTradeSlippage that
+ *   floor is ~$8.1k whether the price is honest, halved, or down 10x; only the quantity of
+ *   MORPHO handed over grows. The effective ceiling is therefore the entire held balance, not
+ *   maxTradeVolume. Revenue auctions are permissionless, so the attacker both moves the TWAP
+ *   and bids. No parameter value fixes this: lowering maxTradeVolume scales both sides equally.
+ *
+ *   Every other plugin is safe here because its price bottoms out in a Chainlink feed that a
+ *   bidder cannot move, which is the assumption TradeLib's sizing relies on. This is a plugin
+ *   violating that precondition, not a flaw in TradeLib.
+ *
+ * Before this could ship, sizing must stop depending on a manipulable price -- e.g. an
+ * oracle-independent cap on token quantity or aggregate exposure, or a price source that meets
+ * the "not cheaply manipulable" bar.
+ *
+ * Note: as of 2026-09, none of the eight Morpho Vault V2 vaults emit MORPHO at all, so nothing
+ * is currently forgone by not deploying this.
+ *
+ * Operational prerequisite (if the above is ever resolved):
+ *   The pool's `observationCardinality` MUST retain `twapWindow` seconds of observations, or
+ *   `observe()` reverts ("OLD") and this Asset becomes unpriced. Covering `twapWindow` needs
+ *   `twapWindow / blockTime + 1` observations; grow it permissionlessly and with headroom via
+ *   `increaseObservationCardinalityNext()` well in advance, as cardinality only rises as new
+ *   observations are written.
  */
 contract MorphoAsset is Asset {
     using FixLib for uint192;

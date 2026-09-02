@@ -98,8 +98,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_origin_oeth.ts',
       'phase2-assets/collaterals/deploy_pyusd.ts',
       'phase2-assets/collaterals/deploy_weeth.ts',
-      'phase2-assets/assets/deploy_king.ts',
-      'phase2-assets/assets/deploy_morpho.ts'
+      'phase2-assets/assets/deploy_king.ts'
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains
