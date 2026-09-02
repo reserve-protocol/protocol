@@ -6,11 +6,13 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../plugins/assets/RTokenAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IMain.sol";
+import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
 
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.
 contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
+    using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
@@ -132,6 +134,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         IERC20Metadata erc20 = asset.erc20();
 
         require(address(erc20) != address(main.rToken()), "cannot unregister RToken");
+        require(address(erc20) != address(main.rsr()), "cannot unregister RSR");
         require(_erc20s.contains(address(erc20)), "no asset to unregister");
         require(assets[erc20] == asset, "asset not found");
 
@@ -277,6 +280,20 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         // Refresh to ensure it does not revert, and to save a recent lastPrice
         asset.refresh();
+
+        if (address(erc20) == address(main.rsr())) {
+            (uint192 low, uint192 high) = asset.price();
+            require(low > 0 && high < FIX_MAX, "RSR asset unpriced");
+
+            uint192 requiredVolume = backingManager.minTradeVolume() * 10;
+            require(asset.maxTradeVolume() >= requiredVolume, "RSR maxTradeVolume too low");
+            if (!_isInitializing()) {
+                require(
+                    asset.bal(address(main.stRSR())).safeMul(low, FLOOR) >= requiredVolume,
+                    "RSR stake too small"
+                );
+            }
+        }
 
         if (!main.frozen()) {
             backingManager.grantRTokenAllowance(erc20);

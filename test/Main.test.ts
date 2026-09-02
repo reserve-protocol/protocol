@@ -36,6 +36,7 @@ import { expectPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
 import {
   Asset,
+  AssetMock,
   ATokenFiatCollateral,
   BackingManagerP1,
   BasketHandlerP1,
@@ -1072,7 +1073,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to update minTradeVolume if OWNER and perform validations', async () => {
-      const newValue: BigNumber = fp('0.02')
+      const newValue: BigNumber = fp('0.005')
 
       // Check existing value
       expect(await backingManager.minTradeVolume()).to.equal(config.minTradeVolume)
@@ -1095,6 +1096,33 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         backingManager.connect(owner).setMinTradeVolume(MAX_MIN_TRADE_VOLUME.add(1))
       ).to.be.revertedWith('invalid minTradeVolume')
+    })
+
+    it('Should bound minTradeVolume increases by RSR tradeability', async () => {
+      const stakeAmt = fp('2000000')
+      await rsr.mint(addr1.address, stakeAmt)
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmt)
+      await stRSR.connect(addr1).stake(stakeAmt)
+
+      const maxAllowed = (await rsrAsset.maxTradeVolume()).div(10)
+      await backingManager.connect(owner).setMinTradeVolume(maxAllowed)
+      await expect(
+        backingManager.connect(owner).setMinTradeVolume(maxAllowed.add(1))
+      ).to.be.revertedWith('RSR maxTradeVolume too low')
+
+      // RevenueTrader settings are independent
+      await expect(rsrTrader.connect(owner).setMinTradeVolume(maxAllowed.add(1))).to.not.be.reverted
+
+      // Reductions remain available when the stake no longer satisfies the bound
+      await rsr.burn(stRSR.address, stakeAmt.sub(fp('1')))
+      await backingManager.connect(owner).setMinTradeVolume(config.minTradeVolume)
+
+      const [low] = await rsrAsset.price()
+      const poolAllowed = low.div(10) // one RSR remains in StRSR
+      await backingManager.connect(owner).setMinTradeVolume(poolAllowed)
+      await expect(
+        backingManager.connect(owner).setMinTradeVolume(poolAllowed.add(1))
+      ).to.be.revertedWith('RSR stake too small')
     })
 
     it('Should allow to update backingBuffer if OWNER and perform validations', async () => {
@@ -1577,14 +1605,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(assetRegistry.toAsset(other.address)).to.be.revertedWith('erc20 unregistered')
 
       // Reverts if no registered asset - After unregister
-      await expect(assetRegistry.connect(owner).unregister(rsrAsset.address))
+      await expect(assetRegistry.connect(owner).unregister(aaveAsset.address))
         .to.emit(assetRegistry, 'AssetUnregistered')
-        .withArgs(rsr.address, rsrAsset.address)
-      await expect(assetRegistry.toAsset(rsr.address)).to.be.revertedWith('erc20 unregistered')
+        .withArgs(aaveToken.address, aaveAsset.address)
+      await expect(assetRegistry.toAsset(aaveToken.address)).to.be.revertedWith(
+        'erc20 unregistered'
+      )
 
       // Returns correctly the asset
       expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(aaveToken.address)).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(compToken.address)).to.equal(compAsset.address)
       expect(await assetRegistry.toAsset(token0.address)).to.equal(collateral0.address)
       expect(await assetRegistry.toAsset(token1.address)).to.equal(collateral1.address)
@@ -1693,10 +1722,72 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('cannot swap RToken')
     })
 
-    it('Should not allow to unregister RToken', async () => {
+    it('Should not allow to unregister RToken or RSR', async () => {
       await expect(assetRegistry.connect(owner).unregister(rTokenAsset.address)).to.be.revertedWith(
         'cannot unregister RToken'
       )
+      await expect(assetRegistry.connect(owner).unregister(rsrAsset.address)).to.be.revertedWith(
+        'cannot unregister RSR'
+      )
+    })
+
+    it('Should preserve RSR tradeability when swapping its asset', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const requiredVolume = config.minTradeVolume.mul(10)
+
+      const AssetMockFactory: ContractFactory = await ethers.getContractFactory('AssetMock')
+      const unpricedAsset: AssetMock = <AssetMock>(
+        await AssetMockFactory.deploy(
+          PRICE_TIMEOUT,
+          await rsrAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          rsr.address,
+          requiredVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+      await expect(
+        assetRegistry.connect(owner).swapRegistered(unpricedAsset.address)
+      ).to.be.revertedWith('RSR asset unpriced')
+
+      const lowMaxAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await rsrAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          rsr.address,
+          requiredVolume.sub(1),
+          ORACLE_TIMEOUT
+        )
+      )
+
+      await expect(
+        assetRegistry.connect(owner).swapRegistered(lowMaxAsset.address)
+      ).to.be.revertedWith('RSR maxTradeVolume too low')
+      expect(await assetRegistry.toAsset(rsr.address)).to.equal(rsrAsset.address)
+
+      const validAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await rsrAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          rsr.address,
+          requiredVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+      await expect(
+        assetRegistry.connect(owner).swapRegistered(validAsset.address)
+      ).to.be.revertedWith('RSR stake too small')
+      expect(await assetRegistry.toAsset(rsr.address)).to.equal(rsrAsset.address)
+
+      await rsr.mint(addr1.address, fp('1'))
+      await rsr.connect(addr1).approve(stRSR.address, fp('1'))
+      await stRSR.connect(addr1).stake(fp('1'))
+      await expect(assetRegistry.connect(owner).swapRegistered(validAsset.address))
+        .to.emit(assetRegistry, 'AssetRegistered')
+        .withArgs(rsr.address, validAsset.address)
+      expect(await assetRegistry.toAsset(rsr.address)).to.equal(validAsset.address)
     })
 
     context('With quantity reverting', function () {
@@ -2685,10 +2776,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
         expect(await indexBH.fullyCollateralized()).to.equal(false)
 
-        // Unregister everything except token0
+        // Unregister everything except token0 and the protocol assets
         const erc20s = await assetRegistry.erc20s()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address && erc20 != rToken.address) {
+          if (erc20 != token0.address && erc20 != rToken.address && erc20 != rsr.address) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }
