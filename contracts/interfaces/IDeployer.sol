@@ -47,7 +47,8 @@ struct DeploymentParams {
     bool enableIssuancePremium; // whether to enable the issuance premium
     //
     // === BackingManager ===
-    uint48 tradingDelay; // {s} delay before automatic trading after a default-triggered basket switch
+    // {s} delay before automatic trading after a default-triggered basket switch
+    uint48 tradingDelay;
     uint48 batchAuctionLength; // {s} the length of a Gnosis EasyAuction
     uint48 dutchAuctionLength; // {s} the length of a falling-price dutch auction
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
