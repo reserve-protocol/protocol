@@ -5123,7 +5123,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.basketsNeeded()).to.equal(mintAmt.mul(2))
       })
 
-      it('Should not forward revenue before trading delay', async () => {
+      it('Should forward revenue immediately after governance basket switch', async () => {
         // Set trading delay
         const newDelay = 3600
         await backingManager.connect(owner).setTradingDelay(newDelay) // 1 hour
@@ -5141,19 +5141,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(3, [token1.address], [fp('1')], false)
 
-        // Cannot forward revenue yet
-        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
-          'trading delayed'
-        )
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(true)
 
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
-
-        // Advance time post trading delay
-        await advanceTime(newDelay + 1)
-
-        // Now we can forward revenue successfully
+        // Governance basket changes do not wait for trading delay
         await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
           aaveToken,
           'Transfer'
@@ -5164,6 +5154,35 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(
           rewardAmt.mul(4000).div(10000)
+        )
+      })
+
+      it('Should delay revenue forwarding after an automatic default', async () => {
+        const newDelay = 3600
+        await backingManager.connect(owner).setTradingDelay(newDelay)
+
+        await assetRegistry.connect(owner).register(collateral[2].address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), 1, [erc20s[2].address])
+
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+
+        await token2.setExchangeRate(fp('0.99'))
+        await assetRegistry.refresh()
+        await basketHandler.connect(addr1).refreshBasket()
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(false)
+
+        await advanceTime(Number(config.warmupPeriod) + 1)
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'trading delayed'
+        )
+        await advanceTime(newDelay + 1)
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
         )
       })
     })

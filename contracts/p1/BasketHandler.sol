@@ -96,6 +96,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     bool public enableIssuancePremium;
 
+    // === 4.3.0 ===
+
+    /// Whether the trading delay is bypassed for the current basket
+    bool public tradingDelayBypassed;
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -159,11 +164,17 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function refreshBasket() external {
         assetRegistry.refresh();
 
+        bool isOwner = main.hasRole(OWNER, _msgSender());
         require(
-            main.hasRole(OWNER, _msgSender()) ||
-                (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
+            isOwner || (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );
+        // A disabled basket preserves the prior bypass value.
+        if (isOwner) {
+            tradingDelayBypassed = true;
+        } else if (!disabled) {
+            tradingDelayBypassed = false;
+        }
         _switchBasket();
 
         trackStatus();
