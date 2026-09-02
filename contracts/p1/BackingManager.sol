@@ -121,8 +121,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(tradesOpen == 0, "trade open");
         require(basketHandler.isReady(), "basket not ready");
         require(
-            basketHandler.tradingDelayBypassed() ||
-                block.timestamp >= basketHandler.timestamp() + tradingDelay,
+            block.timestamp >= basketHandler.timestamp() + tradingDelay ||
+                basketHandler.tradingDelayBypassed(),
             "trading delayed"
         );
 
@@ -190,8 +190,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(tradesOpen == 0, "trade open");
         require(basketHandler.isReady(), "basket not ready");
         require(
-            basketHandler.tradingDelayBypassed() ||
-                block.timestamp >= basketHandler.timestamp() + tradingDelay,
+            block.timestamp >= basketHandler.timestamp() + tradingDelay ||
+                basketHandler.tradingDelayBypassed(),
             "trading delayed"
         );
         require(basketsHeld.bottom >= rToken.basketsNeeded(), "undercollateralized");

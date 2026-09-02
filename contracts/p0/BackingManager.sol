@@ -95,8 +95,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
         require(
-            main.basketHandler().tradingDelayBypassed() ||
-                block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay ||
+                main.basketHandler().tradingDelayBypassed(),
             "trading delayed"
         );
         require(!main.basketHandler().fullyCollateralized(), "already collateralized");
@@ -153,8 +153,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
         require(
-            main.basketHandler().tradingDelayBypassed() ||
-                block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay ||
+                main.basketHandler().tradingDelayBypassed(),
             "trading delayed"
         );
         require(main.basketHandler().fullyCollateralized(), "undercollateralized");
