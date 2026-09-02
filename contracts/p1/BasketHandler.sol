@@ -169,7 +169,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             isOwner || (lastStatus == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );
-        tradingDelayBypassed = isOwner || disabled;
+        if (isOwner) {
+            tradingDelayBypassed = true;
+        } else if (!disabled) {
+            tradingDelayBypassed = false;
+        }
         _switchBasket();
 
         trackStatus();
