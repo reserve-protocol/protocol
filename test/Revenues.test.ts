@@ -1395,7 +1395,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(newSellAsset.address)
+        await rsr.mint(stRSR.address, fp('1'))
         await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
+        await rsr.burn(stRSR.address, fp('1'))
         await basketHandler.refreshBasket()
 
         // Set rewards manually

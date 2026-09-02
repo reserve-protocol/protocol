@@ -1991,10 +1991,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should not revert when redeeming mostly unregistered collateral #fast', async function () {
-        // Unregister everything except token0
+        // Unregister everything except token0 and the protocol assets
         const erc20s = await assetRegistry.erc20s()
+        const rsr = await main.rsr()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address && erc20 != rToken.address) {
+          if (
+            erc20 != token0.address &&
+            erc20 != rToken.address &&
+            erc20.toLowerCase() != rsr.toLowerCase()
+          ) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }

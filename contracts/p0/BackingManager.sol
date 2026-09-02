@@ -276,4 +276,18 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
     }
+
+    function _validateMinTradeVolume(uint192 val) internal view override {
+        if (_isInitializing()) return;
+
+        IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
+        uint192 requiredVolume = val * 10;
+        require(rsrAsset.maxTradeVolume() >= requiredVolume, "RSR maxTradeVolume too low");
+
+        (uint192 low, ) = rsrAsset.price();
+        require(
+            rsrAsset.bal(address(main.stRSR())).safeMul(low, FLOOR) >= requiredVolume,
+            "RSR stake too small"
+        );
+    }
 }
