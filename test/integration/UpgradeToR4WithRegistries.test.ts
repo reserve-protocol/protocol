@@ -17,10 +17,16 @@ interface RTokenParams {
 }
 
 // These RTokens must be on 3.4.0 as the target block
-const rTokensToTest: RTokenParams[] = []
+const rTokensToTest: RTokenParams[] = [
+  {
+    name: 'dgnETH',
+    mainAddress: '0xC376168c8470C6e0F4854A7d450874C30A0973d7',
+    timelockAddress: '0x98D7C5230C46b671dB0CeBb25B17d1E183B23B97',
+  },
+]
 
-// 4.2.0
-const v4VersionHash = '0x99b189f6a35f2d8d52cd79b21cabb1eca4a12f69132e253d75b4ee7634d0fef8'
+// 4.3.0
+const v4VersionHash = '0xdef94dbdd8411ae515cefcb56b153df454453010a1f4c881b3daa7ed18db793a'
 const v2VersionHash = '0xb4bcb154e38601c389396fa918314da42d4626f13ef6d0ceb07e5f5d26b2fbc3'
 
 async function _confirmVersion(address: string, target: string) {
@@ -29,7 +35,7 @@ async function _confirmVersion(address: string, target: string) {
 }
 
 // NOTE: This is an explicit test!
-describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => {
+describe('Upgrade from 4.3.0 to New Version with all Registries Enabled', () => {
   let versionRegistry: VersionRegistry
   let assetPluginRegistry: AssetPluginRegistry
   let daoFeeRegistry: DAOFeeRegistry
@@ -194,7 +200,7 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
         )
 
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.2.0's Main
+          // Upgrade Main to 4.3.0's Main
           await RTokenMain.connect(signer).upgradeTo(implementationsR4.main)
 
           // Set registries
@@ -237,7 +243,7 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
         ]
 
         for (let j = 0; j < targetsToVerify.length; j++) {
-          await _confirmVersion(targetsToVerify[j], '4.2.0')
+          await _confirmVersion(targetsToVerify[j], '4.3.0')
         }
 
         const currentAssetRegistry = await RTokenAssetRegistry.getRegistry()
@@ -255,7 +261,7 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
 
         // So, let's upgrade the RToken to a new version now.
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.2.0's Main
+          // Upgrade Main to 4.3.0's Main
           await RTokenMain.connect(signer).upgradeMainTo(v2VersionHash)
 
           // Registry does not have assets yet.
@@ -278,7 +284,7 @@ describe('Upgrade from 4.2.0 to New Version with all Registries Enabled', () => 
 
         // Finish upgrade, with asset validation
         await whileImpersonating(hre, TimelockController.address, async (signer) => {
-          // Upgrade Main to 4.2.0's Main
+          // Upgrade Main to 4.3.0's Main
           await RTokenMain.connect(signer).upgradeMainTo(v2VersionHash)
 
           // Upgrade RToken, without validating assets
