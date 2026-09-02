@@ -964,7 +964,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
       })
 
-      it('Should skip start recollateralization after tradingDelay', async () => {
+      it('Should skip tradingDelay after governance basket switch', async () => {
         // Set trading delay
         const newDelay = 3600
         await backingManager.connect(owner).setTradingDelay(newDelay) // 1 hour
@@ -977,19 +977,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(3, [token1.address], [fp('1')], false)
 
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(true)
+
         // Trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-        // Attempt to trigger before trading delay - Should revert
-        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-          'trading delayed'
-        )
-
-        // Advance time post trading delay
-        await advanceTime(newDelay + 1)
-
-        // Auction can be run now
+        // Auction can be run immediately
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(
@@ -1010,6 +1004,35 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
+      })
+
+      it('Should delay automatic rebalance after default', async () => {
+        const newDelay = 3600
+        await backingManager.connect(owner).setTradingDelay(newDelay)
+
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await collateral0.refresh()
+        await advanceTime((await collateral0.delayUntilDefault()).toString())
+        await collateral0.refresh()
+
+        await basketHandler.connect(addr1).refreshBasket()
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(false)
+
+        await advanceTime(config.warmupPeriod.add(1).toString())
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+          'trading delayed'
+        )
+
+        await advanceTime(newDelay + 1)
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+          backingManager,
+          'TradeStarted'
+        )
       })
 
       it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
