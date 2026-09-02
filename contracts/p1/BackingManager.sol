@@ -33,7 +33,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     uint48 public constant MAX_TRADING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
-    uint48 public tradingDelay; // {s} delay before automatic trading after a default-triggered basket switch
+    // {s} delay before automatic trading after a default-triggered basket switch
+    uint48 public tradingDelay;
     uint192 public backingBuffer; // {1} how much extra backing collateral to keep
 
     // === 3.0.0 ===
