@@ -33,7 +33,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     uint48 public constant MAX_TRADING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
-    uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint48 public tradingDelay; // {s} delay before automatic trading after a default-triggered basket switch
     uint192 public backingBuffer; // {1} how much extra backing collateral to keep
 
     // === 3.0.0 ===
@@ -120,7 +120,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         require(tradesOpen == 0, "trade open");
         require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+        if (!basketHandler.tradingDelayBypassed()) {
+            require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+        }
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         require(basketsHeld.bottom < rToken.basketsNeeded(), "already collateralized");
@@ -185,7 +187,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         require(tradesOpen == 0, "trade open");
         require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+        if (!basketHandler.tradingDelayBypassed()) {
+            require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+        }
         require(basketsHeld.bottom >= rToken.basketsNeeded(), "undercollateralized");
         // require(basketHandler.fullyCollateralized())
 

@@ -24,7 +24,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint48 public constant MAX_TRADING_DELAY = 60 * 60 * 24 * 365; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
-    uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint48 public tradingDelay; // {s} delay before automatic trading after a default-triggered basket switch
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
@@ -94,10 +94,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
-        require(
-            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
-            "trading delayed"
-        );
+        if (!main.basketHandler().tradingDelayBypassed()) {
+            require(
+                block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+                "trading delayed"
+            );
+        }
         require(!main.basketHandler().fullyCollateralized(), "already collateralized");
 
         // First dissolve any held RToken balance
@@ -151,10 +153,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
-        require(
-            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
-            "trading delayed"
-        );
+        if (!main.basketHandler().tradingDelayBypassed()) {
+            require(
+                block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+                "trading delayed"
+            );
+        }
         require(main.basketHandler().fullyCollateralized(), "undercollateralized");
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
