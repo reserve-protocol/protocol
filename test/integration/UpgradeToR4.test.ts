@@ -18,13 +18,7 @@ interface RTokenParams {
 }
 
 // These RTokens must be on 3.4.0 as the target block
-const rTokensToTest: RTokenParams[] = [
-  {
-    name: 'dgnETH',
-    mainAddress: '0xC376168c8470C6e0F4854A7d450874C30A0973d7',
-    timelockAddress: '0x98D7C5230C46b671dB0CeBb25B17d1E183B23B97',
-  },
-]
+const rTokensToTest: RTokenParams[] = []
 
 // 4.2.0
 const v4VersionHash = '0x99b189f6a35f2d8d52cd79b21cabb1eca4a12f69132e253d75b4ee7634d0fef8'
