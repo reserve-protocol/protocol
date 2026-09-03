@@ -69,20 +69,22 @@ If it is ever revisited, one operational prerequisite: the pool's `observationCa
 | **`max*` quirk**    | V2 `maxDeposit`/`maxMint`/`maxWithdraw`/`maxRedeem` always return 0. Harmless: the protocol holds and trades the share token and never calls `vault.redeem()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **Fees & losses**   | Performance/management fees and adapter losses flow through `convertToAssets`. Routine fee dips are absorbed by `revenueHiding`; a genuine loss correctly DISABLES the collateral.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
-Mainnet vaults validated against the live chain (all gates unset; fees 0 except PayPal USD Main, which has a ~1%/yr management fee):
+Mainnet vaults validated against the live chain (all gates unset; fees 0 except PayPal USD Main, which has a ~1%/yr management fee). The Reward Tokens column reflects live campaigns as of 2026-09 -- **none of these vaults emit MORPHO**, and six have no reward campaign at all:
 
-| Name                   | Symbol              | Address                                      | Asset |
-| ---------------------- | ------------------- | -------------------------------------------- | ----- |
-| Steakhouse Prime USDC  | steakUSDC           | `0xbeef088055857739C12CD3765F20b7679Def0f51` | USDC  |
-| PayPal USD Main        | senPYUSDmain        | `0xb576765fB15505433aF24FEe2c0325895C559FB2` | PYUSD |
-| Gauntlet USDC Frontier | gtusdcf             | `0x9a1D6bd5b8642C41F25e0958129B85f8E1176F3e` | USDC  |
-| Steakhouse Prime USDT  | steakUSDT           | `0xbeef003C68896c7D2c3c60d363e8d71a49Ab2bf9` | USDT  |
-| Galaxy USDT Quality    | gUSDTq              | `0x71ffB6a81786eC285D429d531Cf655107B9D878d` | USDT  |
-| Gauntlet USDC Prime    | gtusdcp             | `0x8c106EEDAd96553e64287A5A6839c3Cc78afA3D0` | USDC  |
-| Galaxy USDC Quality    | gUSDCq              | `0x91600E31fBeDc72433d4a57F16639cfe661Be7d8` | USDC  |
-| Sky.money USDT Savings | skyMoneyUsdtSavings | `0x23f5E9c35820f4baB695Ac1F19c203cC3f8e1e11` | USDT  |
+| Name                   | Symbol              | Address                                      | Asset | Reward Tokens      |
+| ---------------------- | ------------------- | -------------------------------------------- | ----- | ------------------ |
+| Steakhouse Prime USDC  | steakUSDC           | `0xbeef088055857739C12CD3765F20b7679Def0f51` | USDC  | none               |
+| PayPal USD Main        | senPYUSDmain        | `0xb576765fB15505433aF24FEe2c0325895C559FB2` | PYUSD | PYUSD (~2.95% APR) |
+| Gauntlet USDC Frontier | gtusdcf             | `0x9a1D6bd5b8642C41F25e0958129B85f8E1176F3e` | USDC  | none               |
+| Steakhouse Prime USDT  | steakUSDT           | `0xbeef003C68896c7D2c3c60d363e8d71a49Ab2bf9` | USDT  | none               |
+| Galaxy USDT Quality    | gUSDTq              | `0x71ffB6a81786eC285D429d531Cf655107B9D878d` | USDT  | none               |
+| Gauntlet USDC Prime    | gtusdcp             | `0x8c106EEDAd96553e64287A5A6839c3Cc78afA3D0` | USDC  | none               |
+| Galaxy USDC Quality    | gUSDCq              | `0x91600E31fBeDc72433d4a57F16639cfe661Be7d8` | USDC  | none               |
+| Sky.money USDT Savings | skyMoneyUsdtSavings | `0x23f5E9c35820f4baB695Ac1F19c203cC3f8e1e11` | USDT  | USDT (~0.83% APR)  |
 
-Reward claiming is unchanged from V1 (off-chain Merkle claim on behalf of the Backing Manager).
+Campaigns are added and expire, so re-check before relying on this. Source: Morpho's GraphQL API (`vaultV2ByAddress`), cross-checked against `netApy - netApyExcludingRewards`.
+
+The claiming mechanism is unchanged from V1 (off-chain Merkle claim on behalf of the Backing Manager), and nothing on-chain claims automatically -- `claimRewards()` is a no-op on these plugins, so a keeper must submit the proof or the PYUSD/USDT rewards above never reach the Backing Manager.
 
 ## Future Work
 
