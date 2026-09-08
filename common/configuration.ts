@@ -99,6 +99,7 @@ export interface ITokens {
   yvCurveUSDCcrvUSD?: string
   wsuperOETHb?: string
   wOETH?: string
+  wOUSD?: string
 
   pyUSD?: string
   aEthPyUSD?: string
@@ -331,6 +332,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
       sUSDS: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
       wOETH: '0xDcEe70654261AF21C44c093C300eD3Bb97b78192',
+      wOUSD: '0xD2af830E8CBdFed6CC11Bab697bB25496ed6FA62',
       wcvx3Pool: '0x24CDc6b4Edd3E496b7283D94D93119983A61056a', // our wrapper
       wcvxPayPool: '0x511daB8150966aFfE15F0a5bFfBa7F4d2b62DEd4', // our wrapper
       wcvxCrvUSDUSDC: '0x6ad24C0B8fD4B594C6009A7F7F48450d9F56c6b8', // our wrapper
