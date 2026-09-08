@@ -43,3 +43,5 @@ On base:
 ### claimRewards()
 
 There are no rewards to claim from `wOETH` and `wsuperOETH`, all yield is already included in the ERC4626 assets appreciation.
+
+For the fixed-peg wOUSD collateral plugin, see [Origin Dollar collateral](./OUSD.md).
