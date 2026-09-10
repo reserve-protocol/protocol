@@ -119,6 +119,16 @@ export interface ITokens {
   Re7WETH?: string
   meUSD?: string
 
+  // Morpho Vault V2
+  steakUSDCPrime?: string
+  sentoraPYUSD?: string
+  gauntletUSDCFrontier?: string
+  steakUSDTPrime?: string
+  galaxyUSDTQuality?: string
+  gauntletUSDCPrime?: string
+  galaxyUSDCQuality?: string
+  skyUSDTSavings?: string
+
   pxETH?: string
   apxETH?: string
 
@@ -313,7 +323,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
-      MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+      MORPHO: '0x58D97B57BB95320F9a05dC918Aef65434969c2B2', // new, transferable MORPHO
       SWISE: '0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2',
       BTRFLY: '0xc55126051B22eBb829D00368f4B12Bde432de5Da',
       yvCurveUSDPcrvUSD: '0xF56fB6cc29F0666BDD1662FEaAE2A3C935ee3469',
@@ -325,6 +335,14 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       steakPYUSD: '0xbEEF02e5E13584ab96848af90261f0C8Ee04722a',
       bbUSDT: '0x2C25f6C25770fFEC5959D34B94Bf898865e5D6b1',
       Re7WETH: '0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0',
+      steakUSDCPrime: '0xbeef088055857739C12CD3765F20b7679Def0f51',
+      sentoraPYUSD: '0xb576765fB15505433aF24FEe2c0325895C559FB2', // PYUSD (Paypal USD Main)
+      gauntletUSDCFrontier: '0x9a1D6bd5b8642C41F25e0958129B85f8E1176F3e',
+      steakUSDTPrime: '0xbeef003C68896c7D2c3c60d363e8d71a49Ab2bf9',
+      galaxyUSDTQuality: '0x71ffB6a81786eC285D429d531Cf655107B9D878d',
+      gauntletUSDCPrime: '0x8c106EEDAd96553e64287A5A6839c3Cc78afA3D0',
+      galaxyUSDCQuality: '0x91600E31fBeDc72433d4a57F16639cfe661Be7d8',
+      skyUSDTSavings: '0x23f5E9c35820f4baB695Ac1F19c203cC3f8e1e11',
       sdUSDCUSDCPlus: '0x9bbF31E99F30c38a5003952206C31EEa77540BeF',
       USDe: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
       sUSDe: '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
@@ -460,7 +478,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
       sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
       astETH: '0x1982b2F5814301d4e9a8b0201555376e62F82428',
-      MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+      MORPHO: '0x58D97B57BB95320F9a05dC918Aef65434969c2B2', // new, transferable MORPHO
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',

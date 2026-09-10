@@ -18,6 +18,7 @@ import { CollateralOpts } from '../pluginTestTypes'
 import { pushOracleForward } from '../../../utils/oracles'
 import {
   DEFAULT_THRESHOLD,
+  LEGACY_MORPHO,
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
   ORACLE_ERROR,
@@ -54,7 +55,7 @@ const makeAaveNonFiatCollateralTestSuite = (
         morphoLens: configToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardToken: configToUse.tokens.MORPHO!,
+        rewardToken: LEGACY_MORPHO,
       })
       opts.erc20 = wrapperMock.address
     }
@@ -104,7 +105,7 @@ const makeAaveNonFiatCollateralTestSuite = (
         morphoLens: configToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardToken: configToUse.tokens.MORPHO!,
+        rewardToken: LEGACY_MORPHO,
       })
 
       const MockV3AggregatorFactory = <MockV3Aggregator__factory>(

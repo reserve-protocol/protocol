@@ -13,6 +13,7 @@ import { CollateralOpts } from '../pluginTestTypes'
 import { pushOracleForward } from '../../../utils/oracles'
 import {
   DEFAULT_THRESHOLD,
+  LEGACY_MORPHO,
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
   ORACLE_ERROR,
@@ -56,7 +57,7 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardToken: networkConfigToUse.tokens.MORPHO!,
+        rewardToken: LEGACY_MORPHO,
       })
       opts.erc20 = wrapperMock.address
     }
@@ -105,7 +106,7 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: opts.underlyingToken!,
         poolToken: opts.poolToken!,
-        rewardToken: networkConfigToUse.tokens.MORPHO!,
+        rewardToken: LEGACY_MORPHO,
       })
 
       const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
@@ -213,7 +214,7 @@ const makeAaveFiatCollateralTestSuite = (
         morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
         underlyingERC20: defaultCollateralOpts.underlyingToken!,
         poolToken: defaultCollateralOpts.poolToken!,
-        rewardToken: networkConfigToUse.tokens.MORPHO!,
+        rewardToken: LEGACY_MORPHO,
       })
 
       const morphoTokenOwner = '0xcBa28b38103307Ec8dA98377ffF9816C164f9AFa'
@@ -222,11 +223,7 @@ const makeAaveFiatCollateralTestSuite = (
 
       const vaultWithClaimableRewards = usdtVault.attach(claimer)
       await whileImpersonating(hre, morphoTokenOwner, async (signer) => {
-        const morphoTokenInst = await ethers.getContractAt(
-          'IMorphoToken',
-          networkConfigToUse.tokens.MORPHO!,
-          signer
-        )
+        const morphoTokenInst = await ethers.getContractAt('IMorphoToken', LEGACY_MORPHO, signer)
 
         await morphoTokenInst
           .connect(signer)
@@ -275,9 +272,9 @@ const makeAaveFiatCollateralTestSuite = (
       await advanceTime(hre, 86400 * 7)
       await advanceBlocks(hre, 7200 * 7)
       expect(await vaultWithClaimableRewards.connect(alice).claimRewards())
-      expect(
-        await erc20Factory.attach(networkConfigToUse.tokens.MORPHO!).balanceOf(aliceAddress)
-      ).to.be.eq(bn('14162082619942089266'))
+      expect(await erc20Factory.attach(LEGACY_MORPHO).balanceOf(aliceAddress)).to.be.eq(
+        bn('14162082619942089266')
+      )
     })
     it('Frontrunning claiming rewards is not economical', async () => {
       const alice = hre.ethers.provider.getSigner(1)

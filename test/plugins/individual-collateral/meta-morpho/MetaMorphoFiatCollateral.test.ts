@@ -31,6 +31,15 @@ import {
   eUSD_ORACLE_ERROR,
   PRICE_TIMEOUT,
   MEUSD,
+  FORK_BLOCK_V2,
+  STEAKUSDC_PRIME,
+  SENTORA_PYUSD,
+  GAUNTLET_USDC_FRONTIER,
+  STEAKUSDT_PRIME,
+  GALAXY_USDT_QUALITY,
+  GAUNTLET_USDC_PRIME,
+  GALAXY_USDC_QUALITY,
+  SKY_USDT_SAVINGS,
 } from './constants'
 import { mintCollateralTo } from './mintCollateralTo'
 
@@ -38,6 +47,8 @@ interface MAFiatCollateralOpts extends CollateralOpts {
   defaultPrice?: BigNumberish
   defaultRefPerTok?: BigNumberish
   forkNetwork?: string
+  forkBlock?: number
+  factoryName?: string
 }
 
 const makeFiatCollateralTestSuite = (
@@ -48,7 +59,7 @@ const makeFiatCollateralTestSuite = (
     opts = { ...defaultCollateralOpts, ...opts }
 
     const MetaMorphoCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'MetaMorphoFiatCollateral'
+      opts.factoryName ?? 'MetaMorphoFiatCollateral'
     )
     const collateral = <TestICollateral>await MetaMorphoCollateralFactory.deploy(
       {
@@ -150,8 +161,29 @@ const makeFiatCollateralTestSuite = (
   /*
     Define collateral-specific tests
   */
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const collateralSpecificConstructorTests = () => {}
+  const collateralSpecificConstructorTests = () => {
+    // MorphoV2FiatCollateral enforces, at construction, that the vault's critical gates are
+    // permanently disabled (unset AND setter abdicated). Verify it reverts otherwise.
+    if (defaultCollateralOpts.factoryName !== 'MorphoV2FiatCollateral') return
+
+    it('reverts if a critical gate setter is not abdicated', async () => {
+      const mockFactory = await ethers.getContractFactory('MockMetaMorpho4626')
+      const mock = await mockFactory.deploy(defaultCollateralOpts.erc20!)
+      await mock.setForceNotAbdicated(true)
+      await expect(deployCollateral({ erc20: mock.address })).to.be.revertedWith(
+        'receiveSharesGate not abdicated'
+      )
+    })
+
+    it('reverts if a critical gate is set', async () => {
+      const mockFactory = await ethers.getContractFactory('MockMetaMorpho4626')
+      const mock = await mockFactory.deploy(defaultCollateralOpts.erc20!)
+      await mock.setReceiveSharesGateOverride('0x0000000000000000000000000000000000000001')
+      await expect(deployCollateral({ erc20: mock.address })).to.be.revertedWith(
+        'receiveSharesGate not abdicated'
+      )
+    })
+  }
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificStatusTests = () => {}
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -176,7 +208,7 @@ const makeFiatCollateralTestSuite = (
     itChecksPriceChanges: it,
     itChecksNonZeroDefaultThreshold: it,
     itHasRevenueHiding: it,
-    resetFork: getResetFork(FORK_BLOCK),
+    resetFork: getResetFork(defaultCollateralOpts.forkBlock ?? FORK_BLOCK),
     targetNetwork: defaultCollateralOpts.forkNetwork,
     collateralName,
     chainlinkDefaultAnswer: defaultCollateralOpts.defaultPrice!,
@@ -192,7 +224,9 @@ const makeOpts = (
   chainlinkFeed: string,
   oracleTimeout: BigNumber,
   oracleError: BigNumber,
-  forkNetwork: string
+  forkNetwork: string,
+  forkBlock?: number,
+  factoryName?: string
 ): MAFiatCollateralOpts => {
   return {
     targetName: ethers.utils.formatBytes32String('USD'),
@@ -208,6 +242,8 @@ const makeOpts = (
     erc20: vault,
     chainlinkFeed,
     forkNetwork,
+    forkBlock,
+    factoryName,
   }
 }
 
@@ -231,4 +267,102 @@ makeFiatCollateralTestSuite(
 makeFiatCollateralTestSuite(
   'MetaMorphoFiatCollateral - meUSD',
   makeOpts(MEUSD, eUSD_USD_FEED, eUSD_ORACLE_TIMEOUT, eUSD_ORACLE_ERROR, 'base')
+)
+
+// Morpho Vault V2 vaults — same plugin, USD-pegged, no gates (verified on-chain)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Steakhouse Prime USDC (V2)',
+  makeOpts(
+    STEAKUSDC_PRIME,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - PayPal USD Main (V2)',
+  makeOpts(
+    SENTORA_PYUSD,
+    PYUSD_USD_FEED,
+    PYUSD_ORACLE_TIMEOUT,
+    PYUSD_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Gauntlet USDC Frontier (V2)',
+  makeOpts(
+    GAUNTLET_USDC_FRONTIER,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Steakhouse Prime USDT (V2)',
+  makeOpts(
+    STEAKUSDT_PRIME,
+    USDT_USD_FEED,
+    USDT_ORACLE_TIMEOUT,
+    USDT_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Galaxy USDT Quality (V2)',
+  makeOpts(
+    GALAXY_USDT_QUALITY,
+    USDT_USD_FEED,
+    USDT_ORACLE_TIMEOUT,
+    USDT_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Gauntlet USDC Prime (V2)',
+  makeOpts(
+    GAUNTLET_USDC_PRIME,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Galaxy USDC Quality (V2)',
+  makeOpts(
+    GALAXY_USDC_QUALITY,
+    USDC_USD_FEED,
+    USDC_ORACLE_TIMEOUT,
+    USDC_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
+)
+makeFiatCollateralTestSuite(
+  'MetaMorphoFiatCollateral - Sky.money USDT Savings (V2)',
+  makeOpts(
+    SKY_USDT_SAVINGS,
+    USDT_USD_FEED,
+    USDT_ORACLE_TIMEOUT,
+    USDT_ORACLE_ERROR,
+    'mainnet',
+    FORK_BLOCK_V2,
+    'MorphoV2FiatCollateral'
+  ) // eslint-disable-line prettier/prettier
 )
