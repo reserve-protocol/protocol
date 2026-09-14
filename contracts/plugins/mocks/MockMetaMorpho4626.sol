@@ -17,6 +17,7 @@ contract MockMetaMorpho4626 {
 
     // Morpho Vault V2 gate test knobs (default: pass through to the wrapped vault)
     address public receiveSharesGateOverride; // if nonzero, returned by receiveSharesGate()
+    address public sendAssetsGateOverride; // if nonzero, returned by sendAssetsGate()
     bool public forceNotAbdicated; // if true, abdicated() returns false
 
     // solhint-disable-next-line no-empty-blocks
@@ -30,6 +31,10 @@ contract MockMetaMorpho4626 {
 
     function setReceiveSharesGateOverride(address gate) external {
         receiveSharesGateOverride = gate;
+    }
+
+    function setSendAssetsGateOverride(address gate) external {
+        sendAssetsGateOverride = gate;
     }
 
     function setForceNotAbdicated(bool value) external {
@@ -52,6 +57,7 @@ contract MockMetaMorpho4626 {
     }
 
     function sendAssetsGate() external view returns (address) {
+        if (sendAssetsGateOverride != address(0)) return sendAssetsGateOverride;
         return IMorphoVaultV2(address(actual)).sendAssetsGate();
     }
 

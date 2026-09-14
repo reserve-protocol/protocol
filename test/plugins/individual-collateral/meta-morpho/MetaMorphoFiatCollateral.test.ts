@@ -10,7 +10,9 @@ import collateralTests from '../collateralTests'
 import { getResetFork } from '../helpers'
 import { CollateralOpts, CollateralFixtureContext } from '../pluginTestTypes'
 import { pushOracleForward } from '../../../utils/oracles'
-import { MAX_UINT192 } from '#/common/constants'
+import { MAX_UINT192, ZERO_ADDRESS } from '#/common/constants'
+import { CollateralStatus } from '../pluginTestTypes'
+import { advanceTime } from '../../../utils/time'
 import {
   DELAY_UNTIL_DEFAULT,
   FORK_BLOCK,
@@ -175,6 +177,15 @@ const makeFiatCollateralTestSuite = (
       )
     })
 
+    it('reverts if sendAssetsGate is already set', async () => {
+      const mockFactory = await ethers.getContractFactory('MockMetaMorpho4626')
+      const mock = await mockFactory.deploy(defaultCollateralOpts.erc20!)
+      await mock.setSendAssetsGateOverride('0x0000000000000000000000000000000000000001')
+      await expect(deployCollateral({ erc20: mock.address })).to.be.revertedWith(
+        'sendAssetsGate set'
+      )
+    })
+
     it('reverts if a critical gate is set', async () => {
       const mockFactory = await ethers.getContractFactory('MockMetaMorpho4626')
       const mock = await mockFactory.deploy(defaultCollateralOpts.erc20!)
@@ -184,8 +195,119 @@ const makeFiatCollateralTestSuite = (
       )
     })
   }
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const collateralSpecificStatusTests = () => {}
+  const collateralSpecificStatusTests = () => {
+    if (defaultCollateralOpts.factoryName !== 'MorphoV2FiatCollateral') return
+
+    it('goes IFFY while sendAssetsGate is set, then DISABLED if sustained', async () => {
+      const [, alice] = await ethers.getSigners()
+      const ctx = await makeCollateralFixtureContext(alice, {})()
+      const { collateral } = ctx
+      const vault = await ethers.getContractAt('MockMetaMorpho4626', ctx.tok.address)
+
+      await collateral.refresh()
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // curator sets sendAssetsGate -> no new shares can be minted
+      await vault.setSendAssetsGateOverride('0x0000000000000000000000000000000000000001')
+      await expect(collateral.refresh())
+        .to.emit(collateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+      expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // sustained past delayUntilDefault -> DISABLED
+      await advanceTime(await collateral.delayUntilDefault())
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('recovers to SOUND if sendAssetsGate is unset before delayUntilDefault', async () => {
+      const [, alice] = await ethers.getSigners()
+      const ctx = await makeCollateralFixtureContext(alice, {})()
+      const { collateral } = ctx
+      const vault = await ethers.getContractAt('MockMetaMorpho4626', ctx.tok.address)
+
+      await collateral.refresh()
+      await vault.setSendAssetsGateOverride('0x0000000000000000000000000000000000000001')
+      await collateral.refresh()
+      expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+      await vault.setSendAssetsGateOverride(ZERO_ADDRESS)
+      await collateral.refresh()
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('stays DISABLED forever once the gate default completes, even if gate is unset', async () => {
+      const [, alice] = await ethers.getSigners()
+      const ctx = await makeCollateralFixtureContext(alice, {})()
+      const { collateral } = ctx
+      const vault = await ethers.getContractAt('MockMetaMorpho4626', ctx.tok.address)
+
+      await collateral.refresh()
+      await vault.setSendAssetsGateOverride('0x0000000000000000000000000000000000000001')
+      await collateral.refresh()
+      await advanceTime(await collateral.delayUntilDefault())
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // gate removed: must NOT recover, and must not emit a status change
+      await vault.setSendAssetsGateOverride(ZERO_ADDRESS)
+      await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // and repeated refreshes keep it DISABLED
+      await collateral.refresh()
+      await collateral.refresh()
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('gate cannot pull a DISABLED collateral back to IFFY', async () => {
+      const [, alice] = await ethers.getSigners()
+      const ctx = await makeCollateralFixtureContext(alice, {})()
+      const { collateral } = ctx
+      const vault = await ethers.getContractAt('MockMetaMorpho4626', ctx.tok.address)
+
+      // hard-default first, via refPerTok decrease
+      await collateral.refresh()
+      await reduceRefPerTok(ctx, 5)
+      await collateral.refresh()
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+      const whenDefault = await collateral.whenDefault()
+
+      // now set the gate: markStatus(IFFY) must be a no-op, no event, no change to whenDefault
+      await vault.setSendAssetsGateOverride('0x0000000000000000000000000000000000000001')
+      await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await collateral.whenDefault()).to.equal(whenDefault)
+    })
+
+    it('claimRewards() whitelists anyone to claim on our behalf via Merkl', async () => {
+      const collateral = await deployCollateral()
+      const merkl = await ethers.getContractAt(
+        'IMerklDistributor',
+        await collateral.MERKL_DISTRIBUTOR()
+      )
+
+      // not approved to begin with
+      expect(await merkl.operators(collateral.address, ZERO_ADDRESS)).to.equal(0)
+
+      await collateral.claimRewards()
+      expect(await merkl.operators(collateral.address, ZERO_ADDRESS)).to.equal(1)
+
+      // idempotent: toggleOperator is a TOGGLE, so a second call must NOT turn it back off
+      await collateral.claimRewards()
+      expect(await merkl.operators(collateral.address, ZERO_ADDRESS)).to.equal(1)
+    })
+
+    it('claimRewards() does not revert if Merkl is unavailable', async () => {
+      const collateral = await deployCollateral()
+      const merklAddr = await collateral.MERKL_DISTRIBUTOR()
+      const saved = await ethers.provider.send('eth_getCode', [merklAddr, 'latest'])
+
+      // replace Merkl with code that always reverts
+      await ethers.provider.send('hardhat_setCode', [merklAddr, '0x60006000fd'])
+      await expect(collateral.claimRewards()).to.not.be.reverted
+
+      await ethers.provider.send('hardhat_setCode', [merklAddr, saved])
+    })
+  }
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const beforeEachRewardsTest = async () => {}
 
