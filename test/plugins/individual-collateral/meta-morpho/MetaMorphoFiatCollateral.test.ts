@@ -235,6 +235,36 @@ const makeFiatCollateralTestSuite = (
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
     })
 
+    it('repeated refreshes before the deadline do not extend it; still DISABLEs on time', async () => {
+      const [, alice] = await ethers.getSigners()
+      const ctx = await makeCollateralFixtureContext(alice, {})()
+      const { collateral } = ctx
+      const vault = await ethers.getContractAt('MockMetaMorpho4626', ctx.tok.address)
+
+      await collateral.refresh()
+      await vault.setSendAssetsGateOverride('0x0000000000000000000000000000000000000001')
+      await collateral.refresh()
+      expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // deadline latched on the first gated refresh
+      const deadline = await collateral.whenDefault()
+
+      // refresh repeatedly inside the window: deadline must not move, and no spurious
+      // status-change events should fire
+      const delay = Number(await collateral.delayUntilDefault())
+      for (let i = 0; i < 5; i++) {
+        await advanceTime(Math.floor(delay / 10))
+        await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await collateral.whenDefault()).to.equal(deadline)
+      }
+
+      // crossing the ORIGINAL deadline DISABLEs, with no further refresh needed
+      await advanceTime(delay)
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await collateral.whenDefault()).to.equal(deadline)
+    })
+
     it('stays DISABLED forever once the gate default completes, even if gate is unset', async () => {
       const [, alice] = await ethers.getSigners()
       const ctx = await makeCollateralFixtureContext(alice, {})()

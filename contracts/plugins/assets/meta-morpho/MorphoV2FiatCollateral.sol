@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import { CollateralStatus } from "../../../interfaces/IAsset.sol";
 import { Asset, CollateralConfig, IRewardable } from "../AppreciatingFiatCollateral.sol";
+import { FixLib, FIX_MAX } from "../../../libraries/Fixed.sol";
 import { MetaMorphoFiatCollateral } from "./MetaMorphoFiatCollateral.sol";
 import { IMorphoVaultV2 } from "./IMorphoVaultV2.sol";
 import { IMerklDistributor } from "./IMerklDistributor.sol";
@@ -39,6 +40,8 @@ import { IMerklDistributor } from "./IMerklDistributor.sol";
  * For more information:  https://docs.morpho.org/learn/concepts/rewards/
  */
 contract MorphoV2FiatCollateral is MetaMorphoFiatCollateral {
+    using FixLib for uint192;
+
     /// Merkl Distributor PROXY on mainnet.
     address public constant MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae;
 
@@ -74,22 +77,79 @@ contract MorphoV2FiatCollateral is MetaMorphoFiatCollateral {
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
+    /// Should not revert
+    /// Refresh exchange rates and update default status.
+    /// @dev Reimplements AppreciatingFiatCollateral.refresh() rather than calling super, so the
+    ///      sendAssetsGate check can be folded into the soft-default branch (same pattern as
+    ///      CurveStableCollateral). Calling super would markStatus(SOUND) on every healthy
+    ///      refresh, resetting _whenDefault and restarting the delayUntilDefault clock, so the
+    ///      collateral would never reach DISABLED while being refreshed.
     function refresh() public virtual override {
-        // NOTE: unlike most refresh() override, the super call is FIRST here, and that is
-        // required. markStatus(SOUND) resets _whenDefault to NEVER, so marking IFFY before
-        // super.refresh() would be silently wiped the moment super saw a healthy price.
-        super.refresh();
+        CollateralStatus oldStatus = status();
 
-        // While sendAssetsGate is set, new shares cannot be minted and the collateral is only
-        // obtainable on a thin secondary market. Mark IFFY so rebalance() is blocked; escalates
-        // to DISABLED after delayUntilDefault if sustained.
-        if (IMorphoVaultV2(address(erc20)).sendAssetsGate() != address(0)) {
-            CollateralStatus oldStatus = status();
-            markStatus(CollateralStatus.IFFY);
-            CollateralStatus newStatus = status();
+        // Check for hard default
+        // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
-            // super.refresh() emits for its own transition; only emit the one we cause here
-            if (oldStatus != newStatus) emit CollateralStatusChanged(oldStatus, newStatus);
+        // revenue hiding: do not DISABLE if drawdown is small
+        try this.underlyingRefPerTok() returns (uint192 underlyingRefPerTok_) {
+            // {ref/tok} = {ref/tok} * {1}
+            uint192 hiddenReferencePrice = underlyingRefPerTok_.mul(revenueShowing);
+
+            // uint192(<) is equivalent to Fix.lt
+            if (underlyingRefPerTok_ < exposedReferencePrice) {
+                exposedReferencePrice = underlyingRefPerTok_;
+                markStatus(CollateralStatus.DISABLED);
+            } else if (hiddenReferencePrice > exposedReferencePrice) {
+                exposedReferencePrice = hiddenReferencePrice;
+            }
+
+            // Check for soft default + save prices
+            try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+                // {UoA/tok}, {UoA/tok}, {target/ref}
+                // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+
+                // Save prices if priced
+                if (high != FIX_MAX) {
+                    savedLowPrice = low;
+                    savedHighPrice = high;
+                    savedPegPrice = pegPrice;
+                    lastSave = uint48(block.timestamp);
+                } else {
+                    // must be unpriced
+                    assert(low == 0);
+                }
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                //
+                // A set sendAssetsGate is also a soft default: no new shares can be minted, so
+                // the collateral is only obtainable on a thin secondary market and a
+                // recollateralization would buy it at a large premium. IFFY blocks rebalance()
+                // via isReady() and escalates to DISABLED after delayUntilDefault.
+                if (
+                    pegPrice < pegBottom ||
+                    pegPrice > pegTop ||
+                    low == 0 ||
+                    IMorphoVaultV2(address(erc20)).sendAssetsGate() != address(0)
+                ) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
+            }
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.DISABLED);
+        }
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
