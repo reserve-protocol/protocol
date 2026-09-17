@@ -13,6 +13,7 @@ import { whileImpersonating } from '../utils/impersonation'
 import { pushOracleForward } from '../utils/oracles'
 
 import forkBlockNumber from '../integration/fork-block-numbers'
+import { LEGACY_MORPHO } from '../plugins/individual-collateral/morpho-aave/constants'
 import {
   ATokenFiatCollateral,
   AaveV3FiatCollateral,
@@ -1202,7 +1203,7 @@ describeFork(`FacadeMonitor - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
           underlyingERC20: networkConfig[chainId].tokens.USDC!,
           poolToken: networkConfig[chainId].tokens.aUSDC!,
-          rewardToken: networkConfig[chainId].tokens.MORPHO!,
+          rewardToken: LEGACY_MORPHO,
         })
 
         const CollateralFactory = await hre.ethers.getContractFactory('MorphoFiatCollateral')
