@@ -17,7 +17,7 @@ import { ERC4626FiatCollateral } from "../ERC4626FiatCollateral.sol";
  *
  * Rewards will need to be claimed manually, off-chain. This can be done permissionlessly by anyone,
  * on behalf of the RToken's Backing Manager address.
- * For more information:  https://docs.morpho.org/rewards/tutorials/claim-rewards/
+ * For more information:  https://docs.morpho.org/learn/concepts/rewards/
  *
  */
 contract MetaMorphoSelfReferentialCollateral is ERC4626FiatCollateral {

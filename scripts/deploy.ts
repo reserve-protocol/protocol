@@ -88,6 +88,7 @@ async function main() {
       'phase2-assets/collaterals/deploy_steakpyusd.ts',
       'phase2-assets/collaterals/deploy_bbusdt.ts',
       'phase2-assets/collaterals/deploy_re7weth.ts',
+      'phase2-assets/collaterals/deploy_morpho_v2_vaults.ts',
       'phase2-assets/collaterals/deploy_ethx_collateral.ts',
       'phase2-assets/collaterals/deploy_apxeth.ts',
       'phase2-assets/collaterals/deploy_USDe.ts',

@@ -9,7 +9,7 @@ import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { bn } from '#/common/numbers'
 import { getResetFork } from '../helpers'
-import { FORK_BLOCK } from './constants'
+import { FORK_BLOCK, LEGACY_MORPHO } from './constants'
 import { advanceTime } from '#/utils/time'
 
 type ITokenSymbol = keyof ITokens
@@ -55,7 +55,7 @@ const execTestForToken = ({
 
       const instances = {
         underlying: factories.ERC20Mock.attach(token.address),
-        morpho: factories.ERC20Mock.attach(networkConfigToUse.tokens.MORPHO!),
+        morpho: factories.ERC20Mock.attach(LEGACY_MORPHO),
         morphoAaveV2Controller: await ethers.getContractAt(
           'IMorpho',
           networkConfigToUse.MORPHO_AAVE_CONTROLLER!
@@ -65,7 +65,7 @@ const execTestForToken = ({
           poolToken: poolToken.address,
           morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
           morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
-          rewardToken: networkConfigToUse.tokens.MORPHO!,
+          rewardToken: LEGACY_MORPHO,
         }),
       }
       const underlyingDecimals = await instances.underlying.decimals()
