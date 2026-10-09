@@ -26,8 +26,8 @@ contract TradeHelperFacet {
         address tradeAddress;
         address sellToken;
         address buyToken;
-        uint256 sellAmount;
-        uint256 bidAmount;
+        uint256 sellAmount; // {qSellTok}
+        uint256 bidAmount; // {qBuyTok}
     }
 
     function getAllOpenTradesForRToken(RTokenP1 rToken, uint48 timestamp)
@@ -75,7 +75,7 @@ contract TradeHelperFacet {
                 tradeAddress: address(trade),
                 sellToken: address(trade.sell()),
                 buyToken: address(trade.buy()),
-                sellAmount: trade.sellAmount(),
+                sellAmount: trade.lot(),
                 bidAmount: trade.bidAmount(timestamp == 0 ? uint48(block.timestamp) : timestamp)
             });
         }
