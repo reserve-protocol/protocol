@@ -116,6 +116,9 @@ interface IBasketHandler is IComponent {
     /// @return If the basket is ready to issue and trade
     function isReady() external view returns (bool);
 
+    /// @return Whether the BackingManager's trading delay is bypassed for this basket
+    function tradingDelayBypassed() external view returns (bool);
+
     /// Returns basket quantity rounded up, wihout any issuance premium
     /// @param erc20 The ERC20 token contract for the asset
     /// @return {tok/BU} The redemption quantity of token in the reference basket, rounded up
