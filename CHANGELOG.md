@@ -4,6 +4,8 @@
 
 - Delay automatic rebalancing after a collateral default while allowing issuance against the backup basket.
 - Allow governance-triggered basket changes to rebalance without waiting for `tradingDelay`.
+- Prevent unregistering RSR and require RSR assets to preserve BackingManager tradeability.
+- Limit BackingManager `minTradeVolume` increases to one tenth of both the conservative RSR stake value and the RSR asset's `maxTradeVolume`.
 
 # 4.2.0
 

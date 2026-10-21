@@ -150,7 +150,9 @@ describe(`Large Decimals Basket - P${IMPLEMENTATION}`, () => {
             ORACLE_TIMEOUT
           )
         )
+        await rsr.mint(stRSR.address, fp('1'))
         await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
+        await rsr.burn(stRSR.address, fp('1'))
         rsrAsset = newRSRAsset
 
         // Setup reward asset

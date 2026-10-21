@@ -174,9 +174,13 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     function setMinTradeVolume(uint192 val) public {
         requireGovernanceOnly();
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
+        if (val > minTradeVolume) _validateMinTradeVolume(val);
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function _validateMinTradeVolume(uint192) internal view virtual {}
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
