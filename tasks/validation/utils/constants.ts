@@ -60,13 +60,13 @@ export interface RTokenDeployment {
 export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
   {
     rToken: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F', // eUSD
-    governor: '0xf4A9288D5dEb0EaE987e5926795094BF6f4662F8',
-    timelock: '0x7BEa807798313fE8F557780dBD6b829c1E3aD560',
+    governor: '0x96dC1C14D3D5e2dDAa52368aDfe6E6b20b976832',
+    timelock: '0xd979Cf15F7275a3DF838513aB911587d23b6D29e',
   },
   {
     rToken: '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8', // ETH+
-    governor: '0x868Fe81C276d730A1995Dc84b642E795dFb8F753',
-    timelock: '0x5d8A7DC9405F08F14541BA918c1Bf7eb2dACE556',
+    governor: '0xA8a608B9b558235E7f87d7024CC05E6f47d62022',
+    timelock: '0xD7985A7C617fEbc4A833b5F70CFa79b40C313ad2',
     oracle: {
       address: '0xf87d2F4d42856f0B6Eae140Aaf78bF0F777e9936',
       threshold: 0.5,
@@ -79,8 +79,8 @@ export const MAINNET_DEPLOYMENTS: RTokenDeployment[] = [
   },*/
   {
     rToken: '0x0d86883FAf4FfD7aEb116390af37746F45b6f378', // USD3
-    governor: '0x441808e20E625e0094b01B40F84af89436229279',
-    timelock: '0x12e4F043c6464984A45173E0444105058b6C3c7B',
+    governor: '0xd895a5D391fc09F12e8C8D57CfDe5c59BFBE2FA7',
+    timelock: '0x848b923b5d99d5963608Ff55AcDFee51C443Cca6',
   },
   // {
   //   rToken: '0x005f893ecd7bf9667195642f7649da8163e23658', // dgnETH
@@ -97,8 +97,8 @@ export const BASE_DEPLOYMENTS: RTokenDeployment[] = [
   },
   {
     rToken: '0xCb327b99fF831bF8223cCEd12B1338FF3aA322Ff', // bsdETH
-    governor: '0x21fBa52dA03e1F964fa521532f8B8951fC212055',
-    timelock: '0xe664d294824C2A8C952A10c4034e1105d2907F46',
+    governor: '0xD56f09e158c9c3e1dE8D598e4E1Bc7E4fF29dfC8',
+    timelock: '0x06c3d55d72c9ae4f167e512C1bE28d6f9d9e6bB9',
     oracle: {
       address: '0xD41310aCF5fA54CDd1970155ac32D708B376Dff6',
       threshold: 1.25, // Higher threshold to account for melting and time elapsed
