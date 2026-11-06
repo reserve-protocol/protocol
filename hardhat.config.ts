@@ -31,7 +31,7 @@ const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
-const minSizeSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 1 } }
+const minSizeSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 100 } }
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
