@@ -189,11 +189,27 @@ task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
       JSON.stringify(result, null, 4)
     )
 
+    // The upgrade should not change the basket
+    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    const basketHandler = await hre.ethers.getContractAt(
+      'BasketHandlerP1',
+      await main.basketHandler()
+    )
+    const nonceBefore = await basketHandler.nonce()
+    const timestampBefore = await basketHandler.timestamp()
+
     await hre.run('proposal-validator', {
       proposalid: result.proposalId,
     })
 
-    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    if (
+      (await basketHandler.nonce()) != nonceBefore ||
+      (await basketHandler.timestamp()) != timestampBefore
+    ) {
+      throw new Error('basket changed during upgrade')
+    }
+    if (await basketHandler.tradingDelayBypassed()) throw new Error('trading delay bypassed')
+
     if (
       (await main.hasRole(MAIN_OWNER_ROLE, spell.address)) ||
       !(await main.hasRole(MAIN_OWNER_ROLE, deployment.timelock))
