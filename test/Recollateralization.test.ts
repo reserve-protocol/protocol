@@ -1035,6 +1035,28 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
       })
 
+      it('Should delay automatic rebalance after governance disables basket', async () => {
+        const newDelay = 3600
+        await backingManager.connect(owner).setTradingDelay(newDelay)
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(true)
+
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+
+        // Governance disables the basket without refreshing it
+        await assetRegistry.connect(owner).unregister(collateral0.address)
+
+        await basketHandler.connect(addr1).refreshBasket()
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(false)
+
+        await advanceTime(config.warmupPeriod.add(1).toString())
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+          'trading delayed'
+        )
+      })
+
       it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
         // Setup prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
