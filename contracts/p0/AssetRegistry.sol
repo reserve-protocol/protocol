@@ -176,20 +176,6 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         // Refresh to ensure it does not revert, and to save a recent lastPrice
         asset.refresh();
 
-        if (address(asset.erc20()) == address(main.rsr())) {
-            (uint192 low, uint192 high) = asset.price();
-            require(low > 0 && high < FIX_MAX, "RSR asset unpriced");
-
-            uint192 requiredVolume = main.backingManager().minTradeVolume() * 10;
-            require(asset.maxTradeVolume() >= requiredVolume, "RSR maxTradeVolume too low");
-            if (!_isInitializing()) {
-                require(
-                    asset.bal(address(main.stRSR())).safeMul(low, FLOOR) >= requiredVolume,
-                    "RSR stake too small"
-                );
-            }
-        }
-
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] != asset) {
             _erc20s.remove(address(asset.erc20()));
             emit AssetUnregistered(asset.erc20(), assets[asset.erc20()]);

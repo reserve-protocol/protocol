@@ -19,6 +19,20 @@ The remained solidity files in our repository are either:
 - Mixins for the implementations of the other contracts in the system
 - Mocks or stubs for testing
 
+## Governance Trust Assumptions
+
+The protocol assumes that RToken governance is honest, and that the [Guardian](overview.md#guardian) cancels any proposal that attacks RToken holders or RSR stakers before the timelock executes it. Checks on governance parameters guard against specific mistakes; they are not a security boundary against malicious governance.
+
+This assumption is load-bearing. The OWNER can already prevent or avoid RSR seizure through ordinary configuration, for example by:
+
+- raising `minTradeVolume`, or registering an RSR asset whose price decays, so that RSR is never sold and RToken holders take a haircut instead
+- registering assets or collateral that misreport prices, balances, or status (limited to approved plugins when an `AssetPluginRegistry` is set)
+- disabling auctions, pausing trading, freezing, or setting a long `tradingDelay`
+- lowering prime basket target amounts with `forceSetPrimeBasket`, for reweightable RTokens
+- granting the OWNER role to an address outside the timelock
+
+The protocol prevents unregistering RSR, but this does not remove the need for honest governance and an attentive Guardian.
+
 ## Notes on Token Flow
 
 ### Tokens Held by Different Contracts

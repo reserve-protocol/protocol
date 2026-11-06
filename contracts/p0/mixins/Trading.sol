@@ -120,11 +120,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// @custom:governance
     function setMinTradeVolume(uint192 val) public governance {
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
-        if (val > minTradeVolume) _validateMinTradeVolume(val);
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    function _validateMinTradeVolume(uint192) internal view virtual {}
 }
