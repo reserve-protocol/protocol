@@ -183,14 +183,6 @@ contract Upgrade4_3_0 is Versioned {
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, Err(11));
         }
 
-        // Rotate RTokenAsset
-        require(
-            proxy.assetRegistry.registerNewRTokenAsset(
-                proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
-            ),
-            Err(12)
-        );
-
         // Renounce adminship and validate final state
         {
             main.renounceRole(MAIN_OWNER_ROLE, address(this));
@@ -199,7 +191,7 @@ contract Upgrade4_3_0 is Versioned {
                 main.hasRole(MAIN_OWNER_ROLE, msg.sender) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(this)) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(main)),
-                Err(13)
+                Err(12)
             );
         }
     }
