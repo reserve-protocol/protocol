@@ -73,7 +73,9 @@ contract TradeHelperFacet {
             DutchTrade trade = DutchTrade(openTradeAddresses[i]);
 
             // Leave a zero entry for a trade outside its auction window: bidAmount() reverts for it
-            if (bidTime < trade.startTime() || bidTime > trade.endTime()) continue;
+            if (bidTime < trade.startTime() || bidTime > trade.endTime()) {
+                continue;
+            }
 
             openTrades[i] = SingleBid({
                 tradeAddress: address(trade),
