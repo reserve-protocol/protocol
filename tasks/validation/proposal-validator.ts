@@ -288,9 +288,11 @@ task('run-validations', 'Runs all validations')
     /*
       redeem
     */
-    // Give `tester` RTokens from a whale
-    const redeemAmt = fp('100')
-    await whileImpersonating(hre, whales[params.rtoken.toLowerCase()], async (whaleSigner) => {
+    // Give `tester` RTokens from a whale: 100, or the whale's balance if smaller
+    const whale = whales[params.rtoken.toLowerCase()]
+    const whaleBal = await rToken.balanceOf(whale)
+    const redeemAmt = whaleBal.lt(fp('100')) ? whaleBal : fp('100')
+    await whileImpersonating(hre, whale, async (whaleSigner) => {
       await rToken.connect(whaleSigner).transfer(tester.address, redeemAmt)
     })
     if (!(await rToken.balanceOf(tester.address)).gte(redeemAmt)) throw new Error('missing RToken')
