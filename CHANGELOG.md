@@ -13,9 +13,9 @@
 
 These changes come from the Certora formal verification (#1283). They are new relative to the deployed 4.2.0 contracts.
 
-- `FixLib.mul(x, y)`: the two-argument form now rounds down (`FLOOR`) instead of to nearest (`ROUND`). Core contracts always pass an explicit rounding mode, so this only affects facades and plugins built from 4.3.0 sources. Existing plugins are not redeployed. Plugins compiled before #1283 keep `ROUND`; the `MorphoV2FiatCollateral` plugins were compiled after it and already use `FLOOR`. Deployed plugins never call `safeDiv` or `safeMulDiv`.
+- `FixLib.mul(x, y)`: the two-argument form now rounds down (`FLOOR`) instead of to nearest (`ROUND`). Core contracts always pass an explicit rounding mode, so this only affects facades and plugins built from 4.3.0 sources. Existing plugins are not redeployed. Plugins compiled before #1283 keep `ROUND`; the `MorphoV2FiatCollateral` plugins were compiled after it and already use `FLOOR`. No deployed collateral plugin calls `safeDiv` or `safeMulDiv`.
   - Facades: `ReadFacet.backingOverview()`, `ReadFacet.basketBreakdown()`
-  - Plugins: `tryPrice()` (and therefore `price()` / `refresh()`) in `AppreciatingFiatCollateral`, `NonFiatCollateral`, and their subclasses. Also `refresh()` in `AppreciatingFiatCollateral` and `L2LSDCollateral` (`hiddenReferencePrice`), and the `FiatCollateral` constructor (`pegBottom` / `pegTop`)
+  - Plugins: `tryPrice()` (and therefore `price()` / `refresh()`) in `AppreciatingFiatCollateral`, `NonFiatCollateral`, and their subclasses. Also `refresh()` (`hiddenReferencePrice`) in `AppreciatingFiatCollateral`, `L2LSDCollateral`, `CTokenV3Collateral`, `CurveStableCollateral`, and their subclasses; the inner products of `PoolTokens.toRange()` and `AerodromePoolTokens.toRange()`; and the `FiatCollateral` constructor (`pegBottom` / `pegTop`)
 - `FixLib.safeDiv(a, b, rounding)`: returns `FIX_MAX` when `a == FIX_MAX`. Previously it returned `FIX_MAX * 1e18 / b`, which is below `FIX_MAX` when `b > FIX_ONE`.
   - `BasketHandler`: `price()`, `price(bool)`, `quote(uint192,RoundingMode)`, `quote(uint192,bool,RoundingMode)`, `getHistoricalBasket()`, `issuancePremium()`
   - `RToken`: `issue()`, `issueTo()`, `redeem()`, `redeemTo()`
@@ -28,6 +28,7 @@ These changes come from the Certora formal verification (#1283). They are new re
   - `BasketHandler.quoteCustomRedemption()`, `RToken.redeemCustom()`
   - `BackingManager.rebalance()`, `settleTrade()`; `RevenueTrader.manageTokens()`; `DutchTrade.bid()`, `bidWithCallback()`
   - Facades: `ReadFacet.redeemCustom()`; `ActFacet.revenueOverview()`, `runRevenueAuctions()`, `nextRecollateralizationAuction()`; `RevenueFacet.revenues()`
+  - `RTokenAsset`: `price()`, `tryPrice()`, `refresh()`, through `RecollateralizationLib.basketRange()`. The existing 4.2.0 RTokenAssets are kept and keep the old behavior. The wrap requires an unrounded result of exactly `2^256 - 1`, which is unreachable there: the numerator is a finite price times a token balance, far below `2^256`.
 - `BackingManager.forwardRevenue()`: the backing to hold, `basketsNeeded * (1 + backingBuffer)`, now rounds up (was `ROUND`).
   - Facades: `ActFacet.revenueOverview()`, `runRevenueAuctions()`; `RevenueFacet.revenues()`
 - `TradeLib.prepareTradeSell()`: the slippage-adjusted sell amount, `sellAmount * (1 - maxTradeSlippage)`, now rounds up before conversion to the minimum buy amount (was `ROUND`). This applies to revenue and recollateralization auctions.
