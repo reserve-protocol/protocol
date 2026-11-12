@@ -13,7 +13,7 @@
 
 These changes come from the Certora formal verification (#1283). They are new relative to the deployed 4.2.0 contracts.
 
-- `FixLib.mul(x, y)`: the two-argument form now rounds down (`FLOOR`) instead of to nearest (`ROUND`). Core contracts always pass an explicit rounding mode, so this only affects facades and plugins built from 4.3.0 sources. Existing 4.2.0 plugins are not redeployed and keep `ROUND`.
+- `FixLib.mul(x, y)`: the two-argument form now rounds down (`FLOOR`) instead of to nearest (`ROUND`). Core contracts always pass an explicit rounding mode, so this only affects facades and plugins built from 4.3.0 sources. Existing plugins are not redeployed. Plugins compiled before #1283 keep `ROUND`; the `MorphoV2FiatCollateral` plugins were compiled after it and already use `FLOOR`. Deployed plugins never call `safeDiv` or `safeMulDiv`.
   - Facades: `ReadFacet.backingOverview()`, `ReadFacet.basketBreakdown()`
   - Plugins: `tryPrice()` (and therefore `price()` / `refresh()`) in `AppreciatingFiatCollateral`, `NonFiatCollateral`, and their subclasses. Also `refresh()` in `AppreciatingFiatCollateral` and `L2LSDCollateral` (`hiddenReferencePrice`), and the `FiatCollateral` constructor (`pegBottom` / `pegTop`)
 - `FixLib.safeDiv(a, b, rounding)`: returns `FIX_MAX` when `a == FIX_MAX`. Previously it returned `FIX_MAX * 1e18 / b`, which is below `FIX_MAX` when `b > FIX_ONE`.
