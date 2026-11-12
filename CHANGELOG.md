@@ -9,6 +9,32 @@
 - Compile `BackingManagerP1` with 100 optimizer runs so it stays under the contract size limit.
 - Add the `Upgrade4_3_0` spell to upgrade eUSD, ETH+, USD3, and bsdETH from 4.2.0. The spell rotates each RTokenAsset; no other assets are redeployed.
 
+## Rounding Changes
+
+These changes come from the Certora formal verification (#1283). They are new relative to the deployed 4.2.0 contracts.
+
+- `FixLib.mul(x, y)`: the two-argument form now rounds down (`FLOOR`) instead of to nearest (`ROUND`). Core contracts always pass an explicit rounding mode, so this only affects facades and plugins built from 4.3.0 sources. Existing 4.2.0 plugins are not redeployed and keep `ROUND`.
+  - Facades: `ReadFacet.backingOverview()`, `ReadFacet.basketBreakdown()`
+  - Plugins: `tryPrice()` (and therefore `price()` / `refresh()`) in `AppreciatingFiatCollateral`, `NonFiatCollateral`, and their subclasses. Also `refresh()` in `AppreciatingFiatCollateral` and `L2LSDCollateral` (`hiddenReferencePrice`), and the `FiatCollateral` constructor (`pegBottom` / `pegTop`)
+- `FixLib.safeDiv(a, b, rounding)`: returns `FIX_MAX` when `a == FIX_MAX`. Previously it returned `FIX_MAX * 1e18 / b`, which is below `FIX_MAX` when `b > FIX_ONE`.
+  - `BasketHandler`: `price()`, `price(bool)`, `quote(uint192,RoundingMode)`, `quote(uint192,bool,RoundingMode)`, `getHistoricalBasket()`, `issuancePremium()`
+  - `RToken`: `issue()`, `issueTo()`, `redeem()`, `redeemTo()`
+  - `BackingManager`: `rebalance()`, `settleTrade()`
+  - `RevenueTrader`: `manageTokens()`
+  - `DutchTrade`: `bid()`, `bidWithCallback()`, through `BackingManager.settleTrade()` chaining into `rebalance()`
+  - `RTokenAsset`: `price()`, `tryPrice()`, `refresh()`, through `BasketHandler.price(true)`
+  - Facades: `ReadFacet.backingOverview()`, `basketBreakdown()`, `basketTokens()`, `issue()`, `redeem()`; `MaxIssuableFacet.maxIssuable()`, `maxIssuableByAmounts()`; `ActFacet.revenueOverview()`, `runRevenueAuctions()`, `nextRecollateralizationAuction()`; `RevenueFacet.revenues()`
+- `FixLib.safeMulDiv(a, b, c, rounding)`: returns `FIX_MAX` before applying rounding if the unrounded result is already at least `FIX_MAX`. This stops the `CEIL` / `ROUND` increment from wrapping a maximal result to 0.
+  - `BasketHandler.quoteCustomRedemption()`, `RToken.redeemCustom()`
+  - `BackingManager.rebalance()`, `settleTrade()`; `RevenueTrader.manageTokens()`; `DutchTrade.bid()`, `bidWithCallback()`
+  - Facades: `ReadFacet.redeemCustom()`; `ActFacet.revenueOverview()`, `runRevenueAuctions()`, `nextRecollateralizationAuction()`; `RevenueFacet.revenues()`
+- `BackingManager.forwardRevenue()`: the backing to hold, `basketsNeeded * (1 + backingBuffer)`, now rounds up (was `ROUND`).
+  - Facades: `ActFacet.revenueOverview()`, `runRevenueAuctions()`; `RevenueFacet.revenues()`
+- `TradeLib.prepareTradeSell()`: the slippage-adjusted sell amount, `sellAmount * (1 - maxTradeSlippage)`, now rounds up before conversion to the minimum buy amount (was `ROUND`). This applies to revenue and recollateralization auctions.
+  - `BackingManager.rebalance()`, `settleTrade()`; `RevenueTrader.manageTokens()`; `DutchTrade.bid()`, `bidWithCallback()`
+  - Facades: `ActFacet.revenueOverview()`, `runRevenueAuctions()`, `nextRecollateralizationAuction()`; `RevenueFacet.revenues()`
+- `ReadFacet.issue()` (UoA value of each deposit) and `ReadFacet.backingOverview()` (UoA value of required backing) now round up explicitly.
+
 # 4.2.0
 
 Bump solidity version to 0.8.28
