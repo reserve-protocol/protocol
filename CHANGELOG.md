@@ -4,6 +4,9 @@
 
 - Delay automatic rebalancing after a collateral default while allowing issuance against the backup basket.
 - Allow governance-triggered basket changes to rebalance without waiting for `tradingDelay`.
+- Prevent unregistering RSR.
+- Document the governance trust assumptions: governance is honest, and the Guardian cancels malicious proposals.
+- Compile `BackingManagerP1` with 100 optimizer runs so it stays under the contract size limit.
 
 # 4.2.0
 

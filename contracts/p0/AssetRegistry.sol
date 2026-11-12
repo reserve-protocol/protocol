@@ -86,6 +86,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// @custom:governance
     function unregister(IAsset asset) external governance {
         require(address(asset.erc20()) != address(main.rToken()), "cannot unregister RToken");
+        require(address(asset.erc20()) != address(main.rsr()), "cannot unregister RSR");
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
 

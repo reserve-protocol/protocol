@@ -1577,14 +1577,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(assetRegistry.toAsset(other.address)).to.be.revertedWith('erc20 unregistered')
 
       // Reverts if no registered asset - After unregister
-      await expect(assetRegistry.connect(owner).unregister(rsrAsset.address))
+      await expect(assetRegistry.connect(owner).unregister(aaveAsset.address))
         .to.emit(assetRegistry, 'AssetUnregistered')
-        .withArgs(rsr.address, rsrAsset.address)
-      await expect(assetRegistry.toAsset(rsr.address)).to.be.revertedWith('erc20 unregistered')
+        .withArgs(aaveToken.address, aaveAsset.address)
+      await expect(assetRegistry.toAsset(aaveToken.address)).to.be.revertedWith(
+        'erc20 unregistered'
+      )
 
       // Returns correctly the asset
       expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(aaveToken.address)).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(compToken.address)).to.equal(compAsset.address)
       expect(await assetRegistry.toAsset(token0.address)).to.equal(collateral0.address)
       expect(await assetRegistry.toAsset(token1.address)).to.equal(collateral1.address)
@@ -1693,9 +1694,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('cannot swap RToken')
     })
 
-    it('Should not allow to unregister RToken', async () => {
+    it('Should not allow to unregister RToken or RSR', async () => {
       await expect(assetRegistry.connect(owner).unregister(rTokenAsset.address)).to.be.revertedWith(
         'cannot unregister RToken'
+      )
+      await expect(assetRegistry.connect(owner).unregister(rsrAsset.address)).to.be.revertedWith(
+        'cannot unregister RSR'
       )
     })
 
@@ -2685,10 +2689,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expect(await indexBH.status()).to.equal(CollateralStatus.SOUND)
         expect(await indexBH.fullyCollateralized()).to.equal(false)
 
-        // Unregister everything except token0
+        // Unregister everything except token0 and the protocol assets
         const erc20s = await assetRegistry.erc20s()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address && erc20 != rToken.address) {
+          if (erc20 != token0.address && erc20 != rToken.address && erc20 != rsr.address) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }
