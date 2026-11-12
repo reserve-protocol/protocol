@@ -26,6 +26,8 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  *     deprecated assets must be unregistered first
  *   - this contract must have MAIN_OWNER_ROLE of Main
  *
+ * The spell rotates the RTokenAsset, keeping its maxTradeVolume. No other assets are changed.
+ *
  * MAIN_OWNER_ROLE is automatically renounced after casting. Governance is unchanged.
  *
  * The spell() function should be called by the timelock owning Main.
@@ -183,6 +185,14 @@ contract Upgrade4_3_0 is Versioned {
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, Err(11));
         }
 
+        // Rotate RTokenAsset
+        require(
+            proxy.assetRegistry.registerNewRTokenAsset(
+                proxy.assetRegistry.toAsset(IERC20(address(rToken))).maxTradeVolume()
+            ),
+            Err(12)
+        );
+
         // Renounce adminship and validate final state
         {
             main.renounceRole(MAIN_OWNER_ROLE, address(this));
@@ -191,7 +201,7 @@ contract Upgrade4_3_0 is Versioned {
                 main.hasRole(MAIN_OWNER_ROLE, msg.sender) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(this)) &&
                     !main.hasRole(MAIN_OWNER_ROLE, address(main)),
-                Err(12)
+                Err(13)
             );
         }
     }

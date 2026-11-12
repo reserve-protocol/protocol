@@ -7,7 +7,7 @@
 - Prevent unregistering RSR.
 - Document the governance trust assumptions: governance is honest, and the Guardian cancels malicious proposals.
 - Compile `BackingManagerP1` with 100 optimizer runs so it stays under the contract size limit.
-- Add the `Upgrade4_3_0` spell to upgrade eUSD, ETH+, USD3, and bsdETH from 4.2.0.
+- Add the `Upgrade4_3_0` spell to upgrade eUSD, ETH+, USD3, and bsdETH from 4.2.0. The spell rotates each RTokenAsset; no other assets are redeployed.
 
 # 4.2.0
 

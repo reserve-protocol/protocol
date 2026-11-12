@@ -14,6 +14,14 @@ import { Upgrade4_3_0 } from '#/typechain'
 const VERSION_4_3_0_HASH = '0xdef94dbdd8411ae515cefcb56b153df454453010a1f4c881b3daa7ed18db793a'
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
+// RTokenAssets that integrations read directly instead of looking up in the AssetRegistry.
+// They must keep pricing correctly after the upgrade.
+const PINNED_RTOKEN_ASSETS: { [rToken: string]: string[] } = {
+  // ETH+: Morpho WETH and USDC markets, through EthPlusPriceAdapter
+  // 0xf87d2F4d42856f0B6Eae140Aaf78bF0F777e9936
+  '0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8': ['0x3f11C47E7ed54b24D7EFC222FD406d8E1F49Fb69'],
+}
+
 // TODO remove after 4.3.0 is deployed, registered, and its assets are whitelisted
 // Deploys + registers 4.3.0, whitelists the RToken's current assets for 4.3.0, and
 // settles any open trades, which would otherwise block the spell
@@ -195,8 +203,16 @@ task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
       'BasketHandlerP1',
       await main.basketHandler()
     )
+    const assetRegistry = await hre.ethers.getContractAt(
+      'AssetRegistryP1',
+      await main.assetRegistry()
+    )
     const nonceBefore = await basketHandler.nonce()
     const timestampBefore = await basketHandler.timestamp()
+    const oldRTokenAsset = await hre.ethers.getContractAt(
+      'RTokenAsset',
+      await assetRegistry.toAsset(rToken.address)
+    )
 
     await hre.run('proposal-validator', {
       proposalid: result.proposalId,
@@ -218,11 +234,32 @@ task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
     }
     if ((await rToken.version()) != '4.3.0') throw new Error('Failed to upgrade to 4.3.0')
 
-    // All registered collateral should be SOUND
-    const assetRegistry = await hre.ethers.getContractAt(
-      'AssetRegistryP1',
-      await main.assetRegistry()
+    // The RTokenAsset should be rotated, keeping its maxTradeVolume
+    const newRTokenAsset = await hre.ethers.getContractAt(
+      'RTokenAsset',
+      await assetRegistry.toAsset(rToken.address)
     )
+    if (
+      newRTokenAsset.address == oldRTokenAsset.address ||
+      (await newRTokenAsset.version()) != '4.3.0' ||
+      !(await newRTokenAsset.maxTradeVolume()).eq(await oldRTokenAsset.maxTradeVolume())
+    ) {
+      throw new Error('RTokenAsset not rotated')
+    }
+
+    // The old and pinned RTokenAssets should price the same as the new one
+    const [newLow, newHigh] = await newRTokenAsset.tryPrice()
+    for (const addr of [oldRTokenAsset.address, ...(PINNED_RTOKEN_ASSETS[rToken.address] ?? [])]) {
+      const [low, high] = await (await hre.ethers.getContractAt('RTokenAsset', addr)).tryPrice()
+      if (
+        low.sub(newLow).abs().mul(1e9).gt(newLow) ||
+        high.sub(newHigh).abs().mul(1e9).gt(newHigh)
+      ) {
+        throw new Error(`RTokenAsset ${addr} prices differently: ${low}-${high}`)
+      }
+    }
+
+    // All registered collateral should be SOUND
     const [, assets] = await assetRegistry.getRegistry()
     for (const asset of assets) {
       const coll = await hre.ethers.getContractAt('ICollateral', asset)
