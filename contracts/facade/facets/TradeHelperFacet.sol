@@ -67,16 +67,22 @@ contract TradeHelperFacet {
         }
 
         openTrades = new SingleBid[](numOpenTrades);
+        uint48 bidTime = timestamp == 0 ? uint48(block.timestamp) : timestamp;
 
         for (uint256 i = 0; i < numOpenTrades; i++) {
             DutchTrade trade = DutchTrade(openTradeAddresses[i]);
+
+            // Leave a zero entry for a trade outside its auction window: bidAmount() reverts for it
+            if (bidTime < trade.startTime() || bidTime > trade.endTime()) {
+                continue;
+            }
 
             openTrades[i] = SingleBid({
                 tradeAddress: address(trade),
                 sellToken: address(trade.sell()),
                 buyToken: address(trade.buy()),
                 sellAmount: trade.lot(),
-                bidAmount: trade.bidAmount(timestamp == 0 ? uint48(block.timestamp) : timestamp)
+                bidAmount: trade.bidAmount(bidTime)
             });
         }
     }
