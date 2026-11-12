@@ -1,5 +1,10 @@
 # Changelog
 
+# 4.3.0
+
+- Delay automatic rebalancing after a collateral default while allowing issuance against the backup basket.
+- Allow governance-triggered basket changes to rebalance without waiting for `tradingDelay`.
+
 # 4.2.0
 
 Bump solidity version to 0.8.28
