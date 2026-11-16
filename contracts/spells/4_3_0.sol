@@ -31,9 +31,7 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  * The spell also sets the BackingManager's tradingDelay, because its meaning changes in 4.3.0.
  * Before 4.3.0 it delays trading after every basket change. From 4.3.0 it only delays trading
  * after a basket change that governance did not make, such as a refresh after a default.
- * newTradingDelay must be nonzero and at least the current tradingDelay. The delay should only
- * increase, and with 0 trading starts as soon as a defaulted basket is replaced, leaving
- * governance no time to react. That is likely a misconfiguration.
+ * newTradingDelay must be at least the current tradingDelay: the delay should only increase.
  *
  * MAIN_OWNER_ROLE is automatically renounced after casting. Governance is unchanged.
  *
@@ -139,11 +137,9 @@ contract Upgrade4_3_0 is Versioned {
             stRSR: main.stRSR()
         });
 
-        // tradingDelay should only increase, and 0 is likely a misconfiguration
+        // tradingDelay should only increase
         require(
-            newTradingDelay != 0 &&
-                newTradingDelay >=
-                TestIBackingManager(address(proxy.backingManager)).tradingDelay(),
+            newTradingDelay >= TestIBackingManager(address(proxy.backingManager)).tradingDelay(),
             Err(14)
         );
 
