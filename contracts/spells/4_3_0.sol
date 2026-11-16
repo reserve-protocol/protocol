@@ -31,8 +31,9 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  * The spell also sets the BackingManager's tradingDelay, because its meaning changes in 4.3.0.
  * Before 4.3.0 it delays trading after every basket change. From 4.3.0 it only delays trading
  * after a basket change that governance did not make, such as a refresh after a default.
- * newTradingDelay must be nonzero: with 0, trading starts as soon as a defaulted basket is
- * replaced, leaving governance no time to react. That is likely a misconfiguration.
+ * newTradingDelay must be nonzero and at least the current tradingDelay. The delay should only
+ * increase, and with 0 trading starts as soon as a defaulted basket is replaced, leaving
+ * governance no time to react. That is likely a misconfiguration.
  *
  * MAIN_OWNER_ROLE is automatically renounced after casting. Governance is unchanged.
  *
@@ -100,7 +101,6 @@ contract Upgrade4_3_0 is Versioned {
     /// @param rToken The RToken to upgrade
     /// @param newTradingDelay {s} The tradingDelay to set on the BackingManager
     function castSpell(IRToken rToken, uint48 newTradingDelay) external {
-        require(newTradingDelay != 0, Err(14));
         require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(2));
 
         // Can only be cast once per supported RToken
@@ -138,6 +138,14 @@ contract Upgrade4_3_0 is Versioned {
             rsrTrader: main.rsrTrader(),
             stRSR: main.stRSR()
         });
+
+        // tradingDelay should only increase, and 0 is likely a misconfiguration
+        require(
+            newTradingDelay != 0 &&
+                newTradingDelay >=
+                TestIBackingManager(address(proxy.backingManager)).tradingDelay(),
+            Err(14)
+        );
 
         // No ongoing trades
         require(
