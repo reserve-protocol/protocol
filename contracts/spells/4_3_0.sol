@@ -30,7 +30,7 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  *
  * The spell also sets the BackingManager's tradingDelay, because its meaning changes in 4.3.0.
  * Before 4.3.0 it delays trading after every basket change. From 4.3.0 it only delays trading
- * after a basket change that governance did not make, such as a refresh after a default.
+ * after an emergency basket change: the permissionless refresh after a collateral default.
  * newTradingDelay must be at least the current tradingDelay: the delay should only increase.
  *
  * MAIN_OWNER_ROLE is automatically renounced after casting. Governance is unchanged.

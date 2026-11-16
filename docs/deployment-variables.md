@@ -64,7 +64,7 @@ Reasonable range: 1 to 31536000
 
 Dimension: `{seconds}`
 
-The trading delay is how many seconds should pass after a basket change that governance did not make, such as a refresh after a collateral default, before a trade can be opened. Basket changes made by governance skip the delay. A delay gives governance time to choose a better basket before the protocol starts rebalancing on its own. Issuance against the new basket is still allowed during the delay.
+The trading delay is how many seconds should pass after an emergency basket change, the permissionless refresh after a collateral default, before a trade can be opened. Basket changes made by governance skip the delay. A delay gives governance time to choose a better basket before the protocol starts rebalancing on its own. Issuance against the new basket is still allowed during the delay.
 
 Before 4.3.0, the delay applied after every basket change.
 
