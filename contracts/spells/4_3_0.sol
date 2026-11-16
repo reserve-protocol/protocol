@@ -28,6 +28,11 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  *
  * The spell rotates the RTokenAsset, keeping its maxTradeVolume. No other assets are changed.
  *
+ * The spell also sets the BackingManager's tradingDelay, because its meaning changes in 4.3.0.
+ * Before 4.3.0 it delays trading after every basket change. From 4.3.0 it only delays trading
+ * after a basket change that governance did not make, such as a refresh after a default.
+ * Pass the current value to leave it unchanged.
+ *
  * MAIN_OWNER_ROLE is automatically renounced after casting. Governance is unchanged.
  *
  * The spell() function should be called by the timelock owning Main.
@@ -92,7 +97,8 @@ contract Upgrade4_3_0 is Versioned {
     // Cast once-per-rToken. Caller MUST be the timelock owning Main.
     /// @dev Requirement: this contract has admin of RToken via MAIN_OWNER_ROLE
     /// @param rToken The RToken to upgrade
-    function castSpell(IRToken rToken) external {
+    /// @param newTradingDelay {s} The tradingDelay to set on the BackingManager
+    function castSpell(IRToken rToken, uint48 newTradingDelay) external {
         require(keccak256(abi.encodePacked(rToken.version())) == PRIOR_VERSION_HASH, Err(2));
 
         // Can only be cast once per supported RToken
@@ -184,6 +190,9 @@ contract Upgrade4_3_0 is Versioned {
             proxy.assetRegistry.refresh();
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, Err(11));
         }
+
+        // Set tradingDelay for its 4.3.0 meaning
+        TestIBackingManager(address(proxy.backingManager)).setTradingDelay(newTradingDelay);
 
         // Rotate RTokenAsset
         require(
