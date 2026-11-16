@@ -132,6 +132,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         IERC20Metadata erc20 = asset.erc20();
 
         require(address(erc20) != address(main.rToken()), "cannot unregister RToken");
+        require(address(erc20) != address(main.rsr()), "cannot unregister RSR");
         require(_erc20s.contains(address(erc20)), "no asset to unregister");
         require(assets[erc20] == asset, "asset not found");
 

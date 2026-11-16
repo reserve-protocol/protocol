@@ -31,6 +31,7 @@ const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
+const minSizeSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 100 } }
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
@@ -153,6 +154,13 @@ const config: HardhatUserConfig = {
       },
     ],
     overrides: {
+      'contracts/p1/BackingManager.sol': {
+        version: '0.8.28',
+        settings: {
+          ...minSizeSettings,
+          evmVersion: 'paris',
+        }, // contract over-size
+      },
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
         version: '0.6.12',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size

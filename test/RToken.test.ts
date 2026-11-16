@@ -67,6 +67,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   let collateral0: Collateral
   let collateral1: Collateral
+  let collateral: Collateral[]
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
   let basket: Collateral[]
@@ -98,6 +99,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       assetRegistry,
       backingManager,
       basket,
+      collateral,
       basketHandler,
       config,
       facadeTest,
@@ -1671,6 +1673,61 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
       })
 
+      it('Should redeem across the pre-default and backup baskets', async function () {
+        const backupToken = <ERC20Mock>(
+          await ethers.getContractAt('ERC20Mock', await collateral[2].erc20())
+        )
+        await assetRegistry.connect(owner).register(collateral[2].address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), 1, [backupToken.address])
+        await backupToken.connect(owner).mint(addr1.address, initialBal)
+
+        await setOraclePrice(collateral1.address, bn('0.5e8'))
+        await collateral1.refresh()
+        await advanceTime((await collateral1.delayUntilDefault()).toString())
+        await collateral1.refresh()
+        await basketHandler.connect(addr2).refreshBasket()
+
+        await advanceTime(Number(config.warmupPeriod) + 1)
+        await backupToken.connect(addr1).approve(rToken.address, initialBal)
+        await rToken.connect(addr1).issue(issueAmount)
+
+        await rToken.connect(owner).setRedemptionThrottleParams({
+          amtRate: fp('1e9'),
+          pctRate: fp('1'),
+        })
+
+        const redeemAmount = issueAmount.mul(2)
+        const basketNonces = [1, 2]
+        const portions = [fp('0.5'), fp('0.5')]
+        const quote = await basketHandler.quoteCustomRedemption(
+          basketNonces,
+          portions,
+          redeemAmount
+        )
+
+        await rToken
+          .connect(addr1)
+          .redeemCustom(
+            addr1.address,
+            redeemAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        await Promise.all(
+          tokens.map(async (token) => {
+            expect(await token.balanceOf(addr1.address)).to.equal(initialBal)
+          })
+        )
+        expect(await backupToken.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
       it('Should redeem to a different account', async function () {
         // Provide approvals
         await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
@@ -1934,10 +1991,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should not revert when redeeming mostly unregistered collateral #fast', async function () {
-        // Unregister everything except token0
+        // Unregister everything except token0 and the protocol assets
         const erc20s = await assetRegistry.erc20s()
+        const rsr = await main.rsr()
         for (const erc20 of erc20s) {
-          if (erc20 != token0.address && erc20 != rToken.address) {
+          if (
+            erc20 != token0.address &&
+            erc20 != rToken.address &&
+            erc20.toLowerCase() != rsr.toLowerCase()
+          ) {
             await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
           }
         }

@@ -94,4 +94,4 @@ Standard timelock. Usually 3 days.
 
 ### Guardian
 
-The Guardian is simply our name for an address that has the cancellation power in the timelock.
+The Guardian is simply our name for an address that has the cancellation power in the timelock. The protocol relies on the Guardian to cancel malicious governance proposals; see [Governance Trust Assumptions](system-design.md#governance-trust-assumptions).
