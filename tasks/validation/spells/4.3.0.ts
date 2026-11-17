@@ -14,6 +14,9 @@ import { Upgrade4_3_0 } from '#/typechain'
 const VERSION_4_3_0_HASH = '0xdef94dbdd8411ae515cefcb56b153df454453010a1f4c881b3daa7ed18db793a'
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
+// Test value, to check the spell sets it. Each community chooses its own.
+const NEW_TRADING_DELAY = 86400 // {s} 1 day
+
 // RTokenAssets that integrations read directly instead of looking up in the AssetRegistry.
 // They must keep pricing correctly after the upgrade.
 const PINNED_RTOKEN_ASSETS: { [rToken: string]: string[] } = {
@@ -181,7 +184,8 @@ task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
       deployment.rToken,
       anastasius.address,
       deployment.timelock,
-      spell.address
+      spell.address,
+      NEW_TRADING_DELAY
     )
     result.rtoken = deployment.rToken
     result.governor = anastasius.address
@@ -225,6 +229,13 @@ task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
       throw new Error('basket changed during upgrade')
     }
     if (await basketHandler.tradingDelayBypassed()) throw new Error('trading delay bypassed')
+    const backingManager = await hre.ethers.getContractAt(
+      'BackingManagerP1',
+      await main.backingManager()
+    )
+    if ((await backingManager.tradingDelay()) != NEW_TRADING_DELAY) {
+      throw new Error('tradingDelay not set')
+    }
 
     if (
       (await main.hasRole(MAIN_OWNER_ROLE, spell.address)) ||

@@ -64,7 +64,9 @@ Reasonable range: 1 to 31536000
 
 Dimension: `{seconds}`
 
-The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
+The trading delay is how many seconds should pass after an emergency basket change, the permissionless refresh after a collateral default, before a trade can be opened. Basket changes made by governance skip the delay. A delay gives governance time to choose a better basket before the protocol starts rebalancing on its own. Issuance against the new basket is still allowed during the delay.
+
+Before 4.3.0, the delay applied after every basket change.
 
 Default value: `0` = 0s
 Reasonable range: 0 to 604800

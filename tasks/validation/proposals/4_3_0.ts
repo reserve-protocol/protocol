@@ -8,7 +8,8 @@ export const proposal_4_3_0 = async (
   rTokenAddress: string,
   governorAddress: string,
   timelockAddress: string,
-  spellAddress: string
+  spellAddress: string,
+  newTradingDelay: number // {s}
 ): Promise<Proposal> => {
   // Confirm governor is Anastasius
   const anastasius = await hre.ethers.getContractAt('Governance', governorAddress)
@@ -65,7 +66,7 @@ export const proposal_4_3_0 = async (
   // Build proposal
   txs.push(
     await main.populateTransaction.grantRole(MAIN_OWNER_ROLE, spell.address),
-    await spell.populateTransaction.castSpell(rTokenAddress)
+    await spell.populateTransaction.castSpell(rTokenAddress, newTradingDelay)
   )
 
   const description = '4.3.0 Upgrade - Core Contracts'
