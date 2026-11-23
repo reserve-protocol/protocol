@@ -241,9 +241,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   burn(caller, amount)
     //
     // actions:
+    //   let baskets = amount * basketsNeeded / totalSupply
     //   for each token in erc20s:
-    //     let tokenAmt = (amount * basketsNeeded / totalSupply) custom baskets
-    //     let prorataAmt = (amount / totalSupply) * token.balanceOf(backingManager)
+    //     let tokenAmt = baskets custom baskets
+    //     let prorataAmt = (baskets / basketsNeeded) * token.balanceOf(backingManager)
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @dev Allows partial redemptions up to the minAmounts
@@ -275,13 +276,16 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         }
         require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
 
-        uint256 supply = totalSupply();
+        {
+            uint256 supply = totalSupply();
 
-        // Revert if redemption exceeds either supply throttle
-        issuanceThrottle.useAvailable(supply, -int256(amount));
-        redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
+            // Revert if redemption exceeds either supply throttle
+            issuanceThrottle.useAvailable(supply, -int256(amount));
+            redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
+        }
 
         // {BU}
+        uint192 basketsBefore = basketsNeeded;
         uint192 baskets = _scaleDown(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, baskets);
 
@@ -294,17 +298,35 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         );
 
         // ==== Prorate redemption ====
-        // i.e, set amounts = min(amounts, balances * amount / totalSupply)
-        //   where balances[i] = erc20s[i].balanceOf(backingManager)
+        // i.e, set amounts = min(amounts, balances * baskets / basketsBefore)
+        //   where balances[i] = erc20s[i].balanceOf(backingManager), to 18 decimals
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+        // The share is of baskets, not of RToken supply, so that it rounds with `baskets`.
+        // Balances are truncated to 18 decimals, as in Asset.bal(), so that the share is of
+        // the same balance BasketHandler.basketsHeldBy() uses. Together these ensure
+        // redemption cannot lower any balance's ratio to basketsNeeded.
+        // Same result as P0, which takes the share of asset.bal() and shifts to {qTok}.
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            // {qTok} smallest quantity of the token that registers at 18 decimals
+            uint256 quantum = 1;
+            {
+                uint8 tokDecimals = IERC20Metadata(erc20s[i]).decimals();
+                if (tokDecimals > 18) {
+                    // contract-size-saver: collateral has <= 21 decimals; cannot overflow
+                    unchecked {
+                        quantum = 10**(tokDecimals - 18);
+                    }
+                }
+            }
+
+            // {qTok} = {qTok} * {BU} / {BU}
+            // slither-disable-next-line divide-before-multiply
             uint256 prorata = mulDiv256(
-                IERC20(erc20s[i]).balanceOf(address(backingManager)),
-                amount,
-                supply
-            ); // FLOOR
+                IERC20(erc20s[i]).balanceOf(address(backingManager)) / quantum,
+                baskets,
+                basketsBefore
+            ) * quantum; // FLOOR
 
             if (prorata < amounts[i]) amounts[i] = prorata;
         }

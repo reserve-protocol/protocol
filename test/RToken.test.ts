@@ -13,13 +13,17 @@ import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   ERC20Mock,
+  ERC20MockDecimals,
   ERC1271Mock,
   FacadeTest,
+  FiatCollateral,
   IAssetRegistry,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIBasketHandler,
+  TestIFacade,
+  TestIFurnace,
   TestIMain,
   TestIRToken,
   USDCMock,
@@ -39,6 +43,8 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
   DECAY_DELAY,
   VERSION,
 } from './fixtures'
@@ -79,7 +85,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   // Main
   let main: TestIMain
   let rToken: TestIRToken
+  let facade: TestIFacade
   let facadeTest: FacadeTest
+  let furnace: TestIFurnace
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
@@ -102,7 +110,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       collateral,
       basketHandler,
       config,
+      facade,
       facadeTest,
+      furnace,
       main,
       rToken,
       rTokenAsset,
@@ -1579,6 +1589,92 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           )
         })
       })
+    })
+
+    context('Custom redemption on a historical basket', function () {
+      // The prorata bound must round with basketsNeeded, at the precision of Asset.bal()
+      for (const decimals of [18, 21]) {
+        it(`Should not lower the ratio of balances to basketsNeeded -- ${decimals} decimals`, async () => {
+          // Collateral that carries more weight in a historical basket than in the current one
+          const erc20 = <ERC20MockDecimals>(
+            await (
+              await ethers.getContractFactory('ERC20MockDecimals')
+            ).deploy('Token', 'TKN', decimals)
+          )
+          const coll = <FiatCollateral>await (
+            await ethers.getContractFactory('FiatCollateral')
+          ).deploy({
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await collateral0.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: erc20.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.01'),
+            delayUntilDefault: await collateral0.delayUntilDefault(),
+          })
+          await assetRegistry.connect(owner).register(coll.address)
+          await backingManager.grantRTokenAllowance(erc20.address)
+
+          await basketHandler.connect(owner).setPrimeBasket([erc20.address], [fp('1')])
+          await basketHandler.connect(owner).refreshBasket()
+          const historicalNonce = await basketHandler.nonce()
+          await basketHandler
+            .connect(owner)
+            .setPrimeBasket([erc20.address, token0.address], [fp('0.3'), fp('0.7')])
+          await basketHandler.connect(owner).refreshBasket()
+          await advanceTime(Number(config.warmupPeriod) + 1)
+
+          // Issue, leaving the BackingManager holding only what it needs
+          const one = bn(10).pow(decimals)
+          await erc20.connect(owner).mint(addr1.address, one.mul(1e6))
+          await erc20.connect(addr1).approve(rToken.address, MAX_UINT256)
+          await token0.connect(addr1).approve(rToken.address, MAX_UINT256)
+          await rToken.connect(addr1).issue(fp('10000').add(12345))
+
+          // A balance that is not a whole number of 18-decimal quanta
+          if (decimals > 18) await erc20.connect(addr1).transfer(backingManager.address, 777)
+
+          // Melt, so that {BU/rTok} != 1
+          const meltAmt = fp('123.456789')
+          await rToken.connect(addr1).transfer(furnace.address, meltAmt)
+          await whileImpersonating(furnace.address, async (furnaceSigner) => {
+            await rToken.connect(furnaceSigner).melt(meltAmt)
+          })
+          expect(await basketHandler.fullyCollateralized()).to.equal(true)
+
+          // Redeem on the historical basket, where the prorata bound is what limits the withdrawal
+          for (let i = 0; i < 25; i++) {
+            const amount = bn('1e15').add(i * 7919)
+            const neededBefore = await rToken.basketsNeeded()
+            const balBefore = await coll.bal(backingManager.address) // {tok}
+            const userBalBefore = await erc20.balanceOf(addr1.address)
+
+            const quote = await facade.callStatic.redeemCustom(
+              rToken.address,
+              amount,
+              [historicalNonce],
+              [fp('1')]
+            )
+            expect(quote.tokens).to.eql([erc20.address])
+            await rToken
+              .connect(addr1)
+              .redeemCustom(addr1.address, amount, [historicalNonce], [fp('1')], [], [])
+
+            // Facade should quote the exact amount
+            const received = (await erc20.balanceOf(addr1.address)).sub(userBalBefore)
+            expect(received).to.be.gt(0)
+            expect(received).to.equal(quote.withdrawals[0])
+
+            // bal' / basketsNeeded' >= bal / basketsNeeded
+            const neededAfter = await rToken.basketsNeeded()
+            const balAfter = await coll.bal(backingManager.address) // {tok}
+            expect(balAfter.mul(neededBefore)).to.be.gte(balBefore.mul(neededAfter))
+            expect(await basketHandler.fullyCollateralized()).to.equal(true)
+          }
+        })
+      }
     })
 
     context('Custom redemption', function () {

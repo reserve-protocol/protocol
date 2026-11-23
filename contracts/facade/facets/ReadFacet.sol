@@ -98,21 +98,22 @@ contract ReadFacet {
         // Poke Main
         main.assetRegistry().refresh();
 
-        uint256 supply = rTok.totalSupply();
+        uint192 basketsNeeded = rTok.basketsNeeded(); // {BU}
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
+        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, rTok.totalSupply());
         (tokens, withdrawals) = bh.quote(basketsRedeemed, FLOOR);
         available = new uint256[](tokens.length);
 
-        // Calculate prorata amounts
+        // Calculate prorata amounts, same as RToken.redeemCustom()
         for (uint256 i = 0; i < tokens.length; i++) {
-            // {qTok} = {qTok} * {qRTok} / {qRTok}
-            available[i] = mulDiv256(
-                IERC20(tokens[i]).balanceOf(address(main.backingManager())),
-                amount,
-                supply
-            ); // FLOOR
+            IAsset asset = main.assetRegistry().toAsset(IERC20(tokens[i]));
+
+            // {qTok} = {tok} * {BU} / {BU} * {qTok/tok}
+            available[i] = asset
+            .bal(address(main.backingManager()))
+            .muluDivu(basketsRedeemed, basketsNeeded)
+            .shiftl_toUint(int8(asset.erc20Decimals())); // FLOOR
         }
     }
 
@@ -131,8 +132,6 @@ contract ReadFacet {
         // Call collective state keepers.
         main.poke();
 
-        uint256 supply = rToken.totalSupply();
-
         // === Get basket redemption amounts ===
         uint256 portionsSum;
         for (uint256 i = 0; i < portions.length; ++i) {
@@ -140,8 +139,10 @@ contract ReadFacet {
         }
         require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
 
+        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
+
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = rToken.basketsNeeded().muluDivu(amount, supply);
+        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, rToken.totalSupply());
         (tokens, withdrawals) = main.basketHandler().quoteCustomRedemption(
             basketNonces,
             portions,
@@ -150,13 +151,15 @@ contract ReadFacet {
 
         // ==== Prorate redemption ====
         // Bound each withdrawal by the prorata share, in case currently under-collateralized
+        // Same as RToken.redeemCustom(): a share of baskets, taken in {tok}
         for (uint256 i = 0; i < tokens.length; i++) {
-            // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(
-                IERC20(tokens[i]).balanceOf(address(main.backingManager())),
-                amount,
-                supply
-            ); // FLOOR
+            IAsset asset = main.assetRegistry().toAsset(IERC20(tokens[i]));
+
+            // {qTok} = {tok} * {BU} / {BU} * {qTok/tok}
+            uint256 prorata = asset
+            .bal(address(main.backingManager()))
+            .muluDivu(basketsRedeemed, basketsNeeded)
+            .shiftl_toUint(int8(asset.erc20Decimals())); // FLOOR
             if (prorata < withdrawals[i]) withdrawals[i] = prorata;
         }
     }

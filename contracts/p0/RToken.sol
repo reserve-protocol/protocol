@@ -201,6 +201,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on overuse
 
         // {BU}
+        uint192 basketsBefore = basketsNeeded;
         uint192 basketsRedeemed = _scaleDown(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
@@ -218,6 +219,25 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         .basketHandler()
         .quoteCustomRedemption(basketNonces, portions, basketsRedeemed);
 
+        // ==== Prorate redemption ====
+
+        // Bound each withdrawal by the prorata share, in case currently under-collateralized
+        // The share is of baskets, not of RToken supply, so that it rounds with
+        // `basketsRedeemed`. It is taken in {tok}, same as BasketHandler.basketsHeldBy(),
+        // and only then converted to {qTok}. Together these ensure redemption cannot lower
+        // any balance's ratio to basketsNeeded, including for tokens with > 18 decimals.
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            // quoteCustomRedemption() only returns registered collateral
+            IAsset asset = main.assetRegistry().toAsset(IERC20(erc20s[i]));
+
+            // {qTok} = {tok} * {BU} / {BU} * {qTok/tok}
+            uint256 prorata = asset
+            .bal(address(main.backingManager()))
+            .muluDivu(basketsRedeemed, basketsBefore)
+            .shiftl_toUint(int8(asset.erc20Decimals())); // FLOOR
+            if (prorata < amounts[i]) amounts[i] = prorata;
+        }
+
         // === Save initial recipient balances ===
 
         uint256[] memory pastBals = new uint256[](expectedERC20sOut.length);
@@ -225,19 +245,10 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             pastBals[i] = IERC20(expectedERC20sOut[i]).balanceOf(recipient);
         }
 
-        // ==== Prorate redemption + send out balances ====
+        // ==== Send out balances ====
         {
             bool allZero = true;
-            // Bound each withdrawal by the prorata share, in case currently under-collateralized
             for (uint256 i = 0; i < erc20s.length; i++) {
-                // {qTok} = {qTok} * {qRTok} / {qRTok}
-                uint256 prorata = mulDiv256(
-                    IERC20(erc20s[i]).balanceOf(address(main.backingManager())),
-                    amount,
-                    supply
-                ); // FLOOR
-                if (prorata < amounts[i]) amounts[i] = prorata;
-
                 // Send withdrawal
                 if (amounts[i] > 0) {
                     IERC20(erc20s[i]).safeTransferFrom(

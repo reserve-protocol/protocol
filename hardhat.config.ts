@@ -32,6 +32,8 @@ const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
 const minSizeSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 100 } }
+// RTokenP1: 141 is the most runs that keeps it under the contract size limit
+const rTokenSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 141 } }
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
@@ -158,6 +160,13 @@ const config: HardhatUserConfig = {
         version: '0.8.28',
         settings: {
           ...minSizeSettings,
+          evmVersion: 'paris',
+        }, // contract over-size
+      },
+      'contracts/p1/RToken.sol': {
+        version: '0.8.28',
+        settings: {
+          ...rTokenSettings,
           evmVersion: 'paris',
         }, // contract over-size
       },

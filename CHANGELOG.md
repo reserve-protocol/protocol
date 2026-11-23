@@ -7,6 +7,8 @@
 - Prevent unregistering RSR.
 - Document the governance trust assumptions: governance is honest, and the Guardian cancels malicious proposals.
 - Compile `BackingManagerP1` with 100 optimizer runs so it stays under the contract size limit.
+- Compile `RTokenP1` with 141 optimizer runs so it stays under the contract size limit.
+- `RToken.redeemCustom()`: bound each withdrawal by a share of baskets instead of a share of RToken supply. See Rounding Changes.
 - Add the `Upgrade4_3_0` spell to upgrade eUSD, ETH+, USD3, and bsdETH from 4.2.0. The spell rotates each RTokenAsset; no other assets are redeployed. It also takes a `newTradingDelay` and sets it on the BackingManager, so each community can choose `tradingDelay` for its new meaning.
 
 ## Rounding Changes
@@ -35,6 +37,8 @@ These changes come from the Certora formal verification (#1283). They are new re
   - `BackingManager.rebalance()`, `settleTrade()`; `RevenueTrader.manageTokens()`; `DutchTrade.bid()`, `bidWithCallback()`
   - Facades: `ActFacet.revenueOverview()`, `runRevenueAuctions()`, `nextRecollateralizationAuction()`; `RevenueFacet.revenues()`
 - `ReadFacet.issue()` (UoA value of each deposit) and `ReadFacet.backingOverview()` (UoA value of required backing) now round up explicitly.
+- `RToken.redeemCustom()`: the prorata bound on each withdrawal is now `balance * baskets / basketsNeeded`, where `baskets` is the amount `basketsNeeded` is reduced by. It was `balance * amount / totalSupply`, which rounded separately from `basketsNeeded` and could lower the ratio of a balance to `basketsNeeded`. The balance is first truncated to 18 decimals, as in `Asset.bal()`, so the same holds for tokens with more than 18 decimals. This is not from the Certora formal verification. When the bound applies, a withdrawal can be smaller than before by dust.
+  - Facades: `ReadFacet.redeemCustom()`, `ReadFacet.redeem()` (`available`)
 
 # 4.2.0
 
