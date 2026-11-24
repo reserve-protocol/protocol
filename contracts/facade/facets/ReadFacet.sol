@@ -98,22 +98,21 @@ contract ReadFacet {
         // Poke Main
         main.assetRegistry().refresh();
 
-        uint192 basketsNeeded = rTok.basketsNeeded(); // {BU}
+        uint256 supply = rTok.totalSupply();
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, rTok.totalSupply());
+        uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
         (tokens, withdrawals) = bh.quote(basketsRedeemed, FLOOR);
         available = new uint256[](tokens.length);
 
-        // Calculate prorata amounts, same as RToken.redeemCustom()
+        // Calculate prorata amounts
         for (uint256 i = 0; i < tokens.length; i++) {
-            IAsset asset = main.assetRegistry().toAsset(IERC20(tokens[i]));
-
-            // {qTok} = {tok} * {BU} / {BU} * {qTok/tok}
-            available[i] = asset
-            .bal(address(main.backingManager()))
-            .muluDivu(basketsRedeemed, basketsNeeded)
-            .shiftl_toUint(int8(asset.erc20Decimals())); // FLOOR
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            available[i] = mulDiv256(
+                IERC20(tokens[i]).balanceOf(address(main.backingManager())),
+                amount,
+                supply
+            ); // FLOOR
         }
     }
 

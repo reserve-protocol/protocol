@@ -37,8 +37,8 @@ These changes come from the Certora formal verification (#1283). They are new re
   - `BackingManager.rebalance()`, `settleTrade()`; `RevenueTrader.manageTokens()`; `DutchTrade.bid()`, `bidWithCallback()`
   - Facades: `ActFacet.revenueOverview()`, `runRevenueAuctions()`, `nextRecollateralizationAuction()`; `RevenueFacet.revenues()`
 - `ReadFacet.issue()` (UoA value of each deposit) and `ReadFacet.backingOverview()` (UoA value of required backing) now round up explicitly.
-- `RToken.redeemCustom()`: the prorata bound on each withdrawal is now `balance * baskets / basketsNeeded`, where `baskets` is the amount `basketsNeeded` is reduced by. It was `balance * amount / totalSupply`, which rounded separately from `basketsNeeded` and could lower the ratio of a balance to `basketsNeeded`. The balance is first truncated to 18 decimals, as in `Asset.bal()`, so the same holds for tokens with more than 18 decimals. This is not from the Certora formal verification. When the bound applies, a withdrawal can be smaller than before by dust.
-  - Facades: `ReadFacet.redeemCustom()`, `ReadFacet.redeem()` (`available`)
+- `RToken.redeemCustom()`: the prorata bound on each withdrawal is now `balance * baskets / basketsNeeded`, where `baskets` is the amount `basketsNeeded` is reduced by. It was `balance * amount / totalSupply`, which rounded separately from `basketsNeeded` and could lower the ratio of a balance to `basketsNeeded`. The balance is first truncated to 18 decimals, as in `Asset.bal()`, so the same holds for tokens with more than 18 decimals. This is not from the Certora formal verification. When the bound applies, a withdrawal can be smaller than before by dust. A redemption whose only withdrawals were that dust now reverts with `empty redemption`.
+  - Facades: `ReadFacet.redeemCustom()`. Against an RToken older than 4.3.0 it can quote less than the RToken pays, by the same dust.
 
 # 4.2.0
 

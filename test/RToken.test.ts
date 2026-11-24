@@ -1593,7 +1593,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     context('Custom redemption on a historical basket', function () {
       // The prorata bound must round with basketsNeeded, at the precision of Asset.bal()
-      for (const decimals of [18, 21]) {
+      for (const decimals of [6, 18, 21]) {
         it(`Should not lower the ratio of balances to basketsNeeded -- ${decimals} decimals`, async () => {
           // Collateral that carries more weight in a historical basket than in the current one
           const erc20 = <ERC20MockDecimals>(
@@ -1662,13 +1662,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
               .connect(addr1)
               .redeemCustom(addr1.address, amount, [historicalNonce], [fp('1')], [], [])
 
-            // Facade should quote the exact amount
+            // Should receive the share of the {tok} balance that basketsNeeded was reduced by
             const received = (await erc20.balanceOf(addr1.address)).sub(userBalBefore)
-            expect(received).to.be.gt(0)
+            const neededAfter = await rToken.basketsNeeded()
+            const share = balBefore.mul(neededBefore.sub(neededAfter)).div(neededBefore) // {tok}
+            expect(share).to.be.gt(0)
+            expect(received).to.equal(share.mul(one).div(fp('1'))) // {qTok}
+
+            // Facade should quote the exact amount
             expect(received).to.equal(quote.withdrawals[0])
 
             // bal' / basketsNeeded' >= bal / basketsNeeded
-            const neededAfter = await rToken.basketsNeeded()
             const balAfter = await coll.bal(backingManager.address) // {tok}
             expect(balAfter.mul(neededBefore)).to.be.gte(balBefore.mul(neededAfter))
             expect(await basketHandler.fullyCollateralized()).to.equal(true)

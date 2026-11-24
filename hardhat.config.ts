@@ -161,6 +161,7 @@ const config: HardhatUserConfig = {
         settings: {
           ...minSizeSettings,
           evmVersion: 'paris',
+          outputSelection: { '*': { '*': ['storageLayout'] } }, // for upgrade validation
         }, // contract over-size
       },
       'contracts/p1/RToken.sol': {
@@ -168,6 +169,7 @@ const config: HardhatUserConfig = {
         settings: {
           ...rTokenSettings,
           evmVersion: 'paris',
+          outputSelection: { '*': { '*': ['storageLayout'] } }, // for upgrade validation
         }, // contract over-size
       },
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
