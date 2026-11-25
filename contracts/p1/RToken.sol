@@ -303,30 +303,22 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
         // The share is of baskets, not of RToken supply, so that it rounds with `baskets`.
-        // Balances are truncated to 18 decimals, as in Asset.bal(), so that the share is of
-        // the same balance BasketHandler.basketsHeldBy() uses. Together these ensure
-        // redemption cannot lower any balance's ratio to basketsNeeded.
-        // Same result as P0, which takes the share of asset.bal() and shifts to {qTok}.
+        // Together with the 18-decimal rounding below, this ensures redemption cannot lower
+        // any balance's ratio to basketsNeeded. Same result as P0.
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            // {qTok} smallest quantity of the token that registers at 18 decimals
-            uint256 quantum = 1;
-            {
-                uint8 tokDecimals = IERC20Metadata(erc20s[i]).decimals();
-                if (tokDecimals > 18) {
-                    // contract-size-saver: collateral has <= 21 decimals; cannot overflow
-                    unchecked {
-                        quantum = 10**(tokDecimals - 18);
-                    }
-                }
-            }
+            // {qTok}
+            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingManager));
 
+            // Balances only count to 18 decimals; see Asset.bal(). For a token with more
+            // decimals, `unit` is the size of its 18th decimal place in {qTok}:
+            // 10, 100, or 1000 for 19, 20, or 21 decimals. For all other tokens it is 1.
+            uint256 unit = 1;
+            for (uint256 d = IERC20Metadata(erc20s[i]).decimals(); d > 18; --d) unit *= 10;
+
+            // Take the share in whole units, so that digits that do not count are not paid out
             // {qTok} = {qTok} * {BU} / {BU}
             // slither-disable-next-line divide-before-multiply
-            uint256 prorata = mulDiv256(
-                IERC20(erc20s[i]).balanceOf(address(backingManager)) / quantum,
-                baskets,
-                basketsBefore
-            ) * quantum; // FLOOR
+            uint256 prorata = mulDiv256(bal / unit, baskets, basketsBefore) * unit; // FLOOR
 
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
