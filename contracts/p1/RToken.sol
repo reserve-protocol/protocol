@@ -183,7 +183,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction RCEI
-    function redeemTo(address recipient, uint256 amount) public notFrozen globalNonReentrant {
+    function redeemTo(address recipient, uint256 amount) public globalNonReentrant {
+        _requireNotFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -241,9 +243,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   burn(caller, amount)
     //
     // actions:
+    //   let baskets = amount * basketsNeeded / totalSupply
     //   for each token in erc20s:
-    //     let tokenAmt = (amount * basketsNeeded / totalSupply) custom baskets
-    //     let prorataAmt = (amount / totalSupply) * token.balanceOf(backingManager)
+    //     let tokenAmt = baskets custom baskets
+    //     let prorataAmt = (baskets / basketsNeeded) * token.balanceOf(backingManager)
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @dev Allows partial redemptions up to the minAmounts
@@ -261,7 +264,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen globalNonReentrant {
+    ) external globalNonReentrant {
+        _requireNotFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -275,13 +280,16 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         }
         require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
 
-        uint256 supply = totalSupply();
+        {
+            uint256 supply = totalSupply();
 
-        // Revert if redemption exceeds either supply throttle
-        issuanceThrottle.useAvailable(supply, -int256(amount));
-        redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
+            // Revert if redemption exceeds either supply throttle
+            issuanceThrottle.useAvailable(supply, -int256(amount));
+            redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
+        }
 
         // {BU}
+        uint192 basketsBefore = basketsNeeded;
         uint192 baskets = _scaleDown(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, baskets);
 
@@ -294,17 +302,21 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         );
 
         // ==== Prorate redemption ====
-        // i.e, set amounts = min(amounts, balances * amount / totalSupply)
-        //   where balances[i] = erc20s[i].balanceOf(backingManager)
+        // i.e, set amounts = min(amounts, balances * baskets / basketsBefore)
+        //   where balances[i] = erc20s[i].balanceOf(backingManager), to 18 decimals
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+        // The share is of baskets, not of RToken supply, so that it rounds with `baskets`.
+        // It is taken in {tok}, as BasketHandler.basketsHeldBy() measures balances.
+        // Together these ensure redemption cannot lower any balance's ratio to basketsNeeded.
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(
-                IERC20(erc20s[i]).balanceOf(address(backingManager)),
-                amount,
-                supply
-            ); // FLOOR
+            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
+
+            // {qTok} = {tok} * {BU} / {BU} * {qTok/tok}
+            uint256 prorata = asset
+            .bal(address(backingManager))
+            .muluDivu(baskets, basketsBefore)
+            .shiftl_toUint(int8(asset.erc20Decimals())); // FLOOR
 
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
@@ -409,7 +421,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     // checks: caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    function setBasketsNeeded(uint192 basketsNeeded_) external notTradingPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
+        _requireNotTradingPausedOrFrozen();
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -430,7 +443,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
     /// @custom:interaction
-    function monetizeDonations(IERC20 erc20) external notTradingPausedOrFrozen globalNonReentrant {
+    function monetizeDonations(IERC20 erc20) external globalNonReentrant {
+        _requireNotTradingPausedOrFrozen();
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         IERC20Upgradeable(address(erc20)).safeTransfer(
             address(backingManager),
@@ -463,7 +477,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public {
+        _requireGovernanceOnly();
         _setIssuanceThrottleParams(params);
         require(
             isRedemptionThrottleGreaterByDelta(params, redemptionThrottle.params),
@@ -472,7 +487,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public {
+        _requireGovernanceOnly();
         _setRedemptionThrottleParams(params);
         require(
             isRedemptionThrottleGreaterByDelta(issuanceThrottle.params, params),
@@ -484,7 +500,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     function setThrottleParams(
         ThrottleLib.Params calldata issuanceParams,
         ThrottleLib.Params calldata redemptionParams
-    ) public governance {
+    ) public {
+        _requireGovernanceOnly();
         _setIssuanceThrottleParams(issuanceParams);
         _setRedemptionThrottleParams(redemptionParams);
         require(
@@ -493,13 +510,26 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         );
     }
 
-    function setMandate(string calldata mandate_) public governance {
+    function setMandate(string calldata mandate_) public {
+        _requireGovernanceOnly();
         require(bytes(mandate_).length != 0, "mandate empty");
         emit MandateSet(mandate, mandate_);
         mandate = mandate_;
     }
 
     // === Private Helpers ===
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function _requireNotTradingPausedOrFrozen() private view notTradingPausedOrFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function _requireNotFrozen() private view notFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function _requireGovernanceOnly() private view governance {}
 
     function _setIssuanceThrottleParams(ThrottleLib.Params calldata params) private {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");

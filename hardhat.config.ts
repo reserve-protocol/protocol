@@ -32,6 +32,8 @@ const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
 const minSizeSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 100 } }
+// RTokenP1: 145 is the most runs that keeps it under the contract size limit
+const rTokenSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 145 } }
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
@@ -159,6 +161,15 @@ const config: HardhatUserConfig = {
         settings: {
           ...minSizeSettings,
           evmVersion: 'paris',
+          outputSelection: { '*': { '*': ['storageLayout'] } }, // for upgrade validation
+        }, // contract over-size
+      },
+      'contracts/p1/RToken.sol': {
+        version: '0.8.28',
+        settings: {
+          ...rTokenSettings,
+          evmVersion: 'paris',
+          outputSelection: { '*': { '*': ['storageLayout'] } }, // for upgrade validation
         }, // contract over-size
       },
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
