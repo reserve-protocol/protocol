@@ -183,7 +183,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction RCEI
-    function redeemTo(address recipient, uint256 amount) public notFrozen globalNonReentrant {
+    function redeemTo(address recipient, uint256 amount) public globalNonReentrant {
+        _requireNotFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -262,7 +264,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen globalNonReentrant {
+    ) external globalNonReentrant {
+        _requireNotFrozen();
+
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -303,22 +307,16 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
         // The share is of baskets, not of RToken supply, so that it rounds with `baskets`.
-        // Together with the 18-decimal rounding below, this ensures redemption cannot lower
-        // any balance's ratio to basketsNeeded. Same result as P0.
+        // It is taken in {tok}, as BasketHandler.basketsHeldBy() measures balances.
+        // Together these ensure redemption cannot lower any balance's ratio to basketsNeeded.
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            // {qTok}
-            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingManager));
+            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
 
-            // Balances only count to 18 decimals; see Asset.bal(). For a token with more
-            // decimals, `unit` is the size of its 18th decimal place in {qTok}:
-            // 10, 100, or 1000 for 19, 20, or 21 decimals. For all other tokens it is 1.
-            uint256 unit = 1;
-            for (uint256 d = IERC20Metadata(erc20s[i]).decimals(); d > 18; --d) unit *= 10;
-
-            // Take the share in whole units, so that digits that do not count are not paid out
-            // {qTok} = {qTok} * {BU} / {BU}
-            // slither-disable-next-line divide-before-multiply
-            uint256 prorata = mulDiv256(bal / unit, baskets, basketsBefore) * unit; // FLOOR
+            // {qTok} = {tok} * {BU} / {BU} * {qTok/tok}
+            uint256 prorata = asset
+            .bal(address(backingManager))
+            .muluDivu(baskets, basketsBefore)
+            .shiftl_toUint(int8(asset.erc20Decimals())); // FLOOR
 
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
@@ -423,7 +421,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     // checks: caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    function setBasketsNeeded(uint192 basketsNeeded_) external notTradingPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
+        _requireNotTradingPausedOrFrozen();
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -444,7 +443,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
     /// @custom:interaction
-    function monetizeDonations(IERC20 erc20) external notTradingPausedOrFrozen globalNonReentrant {
+    function monetizeDonations(IERC20 erc20) external globalNonReentrant {
+        _requireNotTradingPausedOrFrozen();
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         IERC20Upgradeable(address(erc20)).safeTransfer(
             address(backingManager),
@@ -477,7 +477,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public {
+        _requireGovernanceOnly();
         _setIssuanceThrottleParams(params);
         require(
             isRedemptionThrottleGreaterByDelta(params, redemptionThrottle.params),
@@ -486,7 +487,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public governance {
+    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public {
+        _requireGovernanceOnly();
         _setRedemptionThrottleParams(params);
         require(
             isRedemptionThrottleGreaterByDelta(issuanceThrottle.params, params),
@@ -498,7 +500,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     function setThrottleParams(
         ThrottleLib.Params calldata issuanceParams,
         ThrottleLib.Params calldata redemptionParams
-    ) public governance {
+    ) public {
+        _requireGovernanceOnly();
         _setIssuanceThrottleParams(issuanceParams);
         _setRedemptionThrottleParams(redemptionParams);
         require(
@@ -507,13 +510,26 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         );
     }
 
-    function setMandate(string calldata mandate_) public governance {
+    function setMandate(string calldata mandate_) public {
+        _requireGovernanceOnly();
         require(bytes(mandate_).length != 0, "mandate empty");
         emit MandateSet(mandate, mandate_);
         mandate = mandate_;
     }
 
     // === Private Helpers ===
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function _requireNotTradingPausedOrFrozen() private view notTradingPausedOrFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function _requireNotFrozen() private view notFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function _requireGovernanceOnly() private view governance {}
 
     function _setIssuanceThrottleParams(ThrottleLib.Params calldata params) private {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");

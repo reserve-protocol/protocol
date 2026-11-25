@@ -32,8 +32,8 @@ const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
 const minSizeSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 100 } }
-// RTokenP1: 126 is the most runs that keeps it under the contract size limit
-const rTokenSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 126 } }
+// RTokenP1: 145 is the most runs that keeps it under the contract size limit
+const rTokenSettings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 145 } }
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
