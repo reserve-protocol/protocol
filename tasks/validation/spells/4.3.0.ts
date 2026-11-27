@@ -205,14 +205,22 @@ const checkSpellGuards = async (
     await assetRegistry.connect(timelock).unregister(await assetRegistry.toAsset(await main.rsr()))
   })
 
-  // Move a basket token out of the BackingManager
+  // Move a token of the current basket out of the BackingManager
   await expectErr(16, async (timelock) => {
     const backingManager = await main.backingManager()
-    const [erc20s] = await basketHandler.getPrimeBasket()
-    const erc20 = await hre.ethers.getContractAt('ERC20Mock', erc20s[0])
-    await whileImpersonating(hre, backingManager, async (signer) => {
-      await erc20.connect(signer).transfer(timelock.address, await erc20.balanceOf(backingManager))
-    })
+    const erc20s = await assetRegistry.erc20s()
+    for (const addr of erc20s) {
+      if ((await basketHandler.quantity(addr)).eq(0)) continue
+
+      const erc20 = await hre.ethers.getContractAt('ERC20Mock', addr)
+      await whileImpersonating(hre, backingManager, async (signer) => {
+        await erc20
+          .connect(signer)
+          .transfer(timelock.address, await erc20.balanceOf(backingManager))
+      })
+      break
+    }
+    if (await basketHandler.fullyCollateralized()) throw new Error('still fully collateralized')
   })
 }
 
