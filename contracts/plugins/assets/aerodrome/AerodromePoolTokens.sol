@@ -249,7 +249,7 @@ contract AerodromePoolTokens {
         uint192 xErr,
         uint192 yErr
     ) private pure returns (uint192 low, uint192 high) {
-        low = x.mul(FIX_ONE - xErr).mul(y.mul(FIX_ONE - yErr), FLOOR);
-        high = x.mul(FIX_ONE + xErr).mul(y.mul(FIX_ONE + yErr), CEIL);
+        low = x.mul(FIX_ONE - xErr, FLOOR).mul(y.mul(FIX_ONE - yErr, FLOOR), FLOOR);
+        high = x.mul(FIX_ONE + xErr, CEIL).mul(y.mul(FIX_ONE + yErr, CEIL), CEIL);
     }
 }
