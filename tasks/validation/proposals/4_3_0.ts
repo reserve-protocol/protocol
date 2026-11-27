@@ -60,7 +60,7 @@ export const proposal_4_3_0 = async (
   const [erc20s, assets] = await assetRegistry.getRegistry()
   for (let i = 0; i < assets.length; i++) {
     // The RToken's own asset cannot be unregistered; the spell rotates it
-    if (erc20s[i] == rToken.address) continue
+    if (erc20s[i].toLowerCase() == rTokenAddress.toLowerCase()) continue
 
     if (!(await assetPluginRegistry.isDeprecated(assets[i]))) continue
 
