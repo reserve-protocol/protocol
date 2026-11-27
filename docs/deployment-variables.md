@@ -66,10 +66,12 @@ Dimension: `{seconds}`
 
 The trading delay is how many seconds should pass after an emergency basket change, the permissionless refresh after a collateral default, before a trade can be opened. Basket changes made by governance skip the delay. A delay gives governance time to choose a better basket before the protocol starts rebalancing on its own. Issuance against the new basket is still allowed during the delay.
 
+The delay should be longer than one governance cycle, or governance cannot act before it ends. A cycle is the voting delay, the voting period, and the timelock delay: 8 days for eUSD, ETH+, USD3, and bsdETH.
+
 Before 4.3.0, the delay applied after every basket change.
 
-Default value: `0` = 0s
-Reasonable range: 0 to 604800
+Default value: `1209600` = 2 weeks
+Reasonable range: 1209600 to 2419200
 
 ### `warmupPeriod`
 
