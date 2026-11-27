@@ -1057,6 +1057,31 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
       })
 
+      it('Should keep tradingDelayBypassed when a basket switch fails', async () => {
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(true)
+
+        // Governance disables the basket, with no backup to switch to
+        await assetRegistry.connect(owner).unregister(collateral0.address)
+        await basketHandler.connect(addr1).refreshBasket()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(true)
+
+        // A successful permissionless switch ends the bypass
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+        await basketHandler.connect(addr1).refreshBasket()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(false)
+
+        // A failed governance switch does not restore it
+        await assetRegistry.connect(owner).unregister(backupCollateral1.address)
+        await basketHandler.connect(owner).refreshBasket()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.tradingDelayBypassed()).to.equal(false)
+      })
+
       it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
         // Setup prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
