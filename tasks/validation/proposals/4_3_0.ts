@@ -48,12 +48,26 @@ export const proposal_4_3_0 = async (
     await main.basketHandler()
   )
   const [primeERC20s] = await basketHandler.getPrimeBasket()
+  const rsr = await main.rsr()
+
+  // Unregistered assets may be needed to restore the backing. The spell checks this too.
+  if (!(await basketHandler.fullyCollateralized())) {
+    throw new Error('RToken is not fully collateralized')
+  }
 
   // Unregister deprecated assets, which would fail the spell's asset validation
   const txs = []
   const [erc20s, assets] = await assetRegistry.getRegistry()
   for (let i = 0; i < assets.length; i++) {
+    // The RToken's own asset cannot be unregistered; the spell rotates it
+    if (erc20s[i].toLowerCase() == rTokenAddress.toLowerCase()) continue
+
     if (!(await assetPluginRegistry.isDeprecated(assets[i]))) continue
+
+    // 4.2.0 allows unregistering RSR; the spell requires it to stay registered
+    if (erc20s[i] == rsr) {
+      throw new Error(`deprecated RSR asset ${assets[i]} must be swapped, not unregistered`)
+    }
 
     if (primeERC20s.includes(erc20s[i]) || (await basketHandler.quantity(erc20s[i])).gt(0)) {
       throw new Error(`deprecated asset ${assets[i]} is in the basket`)

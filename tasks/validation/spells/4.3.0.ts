@@ -10,6 +10,8 @@ import { resetFork } from '#/utils/chain'
 import { MAIN_OWNER_ROLE } from '../proposals/4_2_0'
 import { proposal_4_3_0 } from '../proposals/4_3_0'
 import { Upgrade4_3_0 } from '#/typechain'
+import { Proposal } from '#/utils/subgraph'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 const VERSION_4_3_0_HASH = '0xdef94dbdd8411ae515cefcb56b153df454453010a1f4c881b3daa7ed18db793a'
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'
@@ -147,6 +149,74 @@ const setup_4_3_0 = async (hre: HardhatRuntimeEnvironment, deployment: RTokenDep
   }
 }
 
+// The spell should refuse an RToken that lost RSR, or that is not fully collateralized
+const checkSpellGuards = async (
+  hre: HardhatRuntimeEnvironment,
+  deployment: RTokenDeployment,
+  spell: Upgrade4_3_0,
+  proposal: Proposal
+) => {
+  const rToken = await hre.ethers.getContractAt('RTokenP1', deployment.rToken)
+  const main = await hre.ethers.getContractAt('MainP1', await rToken.main())
+  const assetRegistry = await hre.ethers.getContractAt(
+    'AssetRegistryP1',
+    await main.assetRegistry()
+  )
+  const basketHandler = await hre.ethers.getContractAt(
+    'BasketHandlerP1',
+    await main.basketHandler()
+  )
+
+  // Runs the proposal up to castSpell, breaks the RToken, then expects castSpell to revert
+  const expectErr = async (
+    index: number,
+    breakRToken: (timelock: SignerWithAddress) => unknown
+  ) => {
+    const snapshot = await hre.network.provider.send('evm_snapshot')
+
+    await whileImpersonating(hre, deployment.timelock, async (timelock) => {
+      for (let i = 0; i < proposal.targets.length - 1; i++) {
+        await timelock.sendTransaction({ to: proposal.targets[i], data: proposal.calldatas[i] })
+      }
+      await breakRToken(timelock)
+
+      const expected = spell.interface.encodeErrorResult('Err', [index])
+      const actual = await hre.network.provider
+        .send('eth_call', [
+          {
+            from: timelock.address,
+            to: spell.address,
+            data: proposal.calldatas[proposal.calldatas.length - 1],
+          },
+        ])
+        .then(
+          () => 'no revert',
+          (e) => e.data
+        )
+      if (actual != expected) throw new Error(`expected Err(${index}), got ${actual}`)
+    })
+
+    await hre.network.provider.send('evm_revert', [snapshot])
+    console.log(`Spell reverts with Err(${index}) as expected`)
+  }
+
+  // 4.2.0 allows unregistering RSR
+  await expectErr(15, async (timelock) => {
+    await assetRegistry.connect(timelock).unregister(await assetRegistry.toAsset(await main.rsr()))
+  })
+
+  // Move a token of the current basket out of the BackingManager
+  await expectErr(16, async (timelock) => {
+    const backingManager = await main.backingManager()
+    const [erc20s] = await basketHandler.getHistoricalBasket(await basketHandler.nonce())
+    const erc20 = await hre.ethers.getContractAt('ERC20Mock', erc20s[0])
+    await whileImpersonating(hre, backingManager, async (signer) => {
+      await erc20.connect(signer).transfer(timelock.address, await erc20.balanceOf(backingManager))
+    })
+    if (await basketHandler.fullyCollateralized()) throw new Error('still fully collateralized')
+  })
+}
+
 // Use this once to serialize a proposal
 task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
   const network = useEnv('FORK_NETWORK').toLowerCase()
@@ -190,6 +260,8 @@ task('4.3.0', 'Upgrade to 4.3.0').setAction(async (_, hre) => {
     result.rtoken = deployment.rToken
     result.governor = anastasius.address
     result.timelock = deployment.timelock
+
+    await checkSpellGuards(hre, deployment, spell, result)
 
     const descHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(result.description))
     result.proposalId = BigNumber.from(
