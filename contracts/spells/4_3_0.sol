@@ -24,6 +24,7 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  *   - the 4.3.0 deployer must be registered in the VersionRegistry
  *   - all currently registered assets must be valid for 4.3.0 in the AssetPluginRegistry;
  *     deprecated assets must be unregistered first
+ *   - RSR must be registered, and the RToken must be SOUND and fully collateralized
  *   - this contract must have MAIN_OWNER_ROLE of Main
  *
  * The spell rotates the RTokenAsset, keeping its maxTradeVolume. No other assets are changed.
@@ -117,7 +118,9 @@ contract Upgrade4_3_0 is Versioned {
         require(
             main.versionRegistry() == registries.versionRegistry &&
                 main.assetPluginRegistry() == registries.assetPluginRegistry &&
-                main.daoFeeRegistry() == registries.daoFeeRegistry,
+                main.daoFeeRegistry() == registries.daoFeeRegistry &&
+                TestIBroker(address(main.broker())).trustedFillerRegistry() ==
+                registries.trustedFillerRegistry,
             Err(4)
         );
 
@@ -136,6 +139,9 @@ contract Upgrade4_3_0 is Versioned {
             rsrTrader: main.rsrTrader(),
             stRSR: main.stRSR()
         });
+
+        // RSR should still be registered: 4.2.0 allows unregistering it, 4.3.0 does not
+        require(proxy.assetRegistry.isRegistered(main.rsr()), Err(15));
 
         // tradingDelay should only increase
         require(
@@ -195,6 +201,10 @@ contract Upgrade4_3_0 is Versioned {
 
             proxy.assetRegistry.refresh();
             require(proxy.basketHandler.status() == CollateralStatus.SOUND, Err(11));
+
+            // Assets unregistered before casting may have been needed to restore the backing.
+            // Unregistering cannot change this result without also disabling the basket.
+            require(proxy.basketHandler.fullyCollateralized(), Err(16));
         }
 
         // Set tradingDelay for its 4.3.0 meaning
