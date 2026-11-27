@@ -36,7 +36,7 @@ bytes32 constant MAIN_OWNER_ROLE = bytes32("OWNER");
  *
  * MAIN_OWNER_ROLE is automatically renounced after casting. Governance is unchanged.
  *
- * The spell() function should be called by the timelock owning Main.
+ * The castSpell() function should be called by the timelock owning Main.
  *
  */
 contract Upgrade4_3_0 is Versioned {

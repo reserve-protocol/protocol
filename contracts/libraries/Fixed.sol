@@ -246,9 +246,9 @@ library FixLib {
     }
 
     /// Multiply this uint192 by a uint192
-    /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
+    /// Round truncated values down.
     /// @return x * y
-    // as-ints: x * y/1e18  [division using ROUND, not FLOOR]
+    // as-ints: x * y/1e18  [division using FLOOR]
     function mul(uint192 x, uint192 y) internal pure returns (uint192) {
         return mul(x, y, FLOOR);
     }
